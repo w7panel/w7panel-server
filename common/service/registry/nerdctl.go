@@ -13,6 +13,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/commit"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/opencontainers/go-digest"
+	cd "github.com/w7panel/w7panel/common/service/registry/containerd"
 	
 )
 
@@ -65,23 +66,23 @@ func Pull(ctx context.Context, client *containerd.Client, rawRef string, options
 }
 
 func CommitToContainerD(ctx context.Context, rawRef, containerId string) (digest.Digest, error) {
-	client, err := CreateClient()
+	client, err := cd.CreateClient()
 	if err != nil {
 		return "", err
 	}
 	defer client.Close()
 	return CommitOne(ctx, client, rawRef, containerId, types.ContainerCommitOptions{
-		GOptions: types.GlobalCommandOptions{DataRoot: "/tmp", Address: containerAddr()},
+		GOptions: types.GlobalCommandOptions{DataRoot: "/tmp", Address: cd.ContainerAddr()},
 	})
 }
 func PullToContainerD(ctx context.Context, rawRef string, target string) error {
-	client, err := containerd.New(containerAddr(), containerd.WithDefaultNamespace(registryNamespace))
+	client, err := cd.CreateClient()
 	if err != nil {
 		return err
 	}
 	defer client.Close()
 	gOptions := types.GlobalCommandOptions{
-		Namespace: registryNamespace,
+		Namespace: cd.NS,
 	}
 	err = Pull(ctx, client, rawRef, types.ImagePullOptions{
 		// Std

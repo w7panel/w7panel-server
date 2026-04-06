@@ -21,7 +21,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	"github.com/w7panel/w7panel/common/service/k8s/mcp"
 	"github.com/w7panel/w7panel/common/service/k8s/shell"
-	"github.com/w7panel/w7panel/common/service/registry"
 	"github.com/w7panel/w7panel/common/service/s3"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
@@ -273,14 +272,3 @@ func (p Provider) cleanS3() {
 
 	}
 }
-
-func (p Provider) pushProxyOci() {
-	time.AfterFunc(30*time.Second, func() {
-		err := registry.PushOciProxy()
-		if err != nil {
-			slog.Error("push oci proxy error", "err", err)
-		}
-	})
-}
-
-// 提前缓存helm升级信息
