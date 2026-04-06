@@ -6,12 +6,10 @@ import (
 	"io"
 	"log"
 	"log/slog"
-	"net"
 	http2 "net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/w7panel/w7panel/app/application"
 	"github.com/w7panel/w7panel/app/application/http/controller"
@@ -23,11 +21,9 @@ import (
 	helper2 "github.com/w7panel/w7panel/common/helper"
 	middleware2 "github.com/w7panel/w7panel/common/middleware"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	registryClient "github.com/w7panel/w7panel/common/service/registry"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
-	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/grafana/pyroscope-go"
 	"github.com/spf13/viper"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
@@ -69,28 +65,6 @@ func pyroscope2() {
 	if err != nil {
 		log.Fatalf("error starting pyroscope profiler: %v", err)
 	}
-}
-
-func registryServer() error {
-	listener, err := net.Listen("tcp", ":5000")
-	if err != nil {
-		log.Fatalln(err)
-	}
-	s := &http2.Server{
-		ReadHeaderTimeout: 5 * time.Second,
-		Handler:           registry.New(registry.WithBlobHandler(registry.NewInMemoryBlobHandler())),
-	}
-
-	errCh := make(chan error)
-	go func() { errCh <- s.Serve(listener) }()
-	time.AfterFunc(5*time.Second, func() {
-		err := registryClient.PushOciProxy()
-		if err != nil {
-			slog.Error("main PushOciProxy", "error", err)
-		}
-	})
-	<-errCh
-	return err
 }
 
 func init() {
