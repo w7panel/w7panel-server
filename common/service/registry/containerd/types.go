@@ -31,7 +31,7 @@ func withNamespace(ctx context.Context) context.Context {
 }
 
 func CreateClient() (*v2client.Client, error) {
-	client, err := v2client.New(containerAddr(), v2client.WithDefaultNamespace(NS))
+	client, err := v2client.New(ContainerAddr(), v2client.WithDefaultNamespace(NS))
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func containerRoot() string {
 	return ""
 }
 
-func containerAddr() string {
+func ContainerAddr() string {
 	if helper.IsLocalMock() || helper.IsDebug() {
 		return debugcontainerdAddr
 	}

@@ -2,7 +2,7 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/w7panel/w7panel/common/service/registry"
+	cd "github.com/w7panel/w7panel/common/service/registry/containerd"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 
@@ -12,7 +12,7 @@ type Containers struct {
 
 // List 获取容器列表
 func (self Containers) List(ctx *gin.Context) {
-	client, err := registry.CreateClient()
+	client, err := cd.CreateClient()
 	if err != nil {
 		self.JsonResponseWithServerError(ctx, err)
 		return
@@ -30,7 +30,7 @@ func (self Containers) List(ctx *gin.Context) {
 func (self Containers) Get(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	client, err := registry.CreateClient()
+	client, err := cd.CreateClient()
 	if err != nil {
 		self.JsonResponseWithServerError(ctx, err)
 		return
@@ -48,7 +48,7 @@ func (self Containers) Get(ctx *gin.Context) {
 func (self Containers) Layers(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	client, err := registry.CreateClient()
+	client, err := cd.CreateClient()
 	if err != nil {
 		self.JsonResponseWithServerError(ctx, err)
 		return

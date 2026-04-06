@@ -3,7 +3,6 @@ package containerd
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io"
 	"sync"
 
@@ -27,16 +26,16 @@ func NewBlobHandler(store content.Store) *containerdBlobHandler {
 }
 
 func (handler *containerdBlobHandler) Get(ctx context.Context, repo string, h v1.Hash) (io.ReadCloser, error) {
-	// dgst, err := digest.Parse(h.String())
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// body, err := content.ReadBlob(withNamespace(ctx), handler.store, ocispec.Descriptor{Digest: dgst})
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// return io.NopCloser(bytes.NewReader(body)), nil
-	return nil, errors.New("not impl")
+	dgst, err := digest.Parse(h.String())
+	if err != nil {
+		return nil, err
+	}
+	body, err := content.ReadBlob(withNamespace(ctx), handler.store, ocispec.Descriptor{Digest: dgst})
+	if err != nil {
+		return nil, err
+	}
+	return io.NopCloser(bytes.NewReader(body)), nil
+	// return nil, errors.New("not impl")
 }
 
 // blobs 是否已存在
