@@ -10,7 +10,8 @@ import (
 type BuildImage struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              BuildImageSpec `json:"spec"`
+	Spec              BuildImageSpec   `json:"spec"`
+	Status            BuildImageStatus `json:"status"`
 }
 
 type BuildImageSpec struct {
