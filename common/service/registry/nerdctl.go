@@ -39,8 +39,9 @@ func ImagesList(ctx context.Context, client *containerd.Client, filters, nameAnd
 
 func ImagesRemove(ctx context.Context, client *containerd.Client, args []string, force bool, async bool) error {
 	options := types.ImageRemoveOptions{
-		Force: force,
-		Async: async,
+		Force:  force,
+		Async:  async,
+		Stdout: os.Stdout,
 	}
 	options.GOptions = types.GlobalCommandOptions{
 		Namespace: cd.NS,

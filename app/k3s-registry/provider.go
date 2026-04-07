@@ -49,7 +49,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			patchGroup.POST("/containers/:id/commit", controller.Commit{}.Run)
 			patchGroup.GET("/images/list", controller.Images{}.List)
 			patchGroup.PUT("/images/tag", controller.Images{}.Tag)
-			patchGroup.DELETE("/images", controller.Images{}.Delete)
+			patchGroup.POST("/images/delete", controller.Images{}.Delete)
 
 		}
 	})

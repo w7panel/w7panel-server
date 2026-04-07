@@ -42,6 +42,7 @@ func (self Images) Tag(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	defer client.Close()
 	type ParamsValidate struct {
 		Source string `form:"source" binding:"required"`
 		Target string `form:"target" binding:"required"`
@@ -51,7 +52,6 @@ func (self Images) Tag(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
-	defer client.Close()
 
 	err = registry.Tag(http, client, params.Source, params.Target)
 	if err != nil {
@@ -69,6 +69,7 @@ func (self Images) Delete(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	defer client.Close()
 	type ParamsValidate struct {
 		Force  bool   `form:"force"`
 		Async  bool   `form:"async"`
@@ -79,7 +80,6 @@ func (self Images) Delete(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
-	defer client.Close()
 
 	err = registry.ImagesRemove(http, client, []string{params.Target}, params.Force, params.Async)
 	if err != nil {
