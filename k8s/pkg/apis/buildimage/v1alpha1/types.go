@@ -37,3 +37,11 @@ type BuildImageList struct {
 
 	Items []BuildImage `json:"items"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type BuildImageStatus struct {
+	Status     string             `json:"status"`
+	Reason     string             `json:"reason"`
+	Contitions []metav1.Condition `json:"conditions"`
+	JobName    string             `json:"jobName"`
+}
