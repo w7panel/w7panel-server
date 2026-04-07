@@ -139,7 +139,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		{
 			localApiGroup.GET("/tty", middleware.Auth{}.Process, controller2.PodExec{}.Tty)
 			localApiGroup.GET("/nodetty", middleware.Auth{}.Process, controller2.PodExec{}.NodeTty)
-			localApiGroup.GET("/download/*path", controller2.File{}.Download)
+			localApiGroup.GET("/download/*path", middleware.Auth{}.Process, controller2.File{}.Download)
 			localApiGroup.POST("/cp", middleware.Auth{}.Process, controller2.PodExec{}.KubectlCp) //kubectl cp文件
 			localApiGroup.POST("/cppid", middleware.Auth{}.Process, controller2.File{}.CpPidFile) //pid文件移动
 			localApiGroup.POST("/mvpid", middleware.Auth{}.Process, controller2.File{}.CpPidFile) //pid文件移动
