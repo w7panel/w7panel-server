@@ -20,10 +20,10 @@ func (self Images) List(ctx *gin.Context) {
 		return
 	}
 	defer client.Close()
-	type Image struct {
-		Name string `json:"name"`
-		Tag  string `json:"tag"`
-	}
+	// type Image struct {
+	// 	Name string `json:"name"`
+	// 	Tag  string `json:"tag"`
+	// }
 
 	images, err := registry.ImagesList(ctx, client, []string{}, []string{})
 	if err != nil {
@@ -52,10 +52,6 @@ func (self Images) Tag(http *gin.Context) {
 		return
 	}
 	defer client.Close()
-	type Image struct {
-		Name string `json:"name"`
-		Tag  string `json:"tag"`
-	}
 
 	err = registry.Tag(http, client, params.Source, params.Target)
 	if err != nil {
@@ -74,9 +70,9 @@ func (self Images) Delete(http *gin.Context) {
 		return
 	}
 	type ParamsValidate struct {
-		Force  bool     `json:"force"`
-		Async  bool     `json:"async"`
-		Target []string `form:"target" binding:"required"`
+		Force  bool   `form:"force"`
+		Async  bool   `form:"async"`
+		Target string `form:"target" binding:"required"`
 	}
 
 	params := ParamsValidate{}
@@ -85,7 +81,7 @@ func (self Images) Delete(http *gin.Context) {
 	}
 	defer client.Close()
 
-	err = registry.ImagesRemove(http, client, params.Target, params.Force, params.Async)
+	err = registry.ImagesRemove(http, client, []string{params.Target}, params.Force, params.Async)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
