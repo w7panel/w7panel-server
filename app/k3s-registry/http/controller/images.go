@@ -62,7 +62,7 @@ func (self Images) Tag(http *gin.Context) {
 
 }
 
-func (self Images) Delete(http *gin.Context) {
+func (self Images) Remove(http *gin.Context) {
 
 	client, err := cd.CreateClient()
 	if err != nil {
@@ -87,5 +87,61 @@ func (self Images) Delete(http *gin.Context) {
 		return
 	}
 	self.JsonSuccessResponse(http)
+
+}
+
+func (self Images) Label(http *gin.Context) {
+
+	client, err := cd.CreateClient()
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	defer client.Close()
+	type ParamsValidate struct {
+		Name    string            `json:"name" binding:"required"`
+		Labels  map[string]string `json:"labels" binding:"required"`
+		Replace bool              `json:"replace" binding:"required"`
+	}
+
+	params := ParamsValidate{}
+	if !self.Validate(http, &params) {
+		return
+	}
+
+	err = registry.ImagesLabel(http, client, params.Name, params.Labels, params.Replace)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonSuccessResponse(http)
+
+}
+
+// 导入镜像
+func (self Images) Import(http *gin.Context) {
+	client, err := cd.CreateClient()
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	defer client.Close()
+	type ParamsValidate struct {
+		Name string `form:"name" binding:"required"`
+		Path string `form:"path" binding:"required"`
+	}
+
+	params := ParamsValidate{}
+	if !self.Validate(http, &params) {
+		return
+	}
+
+	imgName, err := registry.ImagesImportFromFile(http, client, params.Name, params.Path)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+
+	self.JsonResponseWithoutError(http, gin.H{"name": imgName})
 
 }

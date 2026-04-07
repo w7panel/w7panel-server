@@ -2,12 +2,15 @@ package registry
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"os"
+	"strings"
 
 	// "github.com/containerd/containerd"
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images"
+	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
@@ -47,6 +50,57 @@ func ImagesRemove(ctx context.Context, client *containerd.Client, args []string,
 		Namespace: cd.NS,
 	}
 	return image.Remove(ctx, client, args, options)
+}
+
+func ImagesLabel(ctx context.Context, client *containerd.Client, name string, labels map[string]string, replaceAll bool) error {
+	var (
+		is         = client.ImageService()
+		fieldpaths []string
+	)
+
+	for k := range labels {
+		if replaceAll {
+			fieldpaths = append(fieldpaths, "labels")
+		} else {
+			fieldpaths = append(fieldpaths, strings.Join([]string{"labels", k}, "."))
+		}
+	}
+
+	image := images.Image{
+		Name:   name,
+		Labels: labels,
+	}
+	cd.WithNamespace(ctx)
+	_, err := is.Update(ctx, image, fieldpaths...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// TODO 限定目录
+func ImagesImportFromFile(ctx context.Context, client *containerd.Client, ref string, path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	return ImagesImport(ctx, client, ref, file)
+}
+func ImagesImport(ctx context.Context, client *containerd.Client, ref string, reader io.Reader) (string, error) {
+	options := types.ImageImportOptions{
+		// Source:    name,
+		Stdin:     reader,
+		Stdout:    os.Stdout,
+		Reference: ref,
+		GOptions: types.GlobalCommandOptions{
+			Namespace:   cd.NS,
+			Snapshotter: defaults.DefaultSnapshotter,
+		},
+	}
+
+	return image.Import(ctx, client, options)
 }
 
 func CommitOne(ctx context.Context, client *containerd.Client, rawRef string, req string, options types.ContainerCommitOptions) (digest.Digest, error) {
