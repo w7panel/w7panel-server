@@ -127,8 +127,9 @@ func (self Images) Import(http *gin.Context) {
 	}
 	defer client.Close()
 	type ParamsValidate struct {
-		Name string `form:"name" binding:"required"`
-		Path string `form:"path" binding:"required"`
+		Name   string `form:"name" binding:"required"`
+		Path   string `form:"path" binding:"required"`
+		Pinned bool   `form:"pinned"`
 	}
 
 	params := ParamsValidate{}
