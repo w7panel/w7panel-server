@@ -1,7 +1,10 @@
 package controller
 
 import (
+	"path/filepath"
+
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/registry"
 	cd "github.com/w7panel/w7panel/common/service/registry/containerd"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
@@ -136,8 +139,12 @@ func (self Images) Import(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
+	importPath := params.Path
+	if helper.IsAgent() || helper.IsK3kVirtual() {
+		importPath = filepath.Join("/host", importPath)
+	}
 
-	imgName, err := registry.ImagesImportFromFile(http, client, params.Name, params.Path)
+	imgName, err := registry.ImagesImportFromFile(http, client, params.Name, importPath)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
