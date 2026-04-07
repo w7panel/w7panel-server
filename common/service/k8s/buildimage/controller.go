@@ -126,8 +126,7 @@ func (r *BuildImageController) reconcile0(ctx context.Context, req ctrl.Request)
 	}
 
 	// Get panel registry IP
-	sdk := k8s.NewK8sClient().GetSdk()
-	panelIp, err := getPanelRegistryIp(sdk)
+	panelIp, err := getPanelRegistryIp()
 	if err != nil {
 		logger.Error(err, "Failed to get panel registry IP")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
