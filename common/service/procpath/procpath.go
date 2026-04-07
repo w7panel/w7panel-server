@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	ProcPath      = "/proc"
-	HostProcPath  = "/host/proc"
-	DefaultPid    = "1"
+	ProcPath     = "/proc"
+	HostProcPath = "/host/proc"
+	DefaultPid   = "1"
 )
 
 func GetBasePath() string {
@@ -28,7 +28,7 @@ func GetRootPath(pid string) string {
 
 func GetRootPathWithSubPid(pid, subPid string) string {
 	basePath := GetRootPath(pid)
-	if subPid != "" {
+	if subPid != "" && subPid != "0" {
 		basePath = filepath.Join(basePath, ProcPath, subPid, "root")
 	}
 	return basePath
