@@ -48,8 +48,8 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 
 {{- define "helm.annotations" -}}
 w7.cc/description : "微擎面板"
-w7.cc/icon : "https://zpk.w7.cc/zip/icon/w7panel_offline"
-w7.cc/zpk-url: "https://zpk.w7.cc/respo/info/w7panel_offline"
+w7.cc/icon : "https://zpk.w7.cc/zpk/zip/icon/w7panel_offline"
+w7.cc/zpk-url: "https://zpk.w7.cc/zpk/respo/info/w7panel_offline"
 w7.cc/identifie: {{ .Chart.Name | quote }}
 
 {{- end }}
@@ -69,6 +69,8 @@ app: {{ include "helm.fullname" . }}
 
 {{- define "helm.selectorLabels-order" -}}
 app: {{ include "helm.fullname" . }}-order
+searchJob: {{ include "helm.fullname" . }}
+w7.cc/job-source: cronjob
 {{- end }}
 
 

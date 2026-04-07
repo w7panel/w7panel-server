@@ -5,13 +5,13 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/procpath"
 	"github.com/w7panel/w7panel/common/service/s3"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
@@ -402,7 +402,7 @@ func (self File) CpPidFile(http *gin.Context) {
 		return
 	}
 	slog.Info("cp", "from", params.From, "to", params.To)
-	if err = exec.Command("cp", "-r", params.From, params.To).Run(); err != nil {
+	if err = helper.CopyRecursive(params.From, params.To); err != nil {
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
@@ -431,11 +431,10 @@ func (self File) MoveToPod(http *gin.Context) {
 	toFullPath := filepath.Join(toBasePath, params.ToPath)
 
 	// mv file fromFullPath to toFullPath
-	err := exec.Command("mv", fromFullPath, toFullPath).Run()
-	slog.Error("mv debug", "from", fromFullPath, "to", toFullPath)
-	if err != nil {
+	slog.Info("mv", "from", fromFullPath, "to", toFullPath)
+	if err := os.Rename(fromFullPath, toFullPath); err != nil {
 		slog.Error("mv err", "err", err)
-		// self.JsonResponseWithError(http, err, 500)
+		self.JsonResponseWithError(http, err, 500)
 		return
 	}
 	self.JsonSuccessResponse(http)
