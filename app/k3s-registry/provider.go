@@ -3,7 +3,6 @@ package k3sregistry
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/app/k3s-registry/http/controller"
-	"github.com/w7panel/w7panel/common/middleware"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
@@ -40,14 +39,17 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		// Patch API - 容器操作
 		patchGroup := engine.Group("/panel-api/v1/k3s-registry")
-		patchGroup.Use(middleware.Auth{}.Process)
+		// patchGroup.Use(middleware.Auth{}.Process)
+		patchGroup.Use()
 		{
 			// patchGroup.GET("/containers", controller.Containers{}.List)
 			// patchGroup.GET("/containers/:id", controller.Containers{}.Get)
 			// patchGroup.GET("/containers/:id/layers", controller.Containers{}.Layers)
 			// patchGroup.POST("/containers/:id/exec", controller.Exec{}.Run)
-			patchGroup.POST("/containers/:id/commit", middleware.Auth{}.Process, controller.Commit{}.Run)
-			patchGroup.GET("/images/list", middleware.Auth{}.Process, controller.Commit{}.Run)
+			patchGroup.POST("/containers/:id/commit", controller.Commit{}.Run)
+			patchGroup.GET("/images/list", controller.Images{}.List)
+			patchGroup.PUT("/images/tag", controller.Images{}.Tag)
+			patchGroup.DELETE("/images", controller.Images{}.Delete)
 
 		}
 	})
