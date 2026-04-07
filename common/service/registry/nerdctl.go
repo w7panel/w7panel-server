@@ -7,6 +7,7 @@ import (
 
 	// "github.com/containerd/containerd"
 	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
@@ -14,7 +15,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/opencontainers/go-digest"
 	cd "github.com/w7panel/w7panel/common/service/registry/containerd"
-	
 )
 
 // commit a image
@@ -22,8 +22,30 @@ func Commit(ctx context.Context, client *containerd.Client, rawRef string, req s
 	return container.Commit(ctx, client, rawRef, req, options)
 }
 
-func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagOptions) error {
+func Tag(ctx context.Context, client *containerd.Client, source, target string) error {
+	options := types.ImageTagOptions{
+		Source: source,
+		Target: target,
+	}
+	options.GOptions = types.GlobalCommandOptions{
+		Namespace: cd.NS,
+	}
 	return image.Tag(ctx, client, options)
+}
+
+func ImagesList(ctx context.Context, client *containerd.Client, filters, nameAndRefFilter []string) ([]images.Image, error) {
+	return image.List(ctx, client, filters, nameAndRefFilter)
+}
+
+func ImagesRemove(ctx context.Context, client *containerd.Client, args []string, force bool, async bool) error {
+	options := types.ImageRemoveOptions{
+		Force: force,
+		Async: async,
+	}
+	options.GOptions = types.GlobalCommandOptions{
+		Namespace: cd.NS,
+	}
+	return image.Remove(ctx, client, args, options)
 }
 
 func CommitOne(ctx context.Context, client *containerd.Client, rawRef string, req string, options types.ContainerCommitOptions) (digest.Digest, error) {
@@ -96,5 +118,5 @@ func PullToContainerD(ctx context.Context, rawRef string, target string) error {
 		slog.Error("pull err", "err", err)
 		return err
 	}
-	return Tag(ctx, client, types.ImageTagOptions{GOptions: gOptions, Source: rawRef, Target: target})
+	return Tag(ctx, client, rawRef, target)
 }

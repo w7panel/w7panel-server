@@ -39,7 +39,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		}
 
 		// Patch API - 容器操作
-		patchGroup := engine.Group("/panel-api/v1/k3s-patch")
+		patchGroup := engine.Group("/panel-api/v1/k3s-registry")
 		patchGroup.Use(middleware.Auth{}.Process)
 		{
 			// patchGroup.GET("/containers", controller.Containers{}.List)
@@ -47,6 +47,8 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			// patchGroup.GET("/containers/:id/layers", controller.Containers{}.Layers)
 			// patchGroup.POST("/containers/:id/exec", controller.Exec{}.Run)
 			patchGroup.POST("/containers/:id/commit", middleware.Auth{}.Process, controller.Commit{}.Run)
+			patchGroup.GET("/images/list", middleware.Auth{}.Process, controller.Commit{}.Run)
+
 		}
 	})
 }
