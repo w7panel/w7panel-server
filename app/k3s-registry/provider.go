@@ -57,5 +57,18 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			patch.POST("/images/import", controller.Images{}.Import)
 
 		}
+
+		old := engine.Group("/panel-api/v1/k3s-registry")
+		// patchGroup.Use(middleware.Auth{}.Process)
+		old.Use()
+		{
+
+			old.GET("/images/list", controller.Images{}.List)
+			old.PUT("/images/tag", controller.Images{}.Tag)
+			old.POST("/images/delete", controller.Images{}.Remove)
+			old.POST("/images/label", controller.Images{}.Label)
+			old.POST("/images/import", controller.Images{}.Import)
+
+		}
 	})
 }
