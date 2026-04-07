@@ -30,7 +30,7 @@ func (handler *containerdBlobHandler) Get(ctx context.Context, repo string, h v1
 	if err != nil {
 		return nil, err
 	}
-	body, err := content.ReadBlob(withNamespace(ctx), handler.store, ocispec.Descriptor{Digest: dgst})
+	body, err := content.ReadBlob(WithNamespace(ctx), handler.store, ocispec.Descriptor{Digest: dgst})
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func (hd *containerdBlobHandler) Stat(ctx context.Context, repo string, h v1.Has
 	if err != nil {
 		return 0, err
 	}
-	info, err := hd.store.Info(withNamespace(ctx), dgst)
+	info, err := hd.store.Info(WithNamespace(ctx), dgst)
 	if err != nil {
 		return 0, registry.ErrNotFound()
 	}
@@ -59,7 +59,7 @@ func (hd *containerdBlobHandler) Put(ctx context.Context, repo string, h v1.Hash
 	if err != nil {
 		return err
 	}
-	ctx = withNamespace(ctx)
+	ctx = WithNamespace(ctx)
 
 	// 读取所有数据以便获取大小
 	body, err := io.ReadAll(rc)

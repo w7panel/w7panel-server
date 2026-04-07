@@ -26,7 +26,7 @@ type tagMetadata struct {
 	Size      int64  `json:"size"`
 }
 
-func withNamespace(ctx context.Context) context.Context {
+func WithNamespace(ctx context.Context) context.Context {
 	return namespaces.WithNamespace(ctx, NS)
 }
 

@@ -50,7 +50,7 @@ func (r *Manifest) HeadManifestRead(w http.ResponseWriter, req *http.Request, re
 		http.NotFound(w, req)
 		return
 	}
-	ctx := withNamespace(req.Context())
+	ctx := WithNamespace(req.Context())
 	body, err := content.ReadBlob(ctx, r.store, ocispec.Descriptor{Digest: manifestDigest})
 	if err != nil {
 		http.NotFound(w, req)
@@ -91,7 +91,7 @@ func (r *Manifest) PutManifest(w http.ResponseWriter, req *http.Request, repo, r
 }
 
 func (r *Manifest) importToContainerd(ctx context.Context, repo, ref, mediaType string, body []byte) error {
-	ctx = withNamespace(ctx)
+	ctx = WithNamespace(ctx)
 	fullRef := r.imageRef(repo, ref)
 	target := ocispec.Descriptor{
 		MediaType: mediaType,
@@ -235,7 +235,7 @@ func (r *Manifest) resolveManifest(repo, ref string) (*tagMetadata, error) {
 		if err != nil {
 			return nil, err
 		}
-		ctx := withNamespace(context.Background())
+		ctx := WithNamespace(context.Background())
 		info, err := r.store.Info(ctx, dgst)
 		if err != nil {
 			return nil, err
@@ -247,7 +247,7 @@ func (r *Manifest) resolveManifest(repo, ref string) (*tagMetadata, error) {
 		}, nil
 	}
 
-	ctx := withNamespace(context.Background())
+	ctx := WithNamespace(context.Background())
 	image, err := r.imageSvc.Get(ctx, r.imageRef(repo, ref))
 	if err != nil {
 		return nil, err
