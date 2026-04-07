@@ -11,6 +11,7 @@ import (
 	buildimagev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/buildimage/v1alpha1"
 
 	batchv1 "k8s.io/api/batch/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -196,9 +197,79 @@ func (r *BuildImageController) handleJobStatus(ctx context.Context, buildImage *
 }
 
 func (r *BuildImageController) updateBuildImageStatus(ctx context.Context, buildImage *buildimagev1alpha1.BuildImage, job *batchv1.Job) error {
-	// Update BuildImage status based on job status
-	// This is a placeholder for status update logic
-	slog.Info("Updating BuildImage status", "name", buildImage.Name, "namespace", buildImage.Namespace)
+	oldStatus := buildImage.Status
+
+	// Determine status based on job condition
+	newStatus := buildimagev1alpha1.BuildImageStatus{
+		JobName: job.Name,
+	}
+
+	// Check job conditions for final status
+	for _, condition := range job.Status.Conditions {
+		switch condition.Type {
+		case batchv1.JobComplete:
+			if condition.Status == "True" {
+				newStatus.Status = "Succeeded"
+				newStatus.Reason = "JobCompleted"
+				newStatus.Contitions = append(newStatus.Contitions, metav1.Condition{
+					Type:               "Complete",
+					Status:             metav1.ConditionTrue,
+					LastTransitionTime: metav1.Now(),
+					Reason:             "JobSucceeded",
+					Message:            condition.Message,
+				})
+			}
+		case batchv1.JobFailed:
+			if condition.Status == "True" {
+				newStatus.Status = "Failed"
+				newStatus.Reason = condition.Reason
+				newStatus.Contitions = append(newStatus.Contitions, metav1.Condition{
+					Type:               "Failed",
+					Status:             metav1.ConditionTrue,
+					LastTransitionTime: metav1.Now(),
+					Reason:             condition.Reason,
+					Message:            condition.Message,
+				})
+			}
+		}
+	}
+
+	// If job is still running (Active > 0)
+	if newStatus.Status == "" {
+		if job.Status.Active > 0 {
+			newStatus.Status = "Building"
+			newStatus.Reason = "JobRunning"
+		} else if job.Status.Failed > 0 {
+			newStatus.Status = "Failed"
+			newStatus.Reason = "JobFailed"
+		} else if job.Status.Succeeded > 0 {
+			newStatus.Status = "Succeeded"
+			newStatus.Reason = "JobSucceeded"
+		} else {
+			newStatus.Status = "Pending"
+			newStatus.Reason = "JobPending"
+		}
+	}
+
+	// Check if status changed
+	if oldStatus.Status == newStatus.Status && oldStatus.Reason == newStatus.Reason {
+		return nil
+	}
+
+	// Update status
+	buildImage.Status = newStatus
+	if err := r.Status().Update(ctx, buildImage); err != nil {
+		return fmt.Errorf("failed to update BuildImage status: %w", err)
+	}
+
+	slog.Info("Updated BuildImage status",
+		"name", buildImage.Name,
+		"namespace", buildImage.Namespace,
+		"status", newStatus.Status,
+		"reason", newStatus.Reason,
+		"jobName", job.Name,
+	)
+
 	return nil
 }
 
