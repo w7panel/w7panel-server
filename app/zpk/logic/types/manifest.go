@@ -398,7 +398,7 @@ func (m *Depends) GetLoadUrl(p *ManifestPackage) string {
 	from := m.From
 	dependUrl := ""
 	if "" != from {
-		dependUrl = from + "/respo/info/" + m.Identifie
+		dependUrl = from + "/zpk/respo/info/" + m.Identifie
 	}
 	if dependUrl == "" {
 		dependUrl = p.ZpkUrl + "/" + m.Identifie
