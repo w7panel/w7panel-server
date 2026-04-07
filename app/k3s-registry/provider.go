@@ -37,21 +37,24 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			// registryGroup.PUT("/v2/:name/blobs/uploads/:uuid", controller.Registry{}.CompleteUpload)
 		}
 
-		// Patch API - 容器操作
-		patchGroup := engine.Group("/panel-api/v1/k3s-registry")
+		reg := engine.Group("/panel-api/v1/registry")
 		// patchGroup.Use(middleware.Auth{}.Process)
-		patchGroup.Use()
+		reg.Use()
 		{
-			// patchGroup.GET("/containers", controller.Containers{}.List)
-			// patchGroup.GET("/containers/:id", controller.Containers{}.Get)
-			// patchGroup.GET("/containers/:id/layers", controller.Containers{}.Layers)
-			// patchGroup.POST("/containers/:id/exec", controller.Exec{}.Run)
-			patchGroup.POST("/containers/:id/commit", controller.Commit{}.Run)
-			patchGroup.GET("/images/list", controller.Images{}.List)
-			patchGroup.PUT("/images/tag", controller.Images{}.Tag)
-			patchGroup.POST("/images/delete", controller.Images{}.Remove)
-			patchGroup.POST("/images/label", controller.Images{}.Label)
-			patchGroup.POST("/images/import", controller.Images{}.Import)
+
+			reg.POST("/containers/:id/commit", controller.Commit{}.Run)
+		}
+
+		patch := engine.Group("/panel-api/v1/registry/patch")
+		// patchGroup.Use(middleware.Auth{}.Process)
+		patch.Use()
+		{
+
+			patch.GET("/images/list", controller.Images{}.List)
+			patch.PUT("/images/tag", controller.Images{}.Tag)
+			patch.POST("/images/delete", controller.Images{}.Remove)
+			patch.POST("/images/label", controller.Images{}.Label)
+			patch.POST("/images/import", controller.Images{}.Import)
 
 		}
 	})
