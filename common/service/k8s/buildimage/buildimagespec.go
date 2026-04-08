@@ -8,6 +8,8 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/w7panel/w7panel/common/helper"
+	buildimagev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/buildimage/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -15,20 +17,7 @@ const (
 )
 
 type BuildImageSpec struct {
-	TaskID    string `json:"taskId"`
-	Namespace string `json:"namespace"`
-	Source    struct {
-		DownloadURL    string `json:"downloadUrl"`
-		DockerfilePath string `json:"dockerfilePath"`
-	} `json:"source"`
-	TargetImage struct {
-		Address string `json:"address"`
-		Auth    struct {
-			Username string `json:"username"`
-			Password string `json:"password"`
-		} `json:"auth"`
-	} `json:"targetImage"`
-	NotifyURL string `json:"notifyUrl"`
+	*buildimagev1alpha1.BuildImageSpec
 }
 
 func (b *BuildImageSpec) GetBuildJobName() string {
@@ -49,25 +38,10 @@ func (b *BuildImageSpec) GetPushDomain() string {
 
 // 实际推送地址
 func (b *BuildImageSpec) GetRealPushImage(panelDomain string) string {
-	ref, err := referenceutil.Parse(b.TargetImage.Address)
-	if err != nil {
-		return b.TargetImage.Address
+	if b.IsPushToDefault() {
+		return strings.ReplaceAll(b.TargetImage.Address, "registry.local.w7.cc", panelDomain)
 	}
-	if ref.Domain == defaultDomain {
-		ref.Domain = panelDomain
-	}
-	return ref.String()
-}
-
-func (b *BuildImageSpec) ToEnv(panelDomain string) string {
-	ref, err := referenceutil.Parse(b.TargetImage.Address)
-	if err != nil {
-		return b.TargetImage.Address
-	}
-	if ref.Domain == defaultDomain {
-		ref.Domain = panelDomain
-	}
-	return ref.String()
+	return b.TargetImage.Address
 }
 
 func (b *BuildImageSpec) IsPushToDefault() bool {
@@ -82,7 +56,7 @@ func (b *BuildImageSpec) IsPushToDefault() bool {
 }
 
 func (m *BuildImageSpec) GetBuildContext() string {
-	return ""
+	return "/workspace/"
 }
 func (m *BuildImageSpec) GetInsecure() string {
 	if m.IsPushToDefault() {
@@ -108,14 +82,17 @@ func (d *BuildImageSpec) ToMap() map[string]string {
 	}
 }
 
-// func (d BuildImageSpec) ToEnv() []corev1.EnvVar {
-// 	var envs []corev1.EnvVar
-// 	for k, v := range d.ToMap() {
-// 		envVar := corev1.EnvVar{Name: k, Value: v}
-// 		envs = append(envs, envVar)
-// 	}
-// 	return envs
-// }
+func (d BuildImageSpec) ToEnv(registryHost string) []corev1.EnvVar {
+	var envs []corev1.EnvVar
+	for k, v := range d.ToMap() {
+		envVar := corev1.EnvVar{Name: k, Value: v}
+		envs = append(envs, envVar)
+	}
+	realPushImage := d.GetRealPushImage(registryHost)
+	envs = append(envs, corev1.EnvVar{Name: "PUSH_IMAGE", Value: realPushImage})
+	envs = append(envs, corev1.EnvVar{Name: "KANIKO_REGISTRY_MAP", Value: mirrorMapToStr()})
+	return envs
+}
 
 func (d BuildImageSpec) GetAuthJsonString() string {
 

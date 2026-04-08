@@ -23,13 +23,17 @@ import (
 
 // AppGroupItemStatusApplyConfiguration represents a declarative configuration of the AppGroupItemStatus type for use
 // with apply.
+//
+// ApplicationItemStatus 用于记录单个应用的部署状态信息
 type AppGroupItemStatusApplyConfiguration struct {
-	Kind              *string  `json:"kind,omitempty"`
-	ApiVersion        *string  `json:"apiVersion,omitempty"`
-	Name              *string  `json:"name,omitempty"`
-	Title             *string  `json:"title,omitempty"`
-	Ready             *bool    `json:"ready,omitempty"`
-	IsHelmWorkLoad    *bool    `json:"isHelmWorkLoad,omitempty"`
+	Kind *string `json:"kind,omitempty"`
+	// "helm" or "deployment" or "statefulset" or "daemonset" or "job"
+	ApiVersion     *string `json:"apiVersion,omitempty"`
+	Name           *string `json:"name,omitempty"`
+	Title          *string `json:"title,omitempty"`
+	Ready          *bool   `json:"ready,omitempty"`
+	IsHelmWorkLoad *bool   `json:"isHelmWorkLoad,omitempty"`
+	// 是否为helm应用
 	CreationTimestamp *v1.Time `json:"creationTimestamp,omitempty"`
 	DeployStatus      *string  `json:"deployStatus,omitempty"`
 	IsZeroReplicas    *bool    `json:"isZeroReplicas,omitempty"`

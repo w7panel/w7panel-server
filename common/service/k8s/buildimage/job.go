@@ -7,7 +7,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func toBuildJob(spec BuildImageSpec) *batchv1.Job {
+func toBuildJob(spec *BuildImageSpec) (*batchv1.Job, error) {
+	registryHost, err := panelRegistryServerHost()
+	if err != nil {
+		return nil, err
+	}
+	envs := spec.ToEnv(registryHost)
+	envs = append(envs, corev1.EnvVar{
+		Name:  "KO_DATA_PATH",
+		Value: "/ko-app",
+	})
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.GetBuildJobName(),
@@ -30,17 +39,17 @@ func toBuildJob(spec BuildImageSpec) *batchv1.Job {
 					RestartPolicy:      corev1.RestartPolicyNever,
 					Containers: []corev1.Container{
 						{
-							Name:  "build-image",
-							Image: helper.SelfImage(),
-							// Env:             envs,
+							Name:            "build-image",
+							Image:           buildImage,
+							Env:             envs,
 							WorkingDir:      "/workspace",
 							ImagePullPolicy: corev1.PullAlways,
-							Command:         []string{"sh", "-c", "${KO_DATA_PATH}/shell/build-image.sh"},
+							Command:         []string{"/kaniko/start.sh"},
 						},
 					},
 				},
 			},
 		},
 	}
-	return job
+	return job, nil
 }

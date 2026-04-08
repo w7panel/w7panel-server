@@ -2,7 +2,9 @@ package buildimage
 
 import (
 	"context"
+	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -21,6 +23,13 @@ var defaultRegistryMap = map[string]Mirror{
 	},
 }
 
+func mirrorMapToStr() string {
+	result, err := getRegistryMapArr()
+	if err != nil {
+		return strings.Join(mirrorsToKvArr(defaultRegistryMap), ";")
+	}
+	return strings.Join(result, ";")
+}
 func readRegistryBytes() ([]byte, error) {
 	if helper.IsK3kVirtual() {
 		return os.ReadFile("/proc/1/root/etc/rancher/k3s/registries.yaml")
@@ -36,12 +45,14 @@ func readRegistryBytes() ([]byte, error) {
 func getRegistryMapArr() ([]string, error) {
 	registries, err := readRegistryBytes()
 	if err != nil {
+		slog.Error("getRegistryMapArr yaml unmarshal error", "err", err)
 		return mirrorsToKvArr(defaultRegistryMap), nil
 	}
 	reg := &Registry{}
 	err = yaml.Unmarshal([]byte(registries), reg)
 	if err != nil {
-		return []string{}, err
+		slog.Error("getRegistryMapArr yaml unmarshal error", "err", err)
+		return mirrorsToKvArr(defaultRegistryMap), nil
 	}
 	return mirrorsToKvArr(reg.Mirrors), nil
 }
