@@ -180,8 +180,8 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.GET("/longhorn/need-delete-replica", middleware.Auth{}.Process, controller2.Longhorn{}.GetNeedDeleteReplicas)
 			localApiGroup.GET("/longhorn/volumes/status", middleware.Auth{}.Process, controller2.Longhorn{}.GetVolumesStatus)
 
-			localApiGroup.GET("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGc)
-			localApiGroup.POST("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGcToggle)
+			// localApiGroup.GET("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGc)
+			// localApiGroup.POST("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGcToggle)
 			localApiGroup.GET("/kubeblocks/installjobyaml", middleware.Auth{}.Process, controller2.KubeBlocks{}.InstallJobYaml)
 			localApiGroup.POST("/kubeblocks/install", middleware.Auth{}.Process, controller2.KubeBlocks{}.Install)
 			localApiGroup.GET("/static/:identifie/status", middleware.Auth{}.Process, controller2.Static{}.StaticInfo)
