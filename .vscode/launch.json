@@ -22,7 +22,7 @@
                 "SVC_NAME": "ide-go123-gytfgzlc",
                 "STATIC_DOWN_ENABLED": "true",
                 "GPUSTACK_WATCH": "true",
-                "HIGRESS_WATCH": "true",
+            "HIGRESS_WATCH": "true",
                 "MCP_WATCH": "true",
                 "SITE_ENABLED": "true",
                 "SDK_DEBUG": "false",
@@ -33,6 +33,7 @@
                 "POD_IP": "10.42.0.117",
                 "NODE_IP": "10.0.0.206",
                 "K3S_REGISTRY_ENABLED": "true",
+                "BUILDIMGAGE_ENABLED": "true",
                 // "KUBECONFIG": "/home/workspace/k8s-offline/k3k-k8-k8-kubeconfig.yaml"
             },
             "type": "go",
