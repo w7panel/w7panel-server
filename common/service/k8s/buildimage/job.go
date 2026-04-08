@@ -22,6 +22,10 @@ func toBuildJob(spec *BuildImageSpec) (*batchv1.Job, error) {
 		Value: "/ko-app",
 	})
 	job := &batchv1.Job{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "batch/v1",
+			Kind:       "Job",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.GetBuildJobName(),
 			Namespace: spec.Namespace,
