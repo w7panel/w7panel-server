@@ -282,10 +282,15 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 	p.Children = make(map[string]*types.ManifestPackage)
 	// LoadDependsByPackage 接口权限问题 改为使用InstallFormulas 全部返回 所以需要mock 子应用manifest
 	for _, formula := range p.InstallFormulas {
-		// if formula.Name == p.Manifest.Application.Identifie {
-
-		// 	continue
-		// }
+		if formula.Name == p.Manifest.Application.Identifie {
+			p.Manifest.Application.Identifie = formula.Name
+			p.Manifest.Application.Name = formula.Title
+			p.RequireInstall = formula.Required
+			p.Manifest.Platform.Container.RequirePvc = formula.RequirePvc
+			p.Manifest.Platform.Container.StartParams = formula.StartParams
+			p.Manifest.Platform.Container.Volumes = formula.Volumes
+			continue
+		}
 		target, err := deepcopy.Anything(p)
 		if err != nil {
 			continue
