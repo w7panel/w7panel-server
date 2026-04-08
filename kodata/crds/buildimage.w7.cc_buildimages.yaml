@@ -43,11 +43,14 @@ spec:
                 type: string
               source:
                 properties:
+                  dockerContext:
+                    type: string
                   dockerfilePath:
                     type: string
                   downloadUrl:
                     type: string
                 required:
+                - dockerContext
                 - dockerfilePath
                 - downloadUrl
                 type: object

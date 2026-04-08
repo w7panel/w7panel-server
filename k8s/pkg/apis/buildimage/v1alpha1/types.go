@@ -16,10 +16,11 @@ type BuildImage struct {
 type Source struct {
 	DownloadURL    string `json:"downloadUrl"`
 	DockerfilePath string `json:"dockerfilePath"`
+	DockerContext  string `json:"dockerContext"`
 }
 type TargetImage struct {
 	Address string `json:"address"`
-	Auth    Auth   `json:"auth"`
+	Auth    Auth   `json:"auth"` //该用secret存储
 }
 type Auth struct {
 	Username string `json:"username"`
