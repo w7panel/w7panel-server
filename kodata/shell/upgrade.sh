@@ -7,7 +7,7 @@ kubectl apply -f $KO_DATA_PATH/crds --server-side
 # kubectl apply -f $KO_DATA_PATH/crds-kubeblocks --server-side
 
 echo "导入yaml"
-kubectl apply -f $KO_DATA_PATH/yaml/nvidia.yaml && kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
+kubectl apply -f $KO_DATA_PATH/yaml/nvidia.yaml 
 
 # echo "卸载默认的vm-operator"
 # helm list -n w7-system --filter 'vm-operator' | grep -q 'vm-operator' && helm uninstall vm-operator -n w7-system
@@ -81,3 +81,8 @@ echo "longhorn config"
 # longhorn 可能未安装 导致apply 失败 || 不要报错
 kubectl apply -f $KO_DATA_PATH/yaml/longhorn/node-down-pod-deletion-policy.yaml || echo "longhorn set node-down-pod-deletion-policy"
 kubectl apply -f $KO_DATA_PATH/yaml/longhorn/default-data-locality.yaml || echo "longhorn set default-data-locality"
+
+
+echo "higress config"
+# higress 可能未启动成功 导致crd未创建 job设置重试3次
+kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
