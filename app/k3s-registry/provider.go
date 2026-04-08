@@ -44,7 +44,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			reg.POST("/containers/:id/commit", controller.Commit{}.Run)
 		}
-
+		//TODO 子用户
 		patch := engine.Group("/panel-api/v1/registry/patch")
 		// patchGroup.Use(middleware.Auth{}.Process)
 		patch.Use()
@@ -58,17 +58,5 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		}
 
-		old := engine.Group("/panel-api/v1/k3s-registry")
-		// patchGroup.Use(middleware.Auth{}.Process)
-		old.Use()
-		{
-
-			old.GET("/images/list", controller.Images{}.List)
-			old.PUT("/images/tag", controller.Images{}.Tag)
-			old.POST("/images/delete", controller.Images{}.Remove)
-			old.POST("/images/label", controller.Images{}.Label)
-			old.POST("/images/import", controller.Images{}.Import)
-
-		}
 	})
 }
