@@ -106,7 +106,7 @@ func (self File) Upload(http *gin.Context) {
 
 // UploadChunk 分片上传
 func (self File) UploadChunk(http *gin.Context) {
-	baseDir := os.TempDir()
+	baseDir := facade.GetConfig().GetString("s3.base_dir")
 	chunkDir := filepath.Join(baseDir, ".chunks") // 临时分片存储目录
 
 	// 解析表单
