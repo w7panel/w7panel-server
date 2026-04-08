@@ -4,7 +4,9 @@
       "Read(//home/go/src/net/http/httputil/**)",
       "Bash(go *)",
       "Bash(sleep *)",
-      "Bash(rm *)"
+      "Bash(rm *)",
+      "Bash(chmod *)",
+      "Bash(bash *)"
     ]
   },
   "$version": 3
