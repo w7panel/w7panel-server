@@ -24,6 +24,7 @@ import (
 	higressnetworkingv1 "github.com/w7panel/w7panel/common/service/k8s/higress/client/pkg/apis/networking/v1"
 	"github.com/w7panel/w7panel/common/service/k8s/terminal"
 	appgroupv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
+	buildimagev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/buildimage/v1alpha1"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"golang.org/x/crypto/bcrypt"
@@ -81,6 +82,7 @@ func init() {
 	_ = apirbacv1.AddToScheme(scheme)
 	_ = appgroupv1.AddToScheme(scheme)
 	_ = microapp.AddToScheme(scheme)
+	_ = buildimagev1alpha1.AddToScheme(scheme)
 }
 
 func GetScheme() *runtime.Scheme {

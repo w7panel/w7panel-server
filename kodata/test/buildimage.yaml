@@ -1,0 +1,16 @@
+apiVersion: buildimage.w7.cc/v1alpha1
+kind: BuildImage
+metadata:
+  name: buildimage-sample
+  namespace: default
+spec:
+  taskId: test1
+  namespace: default
+  source: 
+    dockerfilePath: Dockerfile
+    downloadUrl: http://118.25.185.46:9090/ui/microapp/ddd3.zip
+  targetImage: 
+    address: registry.local.w7.cc/w7panel/test-2:latest
+    auth: 
+      username: w7panel
+      password: w7panel

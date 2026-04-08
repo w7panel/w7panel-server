@@ -22,16 +22,18 @@ func toBuildJob(spec *BuildImageSpec) (*batchv1.Job, error) {
 			Name:      spec.GetBuildJobName(),
 			Namespace: spec.Namespace,
 			Labels: map[string]string{
-				"app":     "w7panel-build-image",
-				"task-id": spec.GetBuildJobName(),
+				"app":               spec.GetBuildJobName(),
+				"w7.cc/build-image": "true",
+				"task-id":           spec.GetBuildJobName(),
 			},
 		},
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app":     "w7panel-build-image",
-						"task-id": spec.GetBuildJobName(),
+						"app":               spec.GetBuildJobName(),
+						"w7.cc/build-image": "true",
+						"task-id":           spec.GetBuildJobName(),
 					},
 				},
 				Spec: corev1.PodSpec{

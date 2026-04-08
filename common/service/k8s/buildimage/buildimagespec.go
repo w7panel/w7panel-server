@@ -90,7 +90,7 @@ func (d BuildImageSpec) ToEnv(registryHost string) []corev1.EnvVar {
 	}
 	realPushImage := d.GetRealPushImage(registryHost)
 	envs = append(envs, corev1.EnvVar{Name: "PUSH_IMAGE", Value: realPushImage})
-	envs = append(envs, corev1.EnvVar{Name: "KANIKO_REGISTRY_MAP", Value: mirrorMapToStr()})
+	envs = append(envs, corev1.EnvVar{Name: "KANIKO_REGISTRY_MAP", Value: mirrorMapToStr(registryHost)})
 	return envs
 }
 
