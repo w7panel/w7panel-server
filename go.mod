@@ -49,7 +49,7 @@ require (
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
 )
 
-require sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
+require sigs.k8s.io/structured-merge-diff/v6 v6.3.0
 
 require (
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
@@ -270,7 +270,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	go.yaml.in/yaml/v4 v4.0.0-rc.3 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/image v0.25.0 // indirect
@@ -333,6 +332,7 @@ require (
 	github.com/ulikunitz/xz v0.5.12
 	github.com/we7coreteam/w7-rangine-go/v2 v2.0.2
 	go.eigsys.de/gin-cachecontrol/v2 v2.3.0
+	go.yaml.in/yaml/v4 v4.0.0-rc.3
 	golang.org/x/time v0.14.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20251029180050-ab9386a59fda
 	gopkg.in/yaml.v2 v2.4.0

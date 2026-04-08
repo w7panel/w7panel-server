@@ -18,7 +18,6 @@ import (
 	"github.com/gin-gonic/gin"
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	openapi_v2 "github.com/google/gnostic-models/openapiv2"
-	"github.com/google/uuid"
 	k3kv1alpha "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/w7panel/w7panel/common/helper"
 	higressextv1 "github.com/w7panel/w7panel/common/service/k8s/higress/client/pkg/apis/extensions/v1alpha1"
@@ -1077,7 +1076,7 @@ func (self Sdk) ToKubeconfig(apiServerUrl string) (*clientcmdv1.Config, error) {
 
 	restConfig := self.restConfig
 	kubeConfig := &clientcmdv1.Config{}
-	name := uuid.New().String()
+	name := "default"
 
 	// 设置集群信息
 	// cluster := clientcmdapi.NewCluster()

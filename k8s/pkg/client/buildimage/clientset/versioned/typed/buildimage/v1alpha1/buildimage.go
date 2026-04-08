@@ -39,6 +39,8 @@ type BuildImagesGetter interface {
 type BuildImageInterface interface {
 	Create(ctx context.Context, buildImage *buildimagev1alpha1.BuildImage, opts v1.CreateOptions) (*buildimagev1alpha1.BuildImage, error)
 	Update(ctx context.Context, buildImage *buildimagev1alpha1.BuildImage, opts v1.UpdateOptions) (*buildimagev1alpha1.BuildImage, error)
+	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+	UpdateStatus(ctx context.Context, buildImage *buildimagev1alpha1.BuildImage, opts v1.UpdateOptions) (*buildimagev1alpha1.BuildImage, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
 	Get(ctx context.Context, name string, opts v1.GetOptions) (*buildimagev1alpha1.BuildImage, error)
@@ -46,6 +48,8 @@ type BuildImageInterface interface {
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *buildimagev1alpha1.BuildImage, err error)
 	Apply(ctx context.Context, buildImage *applyconfigurationbuildimagev1alpha1.BuildImageApplyConfiguration, opts v1.ApplyOptions) (result *buildimagev1alpha1.BuildImage, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, buildImage *applyconfigurationbuildimagev1alpha1.BuildImageApplyConfiguration, opts v1.ApplyOptions) (result *buildimagev1alpha1.BuildImage, err error)
 	BuildImageExpansion
 }
 

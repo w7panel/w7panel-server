@@ -7,5 +7,5 @@
 # go install sigs.k8s.io/controller-tools/cmd/controller-gen
 #cd ../ && controller-gen crd paths=./... output:crd:dir=kodata/crds
 
-/home/workspace/go/bin/controller-gen crd paths=./k8s/pkg/apis/microapp/... output:crd:dir=kodata/crds
+/home/workspace/go/bin/controller-gen crd paths=./k8s/pkg/apis/buildimage/... output:crd:dir=kodata/crds
 #/home/workspace/go/bin/controller-gen crd paths=./... output:crd:dir=kodata/crds

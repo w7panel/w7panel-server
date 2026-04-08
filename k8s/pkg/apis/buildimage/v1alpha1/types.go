@@ -13,22 +13,24 @@ type BuildImage struct {
 	Spec              BuildImageSpec   `json:"spec"`
 	Status            BuildImageStatus `json:"status"`
 }
-
+type Source struct {
+	DownloadURL    string `json:"downloadUrl"`
+	DockerfilePath string `json:"dockerfilePath"`
+}
+type TargetImage struct {
+	Address string `json:"address"`
+	Auth    Auth   `json:"auth"`
+}
+type Auth struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
 type BuildImageSpec struct {
-	TaskID    string `json:"taskId"`
-	Namespace string `json:"namespace"`
-	Source    struct {
-		DownloadURL    string `json:"downloadUrl"`
-		DockerfilePath string `json:"dockerfilePath"`
-	} `json:"source"`
-	TargetImage struct {
-		Address string `json:"address"`
-		Auth    struct {
-			Username string `json:"username"`
-			Password string `json:"password"`
-		} `json:"auth"`
-	} `json:"targetImage"`
-	NotifyURL string `json:"notifyUrl"`
+	TaskID      string      `json:"taskId"`
+	Namespace   string      `json:"namespace"`
+	Source      Source      `json:"source"`
+	TargetImage TargetImage `json:"targetImage"`
+	NotifyURL   string      `json:"notifyUrl"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
