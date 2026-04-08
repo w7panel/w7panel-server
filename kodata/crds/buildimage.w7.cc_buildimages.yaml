@@ -72,11 +72,8 @@ spec:
               taskId:
                 type: string
             required:
-            - namespace
-            - notifyUrl
             - source
             - targetImage
-            - taskId
             type: object
           status:
             properties:
@@ -150,7 +147,6 @@ spec:
             type: object
         required:
         - spec
-        - status
         type: object
     served: true
     storage: true

@@ -11,7 +11,7 @@ type BuildImage struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              BuildImageSpec   `json:"spec"`
-	Status            BuildImageStatus `json:"status"`
+	Status            BuildImageStatus `json:"status,omitempty"`
 }
 type Source struct {
 	DownloadURL    string `json:"downloadUrl"`
@@ -26,11 +26,11 @@ type Auth struct {
 	Password string `json:"password"`
 }
 type BuildImageSpec struct {
-	TaskID      string      `json:"taskId"`
-	Namespace   string      `json:"namespace"`
+	TaskID      string      `json:"taskId,omitempty"`
+	Namespace   string      `json:"namespace,omitempty"`
 	Source      Source      `json:"source"`
 	TargetImage TargetImage `json:"targetImage"`
-	NotifyURL   string      `json:"notifyUrl"`
+	NotifyURL   string      `json:"notifyUrl,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
