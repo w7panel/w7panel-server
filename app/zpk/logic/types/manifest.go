@@ -61,6 +61,9 @@ func (m *Manifest) MenuLabels() map[string]string {
 }
 func (m *Manifest) requrirePvc() bool {
 
+	if m.Platform.Container.RequirePvc {
+		return true
+	}
 	volumes := m.Platform.Container.Volumes
 	for _, volume := range volumes {
 		if volume.Type == "diskStorage" {
@@ -309,7 +312,7 @@ type Container struct {
 	StartParams         []StartParams   `json:"startParams"`
 	Volumes             []Volumes       `json:"volumes"`
 	Shells              []Shell         `json:"shells"`
-	// RequirePvc          bool            `json:"requirePvc"` // repo.go mockchild 应用 赋给值
+	RequirePvc          bool            `json:"requirePvc"` // repo.go mockchild 应用 赋给值
 }
 
 // IsPrivileged 返回Container是否有特权
