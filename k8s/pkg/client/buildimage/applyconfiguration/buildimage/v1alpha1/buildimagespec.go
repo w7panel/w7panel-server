@@ -20,20 +20,11 @@ package v1alpha1
 // BuildImageSpecApplyConfiguration represents a declarative configuration of the BuildImageSpec type for use
 // with apply.
 type BuildImageSpecApplyConfiguration struct {
-	TaskID    *string `json:"taskId,omitempty"`
-	Namespace *string `json:"namespace,omitempty"`
-	Source    *struct {
-		DownloadURL    string
-		DockerfilePath string
-	} `json:"source,omitempty"`
-	TargetImage *struct {
-		Address string
-		Auth    struct {
-			Username string
-			Password string
-		}
-	} `json:"targetImage,omitempty"`
-	NotifyURL *string `json:"notifyUrl,omitempty"`
+	TaskID      *string                        `json:"taskId,omitempty"`
+	Namespace   *string                        `json:"namespace,omitempty"`
+	Source      *SourceApplyConfiguration      `json:"source,omitempty"`
+	TargetImage *TargetImageApplyConfiguration `json:"targetImage,omitempty"`
+	NotifyURL   *string                        `json:"notifyUrl,omitempty"`
 }
 
 // BuildImageSpecApplyConfiguration constructs a declarative configuration of the BuildImageSpec type for use with
@@ -61,25 +52,16 @@ func (b *BuildImageSpecApplyConfiguration) WithNamespace(value string) *BuildIma
 // WithSource sets the Source field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Source field is set to the value of the last call.
-func (b *BuildImageSpecApplyConfiguration) WithSource(value struct {
-	DownloadURL    string
-	DockerfilePath string
-}) *BuildImageSpecApplyConfiguration {
-	b.Source = &value
+func (b *BuildImageSpecApplyConfiguration) WithSource(value *SourceApplyConfiguration) *BuildImageSpecApplyConfiguration {
+	b.Source = value
 	return b
 }
 
 // WithTargetImage sets the TargetImage field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the TargetImage field is set to the value of the last call.
-func (b *BuildImageSpecApplyConfiguration) WithTargetImage(value struct {
-	Address string
-	Auth    struct {
-		Username string
-		Password string
-	}
-}) *BuildImageSpecApplyConfiguration {
-	b.TargetImage = &value
+func (b *BuildImageSpecApplyConfiguration) WithTargetImage(value *TargetImageApplyConfiguration) *BuildImageSpecApplyConfiguration {
+	b.TargetImage = value
 	return b
 }
 

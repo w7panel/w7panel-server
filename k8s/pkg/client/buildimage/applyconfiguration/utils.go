@@ -31,10 +31,18 @@ import (
 func ForKind(kind schema.GroupVersionKind) interface{} {
 	switch kind {
 	// Group=buildimage.w7.cc, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithKind("Auth"):
+		return &buildimagev1alpha1.AuthApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("BuildImage"):
 		return &buildimagev1alpha1.BuildImageApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("BuildImageSpec"):
 		return &buildimagev1alpha1.BuildImageSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("BuildImageStatus"):
+		return &buildimagev1alpha1.BuildImageStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Source"):
+		return &buildimagev1alpha1.SourceApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("TargetImage"):
+		return &buildimagev1alpha1.TargetImageApplyConfiguration{}
 
 	}
 	return nil
