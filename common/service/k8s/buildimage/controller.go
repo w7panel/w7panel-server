@@ -25,9 +25,9 @@ const (
 
 // SetupBuildImageController sets up the BuildImage controller with the manager
 func SetupBuildImageController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
-	client := mgr.GetClient()
+	k8sClient := mgr.GetClient()
 	r := &BuildImageController{
-		Client: client,
+		Client: k8sClient,
 		Scheme: mgr.GetScheme(),
 	}
 
@@ -144,8 +144,8 @@ func (r *BuildImageController) createOrUpdateBuildJob(ctx context.Context, build
 
 	}
 
-	slog.Info("Created build job", "job", job.Name, "namespace", job.Namespace)
-	return job, nil
+	slog.Info("Found existing build job", "job", existingJob.Name, "namespace", existingJob.Namespace)
+	return existingJob, nil
 }
 
 func (r *BuildImageController) updateBuildImageStatus(ctx context.Context, buildImage *buildimagev1alpha1.BuildImage, job *batchv1.Job) error {
@@ -210,8 +210,9 @@ func (r *BuildImageController) updateBuildImageStatus(ctx context.Context, build
 
 	// Update status
 	buildImage.Status = newStatus
-	if err := r.Status().Update(ctx, buildImage); err != nil {
-		return fmt.Errorf("failed to update BuildImage status: %w", err)
+	if err := r.Update(ctx, buildImage); err != nil {
+		slog.Error("Failed to update BuildImage status", "error", err)
+		return err
 	}
 
 	slog.Info("Updated BuildImage status",

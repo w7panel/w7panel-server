@@ -1,14 +1,14 @@
 apiVersion: buildimage.w7.cc/v1alpha1
 kind: BuildImage
 metadata:
-  name: buildimage-sample
+  name: buildimage-sample3
   namespace: default
 spec:
-  taskId: buildimage-sample
+  taskId: buildimage-sample3
   namespace: default
   source: 
     dockerfilePath: Dockerfile
-    downloadUrl: http://118.25.185.46:9090/ui/microapp/ddd3.zip
+    downloadUrl: http://118.25.185.46:9090/ui/microapp/ddd2.zip
   targetImage: 
     address: registry.local.w7.cc/w7panel/test-2:latest
     auth: 
