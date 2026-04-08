@@ -97,36 +97,11 @@ func (r *BuildImageController) reconcile0(ctx context.Context, req ctrl.Request)
 
 	// Convert spec to internal type
 	spec := BuildImageSpec{
-		TaskID:    buildImage.Spec.TaskID,
-		Namespace: buildImage.Spec.Namespace,
-		Source: struct {
-			DownloadURL    string "json:\"downloadUrl\""
-			DockerfilePath string "json:\"dockerfilePath\""
-		}{
-			DownloadURL:    buildImage.Spec.Source.DownloadURL,
-			DockerfilePath: buildImage.Spec.Source.DockerfilePath,
-		},
-		TargetImage: struct {
-			Address string "json:\"address\""
-			Auth    struct {
-				Username string "json:\"username\""
-				Password string "json:\"password\""
-			} "json:\"auth\""
-		}{
-			Address: buildImage.Spec.TargetImage.Address,
-			Auth: struct {
-				Username string "json:\"username\""
-				Password string "json:\"password\""
-			}{
-				Username: buildImage.Spec.TargetImage.Auth.Username,
-				Password: buildImage.Spec.TargetImage.Auth.Password,
-			},
-		},
-		NotifyURL: buildImage.Spec.NotifyURL,
+		BuildImageSpec: &buildImage.Spec,
 	}
 
 	// Get panel registry IP
-	panelIp, err := getPanelRegistryIp()
+	panelIp, err := panelRegistryServerHost()
 	if err != nil {
 		logger.Error(err, "Failed to get panel registry IP")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
@@ -155,7 +130,10 @@ func (r *BuildImageController) reconcile0(ctx context.Context, req ctrl.Request)
 }
 
 func (r *BuildImageController) createOrUpdateBuildJob(ctx context.Context, buildImage *buildimagev1alpha1.BuildImage, spec *BuildImageSpec, panelIp string) (*batchv1.Job, error) {
-	job := toBuildJob(*spec)
+	job, err := toBuildJob(&BuildImageSpec{BuildImageSpec: &buildImage.Spec})
+	if err != nil {
+		return nil, err
+	}
 	job.Labels["build-image-uid"] = string(buildImage.UID)
 
 	// Set controller reference
@@ -165,7 +143,7 @@ func (r *BuildImageController) createOrUpdateBuildJob(ctx context.Context, build
 
 	// Get existing job
 	existingJob := &batchv1.Job{}
-	err := r.Get(ctx, client.ObjectKey{Namespace: job.Namespace, Name: job.Name}, existingJob)
+	err = r.Get(ctx, client.ObjectKey{Namespace: job.Namespace, Name: job.Name}, existingJob)
 	if err != nil && client.IgnoreNotFound(err) != nil {
 		return nil, fmt.Errorf("failed to get existing job: %w", err)
 	}

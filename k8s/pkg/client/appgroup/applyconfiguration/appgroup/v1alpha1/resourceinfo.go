@@ -25,7 +25,8 @@ type ResourceInfoApplyConfiguration struct {
 	ApiVersion   *string `json:"apiVersion,omitempty"`
 	Kind         *string `json:"kind,omitempty"`
 	DeployStatus *string `json:"deployStatus,omitempty"`
-	DeployTitle  *string `json:"deployTitle,omitempty"`
+	// 是否部署成功 ready
+	DeployTitle *string `json:"deployTitle,omitempty"`
 }
 
 // ResourceInfoApplyConfiguration constructs a declarative configuration of the ResourceInfo type for use with

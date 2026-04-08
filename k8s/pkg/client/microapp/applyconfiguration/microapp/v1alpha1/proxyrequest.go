@@ -19,6 +19,9 @@ package v1alpha1
 
 // ProxyRequestApplyConfiguration represents a declarative configuration of the ProxyRequest type for use
 // with apply.
+//
+// type Headers map[string]string
+// type Query map[string]string
 type ProxyRequestApplyConfiguration struct {
 	Headers map[string]string `json:"headers,omitempty"`
 	Query   map[string]string `json:"query,omitempty"`

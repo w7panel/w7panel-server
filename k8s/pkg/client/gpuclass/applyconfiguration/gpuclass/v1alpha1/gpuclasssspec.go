@@ -19,7 +19,10 @@ package v1alpha1
 
 // GpuClasssSpecApplyConfiguration represents a declarative configuration of the GpuClasssSpec type for use
 // with apply.
+//
+// GpuClasssSpec defines the desired state of GpuClasss
 type GpuClasssSpecApplyConfiguration struct {
+	// INSERT ADDITIONAL SPEC FIELDS -- desired state of cluster
 	GpuOperatorMode *string           `json:"gpuOperatorMode,omitempty"`
 	VgpuMode        *string           `json:"vgpuMode,omitempty"`
 	AppName         *string           `json:"appName,omitempty"`

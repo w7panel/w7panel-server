@@ -20,9 +20,11 @@ package v1alpha1
 // HelmConfigApplyConfiguration represents a declarative configuration of the HelmConfig type for use
 // with apply.
 type HelmConfigApplyConfiguration struct {
-	ChartName  *string `json:"chartName,omitempty"`
+	ChartName *string `json:"chartName,omitempty"`
+	// helm chart name
 	Repository *string `json:"repository,omitempty"`
-	Version    *string `json:"version,omitempty"`
+	// helm chart repository
+	Version *string `json:"version,omitempty"`
 }
 
 // HelmConfigApplyConfiguration constructs a declarative configuration of the HelmConfig type for use with

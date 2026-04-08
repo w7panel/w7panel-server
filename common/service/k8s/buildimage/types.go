@@ -57,3 +57,5 @@ type RegistryConfig struct {
 	// that communicates with the registry.
 	TLS *TLSConfig `toml:"tls" yaml:"tls" json:"tls"`
 }
+
+const buildImage = "ccr.ccs.tencentyun.com/afan-public/kaniko:test1"

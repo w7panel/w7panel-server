@@ -770,7 +770,7 @@ func SelfReqUrl() string {
 func ServiceAccountName() string {
 	sa, ok := os.LookupEnv("SERVICE_ACCOUNT_NAME")
 	if !ok {
-		sa = "w7panel"
+		sa = "w7panel-offline"
 	}
 	return sa
 }

@@ -32,48 +32,48 @@ EOF
 
 downcode()
 {
-    curl -L --header "User-Agent: $USER_AGENT" -o $MODULE_NAME.tmp $DOWNLOAD_URL
+    curl -L --header "User-Agent: $USER_AGENT" -o download.tmp $DOWNLOAD_URL
 
     case "$DOWNLOAD_URL" in
         *.tar.gz|*.tgz)
             info "Extracting tar.gz archive..."
-            tar xzf $MODULE_NAME.tmp
+            tar xzf download.tmp
             ;;
         *.tar.bz2|*.tbz2)
             info "Extracting tar.bz2 archive..."
-            tar xjf $MODULE_NAME.tmp
+            tar xjf download.tmp
             ;;
         *.tar.xz|*.txz)
             info "Extracting tar.xz archive..."
-            tar xJf $MODULE_NAME.tmp
+            tar xJf download.tmp
             ;;
         *.tar)
             info "Extracting tar archive..."
-            tar xf $MODULE_NAME.tmp
+            tar xf download.tmp
             ;;
         *.zip)
             info "Extracting zip archive..."
-            unzip $MODULE_NAME.tmp
+            unzip download.tmp
             ;;
         *)
             # Try to detect archive type using file command
-            FILE_TYPE=$(file --brief $MODULE_NAME.tmp)
+            FILE_TYPE=$(file --brief download.tmp)
             info "Detected file type: $FILE_TYPE"
             case "$FILE_TYPE" in
                 *Zip*)
-                    unzip $MODULE_NAME.tmp
+                    unzip download.tmp
                     ;;
                 *gzip*)
-                    tar xzf $MODULE_NAME.tmp
+                    tar xzf download.tmp
                     ;;
                 *bzip2*)
-                    tar xjf $MODULE_NAME.tmp
+                    tar xjf download.tmp
                     ;;
                 *xz*)
-                    tar xJf $MODULE_NAME.tmp
+                    tar xJf download.tmp
                     ;;
                 *tar*)
-                    tar xf $MODULE_NAME.tmp
+                    tar xf download.tmp
                     ;;
                 *)
                     fatal "Unsupported archive format: $FILE_TYPE"
@@ -82,7 +82,7 @@ downcode()
             ;;
     esac
 
-    rm -f $MODULE_NAME.tmp
+    rm -f download.tmp
     info "Archive extracted successfully"
 }
 
