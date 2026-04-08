@@ -2,7 +2,6 @@ package zpk
 
 import (
 	"encoding/json"
-	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -11,7 +10,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
-	bi "github.com/w7panel/w7panel/common/service/k8s/buildimage"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/types"
 	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
@@ -249,12 +247,14 @@ func ToBuildJob(p K8sResourceInterface, opt types.BuildImageInterface, shellType
 		shellTitle = "应用更新时触发"
 	}
 	option := types.NewBuildImageOption(opt)
-	spec := option.ToBuilImageSpec()
-	job, err := bi.CrdSpecToJob(spec)
-	if err != nil {
-		slog.Error("crd to job err", "err", err)
-		return nil
-	}
+	// spec := option.ToBuilImageSpec()
+	// jobName := p.GetBuildJobName()
+	// spec.TaskID = jobName
+	// job, err := bi.CrdSpecToJob(spec)
+	// if err != nil {
+	// 	slog.Error("crd to job err", "err", err)
+	// 	return nil
+	// }
 	title := shellTitle + p.GetTitle() + "构建镜像任务"
 	annotations := map[string]string{
 		"title":              title,
@@ -272,50 +272,50 @@ func ToBuildJob(p K8sResourceInterface, opt types.BuildImageInterface, shellType
 	labels["searchJob"] = p.GetName() + "-build-" + shellType
 	labels["w7.cc/shell-type"] = shellType
 
-	job.Annotations = annotations
-	job.Labels = labels
-	return job
-	// backofflimit := int32(3)
-	// // afterSeconds := int32(3600)
-	// job := &batchv1.Job{
-	// 	TypeMeta: metav1.TypeMeta{
-	// 		APIVersion: "batch/v1",
-	// 		Kind:       "Job",
-	// 	},
-	// 	ObjectMeta: metav1.ObjectMeta{
-	// 		Name:        p.GetBuildJobName(),
-	// 		Labels:      labels,
-	// 		Annotations: annotations,
-	// 	},
-	// 	Spec: batchv1.JobSpec{
-	// 		// TTLSecondsAfterFinished: &afterSeconds,
-	// 		BackoffLimit: &backofflimit,
-	// 		Template: corev1.PodTemplateSpec{
-	// 			Spec: corev1.PodSpec{
-	// 				//挂载hostPath
-	// 				Volumes:       option.GetVolumes(),
-	// 				DNSPolicy:     corev1.DNSClusterFirstWithHostNet,
-	// 				HostNetwork:   option.GetHostNetwork(),
-	// 				HostPID:       option.GetHostNetwork(),
-	// 				HostAliases:   option.GetHostAliases(),
-	// 				HostIPC:       option.IsInner(),
-	// 				RestartPolicy: corev1.RestartPolicyNever,
-	// 				Containers: []corev1.Container{
-	// 					{
-	// 						Name:            "docker-build",
-	// 						Image:           buildimage,
-	// 						Env:             option.ToEnv(),
-	// 						WorkingDir:      "/workspace",
-	// 						ImagePullPolicy: corev1.PullAlways,
-	// 						Command:         []string{"/kaniko/start.sh"},
-	// 						VolumeMounts:    option.GetVolumeMounts(),
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	},
-	// }
+	// job.Annotations = annotations
+	// job.Labels = labels
 	// return job
+	backofflimit := int32(3)
+	// afterSeconds := int32(3600)
+	job := &batchv1.Job{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "batch/v1",
+			Kind:       "Job",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        p.GetBuildJobName(),
+			Labels:      labels,
+			Annotations: annotations,
+		},
+		Spec: batchv1.JobSpec{
+			// TTLSecondsAfterFinished: &afterSeconds,
+			BackoffLimit: &backofflimit,
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					//挂载hostPath
+					Volumes:       option.GetVolumes(),
+					DNSPolicy:     corev1.DNSClusterFirstWithHostNet,
+					HostNetwork:   option.GetHostNetwork(),
+					HostPID:       option.GetHostNetwork(),
+					HostAliases:   option.GetHostAliases(),
+					HostIPC:       option.IsInner(),
+					RestartPolicy: corev1.RestartPolicyNever,
+					Containers: []corev1.Container{
+						{
+							Name:            "docker-build",
+							Image:           buildimage,
+							Env:             option.ToEnv(),
+							WorkingDir:      "/workspace",
+							ImagePullPolicy: corev1.PullAlways,
+							Command:         []string{"/kaniko/start.sh"},
+							VolumeMounts:    option.GetVolumeMounts(),
+						},
+					},
+				},
+			},
+		},
+	}
+	return job
 }
 
 /*
