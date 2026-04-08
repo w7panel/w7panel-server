@@ -481,6 +481,12 @@ func (self *Sdk) Proxy(request *http.Request, response gin.ResponseWriter) (err 
 
 	// 3. 设置HTTP代理
 	proxy := httputil.NewSingleHostReverseProxy(result)
+	defer func() {
+		//golang issue 23643
+		if r := recover(); r != nil {
+			slog.Error("客户端已断开连接", "error", r)
+		}
+	}()
 	tr, err := rest.TransportFor(self.restConfig)
 	if err != nil {
 		slog.Error("Error building transport: %v", "err", err)
