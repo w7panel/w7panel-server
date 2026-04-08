@@ -55,6 +55,8 @@ spec:
           env: 
           # - name: GOGC
           #   value: "10"
+          - name: K3S_SHELL_ENABLED
+            value: "true"
           - name: K3S_REGISTRY_ENABLED
             value: "true"     
           - name: IS_AGENT
