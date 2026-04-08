@@ -52,7 +52,7 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 
 		go longhorn.OnStart()
 	}
-	if facade.GetConfig().GetBool("registry.watch") {
+	if facade.GetConfig().GetBool("k3sshell.enabled") {
 
 		go shell.ShellWatch()
 	}

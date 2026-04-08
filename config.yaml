@@ -32,6 +32,8 @@ clean:
   interval: ${CLEAN_CHECK_INTERVAL-66s} # 清理s3过期文件 单位分钟
 registry:
   enabled: ${K3S_REGISTRY_ENABLED-false}
+k3sshell:
+  enabled: ${K3S_SHELL_ENABLED-false}
 
 mcp:
   watch: ${MCP_WATCH-false}
