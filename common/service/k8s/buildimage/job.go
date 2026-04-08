@@ -2,11 +2,15 @@ package buildimage
 
 import (
 	"github.com/w7panel/w7panel/common/helper"
+	buildimagev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/buildimage/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func CrdSpecToJob(spec buildimagev1alpha1.BuildImageSpec) (*batchv1.Job, error) {
+	return toBuildJob(&BuildImageSpec{&spec})
+}
 func toBuildJob(spec *BuildImageSpec) (*batchv1.Job, error) {
 	registryHost, err := panelRegistryServerHost()
 	if err != nil {
