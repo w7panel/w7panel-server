@@ -873,7 +873,7 @@ func ProxyUrl(proxyUrl string, path string, host string, headers map[string]stri
 		res.Header.Del("access-control-expose-headers")
 		return nil
 	}
-
+	
 	slog.Info("Reverse proxy created successfully")
 	return proxy, nil
 }
