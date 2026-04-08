@@ -42,8 +42,8 @@ type BuildImageList struct {
 }
 
 type BuildImageStatus struct {
-	Status     string             `json:"status"`
-	Reason     string             `json:"reason"`
-	Contitions []metav1.Condition `json:"conditions"`
-	JobName    string             `json:"jobName"`
+	Status     string             `json:"status,omitempty"`
+	Reason     string             `json:"reason,omitempty"`
+	Contitions []metav1.Condition `json:"conditions,omitempty"`
+	JobName    string             `json:"jobName,omitempty"`
 }

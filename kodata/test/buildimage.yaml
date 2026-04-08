@@ -4,7 +4,7 @@ metadata:
   name: buildimage-sample
   namespace: default
 spec:
-  taskId: test1
+  taskId: buildimage-sample
   namespace: default
   source: 
     dockerfilePath: Dockerfile

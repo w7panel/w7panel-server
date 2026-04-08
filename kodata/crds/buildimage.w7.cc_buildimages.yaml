@@ -139,11 +139,6 @@ spec:
                 type: string
               status:
                 type: string
-            required:
-            - conditions
-            - jobName
-            - reason
-            - status
             type: object
         required:
         - spec

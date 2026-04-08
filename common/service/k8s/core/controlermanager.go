@@ -93,12 +93,15 @@ func StartControlManager() error {
 			return err
 		}
 	}
-	//
-	err = buildimage.SetupBuildImageController(mgr, sdk)
-	if err != nil {
-		slog.Error("setup build image controller failed", "err", err)
-		return err
+	if facade.GetConfig().GetBool("buildimage.enabled") {
+		err = buildimage.SetupBuildImageController(mgr, sdk)
+		if err != nil {
+			slog.Error("setup build image controller failed", "err", err)
+			return err
+		}
 	}
+	//
+
 	// cache.Init
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
