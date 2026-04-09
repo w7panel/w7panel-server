@@ -148,11 +148,11 @@ func ToK3kJob(k3kUser *K3kUser) *batchv1.Job {
 
 func ToK3kDaemonSet(k3kUser *K3kUser) *appsv1.DaemonSet {
 	labels := map[string]string{
-		"k3k-agent-pod":   "true",
-		"k3k-sa":          k3kUser.Name,
-		"k3k-name":        k3kUser.GetK3kName(),
-		"k3k-namespace":   k3kUser.GetK3kNamespace(),
-		"w7.cc/daemonset": "w7",
+		"k3k-agent-pod": "true",
+		"k3k-sa":        k3kUser.Name,
+		"k3k-name":      k3kUser.GetK3kName(),
+		"k3k-namespace": k3kUser.GetK3kNamespace(),
+		// "w7.cc/daemonset": "w7",// 加label 会导致已有daemonset 无法patch 只能删除 新建daemonset
 	}
 	pod := ToK3kPod(k3kUser)
 	ds := &appsv1.DaemonSet{
