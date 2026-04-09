@@ -86,6 +86,7 @@ spec:
               mountPath: /var/run/k3s/containerd/containerd.sock
             - name: cd-data
               mountPath: /var/lib/rancher/k3s/agent/containerd  
+              mountPropagation: HostToContainer
             - name: host-root
               mountPath: /host  
 {{- end }}            
