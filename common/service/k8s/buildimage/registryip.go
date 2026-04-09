@@ -1,11 +1,13 @@
 package buildimage
 
 import (
+	"context"
 	"errors"
 	"os"
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func panelRegistryServerHost() (string, error) {
@@ -22,11 +24,11 @@ func panelRegistryServerIp() (string, error) {
 		return os.Getenv("POD_IP"), nil
 	}
 	sdk := k8s.NewK8sClient()
-	return PanelRegistryServerIpUseSdk(sdk.Sdk)
+	return panelRegistryServerIpUseSdk(sdk.Sdk)
 }
 
 // controller zpk.go 中直接使用sdk获取
-func PanelRegistryServerIpUseSdk(sdk *k8s.Sdk) (string, error) {
+func panelRegistryServerIpUseSdk(sdk *k8s.Sdk) (string, error) {
 	podlist, err := sdk.GetDaemonsetAgentPods("default")
 	if err != nil {
 		return "", err
@@ -36,13 +38,20 @@ func PanelRegistryServerIpUseSdk(sdk *k8s.Sdk) (string, error) {
 			panelDomain := pod.Status.PodIP
 			return panelDomain, nil
 		}
-
+	}
+	// 子集群pod
+	pods2List, err := sdk.ClientSet.CoreV1().Pods("default").List(context.Background(), metav1.ListOptions{LabelSelector: "k3k-agent-pod=true"})
+	for _, pod2 := range pods2List.Items {
+		if pod2.Status.Phase == "Running" {
+			panelDomain := pod2.Status.PodIP
+			return panelDomain, nil
+		}
 	}
 	return "", errors.New("not found agent registry ip")
 }
 
 func PanelRegistryServerHostUseSdk(sdk *k8s.Sdk) (string, error) {
-	ip, err := PanelRegistryServerHostUseSdk(sdk)
+	ip, err := panelRegistryServerIpUseSdk(sdk)
 	if err != nil {
 		return "", err
 	}
