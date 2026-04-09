@@ -321,6 +321,7 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 	root := true
 	socketType := corev1.HostPathSocket
 	dirType := corev1.HostPathDirectory
+	mountHost := corev1.MountPropagationHostToContainer
 	pod := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -416,8 +417,9 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 							MountPath: "/var/run/k3s/containerd/containerd.sock",
 						},
 						{
-							Name:      "cd-data",
-							MountPath: "/var/lib/rancher/k3s/agent/containerd",
+							Name:             "cd-data",
+							MountPath:        "/var/lib/rancher/k3s/agent/containerd",
+							MountPropagation: &mountHost,
 						},
 					},
 					Args: []string{"server:start"},

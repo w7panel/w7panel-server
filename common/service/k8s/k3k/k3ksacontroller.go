@@ -116,6 +116,7 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	k3ktypes.SetSaVersion(sa.Name, sa.Annotations[k3ktypes.K3K_LOCK_VERSION])
 
 	if k3kUser.IsNormalUser() {
+		// 创建角色 需要job 查看权限
 		err := r.rolebinding.CreateNormalUserRoleBinding(ctx, sa, helper.ServiceAccountName())
 		if err != nil {
 			logger.Error(err, "Failed to create normal user role binding")
@@ -127,7 +128,6 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 		// Not our ServiceAccount, ignore it
 		return ctrl.Result{}, nil
 	}
-	// 创建角色 需要job 查看权限
 
 	// 处理资源回收阶段
 	if err := r.deleteRc.HandleResourceRecycleStatus(ctx, sa, k3kUser); err != nil {
@@ -206,7 +206,7 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 
 	err = r.createAgent(ctx, k3kUser)
 	if err != nil {
-		slog.Error("cr agent error", "err", err, "uname", k3kUser.GetName())
+		slog.Error("k3ksacontroller agent error", "err", err, "uname", k3kUser.GetName())
 		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
 
