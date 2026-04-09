@@ -40,3 +40,11 @@ func PanelRegistryServerIpUseSdk(sdk *k8s.Sdk) (string, error) {
 	}
 	return "", errors.New("not found agent registry ip")
 }
+
+func PanelRegistryServerHostUseSdk(sdk *k8s.Sdk) (string, error) {
+	ip, err := PanelRegistryServerHostUseSdk(sdk)
+	if err != nil {
+		return "", err
+	}
+	return ip + ":8000", nil
+}

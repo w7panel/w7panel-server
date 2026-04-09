@@ -210,6 +210,15 @@ func (r *BuildImageController) updateBuildImageStatus(ctx context.Context, build
 
 	// Update status
 	buildImage.Status = newStatus
+	if buildImage.Labels == nil {
+		buildImage.Labels = make(map[string]string)
+	}
+	ifFinish := "false"
+	if newStatus.Status == "Succeeded" || newStatus.Status == "Failed" {
+		ifFinish = "true"
+	}
+	buildImage.Labels["w7.cc/build-finish"] = ifFinish
+	buildImage.Labels["w7.cc/build-status"] = newStatus.Status
 	if err := r.Update(ctx, buildImage); err != nil {
 		slog.Error("Failed to update BuildImage status", "error", err)
 		return err
