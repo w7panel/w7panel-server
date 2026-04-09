@@ -148,11 +148,11 @@ func ToK3kJob(k3kUser *K3kUser) *batchv1.Job {
 
 func ToK3kDaemonSet(k3kUser *K3kUser) *appsv1.DaemonSet {
 	labels := map[string]string{
-		"k3k-agent-pod":   "true",
-		"k3k-sa":          k3kUser.Name,
-		"k3k-name":        k3kUser.GetK3kName(),
-		"k3k-namespace":   k3kUser.GetK3kNamespace(),
-		"w7.cc/daemonset": "w7",
+		"k3k-agent-pod": "true",
+		"k3k-sa":        k3kUser.Name,
+		"k3k-name":      k3kUser.GetK3kName(),
+		"k3k-namespace": k3kUser.GetK3kNamespace(),
+		// "w7.cc/daemonset": "w7",
 	}
 	pod := ToK3kPod(k3kUser)
 	ds := &appsv1.DaemonSet{
@@ -349,7 +349,7 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 					Name: "cd-socket",
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/run/k3s/containerd/containerd.sock",
+							Path: "/run/k3s/containerd/containerd.sock", //子集群不是/var 开头
 							Type: &socketType,
 						},
 					},
