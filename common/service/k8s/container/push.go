@@ -100,7 +100,7 @@ func ExportAndPushContainerImageByRootfs(containedClient *containerd.Client, con
 	configFile.Architecture = runtime.GOARCH
 	configFile.OS = "linux"
 	configFile.Created = v1.Time{Time: time.Now().UTC()}
-	if localImageErr == nil {
+	if containerInfo.Image != "" && localImageErr == nil {
 		if baseSpec, specErr := localBaseImage.Spec(ctx); specErr == nil {
 			inheritRuntimeConfigFromOCI(configFile, &baseSpec)
 		}
