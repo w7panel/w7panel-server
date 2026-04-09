@@ -321,7 +321,7 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 	root := true
 	socketType := corev1.HostPathSocket
 	dirType := corev1.HostPathDirectory
-	mountHost := corev1.MountPropagationHostToContainer
+	// mountHost := corev1.MountPropagationHostToContainer
 	pod := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
