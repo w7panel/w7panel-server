@@ -50,7 +50,7 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: BUILDIMGAGE_ENABLED
-            value: true
+            value: "true"
           - name: RELEASE_NAME_SUFFIX
             value: {{ .Release.Name }} 
           - name: SERVICE_ACCOUNT_NAME
