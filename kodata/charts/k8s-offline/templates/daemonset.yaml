@@ -95,7 +95,7 @@ spec:
             #   mountPropagation: HostToContainer
             - name: cd-runtime
               mountPath: {{ .Values.k3s.runtimedir | quote }}
-              mountPropagation: HostToContainer
+              # mountPropagation: HostToContainer
             - name: host-root
               mountPath: /host  
 {{- end }}            
