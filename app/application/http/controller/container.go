@@ -42,6 +42,7 @@ func (self Container) ExportAndPushImage(http *gin.Context) {
 	http.Writer.Header().Set("Cache-Control", "no-cache")
 	http.Writer.Header().Set("Connection", "keep-alive")
 	err = container.ExportAndPushContainerImageByRootfs(containerClient, params.ContainerId, container.PushRequest{
+		ImageName:      params.ImageName,
 		RegisterDomain: params.RegistryDomain,
 		Progress: func(progress container.Progress) error {
 			_, err = fmt.Fprintf(http.Writer, "%s\n", progress.Content)
