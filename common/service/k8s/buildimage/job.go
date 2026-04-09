@@ -3,7 +3,6 @@ package buildimage
 import (
 	"context"
 
-	"github.com/w7panel/w7panel/common/helper"
 	buildimagev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/buildimage/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -52,8 +51,8 @@ func toBuildJob(ctx context.Context, spec *BuildImageSpec) (*batchv1.Job, error)
 					},
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: helper.ServiceAccountName(),
-					RestartPolicy:      corev1.RestartPolicyNever,
+					// ServiceAccountName: helper.ServiceAccountName(),//不需要k8s 权限
+					RestartPolicy: corev1.RestartPolicyNever,
 					Containers: []corev1.Container{
 						{
 							Name:            "build-image",
