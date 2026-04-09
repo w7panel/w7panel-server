@@ -304,7 +304,10 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 			Name:  "K3S_REGISTRY_ENABLED",
 			Value: "true",
 		},
-
+		{
+			Name:  "BUILDIMGAGE_ENABLED",
+			Value: "true",
+		},
 		{
 			Name: "POD_IP",
 			ValueFrom: &corev1.EnvVarSource{
@@ -327,11 +330,11 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 			Name:      k3kUser.GetAgentName(),
 			Namespace: k3kUser.Namespace,
 			Labels: map[string]string{
-				"k3k-agent-pod":   "true",
-				"k3k-sa":          k3kUser.Name,
-				"k3k-name":        k3kUser.GetK3kName(),
-				"k3k-namespace":   k3kUser.GetK3kNamespace(),
-				"w7.cc/daemonset": "w7",
+				"k3k-agent-pod": "true",
+				"k3k-sa":        k3kUser.Name,
+				"k3k-name":      k3kUser.GetK3kName(),
+				"k3k-namespace": k3kUser.GetK3kNamespace(),
+				// "w7.cc/daemonset": "w7",
 			},
 			Annotations: map[string]string{
 				"helm-version": os.Getenv("HELM_VERSION"),
@@ -346,7 +349,7 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 					Name: "cd-socket",
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/run/k3s/containerd/containerd.sock",
+							Path: "/run/k3s/containerd/containerd.sock", //子集群不是/var 开头
 							Type: &socketType,
 						},
 					},
