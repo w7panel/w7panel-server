@@ -16,7 +16,7 @@ type BuildImage struct {
 type Source struct {
 	DownloadURL    string `json:"downloadUrl"`
 	DockerfilePath string `json:"dockerfilePath"`
-	DockerContext  string `json:"dockerContext"`
+	DockerContext  string `json:"dockerContext,omitempty"`
 }
 type TargetImage struct {
 	Address string `json:"address"`

@@ -69,6 +69,7 @@ func (d BuildImageOption) ToBuilImageSpec() buildimagev1alpha1.BuildImageSpec {
 		Source: buildimagev1alpha1.Source{
 			DownloadURL:    d.GetZipUrl(),
 			DockerfilePath: d.GetDockerfilePath(),
+			DockerContext:  d.GetBuildContext(),
 		},
 		TargetImage: buildimagev1alpha1.TargetImage{
 			Address: d.GetPushImage(),

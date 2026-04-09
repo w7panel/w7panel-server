@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
@@ -56,6 +57,15 @@ func (b *BuildImageSpec) IsPushToDefault() bool {
 }
 
 func (m *BuildImageSpec) GetBuildContext() string {
+	if m.Source.DockerContext == "." {
+		return "/workspace/"
+	}
+	if m.Source.DockerContext != "" {
+		if strings.HasPrefix(m.Source.DockerContext, "/workspace") {
+			return m.Source.DockerContext
+		}
+		return filepath.Join("/workspace", m.Source.DockerContext)
+	}
 	return "/workspace/"
 }
 func (m *BuildImageSpec) GetInsecure() string {
