@@ -43,11 +43,14 @@ spec:
                 type: string
               source:
                 properties:
+                  dockerContext:
+                    type: string
                   dockerfilePath:
                     type: string
                   downloadUrl:
                     type: string
                 required:
+                - dockerContext
                 - dockerfilePath
                 - downloadUrl
                 type: object
@@ -72,11 +75,8 @@ spec:
               taskId:
                 type: string
             required:
-            - namespace
-            - notifyUrl
             - source
             - targetImage
-            - taskId
             type: object
           status:
             properties:
@@ -142,15 +142,9 @@ spec:
                 type: string
               status:
                 type: string
-            required:
-            - conditions
-            - jobName
-            - reason
-            - status
             type: object
         required:
         - spec
-        - status
         type: object
     served: true
     storage: true

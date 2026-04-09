@@ -34,51 +34,39 @@ downcode()
 {
     curl -L --header "User-Agent: $USER_AGENT" -o download.tmp $DOWNLOAD_URL
 
-    case "$DOWNLOAD_URL" in
-        *.tar.gz|*.tgz)
-            info "Extracting tar.gz archive..."
-            tar xzf download.tmp
-            ;;
-        *.tar.bz2|*.tbz2)
-            info "Extracting tar.bz2 archive..."
-            tar xjf download.tmp
-            ;;
-        *.tar.xz|*.txz)
-            info "Extracting tar.xz archive..."
-            tar xJf download.tmp
-            ;;
-        *.tar)
-            info "Extracting tar archive..."
-            tar xf download.tmp
-            ;;
-        *.zip)
-            info "Extracting zip archive..."
+    # Detect archive type using magic bytes
+    HEADER=$(head -c 6 download.tmp | xxd -p 2>/dev/null || od -An -tx1 -N 6 download.tmp | tr -d ' \n')
+    info "Detected file header: $HEADER"
+    case "$HEADER" in
+        504b0304|504b0506|504b0708|504b03041400)
+            info "Detected ZIP archive"
             unzip download.tmp
             ;;
+        1f8b*)
+            info "Detected GZIP archive"
+            tar xzf download.tmp
+            ;;
+        425a68*)
+            info "Detected BZIP2 archive"
+            tar xjf download.tmp
+            ;;
+        fd377a585a00)
+            info "Detected XZ archive"
+            tar xJf download.tmp
+            ;;
         *)
-            # Try to detect archive type using file command
-            FILE_TYPE=$(file --brief download.tmp)
-            info "Detected file type: $FILE_TYPE"
-            case "$FILE_TYPE" in
-                *Zip*)
-                    unzip download.tmp
-                    ;;
-                *gzip*)
-                    tar xzf download.tmp
-                    ;;
-                *bzip2*)
-                    tar xjf download.tmp
-                    ;;
-                *xz*)
-                    tar xJf download.tmp
-                    ;;
-                *tar*)
-                    tar xf download.tmp
-                    ;;
-                *)
-                    fatal "Unsupported archive format: $FILE_TYPE"
-                    ;;
-            esac
+            # Try sequential decompression methods
+            if gzip -t download.tmp 2>/dev/null; then
+                tar xzf download.tmp
+            elif bzip2 -t download.tmp 2>/dev/null; then
+                tar xjf download.tmp
+            elif xz -t download.tmp 2>/dev/null; then
+                tar xJf download.tmp
+            elif unzip -t download.tmp 2>/dev/null; then
+                unzip download.tmp
+            else
+                fatal "Unsupported archive format, unable to detect type"
+            fi
             ;;
     esac
 
@@ -100,4 +88,3 @@ build_kaniko()
 dockerauth
 downcode
 build_kaniko
-

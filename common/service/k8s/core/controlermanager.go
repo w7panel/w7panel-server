@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/buildimage"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	"github.com/w7panel/w7panel/common/service/k8s/service"
 	webhooklocal "github.com/w7panel/w7panel/common/service/k8s/webhook"
@@ -92,6 +93,15 @@ func StartControlManager() error {
 			return err
 		}
 	}
+	if facade.GetConfig().GetBool("buildimage.enabled") {
+		err = buildimage.SetupBuildImageController(mgr, sdk)
+		if err != nil {
+			slog.Error("setup build image controller failed", "err", err)
+			return err
+		}
+	}
+	//
+
 	// cache.Init
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

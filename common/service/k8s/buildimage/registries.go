@@ -23,11 +23,14 @@ var defaultRegistryMap = map[string]Mirror{
 	},
 }
 
-func mirrorMapToStr() string {
+func mirrorMapToStr(panelHost string) string {
 	result, err := getRegistryMapArr()
 	if err != nil {
-		return strings.Join(mirrorsToKvArr(defaultRegistryMap), ";")
+		def := mirrorsToKvArr(defaultRegistryMap)
+		def = append(def, "registry.local.w7.cc="+panelHost)
+		return strings.Join(def, ";")
 	}
+	result = append(result, "registry.local.w7.cc="+panelHost)
 	return strings.Join(result, ";")
 }
 func readRegistryBytes() ([]byte, error) {
@@ -70,7 +73,9 @@ func mirrorToKvArr(k string, mirror Mirror) []string {
 	kvstr := []string{}
 	if len(mirror.Endpoints) > 0 {
 		for _, endpoint := range mirror.Endpoints {
-			kvstr = append(kvstr, k+"="+endpoint)
+			ed := strings.ReplaceAll(endpoint, "https://", "")
+			ed = strings.ReplaceAll(endpoint, "http://", "")
+			kvstr = append(kvstr, k+"="+ed)
 		}
 	}
 	return kvstr

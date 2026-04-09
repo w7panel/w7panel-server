@@ -302,6 +302,12 @@ func (self Console) Proxy(gin *gin.Context) {
 		self.JsonResponseWithServerError(gin, err)
 		return
 	}
+	defer func() {
+		//golang issue 23643
+		if r := recover(); r != nil {
+			slog.Error("客户端已断开连接", "error", r)
+		}
+	}()
 	proxy.ServeHTTP(gin.Writer, gin.Request)
 }
 
@@ -326,5 +332,11 @@ func (self Console) ProxyCouponCode(gin *gin.Context) {
 		self.JsonResponseWithServerError(gin, err)
 		return
 	}
+	defer func() {
+		//golang issue 23643
+		if r := recover(); r != nil {
+			slog.Error("客户端已断开连接", "error", r)
+		}
+	}()
 	proxy.ServeHTTP(gin.Writer, gin.Request)
 }

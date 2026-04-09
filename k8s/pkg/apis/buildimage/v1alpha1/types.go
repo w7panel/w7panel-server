@@ -11,26 +11,27 @@ type BuildImage struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              BuildImageSpec   `json:"spec"`
-	Status            BuildImageStatus `json:"status"`
+	Status            BuildImageStatus `json:"status,omitempty"`
 }
 type Source struct {
 	DownloadURL    string `json:"downloadUrl"`
 	DockerfilePath string `json:"dockerfilePath"`
+	DockerContext  string `json:"dockerContext,omitempty"`
 }
 type TargetImage struct {
 	Address string `json:"address"`
-	Auth    Auth   `json:"auth"`
+	Auth    Auth   `json:"auth"` //该用secret存储
 }
 type Auth struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 type BuildImageSpec struct {
-	TaskID      string      `json:"taskId"`
-	Namespace   string      `json:"namespace"`
+	TaskID      string      `json:"taskId,omitempty"`
+	Namespace   string      `json:"namespace,omitempty"`
 	Source      Source      `json:"source"`
 	TargetImage TargetImage `json:"targetImage"`
-	NotifyURL   string      `json:"notifyUrl"`
+	NotifyURL   string      `json:"notifyUrl,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -42,8 +43,8 @@ type BuildImageList struct {
 }
 
 type BuildImageStatus struct {
-	Status     string             `json:"status"`
-	Reason     string             `json:"reason"`
-	Contitions []metav1.Condition `json:"conditions"`
-	JobName    string             `json:"jobName"`
+	Status     string             `json:"status,omitempty"`
+	Reason     string             `json:"reason,omitempty"`
+	Contitions []metav1.Condition `json:"conditions,omitempty"`
+	JobName    string             `json:"jobName,omitempty"`
 }

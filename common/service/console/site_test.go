@@ -16,7 +16,7 @@ func TestPath(t *testing.T) {
 }
 
 func TestRegisterSite(t *testing.T) {
-	os.Setenv("USER_AGFNT", "we7test-beta")
+	// os.Setenv("USER_AGFNT", "we7test-beta")
 	os.Setenv("DEBUG", "true")
 	err := RegisterLicenseSite("admin")
 	if err != nil {

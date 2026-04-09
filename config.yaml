@@ -34,6 +34,8 @@ registry:
   enabled: ${K3S_REGISTRY_ENABLED-false}
 k3sshell:
   enabled: ${K3S_SHELL_ENABLED-false}
+buildimage:
+  enabled: ${BUILDIMGAGE_ENABLED-false}
 
 mcp:
   watch: ${MCP_WATCH-false}

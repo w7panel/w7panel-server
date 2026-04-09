@@ -228,8 +228,9 @@ type PackageApp struct {
 	Parent *PackageApp
 	*ManifestPackage
 	*InstallOption
-	ThirdpartyCDToken     string
-	AppGroupInstallResult *v1alpha1.DeployItem
+	ThirdpartyCDToken       string
+	AppGroupInstallResult   *v1alpha1.DeployItem
+	PanelRegistryServerHost string
 }
 
 func NewPackageApp(manifestPackage *ManifestPackage, installOption *InstallOption) *PackageApp {
@@ -968,4 +969,8 @@ func (p *PackageApp) GetFrontendUrl() string {
 
 func (p *PackageApp) SupportMicroApp() bool {
 	return p.Manifest.SupportMicroApp()
+}
+
+func (b *PackageApp) GetPanelRegistryServerHost() string {
+	return b.PanelRegistryServerHost
 }
