@@ -13,14 +13,15 @@ func TestToJbo(t *testing.T) {
 
 	spec := &BuildImageSpec{
 		BuildImageSpec: &buildimagev1alpha1.BuildImageSpec{
-			TaskID:    "test-2",
+			TaskID:    "test1",
 			Namespace: "default",
 			Source: buildimagev1alpha1.Source{
 				DockerfilePath: "Dockerfile",
-				DownloadURL:    "http://172.16.1.162:9090/ui/microapp/ddd2.zip",
+				// DownloadURL:    "http://118.25.185.46:9090/ui/microapp/ddd3.zip",
+				DownloadURL: "http://172.16.1.162:9090/ui/microapp/ddd4.tar.xz",
 			},
 			TargetImage: buildimagev1alpha1.TargetImage{
-				Address: "registry.local.w7.cc/w7panel/test-1:latest",
+				Address: "registry.local.w7.cc/w7panel/test-3:latest",
 				Auth: buildimagev1alpha1.Auth{
 					Username: "w7panel",
 					Password: "w7panel",
@@ -28,7 +29,7 @@ func TestToJbo(t *testing.T) {
 			},
 		},
 	}
-	job, err := toBuildJob(spec)
+	job, err := toBuildJob(context.Background(), spec)
 	if err != nil {
 		t.Errorf("toBuildJob() error = %v", err)
 		return

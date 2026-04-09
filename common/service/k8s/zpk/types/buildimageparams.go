@@ -1,47 +1,8 @@
 package types
 
 import (
-	"strings"
-
-	"github.com/w7panel/w7panel/common/helper"
 	corev1 "k8s.io/api/core/v1"
 )
-
-type BuildImageSpec struct {
-	TaskID    string `json:"taskId"`
-	Namespace string `json:"namespace"`
-	Source    struct {
-		DownloadURL    string `json:"downloadUrl"`
-		DockerfilePath string `json:"dockerfilePath"`
-	} `json:"source"`
-	TargetImage struct {
-		Address string `json:"address"`
-		Auth    struct {
-			Username string `json:"username"`
-			Password string `json:"password"`
-		} `json:"auth"`
-	} `json:"targetImage"`
-	NotifyURL string `json:"notifyUrl"`
-}
-
-func (b *BuildImageSpec) ToBuildImageParams() BuildImageParams {
-	buildJobName := "zpk-" + strings.ToLower(helper.RandomString(10))
-	if b.TaskID != "" {
-		buildJobName = b.TaskID
-	}
-	return BuildImageParams{
-		DockerfilePath: b.Source.DockerfilePath,
-		ZipUrl:         b.Source.DownloadURL,
-		DockerRegistry: DockerRegistry{
-			Host:     b.TargetImage.Address,
-			Username: b.TargetImage.Auth.Username,
-			Password: b.TargetImage.Auth.Password,
-		},
-		NotifyCompletionUrl: b.NotifyURL,
-		BuildJobName:        buildJobName,
-		PushImage:           b.TargetImage.Address,
-	}
-}
 
 type BuildImageParams struct {
 	DockerRegistry           DockerRegistry     `json:"dockerRegistry" `
@@ -134,4 +95,7 @@ func (b *BuildImageParams) GetLabels() map[string]string {
 }
 func (b *BuildImageParams) GetBuildJobName() string {
 	return b.BuildJobName
+}
+func (b *BuildImageParams) GetPanelRegistryServerHost() string {
+	return ""
 }

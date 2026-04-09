@@ -58,4 +58,6 @@ type RegistryConfig struct {
 	TLS *TLSConfig `toml:"tls" yaml:"tls" json:"tls"`
 }
 
-const buildImage = "ccr.ccs.tencentyun.com/afan-public/kaniko:test1"
+const buildImage = "ccr.ccs.tencentyun.com/afan-public/kaniko:test2"
+
+const PanelRegistryServerHostKey = "panelRegistryServerHost"

@@ -25,9 +25,9 @@ const (
 
 // SetupBuildImageController sets up the BuildImage controller with the manager
 func SetupBuildImageController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
-	client := mgr.GetClient()
+	k8sClient := mgr.GetClient()
 	r := &BuildImageController{
-		Client: client,
+		Client: k8sClient,
 		Scheme: mgr.GetScheme(),
 	}
 
@@ -100,23 +100,10 @@ func (r *BuildImageController) reconcile0(ctx context.Context, req ctrl.Request)
 		BuildImageSpec: &buildImage.Spec,
 	}
 
-	// Get panel registry IP
-	panelIp, err := panelRegistryServerHost()
-	if err != nil {
-		logger.Error(err, "Failed to get panel registry IP")
-		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
-	}
-
 	// Create or update the build job
-	job, err := r.createOrUpdateBuildJob(ctx, buildImage, &spec, panelIp)
+	job, err := r.createOrUpdateBuildJob(ctx, buildImage, &spec)
 	if err != nil {
 		logger.Error(err, "Failed to create/update build job")
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
-	}
-
-	// Check job status
-	if err := r.handleJobStatus(ctx, buildImage, job); err != nil {
-		logger.Error(err, "Failed to handle job status")
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 
@@ -129,48 +116,36 @@ func (r *BuildImageController) reconcile0(ctx context.Context, req ctrl.Request)
 	return ctrl.Result{}, nil
 }
 
-func (r *BuildImageController) createOrUpdateBuildJob(ctx context.Context, buildImage *buildimagev1alpha1.BuildImage, spec *BuildImageSpec, panelIp string) (*batchv1.Job, error) {
-	job, err := toBuildJob(&BuildImageSpec{BuildImageSpec: &buildImage.Spec})
+func (r *BuildImageController) createOrUpdateBuildJob(ctx context.Context, buildImage *buildimagev1alpha1.BuildImage, spec *BuildImageSpec) (*batchv1.Job, error) {
+	job, err := toBuildJob(ctx, &BuildImageSpec{BuildImageSpec: &buildImage.Spec})
 	if err != nil {
 		return nil, err
 	}
 	job.Labels["build-image-uid"] = string(buildImage.UID)
+	// job.Labels["w7.cc/build-image"] = "true"
 
 	// Set controller reference
 	if err := ctrl.SetControllerReference(buildImage, job, r.Scheme); err != nil {
-		return nil, fmt.Errorf("failed to set controller reference: %w", err)
+		slog.Error("Failed to set controller reference", "error", err)
+		return nil, err
 	}
 
 	// Get existing job
 	existingJob := &batchv1.Job{}
 	err = r.Get(ctx, client.ObjectKey{Namespace: job.Namespace, Name: job.Name}, existingJob)
-	if err != nil && client.IgnoreNotFound(err) != nil {
-		return nil, fmt.Errorf("failed to get existing job: %w", err)
-	}
-
-	// Create or update job
-	if client.IgnoreNotFound(err) == nil {
-		// Job exists, update if needed
-		existingJob.Labels["build-image-uid"] = string(buildImage.UID)
-		existingJob.Spec = job.Spec
-		if err := r.Update(ctx, existingJob); err != nil {
-			return nil, fmt.Errorf("failed to update job: %w", err)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			return nil, err
 		}
-		return existingJob, nil
+		if err := r.Create(ctx, job); err != nil {
+			return nil, err
+		}
+		return job, nil
+
 	}
 
-	// Create new job
-	if err := r.Create(ctx, job); err != nil {
-		return nil, fmt.Errorf("failed to create job: %w", err)
-	}
-	slog.Info("Created build job", "job", job.Name, "namespace", job.Namespace)
-	return job, nil
-}
-
-func (r *BuildImageController) handleJobStatus(ctx context.Context, buildImage *buildimagev1alpha1.BuildImage, job *batchv1.Job) error {
-	// Job status handling logic can be expanded based on requirements
-	slog.Info("Handling job status", "job", job.Name, "namespace", job.Namespace)
-	return nil
+	slog.Info("Found existing build job", "job", existingJob.Name, "namespace", existingJob.Namespace)
+	return existingJob, nil
 }
 
 func (r *BuildImageController) updateBuildImageStatus(ctx context.Context, buildImage *buildimagev1alpha1.BuildImage, job *batchv1.Job) error {
@@ -235,8 +210,9 @@ func (r *BuildImageController) updateBuildImageStatus(ctx context.Context, build
 
 	// Update status
 	buildImage.Status = newStatus
-	if err := r.Status().Update(ctx, buildImage); err != nil {
-		return fmt.Errorf("failed to update BuildImage status: %w", err)
+	if err := r.Update(ctx, buildImage); err != nil {
+		slog.Error("Failed to update BuildImage status", "error", err)
+		return err
 	}
 
 	slog.Info("Updated BuildImage status",

@@ -299,6 +299,20 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 			Name:  "IMAGE_REPO",
 			Value: os.Getenv("IMAGE_REPO"),
 		},
+		{
+			Name:  "K3S_REGISTRY_ENABLED",
+			Value: "true",
+		},
+
+		{
+			Name: "POD_IP",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					APIVersion: "v1",
+					FieldPath:  "status.podIP",
+				},
+			},
+		},
 	}
 	root := true
 	pod := &corev1.Pod{

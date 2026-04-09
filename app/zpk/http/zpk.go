@@ -18,6 +18,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
+	bi "github.com/w7panel/w7panel/common/service/k8s/buildimage"
 	zpkk8s "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	zpkk8stypes "github.com/w7panel/w7panel/common/service/k8s/zpk/types"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
@@ -251,6 +252,14 @@ func (self Zpk) Install(http *gin.Context) {
 	}
 	if config != nil {
 		realToken = config.BearerToken
+	}
+	if k8sToken.IsVirtual() {
+		registryHost, err := bi.PanelRegistryServerIpUseSdk(client)
+		if err != nil {
+			slog.Warn("get registry host err", "err", err)
+		} else {
+			packageApps.Root.PanelRegistryServerHost = registryHost
+		}
 	}
 
 	sa := client.GetServiceAccountName()

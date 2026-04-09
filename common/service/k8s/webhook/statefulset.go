@@ -65,7 +65,7 @@ func (m *ResourceMutator) handleStatefulSet(ctx context.Context, req admission.R
 	// 如果没有挂载 registries.yaml，则添加相应的配置
 	if !registriesMounted {
 		slog.Info("StatefulSet 没有挂载 registries.yaml，添加挂载配置")
-
+		statefulset.Spec.Template.Spec.TerminationGracePeriodSeconds = ptr.To(int64(0))
 		// 检查是否已经存在 registries-volume
 		volumeExists := false
 		for _, volume := range statefulset.Spec.Template.Spec.Volumes {

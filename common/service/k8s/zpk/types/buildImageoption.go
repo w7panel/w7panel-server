@@ -3,6 +3,7 @@ package types
 import (
 	"strings"
 
+	buildimagev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/buildimage/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -39,6 +40,7 @@ type BuildImageInterface interface {
 	GetTitle() string
 
 	GetBuildJobName() string
+	GetPanelRegistryServerHost() string
 
 	GetLabels() map[string]string
 }
@@ -56,6 +58,27 @@ type BuildImageOption struct {
 
 func NewBuildImageOption(packageApp BuildImageInterface) BuildImageOption {
 	return BuildImageOption{packageApp}
+}
+
+// 使用新的结构spec 创建job
+func (d BuildImageOption) ToBuilImageSpec() buildimagev1alpha1.BuildImageSpec {
+	return buildimagev1alpha1.BuildImageSpec{
+
+		Namespace: "default",
+		NotifyURL: d.GetNotifyCompletionUrl(),
+		Source: buildimagev1alpha1.Source{
+			DownloadURL:    d.GetZipUrl(),
+			DockerfilePath: d.GetDockerfilePath(),
+			DockerContext:  d.GetBuildContext(),
+		},
+		TargetImage: buildimagev1alpha1.TargetImage{
+			Address: d.GetPushImage(),
+			Auth: buildimagev1alpha1.Auth{
+				Username: d.GetDockerRegisty().Username,
+				Password: d.GetDockerRegisty().Password,
+			},
+		},
+	}
 }
 
 func (d BuildImageOption) GetAttchmentType() string {
