@@ -148,10 +148,11 @@ func ToK3kJob(k3kUser *K3kUser) *batchv1.Job {
 
 func ToK3kDaemonSet(k3kUser *K3kUser) *appsv1.DaemonSet {
 	labels := map[string]string{
-		"k3k-agent-pod": "true",
-		"k3k-sa":        k3kUser.Name,
-		"k3k-name":      k3kUser.GetK3kName(),
-		"k3k-namespace": k3kUser.GetK3kNamespace(),
+		"k3k-agent-pod":   "true",
+		"k3k-sa":          k3kUser.Name,
+		"k3k-name":        k3kUser.GetK3kName(),
+		"k3k-namespace":   k3kUser.GetK3kNamespace(),
+		"w7.cc/daemonset": "w7",
 	}
 	pod := ToK3kPod(k3kUser)
 	ds := &appsv1.DaemonSet{
@@ -315,6 +316,8 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 		},
 	}
 	root := true
+	socketType := corev1.HostPathSocket
+	dirType := corev1.HostPathDirectory
 	pod := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -324,37 +327,40 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 			Name:      k3kUser.GetAgentName(),
 			Namespace: k3kUser.Namespace,
 			Labels: map[string]string{
-				"k3k-agent-pod": "true",
-				"k3k-sa":        k3kUser.Name,
-				"k3k-name":      k3kUser.GetK3kName(),
-				"k3k-namespace": k3kUser.GetK3kNamespace(),
+				"k3k-agent-pod":   "true",
+				"k3k-sa":          k3kUser.Name,
+				"k3k-name":        k3kUser.GetK3kName(),
+				"k3k-namespace":   k3kUser.GetK3kNamespace(),
+				"w7.cc/daemonset": "w7",
 			},
 			Annotations: map[string]string{
 				"helm-version": os.Getenv("HELM_VERSION"),
 				"root-pod-ip":  os.Getenv("POD_IP"),
 			},
 		},
+
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyAlways,
-			// Volumes: []corev1.Volume{
-			// 	{
-			// 		Name: "kubeconfig",
-			// 		VolumeSource: corev1.VolumeSource{
-			// 			ConfigMap: &corev1.ConfigMapVolumeSource{
-			// 				LocalObjectReference: corev1.LocalObjectReference{
-			// 					Name: k3kUser.GetKubeconfigMapName(),
-			// 				},
-			// 				Items: []corev1.KeyToPath{
-			// 					{
-			// 						Key:  "kubeconfig",
-			// 						Path: "kubeconfig.yaml",
-			// 						Mode: &fileMode,
-			// 					},
-			// 				},
-			// 			},
-			// 		},
-			// 	},
-			// },
+			Volumes: []corev1.Volume{
+				{
+					Name: "cd-socket",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/var/run/k3s/containerd/containerd.sock",
+							Type: &socketType,
+						},
+					},
+				},
+				{
+					Name: "cd-data",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/var/lib/rancher/k3s/agent/containerd",
+							Type: &dirType,
+						},
+					},
+				},
+			},
 			ServiceAccountName: k3kUser.Name,
 			HostPID:            true,
 			// AutomountServiceAccountToken: true,
@@ -401,13 +407,16 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 						},
 					},
 					// Command:         []string{"sh", "-c", shell},
-					// VolumeMounts: []corev1.VolumeMount{
-					// 	{
-					// 		Name:      "kubeconfig",
-					// 		MountPath: "/w7-config/",
-					// 		ReadOnly:  false,
-					// 	},
-					// },
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "cd-socket",
+							MountPath: "/var/run/k3s/containerd/containerd.sock",
+						},
+						{
+							Name:      "cd-data",
+							MountPath: "/var/lib/rancher/k3s/agent/containerd",
+						},
+					},
 					Args: []string{"server:start"},
 
 					// Args:            []string{shell
