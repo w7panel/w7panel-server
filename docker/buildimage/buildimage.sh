@@ -38,7 +38,7 @@ downcode()
     HEADER=$(head -c 6 download.tmp | xxd -p 2>/dev/null || od -An -tx1 -N 6 download.tmp | tr -d ' \n')
     info "Detected file header: $HEADER"
     case "$HEADER" in
-        504b0304|504b0506|504b0708)
+        504b0304|504b0506|504b0708|504b03041400)
             info "Detected ZIP archive"
             unzip download.tmp
             ;;
