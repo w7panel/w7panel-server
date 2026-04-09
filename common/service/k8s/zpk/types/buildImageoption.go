@@ -40,6 +40,7 @@ type BuildImageInterface interface {
 	GetTitle() string
 
 	GetBuildJobName() string
+	GetPanelRegistryServerHost() string
 
 	GetLabels() map[string]string
 }

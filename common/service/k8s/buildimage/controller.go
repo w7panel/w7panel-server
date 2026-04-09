@@ -117,7 +117,7 @@ func (r *BuildImageController) reconcile0(ctx context.Context, req ctrl.Request)
 }
 
 func (r *BuildImageController) createOrUpdateBuildJob(ctx context.Context, buildImage *buildimagev1alpha1.BuildImage, spec *BuildImageSpec) (*batchv1.Job, error) {
-	job, err := toBuildJob(&BuildImageSpec{BuildImageSpec: &buildImage.Spec})
+	job, err := toBuildJob(ctx, &BuildImageSpec{BuildImageSpec: &buildImage.Spec})
 	if err != nil {
 		return nil, err
 	}

@@ -16,11 +16,17 @@ func panelRegistryServerHost() (string, error) {
 	return ip + ":8000", nil
 }
 
+// operator 运行环境 判断
 func panelRegistryServerIp() (string, error) {
 	if helper.IsK3kVirtual() {
 		return os.Getenv("POD_IP"), nil
 	}
 	sdk := k8s.NewK8sClient()
+	return PanelRegistryServerIpUseSdk(sdk.Sdk)
+}
+
+// controller zpk.go 中直接使用sdk获取
+func PanelRegistryServerIpUseSdk(sdk *k8s.Sdk) (string, error) {
 	podlist, err := sdk.GetDaemonsetAgentPods("default")
 	if err != nil {
 		return "", err
