@@ -304,7 +304,10 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 			Name:  "K3S_REGISTRY_ENABLED",
 			Value: "true",
 		},
-
+		{
+			Name:  "BUILDIMGAGE_ENABLED",
+			Value: "true",
+		},
 		{
 			Name: "POD_IP",
 			ValueFrom: &corev1.EnvVarSource{
