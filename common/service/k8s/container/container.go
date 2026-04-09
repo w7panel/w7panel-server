@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/mount"
-	"github.com/containerd/containerd/namespaces"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/mount"
+	"github.com/containerd/containerd/v2/pkg/namespaces"
 	"github.com/w7panel/w7panel/common/helper"
 )
 
