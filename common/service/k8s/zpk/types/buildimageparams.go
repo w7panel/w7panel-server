@@ -96,3 +96,6 @@ func (b *BuildImageParams) GetLabels() map[string]string {
 func (b *BuildImageParams) GetBuildJobName() string {
 	return b.BuildJobName
 }
+func (b *BuildImageParams) GetPanelRegistryServerHost() string {
+	return ""
+}
