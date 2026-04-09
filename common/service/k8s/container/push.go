@@ -169,7 +169,6 @@ func inheritRuntimeConfigFromOCI(dst *v1.ConfigFile, src *ocispec.Image) {
 func remotePushProgress(progress func(Progress) error) remote.Option {
 	updates := make(chan v1.Update, 128)
 	go func() {
-		defer close(updates)
 		for update := range updates {
 			info := fmt.Sprintf("push image status: complete: %d, total: %d, err: %s", update.Complete, update.Total, update.Error)
 
