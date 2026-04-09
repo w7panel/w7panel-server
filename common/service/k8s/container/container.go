@@ -25,7 +25,7 @@ var defaultRootFSExcludePrefixes = []string{
 	"var/run/secrets",
 }
 
-const socketPath = "/run/k3s/containerd/containerd.sock"
+const socketPath = "/var/run/k3s/containerd/containerd.sock"
 
 func GetDefaultContainerClient() (*containerd.Client, error) {
 	containedClient, err := containerd.New(socketPath, containerd.WithDefaultNamespace("k8s.io"))
