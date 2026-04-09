@@ -3,6 +3,10 @@ kind: BuildImage
 metadata:
   name: buildimage-sample5
   namespace: default
+  labels:
+    w7.cc/node: server1
+  annotations:
+    w7.cc/node-ip: "172.16.1.162"
 spec:
   taskId: buildimage-sample5
   namespace: default
