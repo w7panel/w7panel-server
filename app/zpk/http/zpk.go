@@ -254,7 +254,7 @@ func (self Zpk) Install(http *gin.Context) {
 		realToken = config.BearerToken
 	}
 	if k8sToken.IsVirtual() {
-		registryHost, err := bi.PanelRegistryServerIpUseSdk(client)
+		registryHost, err := bi.PanelRegistryServerHostUseSdk(client)
 		if err != nil {
 			slog.Warn("get registry host err", "err", err)
 		} else {
