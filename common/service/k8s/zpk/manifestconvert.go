@@ -815,6 +815,8 @@ func ToShellJob2(manifest K8sResourceInterface, ingress K8sResourceIngressInterf
 			Template: pod,
 		},
 	}
+
+	appendPodAffinity(&job.Spec.Template, manifest.GetReleaseName())
 	return job
 }
 
