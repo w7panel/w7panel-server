@@ -20,6 +20,7 @@ type BuildImageParams struct {
 	BuildJobName             string             `json:"buildJobName"`
 	Schedule                 string             `json:"schedule"`
 	DockerRegistrySecretName string             `json:"dockerRegistrySecretName"`
+	PanelRegistryHost        string             `json:"panelRegistryHost"`
 	// PushImage                string             `json:"pushImage"`
 }
 
@@ -97,5 +98,5 @@ func (b *BuildImageParams) GetBuildJobName() string {
 	return b.BuildJobName
 }
 func (b *BuildImageParams) GetPanelRegistryServerHost() string {
-	return ""
+	return b.PanelRegistryHost
 }
