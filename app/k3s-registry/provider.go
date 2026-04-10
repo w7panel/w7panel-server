@@ -34,7 +34,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			}
 			//TODO 子用户
 			patch := engine.Group("/panel-api/v1/registry/patch")
-			patch.Use(middleware.Auth{}.Process)
+			patch.Use(middleware.Auth{}.Process, middleware.Proxy{}.Process)
 			{
 				patch.GET("/images/list", controller.Images{}.List)
 				patch.PUT("/images/tag", controller.Images{}.Tag)
@@ -44,7 +44,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			}
 		}
 		reg := engine.Group("/panel-api/v1/registry")
-		reg.Use(middleware.Auth{}.Process, middleware.Proxy{}.Process)
+		reg.Use(middleware.Auth{}.Process)
 		// reg.Use()
 		{
 			reg.GET("/server-info", controller.Registry{}.ServerInfo)
