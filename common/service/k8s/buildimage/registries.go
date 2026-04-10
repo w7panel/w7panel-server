@@ -75,6 +75,9 @@ func mirrorToKvArr(k string, mirror Mirror) []string {
 		for _, endpoint := range mirror.Endpoints {
 			ed := strings.ReplaceAll(endpoint, "https://", "")
 			ed = strings.ReplaceAll(ed, "http://", "")
+			if k == "docker.io" {
+				k = "index.docker.io"
+			}
 			kvstr = append(kvstr, k+"="+ed)
 		}
 	}
