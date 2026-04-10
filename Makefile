@@ -1,11 +1,16 @@
 
-IV ?= v1.1.28.7
+IV ?= v1.1.42.x
 
 build-charts:
 	helm package ./kodata/charts/k8s-offline
 
 build-metrics:
 	helm package ./kodata/charts/k8s-offline-metrics
+
+build-image:
+	export KO_DOCKER_REPO=docker.cnb.cool/i0358/zpk  \
+	export KO_DEFAULTBASEIMAGE=ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui \
+	ko build --bare --tags=${IV} --tag-only --sbom=none --platform=all \
 # dev:
 #     docker run --name vscode-go -p 9006:3000 -p 9007:8000 -v /home/afan/workspace:/home/workspace docker.cnb.cool/i0358/mydocker/vscode:go-1.25.0
 # devc:
