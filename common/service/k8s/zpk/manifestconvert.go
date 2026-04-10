@@ -141,7 +141,9 @@ func toPodTemplateSpec(manifest K8sResourceInterface, command []string, restartP
 			Labels:      matchLabels,
 			Annotations: defaultAnn,
 		},
+
 		Spec: corev1.PodSpec{
+
 			RestartPolicy: restartPolicy,
 			Containers: []corev1.Container{
 				{
@@ -282,6 +284,7 @@ func ToBuildJob(p K8sResourceInterface, opt types.BuildImageInterface, shellType
 
 	job.Annotations = annotations
 	job.Labels = labels
+	appendPodAffinity(&job.Spec.Template, p.GetReleaseName())
 	return job
 	// backofflimit := int32(3)
 	// afterSeconds := int32(3600)
@@ -373,6 +376,7 @@ func ToShellJob(p K8sResourceInterface, shell ManifestShellInterface) *batchv1.J
 			Template: toPodTemplateSpec(p, cmd, corev1.RestartPolicyNever, matchlabels, annotations),
 		},
 	}
+	appendPodAffinity(&job.Spec.Template, p.GetReleaseName())
 	return job
 }
 
@@ -1219,4 +1223,28 @@ helm upgrade kubeblocks $KO_DATA_PATH/charts/kubeblocks-1.0.1.tgz -n kb-system -
 		},
 	}
 	return job
+}
+
+func appendPodAffinity(pod *corev1.PodTemplateSpec, releaseName string) {
+	if pod.Spec.Affinity == nil {
+		pod.Spec.Affinity = &corev1.Affinity{}
+	}
+	pod.Spec.Affinity = &corev1.Affinity{
+		PodAffinity: &corev1.PodAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "app.kubernetes.io/instance",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{releaseName},
+							},
+						},
+					},
+					TopologyKey: "kubernetes.io/hostname",
+				},
+			},
+		},
+	}
 }
