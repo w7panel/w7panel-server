@@ -74,7 +74,7 @@ func mirrorToKvArr(k string, mirror Mirror) []string {
 	if len(mirror.Endpoints) > 0 {
 		for _, endpoint := range mirror.Endpoints {
 			ed := strings.ReplaceAll(endpoint, "https://", "")
-			ed = strings.ReplaceAll(endpoint, "http://", "")
+			ed = strings.ReplaceAll(ed, "http://", "")
 			kvstr = append(kvstr, k+"="+ed)
 		}
 	}
