@@ -59,6 +59,7 @@ func (c *longhornclient) GetVolumeList() (*longhornV1beta2.VolumeList, error) {
 	return c.client.LonghornV1beta2().Volumes(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
 }
 
+// # https://oneuptime.com/blog/post/2026-01-30-longhorn-volume-snapshots/view
 func (c *longhornclient) GetSnapshotList() (*longhornV1beta2.SnapshotList, error) {
 	return c.client.LonghornV1beta2().Snapshots(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
 }
