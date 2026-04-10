@@ -1,8 +1,6 @@
 package controller
 
 import (
-	"path/filepath"
-
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/registry"
@@ -141,7 +139,7 @@ func (self Images) Import(http *gin.Context) {
 	}
 	importPath := params.Path
 	if helper.IsAgent() || helper.IsK3kVirtual() {
-		importPath = filepath.Join("/host", importPath)
+		// importPath = filepath.Join("/host", importPath)
 	}
 
 	imgName, err := registry.ImagesImportFromFile(http, client, params.Name, importPath)
