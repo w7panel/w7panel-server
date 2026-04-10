@@ -27,8 +27,8 @@ func (self Images) List(ctx *gin.Context) {
 	// 	Name string `json:"name"`
 	// 	Tag  string `json:"tag"`
 	// }
-
-	images, err := registry.ImagesList(ctx, client, []string{}, []string{})
+	filters := []string{"dangling=false"}
+	images, err := registry.ImagesList(ctx, client, filters, []string{})
 	if err != nil {
 		self.JsonResponseWithServerError(ctx, err)
 		return
