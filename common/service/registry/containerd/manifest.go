@@ -104,14 +104,14 @@ func (r *Manifest) importToContainerd(ctx context.Context, repo, ref, mediaType 
 	}
 	labels := map[string]string{}
 	if repo != "" {
-		labels["registry.repo"] = repo
-		labels["registry.tag"] = ref
+		// labels["registry.repo"] = repo
+		// labels["registry.tag"] = ref
 	}
 	labels["io.cri.containerd.pinned"] = "pinned"
 	labels["io.cattle.k3s.pinned"] = "pinned"
 	image := images.Image{
 		Name:      fullRef,
-		Labels:    map[string]string{"registry.repo": repo, "registry.tag": ref},
+		Labels:    labels,
 		Target:    target,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
