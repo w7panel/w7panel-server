@@ -12,52 +12,42 @@ import (
 type Provider struct{}
 
 func (p Provider) Register(httpServer *httpserver.Server, console console.Console) {
-	if facade.GetConfig().GetBool("registry.enabled") { //子用户 和 代理agent才开启
-		p.RegisterHttpRoutes(httpServer) //
-	}
+	p.RegisterHttpRoutes(httpServer) //
 
 }
 
 func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	server.RegisterRouters(func(engine *gin.Engine) {
 		// Registry API - 镜像仓库
-		registryGroup := engine.Group("")
-		registryGroup.Use()
-		{
-			registryGroup.Any("/v2/*path", controller.Registry{}.Handler)
-			// m.Handle("GET /v2/", r.registryHandler)
-			// m.Handle("HEAD /v2/", r.registryHandler)
-			// registryGroup.GET("/v2/", controller.Registry{}.Version)
-			// registryGroup.GET("/v2/_catalog", controller.Registry{}.Catalog)
-			// registryGroup.GET("/v2/:name/tags/list", controller.Registry{}.Tags)
-			// registryGroup.GET("/v2/:name/manifests/*reference", controller.Registry{}.Manifest)
-			// registryGroup.PUT("/v2/:name/manifests/*reference", controller.Registry{}.Post)
-			// registryGroup.GET("/v2/:name/blobs/*digest", controller.Registry{}.Blob)
-			// registryGroup.HEAD("/v2/:name/blobs/*digest", controller.Registry{}.BlobExists)
-			// registryGroup.POST("/v2/:name/blobs/uploads/", controller.Registry{}.InitUpload)
-			// registryGroup.PUT("/v2/:name/blobs/uploads/:uuid", controller.Registry{}.CompleteUpload)
-		}
+		if facade.GetConfig().GetBool("registry.enabled") { //子用户 和 代理agent才开启
+			registryGroup := engine.Group("")
+			registryGroup.Use()
+			{
+				registryGroup.Any("/v2/*path", controller.Registry{}.Handler)
+			}
 
+			reg := engine.Group("/panel-api/v1/registry")
+			reg.Use(middleware.Auth{}.Process)
+			reg.Use()
+			{
+				reg.POST("/containers/:id/commit", controller.Commit{}.Run)
+			}
+			//TODO 子用户
+			patch := engine.Group("/panel-api/v1/registry/patch")
+			patch.Use(middleware.Auth{}.Process)
+			{
+				patch.GET("/images/list", controller.Images{}.List)
+				patch.PUT("/images/tag", controller.Images{}.Tag)
+				patch.POST("/images/delete", controller.Images{}.Remove)
+				patch.POST("/images/label", controller.Images{}.Label)
+				patch.POST("/images/import", controller.Images{}.Import)
+			}
+		}
 		reg := engine.Group("/panel-api/v1/registry")
 		reg.Use(middleware.Auth{}.Process)
-		reg.Use()
+		// reg.Use()
 		{
-
-			reg.POST("/containers/:id/commit", controller.Commit{}.Run)
+			reg.GET("/server-info", controller.Registry{}.ServerInfo)
 		}
-		//TODO 子用户
-		patch := engine.Group("/panel-api/v1/registry/patch")
-		patch.Use(middleware.Auth{}.Process)
-		patch.Use()
-		{
-
-			patch.GET("/images/list", controller.Images{}.List)
-			patch.PUT("/images/tag", controller.Images{}.Tag)
-			patch.POST("/images/delete", controller.Images{}.Remove)
-			patch.POST("/images/label", controller.Images{}.Label)
-			patch.POST("/images/import", controller.Images{}.Import)
-
-		}
-
 	})
 }
