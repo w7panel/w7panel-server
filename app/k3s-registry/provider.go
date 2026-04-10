@@ -44,7 +44,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			}
 		}
 		reg := engine.Group("/panel-api/v1/registry")
-		reg.Use(middleware.Auth{}.Process)
+		reg.Use(middleware.Auth{}.Process, middleware.Proxy{}.Process)
 		// reg.Use()
 		{
 			reg.GET("/server-info", controller.Registry{}.ServerInfo)
