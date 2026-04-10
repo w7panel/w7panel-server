@@ -798,8 +798,13 @@ func (self Zpk) BuildImageJob(http *gin.Context) {
 		params.DockerRegistry.Password = "w7-secret"
 	}
 	sdk := k8s.NewK8sClient()
+	client, err := sdk.Channel(http.MustGet("k8s_token").(string))
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
 	if params.DockerRegistrySecretName != "" {
-		dockerSecret, err := sdk.ClientSet.CoreV1().Secrets("default").Get(sdk.Ctx, params.DockerRegistrySecretName, metav1.GetOptions{})
+		dockerSecret, err := client.ClientSet.CoreV1().Secrets("default").Get(sdk.Ctx, params.DockerRegistrySecretName, metav1.GetOptions{})
 		if err != nil {
 			slog.Error("获取docker registry secret失败", "error", err)
 		} else {
@@ -828,12 +833,23 @@ func (self Zpk) BuildImageJob(http *gin.Context) {
 			}
 		}
 	}
+
+	token := http.MustGet("k8s_token").(string)
+	k8sToken := k8s.NewK8sToken(token)
+	if k8sToken.IsK3kCluster() {
+		registryHost, err := bi.PanelRegistryServerHostUseSdk(client)
+		if err != nil {
+			slog.Warn("get registry host err", "err", err)
+		} else {
+			params.PanelRegistryHost = registryHost
+		}
+	}
 	job := zpkk8s.ToZpkBuildJob(&params)
-	client, err := sdk.Channel(http.MustGet("k8s_token").(string))
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
+	if job == nil {
+		self.JsonResponseWithServerError(http, errors.New("create job failed"))
 		return
 	}
+
 	job, err = client.ClientSet.BatchV1().Jobs("default").Create(client.Ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)

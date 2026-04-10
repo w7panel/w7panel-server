@@ -1041,34 +1041,51 @@ func toBuildPodSpec(option types.BuildImageOption) corev1.PodSpec {
 func ToZpkBuildJob(opt types.BuildImageInterface) *batchv1.Job {
 
 	option := types.NewBuildImageOption(opt)
+
+	spec := option.ToBuilImageSpec()
+	jobName := opt.GetBuildJobName()
+	spec.TaskID = jobName
+	host := opt.GetPanelRegistryServerHost()
+	ctx := context.Background()
+	if host != "" {
+		ctx = context.WithValue(ctx, bi.PanelRegistryServerHostKey, host)
+	}
+	job, err := bi.CrdSpecToJob(ctx, spec)
+	if err != nil {
+		slog.Error("crd to job err", "err", err)
+		return nil
+	}
+
 	title := opt.GetTitle()
 	annotations := map[string]string{
 		"title":       title,
 		"w7.cc/title": title,
 	}
 	labels := opt.GetLabels()
-
-	backofflimit := int32(1)
-	afterSeconds := int32(3600)
-	job := &batchv1.Job{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "batch/v1",
-			Kind:       "Job",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        opt.GetBuildJobName(),
-			Labels:      labels,
-			Annotations: annotations,
-		},
-		Spec: batchv1.JobSpec{
-			TTLSecondsAfterFinished: &afterSeconds,
-			BackoffLimit:            &backofflimit,
-			Template: corev1.PodTemplateSpec{
-				Spec: toBuildPodSpec(option),
-			},
-		},
-	}
+	job.Annotations = annotations
+	job.Labels = labels
 	return job
+	// backofflimit := int32(1)
+	// afterSeconds := int32(3600)
+	// job := &batchv1.Job{
+	// 	TypeMeta: metav1.TypeMeta{
+	// 		APIVersion: "batch/v1",
+	// 		Kind:       "Job",
+	// 	},
+	// 	ObjectMeta: metav1.ObjectMeta{
+	// 		Name:        opt.GetBuildJobName(),
+	// 		Labels:      labels,
+	// 		Annotations: annotations,
+	// 	},
+	// 	Spec: batchv1.JobSpec{
+	// 		TTLSecondsAfterFinished: &afterSeconds,
+	// 		BackoffLimit:            &backofflimit,
+	// 		Template: corev1.PodTemplateSpec{
+	// 			Spec: toBuildPodSpec(option),
+	// 		},
+	// 	},
+	// }
+	// return job
 }
 
 func ToZpkBuildCronJob(opt types.BuildImageInterface, schedule string) *batchv1.CronJob {
