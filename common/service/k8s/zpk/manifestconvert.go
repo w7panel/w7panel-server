@@ -284,7 +284,7 @@ func ToBuildJob(p K8sResourceInterface, opt types.BuildImageInterface, shellType
 
 	job.Annotations = annotations
 	job.Labels = labels
-	appendPodAffinity(&job.Spec.Template, p.GetReleaseName())
+	// appendPodAffinity(&job.Spec.Template, p.GetReleaseName())
 	return job
 	// backofflimit := int32(3)
 	// afterSeconds := int32(3600)
@@ -376,7 +376,7 @@ func ToShellJob(p K8sResourceInterface, shell ManifestShellInterface) *batchv1.J
 			Template: toPodTemplateSpec(p, cmd, corev1.RestartPolicyNever, matchlabels, annotations),
 		},
 	}
-	appendPodAffinity(&job.Spec.Template, p.GetReleaseName())
+	// appendPodAffinity(&job.Spec.Template, p.GetReleaseName())
 	return job
 }
 
