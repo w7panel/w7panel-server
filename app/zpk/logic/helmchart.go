@@ -457,6 +457,9 @@ func (h2 *HelmChart) toBufferFiles(packageApp *zpktypes.PackageApp, root *zpktyp
 
 	if packageApp.RequireBuildImage() {
 		buildJob := helm.ToBuildJob(packageApp, packageApp, string(h2.ShellType))
+		if buildJob == nil {
+			return nil, errors.New("agent 未启动成功，稍后重试")
+		}
 		file, err := h2.convertToYaml(buildJob, packageApp.Identifie+"-buildjob.yaml")
 		if err != nil {
 			return nil, err
