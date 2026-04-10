@@ -30,7 +30,8 @@ func (self Proxy) Process(gin *gin.Context) {
 		}
 		path := gin.Request.URL.String()
 		agentHost := config.GetK3kAgentInnerIngressHost()
-		proxyUrl := "http://" + config.GetVirtualIngressServiceName()
+		// proxyUrl := "http://" + config.GetVirtualIngressServiceName()
+		proxyUrl := "http://" + config.GetK3kAgentLbHost()
 		auth := gin.Request.Header.Get("Authorization")
 		if strings.HasPrefix(auth, "Bearer ") {
 			client, err := k8s.NewK8sClient().Channel(token)
