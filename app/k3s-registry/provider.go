@@ -33,16 +33,19 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 				reg.POST("/containers/:id/commit", controller.Commit{}.Run)
 			}
 			//TODO 子用户
-			patch := engine.Group("/panel-api/v1/registry/patch")
-			patch.Use(middleware.Auth{}.Process, middleware.Proxy{}.Process)
-			{
-				patch.GET("/images/list", controller.Images{}.List)
-				patch.PUT("/images/tag", controller.Images{}.Tag)
-				patch.POST("/images/delete", controller.Images{}.Remove)
-				patch.POST("/images/label", controller.Images{}.Label)
-				patch.POST("/images/import", controller.Images{}.Import)
-			}
+
 		}
+		// Registry API - 镜像仓库 因为要转发middleware.Proxy{}.Process 不能关闭路由registry.enabled
+		patch := engine.Group("/panel-api/v1/registry/patch")
+		patch.Use(middleware.Auth{}.Process, middleware.Proxy{}.Process)
+		{
+			patch.GET("/images/list", controller.Images{}.List)
+			patch.PUT("/images/tag", controller.Images{}.Tag)
+			patch.POST("/images/delete", controller.Images{}.Remove)
+			patch.POST("/images/label", controller.Images{}.Label)
+			patch.POST("/images/import", controller.Images{}.Import)
+		}
+
 		reg := engine.Group("/panel-api/v1/registry")
 		reg.Use(middleware.Auth{}.Process)
 		// reg.Use()

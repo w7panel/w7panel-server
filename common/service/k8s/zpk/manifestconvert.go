@@ -1238,7 +1238,7 @@ func appendPodAffinity(pod *corev1.PodTemplateSpec, releaseName string) {
 					LabelSelector: &metav1.LabelSelector{
 						MatchExpressions: []metav1.LabelSelectorRequirement{
 							{
-								Key:      "app.kubernetes.io/instance",
+								Key:      "app",
 								Operator: metav1.LabelSelectorOpIn,
 								Values:   []string{releaseName},
 							},
