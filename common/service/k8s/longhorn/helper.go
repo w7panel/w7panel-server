@@ -171,3 +171,13 @@ func containsAll(a, b []string) bool {
 	}
 	return true
 }
+
+func GetSnapshopSize(volumeName string, snapList *longhornV1beta2.SnapshotList) int64 {
+	var size int64
+	for _, snap := range snapList.Items {
+		if snap.Spec.Volume == volumeName {
+			size += snap.Status.Size
+		}
+	}
+	return size
+}
