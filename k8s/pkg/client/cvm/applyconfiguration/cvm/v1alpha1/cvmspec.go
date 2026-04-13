@@ -20,10 +20,14 @@ package v1alpha1
 // CvmSpecApplyConfiguration represents a declarative configuration of the CvmSpec type for use
 // with apply.
 type CvmSpecApplyConfiguration struct {
-	CPU       *int64 `json:"cpu,omitempty"`
-	Memory    *int64 `json:"memory,omitempty"`
-	Storage   *int64 `json:"storage,omitempty"`
-	Bandwidth *int64 `json:"bandwidth,omitempty"`
+	StorageClassName *string                        `json:"storageClassName,omitempty"`
+	Workload         *WorkloadApplyConfiguration    `json:"workload,omitempty"`
+	Resource         *CvmResourceApplyConfiguration `json:"resource,omitempty"`
+	// 可使用资源
+	BaseOrder    *CvmOrderApplyConfiguration    `json:"baseOrder,omitempty"`
+	ExpandOrder  *CvmOrderApplyConfiguration    `json:"expandOrder,omitempty"`
+	RenewOrder   *CvmOrderApplyConfiguration    `json:"renewOrder,omitempty"`
+	BaseResource *CvmResourceApplyConfiguration `json:"baseResource,omitempty"`
 }
 
 // CvmSpecApplyConfiguration constructs a declarative configuration of the CvmSpec type for use with
@@ -32,34 +36,58 @@ func CvmSpec() *CvmSpecApplyConfiguration {
 	return &CvmSpecApplyConfiguration{}
 }
 
-// WithCPU sets the CPU field in the declarative configuration to the given value
+// WithStorageClassName sets the StorageClassName field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the CPU field is set to the value of the last call.
-func (b *CvmSpecApplyConfiguration) WithCPU(value int64) *CvmSpecApplyConfiguration {
-	b.CPU = &value
+// If called multiple times, the StorageClassName field is set to the value of the last call.
+func (b *CvmSpecApplyConfiguration) WithStorageClassName(value string) *CvmSpecApplyConfiguration {
+	b.StorageClassName = &value
 	return b
 }
 
-// WithMemory sets the Memory field in the declarative configuration to the given value
+// WithWorkload sets the Workload field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Memory field is set to the value of the last call.
-func (b *CvmSpecApplyConfiguration) WithMemory(value int64) *CvmSpecApplyConfiguration {
-	b.Memory = &value
+// If called multiple times, the Workload field is set to the value of the last call.
+func (b *CvmSpecApplyConfiguration) WithWorkload(value *WorkloadApplyConfiguration) *CvmSpecApplyConfiguration {
+	b.Workload = value
 	return b
 }
 
-// WithStorage sets the Storage field in the declarative configuration to the given value
+// WithResource sets the Resource field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Storage field is set to the value of the last call.
-func (b *CvmSpecApplyConfiguration) WithStorage(value int64) *CvmSpecApplyConfiguration {
-	b.Storage = &value
+// If called multiple times, the Resource field is set to the value of the last call.
+func (b *CvmSpecApplyConfiguration) WithResource(value *CvmResourceApplyConfiguration) *CvmSpecApplyConfiguration {
+	b.Resource = value
 	return b
 }
 
-// WithBandwidth sets the Bandwidth field in the declarative configuration to the given value
+// WithBaseOrder sets the BaseOrder field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Bandwidth field is set to the value of the last call.
-func (b *CvmSpecApplyConfiguration) WithBandwidth(value int64) *CvmSpecApplyConfiguration {
-	b.Bandwidth = &value
+// If called multiple times, the BaseOrder field is set to the value of the last call.
+func (b *CvmSpecApplyConfiguration) WithBaseOrder(value *CvmOrderApplyConfiguration) *CvmSpecApplyConfiguration {
+	b.BaseOrder = value
+	return b
+}
+
+// WithExpandOrder sets the ExpandOrder field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ExpandOrder field is set to the value of the last call.
+func (b *CvmSpecApplyConfiguration) WithExpandOrder(value *CvmOrderApplyConfiguration) *CvmSpecApplyConfiguration {
+	b.ExpandOrder = value
+	return b
+}
+
+// WithRenewOrder sets the RenewOrder field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the RenewOrder field is set to the value of the last call.
+func (b *CvmSpecApplyConfiguration) WithRenewOrder(value *CvmOrderApplyConfiguration) *CvmSpecApplyConfiguration {
+	b.RenewOrder = value
+	return b
+}
+
+// WithBaseResource sets the BaseResource field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the BaseResource field is set to the value of the last call.
+func (b *CvmSpecApplyConfiguration) WithBaseResource(value *CvmResourceApplyConfiguration) *CvmSpecApplyConfiguration {
+	b.BaseResource = value
 	return b
 }

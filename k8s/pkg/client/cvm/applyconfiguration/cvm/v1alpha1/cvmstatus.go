@@ -17,13 +17,19 @@ limitations under the License.
 
 package v1alpha1
 
+import (
+	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
+)
+
 // CvmStatusApplyConfiguration represents a declarative configuration of the CvmStatus type for use
 // with apply.
+//
+// 【微擎面板&集群云主机：云主机业务分离成独立应用】
+// https://www.tapd.cn/tapd_fe/62789787/story/detail/1162789787001015242
 type CvmStatusApplyConfiguration struct {
-	CPU       *int64 `json:"cpu,omitempty"`
-	Memory    *int64 `json:"memory,omitempty"`
-	Storage   *int64 `json:"storage,omitempty"`
-	Bandwidth *int64 `json:"bandwidth,omitempty"`
+	Phase         *string                          `json:"phase,omitempty"`
+	ReadyReplicas *int32                           `json:"readyReplicas,omitempty"`
+	Conditions    []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
 }
 
 // CvmStatusApplyConfiguration constructs a declarative configuration of the CvmStatus type for use with
@@ -32,34 +38,31 @@ func CvmStatus() *CvmStatusApplyConfiguration {
 	return &CvmStatusApplyConfiguration{}
 }
 
-// WithCPU sets the CPU field in the declarative configuration to the given value
+// WithPhase sets the Phase field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the CPU field is set to the value of the last call.
-func (b *CvmStatusApplyConfiguration) WithCPU(value int64) *CvmStatusApplyConfiguration {
-	b.CPU = &value
+// If called multiple times, the Phase field is set to the value of the last call.
+func (b *CvmStatusApplyConfiguration) WithPhase(value string) *CvmStatusApplyConfiguration {
+	b.Phase = &value
 	return b
 }
 
-// WithMemory sets the Memory field in the declarative configuration to the given value
+// WithReadyReplicas sets the ReadyReplicas field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Memory field is set to the value of the last call.
-func (b *CvmStatusApplyConfiguration) WithMemory(value int64) *CvmStatusApplyConfiguration {
-	b.Memory = &value
+// If called multiple times, the ReadyReplicas field is set to the value of the last call.
+func (b *CvmStatusApplyConfiguration) WithReadyReplicas(value int32) *CvmStatusApplyConfiguration {
+	b.ReadyReplicas = &value
 	return b
 }
 
-// WithStorage sets the Storage field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Storage field is set to the value of the last call.
-func (b *CvmStatusApplyConfiguration) WithStorage(value int64) *CvmStatusApplyConfiguration {
-	b.Storage = &value
-	return b
-}
-
-// WithBandwidth sets the Bandwidth field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Bandwidth field is set to the value of the last call.
-func (b *CvmStatusApplyConfiguration) WithBandwidth(value int64) *CvmStatusApplyConfiguration {
-	b.Bandwidth = &value
+// WithConditions adds the given value to the Conditions field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Conditions field.
+func (b *CvmStatusApplyConfiguration) WithConditions(values ...*v1.ConditionApplyConfiguration) *CvmStatusApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithConditions")
+		}
+		b.Conditions = append(b.Conditions, *values[i])
+	}
 	return b
 }
