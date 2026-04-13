@@ -200,12 +200,14 @@ type BuyRenewResource struct {
 	BaseConfigName string `form:"baseOAuthConfigName"`
 	UnitQuantity
 	CouponCode string `form:"couponCode"`
+	CvmName    string `form:"cvm"`
 }
 
 type BuyExpandResource struct {
 	// BuyResource
 	BaseConfigName string `form:"baseOAuthConfigName"`
 	BuyResource
+	CvmName string `form:"cvm"`
 }
 
 func (b *BuyExpandResource) Valid() error {
