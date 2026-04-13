@@ -1,0 +1,8 @@
+apiVersion: longhorn.io/v1beta2
+kind: Snapshot
+metadata:
+  name: longhorn-test-snapshot
+  namespace: longhorn-system
+spec:
+  volume: gitea-shared-storage  # replace with your actual Longhorn volume name
+  createSnapshot: true
