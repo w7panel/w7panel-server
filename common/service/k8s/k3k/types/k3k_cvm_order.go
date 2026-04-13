@@ -6,18 +6,18 @@ import (
 
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
-	corev1 "k8s.io/api/core/v1"
+	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 )
 
 type K3kCvmOrder struct {
-	*corev1.ServiceAccount
+	*v1alpha1.Cvm
 	*k3kUserOverSelling
-	*k3kUserTime
+	*k3kCvmTime
 	cost *K3kCost
 }
 
-func Newk3kCvmOrder(sa *corev1.ServiceAccount, overUser *k3kUserOverSelling, userTime *k3kUserTime, cost *K3kCost) *K3kCvmOrder {
-	return &K3kCvmOrder{sa, overUser, userTime, cost}
+func Newk3kCvmOrder(cvm *v1alpha1.Cvm, overUser *k3kUserOverSelling, userTime *k3kCvmTime, cost *K3kCost) *K3kCvmOrder {
+	return &K3kCvmOrder{cvm, overUser, userTime, cost}
 }
 
 func (u *K3kCvmOrder) SetBaseOrder(orderSn string) {
