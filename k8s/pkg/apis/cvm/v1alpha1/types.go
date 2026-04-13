@@ -14,14 +14,26 @@ type Cvm struct {
 	Status            CvmStatus `json:"status,omitempty"`
 }
 
+type CvmResource struct {
+	CPU       int64 `json:"cpu,omitempty"`
+	Memory    int64 `json:"memory,omitempty"`
+	Storage   int64 `json:"storage,omitempty"`
+	Bandwidth int64 `json:"bandwidth,omitempty"`
+}
+
 type CvmSpec struct {
-	CPU              int64    `json:"cpu,omitempty"`
-	Memory           int64    `json:"memory,omitempty"`
-	Storage          int64    `json:"storage,omitempty"`
-	Bandwidth        int64    `json:"bandwidth,omitempty"`
-	StorageSize      int64    `json:"storageSize,omitempty"`
-	StorageClassName string   `json:"storageClassName,omitempty"`
-	Workload         Workload `json:"workload,omitempty"`
+	StorageClassName string      `json:"storageClassName,omitempty"`
+	Workload         Workload    `json:"workload,omitempty"`
+	Resource         CvmResource `json:"resource,omitempty"` //可使用资源
+	BaseOrder        CvmOrder    `json:"baseOrder,omitempty"`
+	ExpandOrder      CvmOrder    `json:"expandOrder,omitempty"`
+	RenewOrder       CvmOrder    `json:"renewOrder,omitempty"`
+	BaseResource     CvmResource `json:"baseResource,omitempty"` //首次购买资源 暂存在这个字段
+}
+
+type CvmOrder struct {
+	OrderSn string `json:"orderSn"`
+	Status  string `json:"status,omitempty"`
 }
 
 type Workload struct {

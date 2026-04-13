@@ -93,7 +93,7 @@ const (
 	W7_COST_NAME          = "w7.cc/cost-name"          //费用套餐
 	W7_USER_MODE          = "w7.cc/user-mode"          //用户模式 cluster founder normal
 	W7_OVER_MODE          = "w7.cc/over-mode"          //资源状态 wait(等待检测) no-resource(无资源) success(检测通过)
-	W7_OVER_RESOURCE      = "w7.cc/over-resource"      //资源状态 wait(等待检测) no-resource(无资源) success(检测通过)
+	W7_OVER_RESOURCE      = "w7.cc/over-resource"      //
 	W7_OVER_BASE_RESOURCE = "w7.cc/over-base-resource" //首次购买资源
 	W7_LOGIN_TIME         = "w7.cc/login-time"
 )
