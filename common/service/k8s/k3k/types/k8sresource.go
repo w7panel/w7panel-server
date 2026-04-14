@@ -321,7 +321,7 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 	root := true
 	socketType := corev1.HostPathSocket
 	dirType := corev1.HostPathDirectory
-	// mountHost := corev1.MountPropagationHostToContainer
+	mountHost := corev1.MountPropagationHostToContainer
 	pod := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -359,8 +359,9 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 					Name: "cd-runtime",
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io",
-							Type: &dirType,
+							Path:        "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io",
+							Type:        &dirType,
+							Propagation: &mountHost,
 						},
 					},
 				},
