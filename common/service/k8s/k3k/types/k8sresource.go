@@ -359,9 +359,8 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 					Name: "cd-runtime",
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
-							Path:        "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io",
-							Type:        &dirType,
-							Propagation: &mountHost,
+							Path: "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io",
+							Type: &dirType,
 						},
 					},
 				},
@@ -418,9 +417,9 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 							MountPath: "/var/run/k3s/containerd/containerd.sock",
 						},
 						{
-							Name:      "cd-runtime",
-							MountPath: "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io",
-							// MountPropagation: &mountHost,
+							Name:             "cd-runtime",
+							MountPath:        "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io",
+							MountPropagation: &mountHost,
 						},
 					},
 					Args: []string{"server:start"},

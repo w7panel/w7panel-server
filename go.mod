@@ -227,7 +227,6 @@ require (
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
 	github.com/novln/docker-parser v1.0.0 // indirect
-	github.com/opencontainers/runtime-spec v1.3.0 // indirect
 	github.com/opencontainers/runtime-tools v0.9.1-0.20251114084447-edf4cb3d2116 // indirect
 	github.com/opencontainers/selinux v1.13.1 // indirect
 	github.com/openshift/api v3.9.0+incompatible // indirect
@@ -321,6 +320,7 @@ require (
 	github.com/lionsoul2014/ip2region/binding/golang v0.0.0-20251011075309-e39ac2d6d123
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
+	github.com/opencontainers/runtime-spec v1.3.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.66.1
@@ -345,7 +345,6 @@ require (
 	k8s.io/kubectl v0.33.3
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
 	sigs.k8s.io/controller-runtime v0.19.4
-	sigs.k8s.io/structured-merge-diff/v4 v4.7.0
 	sigs.k8s.io/yaml v1.6.0
 )
 
