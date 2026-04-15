@@ -29,6 +29,7 @@ type CvmSpec struct {
 	ExpandOrder      CvmOrder    `json:"expandOrder,omitempty"`
 	RenewOrder       CvmOrder    `json:"renewOrder,omitempty"`
 	BaseResource     CvmResource `json:"baseResource,omitempty"` //首次购买资源 暂存在这个字段
+	ExpireTime       string      `json:"expireTime,omitempty"`   //到期时间
 }
 
 type CvmOrder struct {

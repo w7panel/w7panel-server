@@ -21,17 +21,29 @@ func Newk3kCvmOrder(cvm *v1alpha1.Cvm, overUser *k3kUserOverSelling, userTime *k
 }
 
 func (u *K3kCvmOrder) SetBaseOrder(orderSn string) {
-	u.Labels[W7_BASE_ORDER_SN] = orderSn
+
+	u.Spec.BaseOrder = v1alpha1.CvmOrder{
+		OrderSn: orderSn,
+	}
+	// u.Labels[W7_BASE_ORDER_SN] = orderSn
 }
 
 func (u *K3kCvmOrder) SetRenewOrder(orderSn string) {
-	u.Labels[W7_RENEW_ORDER_SN] = orderSn
-	u.Labels[W7_RENEW_ORDER_STATUS] = W7_ORDER_WAIT //因为支付成功后会判断是否PAID，所以这里先设置为等待支付
+	u.Spec.RenewOrder = v1alpha1.CvmOrder{
+		OrderSn: orderSn,
+		Status:  W7_ORDER_WAIT,
+	}
+	// u.Labels[W7_RENEW_ORDER_SN] = orderSn
+	// u.Labels[W7_RENEW_ORDER_STATUS] = W7_ORDER_WAIT //因为支付成功后会判断是否PAID，所以这里先设置为等待支付
 }
 
 func (u *K3kCvmOrder) SetExpandOrder(orderSn string) {
-	u.Labels[W7_EXPAND_ORDER_SN] = orderSn
-	u.Labels[W7_EXPAND_ORDER_STATUS] = W7_ORDER_WAIT
+	// u.Labels[W7_EXPAND_ORDER_SN] = orderSn
+	// u.Labels[W7_EXPAND_ORDER_STATUS] = W7_ORDER_WAIT
+	u.Spec.ExpandOrder = v1alpha1.CvmOrder{
+		OrderSn: orderSn,
+		Status:  W7_ORDER_WAIT,
+	}
 }
 
 func (u *K3kCvmOrder) GetBaseOrderSn() string {
