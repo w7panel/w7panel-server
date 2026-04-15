@@ -52,6 +52,8 @@ func FindUsernameByToken(token string) (string, error) {
 			clear(token.Username)
 			tokenMap.Delete(token)
 			return "", errors.New("token expired")
+		} else {
+			return token.Username, nil
 		}
 
 		// tokenMap.Delete(val.(*RefreshToken).Token)

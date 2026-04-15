@@ -50,6 +50,13 @@ func (self Helm) Info(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	if test401 {
+		test401 = false
+		http.AbortWithStatusJSON(401, gin.H{
+			"code": 401,
+			"msg":  "401",
+		})
+	}
 	helmApi := k8s.NewHelm(client)
 	releases, err := helmApi.Info(http.Param("name"), params.Namespace)
 	if err != nil {
@@ -135,6 +142,16 @@ func (self Helm) AppInfo(http *gin.Context) {
 		"deploymentName":  deploymentName,
 	}, nil, 200)
 
+}
+
+var test401 = false
+
+func (self Helm) Test401(http *gin.Context) {
+	test401 = !test401
+	self.JsonResponse(http, gin.H{
+		"msg":     "ok",
+		"test401": test401,
+	}, nil, 200)
 }
 
 func (self Helm) ReUseValues(http *gin.Context) {
