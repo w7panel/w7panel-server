@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"reflect"
 	"runtime/debug"
 	"time"
 
@@ -21,6 +20,8 @@ import (
 
 const (
 	K3kCvmFinalizerName = "cvm.k3k.io/finalizer"
+	K3kCvmNameLabel     = "w7.cc/cvm-name"
+	K3kCvmNamespaceAnno = "w7.cc/cvm-namespace"
 )
 
 type K3kCvmController struct {
@@ -38,7 +39,6 @@ func setupCvmController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cvmv1alpha1.Cvm{}).
-		Owns(&k3kv1.Cluster{}).
 		Complete(r)
 }
 
@@ -96,11 +96,7 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 		logger.Error(err, "Failed to create/update k3k Cluster")
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
-
-	if err := r.updateCvmStatus(ctx, cvm, cluster); err != nil {
-		logger.Error(err, "Failed to update Cvm status")
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
-	}
+	_ = cluster
 
 	return ctrl.Result{}, nil
 }
@@ -108,8 +104,8 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 func (r *K3kCvmController) createOrUpdateCluster(ctx context.Context, cvm *cvmv1alpha1.Cvm) (*k3kv1.Cluster, error) {
 	cluster := &k3kv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cvm.Name,
-			Namespace: cvm.Namespace,
+			Name:      r.getClusterName(cvm),
+			Namespace: r.getClusterNamespace(cvm),
 		},
 	}
 
@@ -117,11 +113,15 @@ func (r *K3kCvmController) createOrUpdateCluster(ctx context.Context, cvm *cvmv1
 		if cluster.Labels == nil {
 			cluster.Labels = make(map[string]string)
 		}
+		if cluster.Annotations == nil {
+			cluster.Annotations = make(map[string]string)
+		}
 		cluster.Labels["cvm-uid"] = string(cvm.UID)
+		cluster.Labels[K3kCvmNameLabel] = cvm.Name
+		cluster.Annotations[K3kCvmNamespaceAnno] = cvm.Namespace
 
 		cluster.Spec = r.toClusterSpec(cvm)
-
-		return ctrl.SetControllerReference(cvm, cluster, r.Scheme)
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -146,40 +146,6 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 	return spec
 }
 
-func (r *K3kCvmController) updateCvmStatus(ctx context.Context, cvm *cvmv1alpha1.Cvm, cluster *k3kv1.Cluster) error {
-	newStatus := cvmv1alpha1.CvmStatus{
-		Phase:         string(cluster.Status.Phase),
-		Conditions:    append([]metav1.Condition(nil), cluster.Status.Conditions...),
-		ReadyReplicas: 0,
-	}
-
-	if cluster.Status.Phase == k3kv1.ClusterReady {
-		newStatus.ReadyReplicas = 1
-	}
-	if newStatus.Phase == "" {
-		newStatus.Phase = "Pending"
-	}
-
-	if reflect.DeepEqual(cvm.Status, newStatus) {
-		return nil
-	}
-
-	cvm.Status = newStatus
-	if err := r.Update(ctx, cvm); err != nil {
-		slog.Error("Failed to update Cvm status", "error", err)
-		return err
-	}
-
-	slog.Info("Updated Cvm status",
-		"name", cvm.Name,
-		"namespace", cvm.Namespace,
-		"phase", newStatus.Phase,
-		"readyReplicas", newStatus.ReadyReplicas,
-	)
-
-	return nil
-}
-
 func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.Cvm) (ctrl.Result, error) {
 	slog.Info("Handling Cvm deletion", "name", cvm.Name, "namespace", cvm.Namespace)
 
@@ -189,4 +155,22 @@ func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *K3kCvmController) getClusterName(cvm *cvmv1alpha1.Cvm) string {
+	if cvm.Annotations != nil {
+		if name := cvm.Annotations["w7.cc/k3k-name"]; name != "" {
+			return name
+		}
+	}
+	return cvm.Name
+}
+
+func (r *K3kCvmController) getClusterNamespace(cvm *cvmv1alpha1.Cvm) string {
+	if cvm.Annotations != nil {
+		if ns := cvm.Annotations["w7.cc/k3k-namespace"]; ns != "" {
+			return ns
+		}
+	}
+	return "default"
 }
