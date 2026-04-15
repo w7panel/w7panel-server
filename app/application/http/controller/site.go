@@ -36,6 +36,28 @@ func (self Site) Beian(http *gin.Context) {
 	self.JsonResponseWithoutError(http, response)
 }
 
+func (self Site) Beian2(http *gin.Context) {
+	sdk := k8s.NewK8sClientInner()
+	configmap, err := sdk.ClientSet.CoreV1().ConfigMaps("default").Get(http, "beian", metav1.GetOptions{})
+	if err != nil {
+		self.JsonSuccessResponse(http)
+		return
+	}
+
+	response := gin.H{}
+	if data, ok := configmap.Data["icpnumber"]; ok {
+		response["icpnumber"] = data
+	}
+	if data, ok := configmap.Data["number"]; ok {
+		response["number"] = data
+	}
+	if data, ok := configmap.Data["location"]; ok {
+		response["location"] = data
+	}
+
+	self.JsonResponseWithoutError(http, response)
+}
+
 func (self Site) K3kConfig(http *gin.Context) {
 	sdk := k8s.NewK8sClient()
 	configmap, err := sdk.ClientSet.CoreV1().ConfigMaps("kube-system").Get(http, "k3k.config", metav1.GetOptions{})
