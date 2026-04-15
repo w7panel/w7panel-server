@@ -27,12 +27,13 @@ func (u *k3kCvmTime) changeExpireTime(hour int) {
 		}
 		expireTime = expireTime.Add(time.Hour * time.Duration(hour))
 	}
-	u.Annotations[K3K_EXPIRE_TIME] = expireTime.Format("2006-01-02 15:04:05")
+	u.Spec.ExpireTime = expireTime.Format("2006-01-02 15:04:05")
+	// u.Annotations[K3K_EXPIRE_TIME] = expireTime.Format("2006-01-02 15:04:05")
 }
 
 func (u *k3kCvmTime) GetExpireTime() (time.Time, error) {
-	expireTimeStr, ok := u.Annotations[K3K_EXPIRE_TIME]
-	if !ok {
+	expireTimeStr := u.Spec.ExpireTime
+	if expireTimeStr == "" {
 		return time.Time{}, fmt.Errorf("expire time not set")
 	}
 	return time.Parse("2006-01-02 15:04:05", expireTimeStr)
@@ -47,19 +48,18 @@ func (u *k3kCvmTime) IsExpired() bool {
 }
 
 func (u *k3kCvmTime) HasExpireTime() bool {
-	_, ok := u.Annotations[K3K_EXPIRE_TIME]
-	return ok
+	return u.Spec.ExpireTime != ""
 }
 
 func (u *k3kCvmTime) HasPendingRecycleTime() bool {
-	_, ok := u.Annotations[K3K_PENDING_RECYCLE_TIME]
-	return ok
+	return u.Spec.RecycleTime != ""
+
 }
 
 // 获取待回收时间
 func (u *k3kCvmTime) GetPendingRecycleTime() (time.Time, error) {
-	recycleTime, ok := u.Annotations[K3K_PENDING_RECYCLE_TIME]
-	if !ok {
+	recycleTime := u.Spec.RecycleTime
+	if recycleTime == "" {
 		expireTime, err := u.GetExpireTime()
 		if err != nil {
 			return time.Time{}, fmt.Errorf("pending recycle time not set")
@@ -79,11 +79,13 @@ func (u *k3kCvmTime) SetPendingRecycleTime() {
 			defaultTime = expireTime.Add(72 * time.Hour)
 		}
 	}
-	u.Annotations[K3K_PENDING_RECYCLE_TIME] = defaultTime.Format("2006-01-02 15:04:05")
+	u.Spec.RecycleTime = defaultTime.Format("2006-01-02 15:04:05")
+	// u.Annotations[K3K_PENDING_RECYCLE_TIME] = defaultTime.Format("2006-01-02 15:04:05")
 }
 
 func (u *k3kCvmTime) DelPendingRecycleTime() {
-	delete(u.Annotations, K3K_PENDING_RECYCLE_TIME)
+	u.Spec.RecycleTime = ""
+	// delete(u.Annotations, K3K_PENDING_RECYCLE_TIME)
 }
 
 // 检查待回收是否超过3天
