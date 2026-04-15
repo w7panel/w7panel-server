@@ -22,14 +22,14 @@ func Newk3kCvmOrder(cvm *v1alpha1.Cvm, overUser *k3kUserOverSelling, userTime *k
 
 func (u *K3kCvmOrder) SetBaseOrder(orderSn string) {
 
-	u.Spec.BaseOrder = v1alpha1.CvmOrder{
+	u.Spec.BaseOrder = &v1alpha1.CvmOrder{
 		OrderSn: orderSn,
 	}
 	// u.Labels[W7_BASE_ORDER_SN] = orderSn
 }
 
 func (u *K3kCvmOrder) SetRenewOrder(orderSn string) {
-	u.Spec.RenewOrder = v1alpha1.CvmOrder{
+	u.Spec.RenewOrder = &v1alpha1.CvmOrder{
 		OrderSn: orderSn,
 		Status:  W7_ORDER_WAIT,
 	}
@@ -40,7 +40,7 @@ func (u *K3kCvmOrder) SetRenewOrder(orderSn string) {
 func (u *K3kCvmOrder) SetExpandOrder(orderSn string) {
 	// u.Labels[W7_EXPAND_ORDER_SN] = orderSn
 	// u.Labels[W7_EXPAND_ORDER_STATUS] = W7_ORDER_WAIT
-	u.Spec.ExpandOrder = v1alpha1.CvmOrder{
+	u.Spec.ExpandOrder = &v1alpha1.CvmOrder{
 		OrderSn: orderSn,
 		Status:  W7_ORDER_WAIT,
 	}
@@ -59,34 +59,55 @@ func (u *K3kCvmOrder) GetExpandOrderSn() string {
 }
 
 func (u *K3kCvmOrder) SetBaseOrderPaid(info *console.OrderInfo) {
-	if u.Labels[W7_BASE_ORDER_SN] == info.OrderSn && u.Labels[W7_BASE_ORDER_STATUS] != W7_ORDER_PAID {
+	if u.Spec.BaseOrder == nil {
+		return
+	}
+	if u.Spec.BaseOrder.OrderSn == info.OrderSn && u.Spec.BaseOrder.Status != W7_ORDER_PAID {
 		// u.Labels[K3K_BUY_MODE] = "buy"
-		u.Labels[W7_BASE_ORDER_STATUS] = W7_ORDER_PAID
+
+		// u.Labels[W7_BASE_ORDER_STATUS] = W7_ORDER_PAID
+		u.Spec.BaseOrder.Status = W7_ORDER_PAID
 		u.changeExpireTime(int(info.GetHour()))
 		rs := overselling.OrderInfoToResource(info)
 		u.Annotations[W7_OVER_BASE_RESOURCE] = rs.JsonString()
 		u.Annotations[W7_QUOTA_LIMIT_LOCK] = "true" //锁定配额，防止配额被费用套餐覆盖
-		u.Labels[W7_OVER_MODE] = "wait"
+		u.Spec.OverMode = "wait"
 
 	}
 }
 
 func (u *K3kCvmOrder) SetRenewOrderPaid(info *console.OrderInfo) {
-	if u.Labels[W7_RENEW_ORDER_SN] == info.OrderSn && u.Labels[W7_RENEW_ORDER_STATUS] != W7_ORDER_PAID {
+	if u.Spec.RenewOrder == nil {
+		return
+	}
+	// u.Spec.RenewOrder = &v1alpha1.CvmOrder{
+	// 	OrderSn: info.OrderSn,
+	// 	Status:  W7_ORDER_WAIT,
+	// }
+	if u.Spec.RenewOrder.OrderSn == info.OrderSn && u.Spec.RenewOrder.Status != W7_ORDER_PAID {
 		// u.Labels[K3K_BUY_MODE] = "renew"
-		u.Labels[W7_RENEW_ORDER_STATUS] = W7_ORDER_PAID
+		u.Spec.RenewOrder.Status = W7_ORDER_PAID
 		u.changeExpireTime(int(info.GetHour()))
 	}
 }
 
 func (u *K3kCvmOrder) SetExpandOrderPaid(info *console.OrderInfo) {
-	if u.Labels[W7_EXPAND_ORDER_SN] == info.OrderSn && u.Labels[W7_EXPAND_ORDER_STATUS] != W7_ORDER_PAID {
-		// u.Labels[K3K_BUY_MODE] = "renew"
-		u.Labels[W7_EXPAND_ORDER_STATUS] = W7_ORDER_PAID
-		// u.changeExpireTime(hour)
-		u.Annotations[W7_OVER_RESOURCE] = overselling.OrderInfoToResource(info).JsonString()
-		u.Labels[W7_OVER_MODE] = "wait"
+	if u.Spec.ExpandOrder == nil {
+		return
 	}
+
+	if u.Spec.ExpandOrder.OrderSn == info.OrderSn && u.Spec.ExpandOrder.Status != W7_ORDER_PAID {
+		// u.Labels[K3K_BUY_MODE] = "renew"
+		u.Spec.ExpandOrder.Status = W7_ORDER_PAID
+		u.Spec.OverMode = "wait"
+	}
+	// if u.Labels[W7_EXPAND_ORDER_SN] == info.OrderSn && u.Labels[W7_EXPAND_ORDER_STATUS] != W7_ORDER_PAID {
+	// 	// u.Labels[K3K_BUY_MODE] = "renew"
+	// 	u.Labels[W7_EXPAND_ORDER_STATUS] = W7_ORDER_PAID
+	// 	// u.changeExpireTime(hour)
+	// 	u.Annotations[W7_OVER_RESOURCE] = overselling.OrderInfoToResource(info).JsonString()
+	// 	u.Labels[W7_OVER_MODE] = "wait"
+	// }
 }
 
 func (u *K3kCvmOrder) SetOrderStatus(info *console.OrderInfo) {

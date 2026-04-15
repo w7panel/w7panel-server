@@ -25,12 +25,13 @@ type CvmSpec struct {
 	StorageClassName string      `json:"storageClassName,omitempty"`
 	Workload         Workload    `json:"workload,omitempty"`
 	Resource         CvmResource `json:"resource,omitempty"` //可使用资源
-	BaseOrder        CvmOrder    `json:"baseOrder,omitempty"`
-	ExpandOrder      CvmOrder    `json:"expandOrder,omitempty"`
-	RenewOrder       CvmOrder    `json:"renewOrder,omitempty"`
+	BaseOrder        *CvmOrder   `json:"baseOrder,omitempty"`
+	ExpandOrder      *CvmOrder   `json:"expandOrder,omitempty"`
+	RenewOrder       *CvmOrder   `json:"renewOrder,omitempty"`
 	BaseResource     CvmResource `json:"baseResource,omitempty"` //首次购买资源 暂存在这个字段
 	ExpireTime       string      `json:"expireTime,omitempty"`   //到期时间
 	RecycleTime      string      `json:"expireTime,omitempty"`   //回收时间RECYCLE
+	OverMode         string      `json:"overMode,omitempty"`     //资源状态 wait(等待检测) no-resource(无资源) success(检测通过)
 }
 
 type CvmOrder struct {
