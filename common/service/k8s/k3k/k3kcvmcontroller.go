@@ -39,6 +39,7 @@ func setupCvmController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cvmv1alpha1.Cvm{}).
+		Owns(&k3kv1.Cluster{}).
 		Complete(r)
 }
 

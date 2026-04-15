@@ -82,10 +82,10 @@ func SetupK3kControllers(mgr ctrl.Manager) error {
 		return err
 	}
 
-	if err := setupCvmClusterController(mgr, sdk); err != nil {
-		slog.Error("failed to setup cvm cluster controller", "error", err)
-		return err
-	}
+	// if err := setupCvmClusterController(mgr, sdk); err != nil {
+	// 	slog.Error("failed to setup cvm cluster controller", "error", err)
+	// 	return err
+	// }
 
 	return nil
 }
