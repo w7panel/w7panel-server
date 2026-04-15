@@ -6,7 +6,9 @@ import (
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster,path=cvms,shortName=cv,singular=cvm
 type Cvm struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -30,7 +32,7 @@ type CvmSpec struct {
 	RenewOrder       *CvmOrder   `json:"renewOrder,omitempty"`
 	BaseResource     CvmResource `json:"baseResource,omitempty"` //首次购买资源 暂存在这个字段
 	ExpireTime       string      `json:"expireTime,omitempty"`   //到期时间
-	RecycleTime      string      `json:"expireTime,omitempty"`   //回收时间RECYCLE
+	RecycleTime      string      `json:"recycleTime,omitempty"`  //回收时间RECYCLE
 	OverMode         string      `json:"overMode,omitempty"`     //资源状态 wait(等待检测) no-resource(无资源) success(检测通过)
 }
 
@@ -41,7 +43,7 @@ type CvmOrder struct {
 
 type Workload struct {
 	metav1.TypeMeta `json:",inline"`
-	PodTemplateName string `json:"podTemplateName"`
+	TemplateName    string `json:"templateName"`
 }
 
 // 【微擎面板&集群云主机：云主机业务分离成独立应用】
