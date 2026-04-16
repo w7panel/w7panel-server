@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"github.com/gorilla/websocket"
@@ -141,6 +142,15 @@ func (t *TerminalSession) CloseWithReason(reason string) {
 			t.cancel()
 		}
 		if t.conn != nil {
+			deadline := time.Now().Add(time.Second)
+			err := t.conn.WriteControl(
+				websocket.CloseMessage,
+				websocket.FormatCloseMessage(websocket.CloseNormalClosure, reasonSnapshot),
+				deadline,
+			)
+			if err != nil {
+				slog.Info("write close control err", "err", err, "reason", reasonSnapshot)
+			}
 			t.conn.Close()
 		}
 		close(t.sizeChan)
