@@ -13,7 +13,7 @@ import (
 )
 
 func (m *ResourceMutator) handleDeployment(ctx context.Context, req admission.Request) admission.Response {
-	slog.Info("处理 Deployment admission 请求")
+	// slog.Info("处理 Deployment admission 请求")
 
 	// 解码请求中的 Deployment 资源
 	deployment := &appsv1.Deployment{}
