@@ -51,7 +51,7 @@ w7.cc/description : "微擎面板"
 w7.cc/icon : "https://zpk.w7.cc/zpk/zip/icon/w7panel_offline"
 w7.cc/zpk-url: "https://zpk.w7.cc/zpk/respo/info/w7panel_offline"
 w7.cc/identifie: {{ .Chart.Name | quote }}
-
+"w7.cc/deny-delete": "true"
 {{- end }}
 
 {{- define "helm.servicelb.annotations" -}}
