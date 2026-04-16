@@ -80,7 +80,7 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	}()
 	logger := log.FromContext(ctx)
 	logger.Info("Reconciling ServiceAccount", "namespace", req.Namespace, "name", req.Name)
-	slog.Error("start sa", "uname", req.Name)
+	// slog.Error("start sa", "uname", req.Name)
 	// Fetch the ServiceAccount instance
 	sa := &corev1.ServiceAccount{}
 	if err := r.Get(ctx, req.NamespacedName, sa); err != nil {
@@ -116,6 +116,7 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	k3ktypes.SetSaVersion(sa.Name, sa.Annotations[k3ktypes.K3K_LOCK_VERSION])
 
 	if k3kUser.IsNormalUser() {
+		// 创建角色 需要job 查看权限
 		err := r.rolebinding.CreateNormalUserRoleBinding(ctx, sa, helper.ServiceAccountName())
 		if err != nil {
 			logger.Error(err, "Failed to create normal user role binding")
@@ -127,7 +128,6 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 		// Not our ServiceAccount, ignore it
 		return ctrl.Result{}, nil
 	}
-	// 创建角色 需要job 查看权限
 
 	// 处理资源回收阶段
 	if err := r.deleteRc.HandleResourceRecycleStatus(ctx, sa, k3kUser); err != nil {
@@ -165,25 +165,25 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	// 	logger.Error(err, "Failed to create registries ConfigMap")
 	// 	return ctrl.Result{RequeueAfter: time.Second * 10}, err
 	// }\
-	err = r.limitClient.Delete(ctx, sa)
-	if err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			logger.Error(err, "Failed to handle limit range")
-			return ctrl.Result{RequeueAfter: time.Minute}, nil
-		}
-		// return ctrl.Result{}, nil
-	}
+	// err = r.limitClient.Delete(ctx, sa)
+	// if err != nil {
+	// 	if client.IgnoreNotFound(err) != nil {
+	// 		logger.Error(err, "Failed to handle limit range")
+	// 		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	// 	}
+	// 	// return ctrl.Result{}, nil
+	// }
 
 	if !k3kUser.IsClusterReady() {
 		slog.Error("cluster not ready", "uname", k3kUser.GetName())
 		return ctrl.Result{}, nil
 	}
 
-	err = r.limitClient.Handle(ctx, sa)
-	if err != nil {
-		logger.Error(err, "Failed to handle limit range")
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
-	}
+	// err = r.limitClient.Handle(ctx, sa)
+	// if err != nil {
+	// 	logger.Error(err, "Failed to handle limit range")
+	// 	return ctrl.Result{RequeueAfter: time.Minute}, nil
+	// }
 
 	err = r.storage.Handle(ctx, k3kUser)
 	if err != nil {
@@ -206,7 +206,7 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 
 	err = r.createAgent(ctx, k3kUser)
 	if err != nil {
-		slog.Error("cr agent error", "err", err, "uname", k3kUser.GetName())
+		slog.Error("k3ksacontroller agent error", "err", err, "uname", k3kUser.GetName())
 		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
 

@@ -155,7 +155,7 @@ root_cgroup_stripped="${root_cgroup_raw#0::}"
 root_cgroup=$(dirname "$root_cgroup_stripped")
 cgroup_root="cgroup-root=$root_cgroup"
 mount --make-shared /
-
+mount --make-shared /run
 				`
 				// 				append2 := `
 				// wget -P /var/lib/rancher/k3s/server/manifests -O k3k-virtual.yaml http://w7panel.default.svc:8000/ui/yaml/k3k/virtual.yaml

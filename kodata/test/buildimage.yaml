@@ -5,6 +5,8 @@ metadata:
   namespace: default
   labels:
     w7.cc/node: server1
+    w7.cc/build-finish: false
+    w7.cc/build-from: "image-manager"
   annotations:
     w7.cc/node-ip: "172.16.1.162"
 spec:

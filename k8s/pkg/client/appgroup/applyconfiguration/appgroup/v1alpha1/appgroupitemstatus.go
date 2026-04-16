@@ -37,6 +37,8 @@ type AppGroupItemStatusApplyConfiguration struct {
 	CreationTimestamp *v1.Time `json:"creationTimestamp,omitempty"`
 	DeployStatus      *string  `json:"deployStatus,omitempty"`
 	IsZeroReplicas    *bool    `json:"isZeroReplicas,omitempty"`
+	// 是否暂停部署 只有一个应用并且replicas为0
+	DenyDelete *bool `json:"denyDelete,omitempty"`
 }
 
 // AppGroupItemStatusApplyConfiguration constructs a declarative configuration of the AppGroupItemStatus type for use with
@@ -114,5 +116,13 @@ func (b *AppGroupItemStatusApplyConfiguration) WithDeployStatus(value string) *A
 // If called multiple times, the IsZeroReplicas field is set to the value of the last call.
 func (b *AppGroupItemStatusApplyConfiguration) WithIsZeroReplicas(value bool) *AppGroupItemStatusApplyConfiguration {
 	b.IsZeroReplicas = &value
+	return b
+}
+
+// WithDenyDelete sets the DenyDelete field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the DenyDelete field is set to the value of the last call.
+func (b *AppGroupItemStatusApplyConfiguration) WithDenyDelete(value bool) *AppGroupItemStatusApplyConfiguration {
+	b.DenyDelete = &value
 	return b
 }

@@ -52,7 +52,8 @@ daemonset:
 
 # This is for setting Kubernetes Annotations to a Pod.
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
-podAnnotations: {}
+podAnnotations: 
+   w7.cc/deny-delete: 'true'
 # This is for setting Kubernetes Labels to a Pod.
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 podLabels: {}
@@ -186,8 +187,11 @@ log:
   level: "error"
 k3k:
   watch: true
+  runtimedir: "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io"
 k8s:
   watch: true
+k3s:
+  runtimedir: "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io"
 
 # Example configuration for CronJob
 cronjob:
@@ -232,3 +236,5 @@ cronjob:
   volumes: []
   volumeMounts: []
   annotations: {}
+
+  

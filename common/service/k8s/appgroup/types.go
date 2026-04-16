@@ -167,7 +167,17 @@ func (d *WorkloadWrapper) ToItemStatus() appv1.AppGroupItemStatus {
 		IsHelmWorkLoad:    d.IsHelm(),
 		DeployStatus:      d.DeployStatus(),
 		IsZeroReplicas:    d.IsZeroReplicas(),
+		DenyDelete:        d.DenyDelete(),
 	}
+}
+
+func (w *WorkloadWrapper) DenyDelete() bool {
+	anno := w.Annotations()
+	if anno != nil {
+		val, ok := anno["w7.cc/deny-delete"]
+		return ok && val == "true"
+	}
+	return false
 }
 func (w *WorkloadWrapper) ResourceVersion() string {
 	return w.WorkloadInterface.Metadata().ResourceVersion

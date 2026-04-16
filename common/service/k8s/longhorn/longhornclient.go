@@ -59,6 +59,11 @@ func (c *longhornclient) GetVolumeList() (*longhornV1beta2.VolumeList, error) {
 	return c.client.LonghornV1beta2().Volumes(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
 }
 
+// # https://oneuptime.com/blog/post/2026-01-30-longhorn-volume-snapshots/view
+func (c *longhornclient) GetSnapshotList() (*longhornV1beta2.SnapshotList, error) {
+	return c.client.LonghornV1beta2().Snapshots(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
+}
+
 func (c *longhornclient) GetNodeList() (*longhornV1beta2.NodeList, error) {
 	return c.client.LonghornV1beta2().Nodes(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
 }
@@ -232,11 +237,12 @@ func longhornVolumeApiAction(volumeName string, action string, json string) erro
 	postUrl := baseUrl + "/v1/volumes/" + volumeName + "?action=" + action
 	response, err := resty.New().R().SetBody(json).SetHeader("content-type", "application/json").SetHeader("Accept", "application/json").Post(postUrl)
 	if err != nil {
-		slog.Error("longhornclient longhornVolumeApiAction error: ", "err", err)
+		// slog.Error("longhornclient longhornVolumeApiAction error: ", "err", err)
+		return err
 	}
 
 	if response.StatusCode() != http.StatusOK {
-		slog.Error("longhornclient longhornVolumeApiAction error response: %s", "err", response.String())
+		// slog.Error("longhornclient longhornVolumeApiAction error response: %s", "err", response.String())
 		return errors.New("longhornclient UpdateVolumeReplicaCount error: " + response.Status() + ": content: " + response.String())
 	}
 	return nil
@@ -248,11 +254,12 @@ func LonghorStoragePercentage(value string) error {
 	json = fmt.Sprintf(json, value)
 	response, err := resty.New().R().SetBody(json).SetHeader("content-type", "application/json").SetHeader("Accept", "application/json").Put(postUrl)
 	if err != nil {
-		slog.Error("longhornclient longhornVolumeApiAction error: ", "err", err)
+		// slog.Error("longhornclient longhornVolumeApiAction error: ", "err", err)
+		return err
 	}
 
 	if response.StatusCode() != http.StatusOK {
-		slog.Error("longhornclient LonghorStoragePercentage error response: %s", "err", response.String())
+		// slog.Error("longhornclient LonghorStoragePercentage error response: %s", "err", response.String())
 		return errors.New("longhornclient LonghorStoragePercentage error: " + response.Status() + ": content: " + response.String())
 	}
 	return nil

@@ -148,11 +148,11 @@ func ToK3kJob(k3kUser *K3kUser) *batchv1.Job {
 
 func ToK3kDaemonSet(k3kUser *K3kUser) *appsv1.DaemonSet {
 	labels := map[string]string{
-		"k3k-agent-pod":   "true",
-		"k3k-sa":          k3kUser.Name,
-		"k3k-name":        k3kUser.GetK3kName(),
-		"k3k-namespace":   k3kUser.GetK3kNamespace(),
-		"w7.cc/daemonset": "w7",
+		"k3k-agent-pod": "true",
+		"k3k-sa":        k3kUser.Name,
+		"k3k-name":      k3kUser.GetK3kName(),
+		"k3k-namespace": k3kUser.GetK3kNamespace(),
+		// "w7.cc/daemonset": "w7",// 加label 会导致已有daemonset 无法patch 只能删除 新建daemonset
 	}
 	pod := ToK3kPod(k3kUser)
 	ds := &appsv1.DaemonSet{
@@ -321,6 +321,7 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 	root := true
 	socketType := corev1.HostPathSocket
 	dirType := corev1.HostPathDirectory
+	mountHost := corev1.MountPropagationHostToContainer
 	pod := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -355,10 +356,10 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 					},
 				},
 				{
-					Name: "cd-data",
+					Name: "cd-runtime",
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/lib/rancher/k3s/agent/containerd",
+							Path: "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io",
 							Type: &dirType,
 						},
 					},
@@ -416,8 +417,9 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 							MountPath: "/var/run/k3s/containerd/containerd.sock",
 						},
 						{
-							Name:      "cd-data",
-							MountPath: "/var/lib/rancher/k3s/agent/containerd",
+							Name:             "cd-runtime",
+							MountPath:        "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io",
+							MountPropagation: &mountHost,
 						},
 					},
 					Args: []string{"server:start"},

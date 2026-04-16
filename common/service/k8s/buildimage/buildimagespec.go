@@ -55,8 +55,21 @@ func (b *BuildImageSpec) IsPushToDefault() bool {
 	}
 	return false
 }
+func (m *BuildImageSpec) GetDockerFilePath() string {
 
+	if m.Source.DockerfilePath == "" {
+		m.Source.DockerfilePath = "./Dockerfile"
+	}
+	if strings.HasPrefix(m.Source.DockerContext, "/workspace") {
+		return m.Source.DockerfilePath
+	}
+	return filepath.Clean(filepath.Join("/workspace", m.Source.DockerfilePath))
+}
 func (m *BuildImageSpec) GetBuildContext() string {
+
+	if m.Source.DockerContext == "" {
+		return filepath.Dir(m.GetDockerFilePath())
+	}
 	if m.Source.DockerContext == "." {
 		return "/workspace/"
 	}
@@ -86,7 +99,7 @@ func (d *BuildImageSpec) ToMap() map[string]string {
 		"NOTIFY_FAILED_URL":     d.NotifyURL,
 		"CURL_CA_BUNDLE":        "/kaniko/ssl/certs/ca-certificates.crt",
 		"CONTEXT":               d.GetBuildContext(),
-		"DOCKER_FILE":           d.Source.DockerfilePath,
+		"DOCKER_FILE":           d.GetDockerFilePath(),
 		// "KANIKO_REGISTRY_MAP":   d.registryMap(),
 		"EMBED": "false",
 	}
