@@ -7,6 +7,7 @@ import (
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/registry"
 	cd "github.com/w7panel/w7panel/common/service/registry/containerd"
+	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 
@@ -27,8 +28,8 @@ func (self Images) List(ctx *gin.Context) {
 	// 	Name string `json:"name"`
 	// 	Tag  string `json:"tag"`
 	// }
-
-	images, err := registry.ImagesList(ctx, client, []string{}, []string{})
+	filters := []string{"dangling=false"}
+	images, err := registry.ImagesList(ctx, client, filters, []string{})
 	if err != nil {
 		self.JsonResponseWithServerError(ctx, err)
 		return
@@ -141,7 +142,9 @@ func (self Images) Import(http *gin.Context) {
 	}
 	importPath := params.Path
 	if helper.IsAgent() || helper.IsK3kVirtual() {
-		importPath = filepath.Join("/host", importPath)
+		// importPath = filepath.Join("/host", importPath)
+		baseDir := facade.GetConfig().GetString("s3.base_dir")
+		importPath = filepath.Join(baseDir, importPath)
 	}
 
 	imgName, err := registry.ImagesImportFromFile(http, client, params.Name, importPath)

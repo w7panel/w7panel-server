@@ -28,7 +28,8 @@ func TestImagesList(t *testing.T) {
 	}
 	ctx := context.Background()
 	cd.WithNamespace(ctx)
-	dig, err := ImagesList(context.Background(), client, []string{}, []string{})
+	filters := []string{"dangling=false"}
+	dig, err := ImagesList(context.Background(), client, filters, []string{})
 	if err != nil {
 		t.Log(err)
 		return

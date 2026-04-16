@@ -34,6 +34,3 @@ func (self Pid) GetPid(http *gin.Context) {
 
 	self.JsonResponseWithoutError(http, result)
 }
-
-func (self Pid) EtcPasswd(http *gin.Context) {
-}

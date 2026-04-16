@@ -42,3 +42,4 @@ w7panel-offline-*.tgz
 k8s-offline-*.tgz
 /main
 *.tar
+/test.sh

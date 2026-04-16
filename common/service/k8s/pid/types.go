@@ -54,6 +54,9 @@ func (p *PidResult) ToArray() map[string]string {
 		permissionUrl = "/panel-api/v1/" + podIp + ":8000/proxy/panel-api/v1/files/permission-agent/" + pidstr + "/subagent/" + subpidstr
 	}
 	pod := p.AgentPod
+	if subpidstr == "0" {
+		subpidstr = ""
+	}
 	return map[string]string{
 		"podName":       pod.Name,
 		"pid":           pidstr,

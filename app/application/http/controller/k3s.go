@@ -11,6 +11,6 @@ type K3s struct {
 	controller.Abstract
 }
 
-func (self K3s) GogcInfo(http *gin.Context) {
-
+func (self K3s) RegistryUrl(http *gin.Context) {
+	
 }

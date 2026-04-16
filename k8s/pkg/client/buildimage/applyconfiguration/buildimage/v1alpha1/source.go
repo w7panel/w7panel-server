@@ -22,6 +22,7 @@ package v1alpha1
 type SourceApplyConfiguration struct {
 	DownloadURL    *string `json:"downloadUrl,omitempty"`
 	DockerfilePath *string `json:"dockerfilePath,omitempty"`
+	DockerContext  *string `json:"dockerContext,omitempty"`
 }
 
 // SourceApplyConfiguration constructs a declarative configuration of the Source type for use with
@@ -43,5 +44,13 @@ func (b *SourceApplyConfiguration) WithDownloadURL(value string) *SourceApplyCon
 // If called multiple times, the DockerfilePath field is set to the value of the last call.
 func (b *SourceApplyConfiguration) WithDockerfilePath(value string) *SourceApplyConfiguration {
 	b.DockerfilePath = &value
+	return b
+}
+
+// WithDockerContext sets the DockerContext field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the DockerContext field is set to the value of the last call.
+func (b *SourceApplyConfiguration) WithDockerContext(value string) *SourceApplyConfiguration {
+	b.DockerContext = &value
 	return b
 }

@@ -142,7 +142,8 @@ type AppGroupItemStatus struct {
 	IsHelmWorkLoad    bool        `json:"isHelmWorkLoad"` //是否为helm应用
 	CreationTimestamp metav1.Time `json:"creationTimestamp,omitempty" protobuf:"bytes,8,opt,name=creationTimestamp"`
 	DeployStatus      string      `json:"deployStatus"`
-	IsZeroReplicas    bool        `json:"isZeroReplicas"` //是否暂停部署 只有一个应用并且replicas为0
+	IsZeroReplicas    bool        `json:"isZeroReplicas"`       //是否暂停部署 只有一个应用并且replicas为0
+	DenyDelete        bool        `json:"denyDelete,omitempty"` //是否允许删除
 }
 
 type AppGroupStatus struct {

@@ -61,3 +61,8 @@ type RegistryConfig struct {
 const buildImage = "ccr.ccs.tencentyun.com/afan-public/kaniko:test2"
 
 const PanelRegistryServerHostKey = "panelRegistryServerHost"
+
+type RegServerInfo struct {
+	RequestUrl  string `json:"requestUrl"`
+	RequestHost string `json:"requestHost"`
+}

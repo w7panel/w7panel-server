@@ -141,7 +141,9 @@ func toPodTemplateSpec(manifest K8sResourceInterface, command []string, restartP
 			Labels:      matchLabels,
 			Annotations: defaultAnn,
 		},
+
 		Spec: corev1.PodSpec{
+
 			RestartPolicy: restartPolicy,
 			Containers: []corev1.Container{
 				{
@@ -282,6 +284,7 @@ func ToBuildJob(p K8sResourceInterface, opt types.BuildImageInterface, shellType
 
 	job.Annotations = annotations
 	job.Labels = labels
+	// appendPodAffinity(&job.Spec.Template, p.GetReleaseName())
 	return job
 	// backofflimit := int32(3)
 	// afterSeconds := int32(3600)
@@ -373,6 +376,7 @@ func ToShellJob(p K8sResourceInterface, shell ManifestShellInterface) *batchv1.J
 			Template: toPodTemplateSpec(p, cmd, corev1.RestartPolicyNever, matchlabels, annotations),
 		},
 	}
+	// appendPodAffinity(&job.Spec.Template, p.GetReleaseName())
 	return job
 }
 
@@ -584,7 +588,7 @@ func ToShellJob2(manifest K8sResourceInterface, ingress K8sResourceIngressInterf
 	deploymentName := manifest.GetName()
 	namespace := manifest.GetNamespace()
 	cdToken := manifest.GetThirdpartyCDToken()
-	// afterSeconds := int32(3600)
+	afterSeconds := int32(3600)
 	shellTitle := "[应用安装时触发]"
 	deployTitle := "安装脚本"
 	if shellType == "upgrade" {
@@ -803,14 +807,16 @@ func ToShellJob2(manifest K8sResourceInterface, ingress K8sResourceIngressInterf
 			Annotations: annotations,
 		},
 		Spec: batchv1.JobSpec{
-			// TTLSecondsAfterFinished: &afterSeconds,
-			BackoffLimit: &backofflimit,
+			TTLSecondsAfterFinished: &afterSeconds,
+			BackoffLimit:            &backofflimit,
 			// Selector: &metav1.LabelSelector{
 			// 	MatchLabels: matchlabels,
 			// },
 			Template: pod,
 		},
 	}
+
+	appendPodAffinity(&job.Spec.Template, manifest.GetReleaseName())
 	return job
 }
 
@@ -855,7 +861,7 @@ func ToHelmShellJob(p K8sResourceInterface, shell ManifestShellInterface) *batch
 	labels["w7.cc/job-source"] = "appgroup"
 	labels["w7.cc/identifie"] = p.GetIdentifie()
 	labels["w7.cc/helm-install"] = "true"
-
+	afterSeconds := int32(300)
 	container := corev1.Container{
 		Name:  "helm-go",
 		Image: helper.SelfImage(),
@@ -896,8 +902,8 @@ func ToHelmShellJob(p K8sResourceInterface, shell ManifestShellInterface) *batch
 			Annotations: annotations,
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: &backofflimit,
-			// TTLSecondsAfterFinished: &afterSeconds,
+			BackoffLimit:            &backofflimit,
+			TTLSecondsAfterFinished: &afterSeconds,
 			// BackoffLimit: &backofflimit,
 			// Selector: &metav1.LabelSelector{
 			// 	MatchLabels: matchlabels,
@@ -1041,34 +1047,51 @@ func toBuildPodSpec(option types.BuildImageOption) corev1.PodSpec {
 func ToZpkBuildJob(opt types.BuildImageInterface) *batchv1.Job {
 
 	option := types.NewBuildImageOption(opt)
+
+	spec := option.ToBuilImageSpec()
+	jobName := opt.GetBuildJobName()
+	spec.TaskID = jobName
+	host := opt.GetPanelRegistryServerHost()
+	ctx := context.Background()
+	if host != "" {
+		ctx = context.WithValue(ctx, bi.PanelRegistryServerHostKey, host)
+	}
+	job, err := bi.CrdSpecToJob(ctx, spec)
+	if err != nil {
+		slog.Error("crd to job err", "err", err)
+		return nil
+	}
+
 	title := opt.GetTitle()
 	annotations := map[string]string{
 		"title":       title,
 		"w7.cc/title": title,
 	}
 	labels := opt.GetLabels()
-
-	backofflimit := int32(1)
-	afterSeconds := int32(3600)
-	job := &batchv1.Job{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "batch/v1",
-			Kind:       "Job",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        opt.GetBuildJobName(),
-			Labels:      labels,
-			Annotations: annotations,
-		},
-		Spec: batchv1.JobSpec{
-			TTLSecondsAfterFinished: &afterSeconds,
-			BackoffLimit:            &backofflimit,
-			Template: corev1.PodTemplateSpec{
-				Spec: toBuildPodSpec(option),
-			},
-		},
-	}
+	job.Annotations = annotations
+	job.Labels = labels
 	return job
+	// backofflimit := int32(1)
+	// afterSeconds := int32(3600)
+	// job := &batchv1.Job{
+	// 	TypeMeta: metav1.TypeMeta{
+	// 		APIVersion: "batch/v1",
+	// 		Kind:       "Job",
+	// 	},
+	// 	ObjectMeta: metav1.ObjectMeta{
+	// 		Name:        opt.GetBuildJobName(),
+	// 		Labels:      labels,
+	// 		Annotations: annotations,
+	// 	},
+	// 	Spec: batchv1.JobSpec{
+	// 		TTLSecondsAfterFinished: &afterSeconds,
+	// 		BackoffLimit:            &backofflimit,
+	// 		Template: corev1.PodTemplateSpec{
+	// 			Spec: toBuildPodSpec(option),
+	// 		},
+	// 	},
+	// }
+	// return job
 }
 
 func ToZpkBuildCronJob(opt types.BuildImageInterface, schedule string) *batchv1.CronJob {
@@ -1202,4 +1225,28 @@ helm upgrade kubeblocks $KO_DATA_PATH/charts/kubeblocks-1.0.1.tgz -n kb-system -
 		},
 	}
 	return job
+}
+
+func appendPodAffinity(pod *corev1.PodTemplateSpec, releaseName string) {
+	if pod.Spec.Affinity == nil {
+		pod.Spec.Affinity = &corev1.Affinity{}
+	}
+	pod.Spec.Affinity = &corev1.Affinity{
+		PodAffinity: &corev1.PodAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "app",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{releaseName},
+							},
+						},
+					},
+					TopologyKey: "kubernetes.io/hostname",
+				},
+			},
+		},
+	}
 }
