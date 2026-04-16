@@ -14,7 +14,10 @@ spec:
     matchLabels:
       app: {{ include "helm.fullname" . }}-agent
   template:
+    
     metadata:
+      annotations:
+        "w7.cc/deny-delete": "true"
       labels:
         app: {{ include "helm.fullname" . }}-agent
         {{- with .Values.daemonset.podLabels }}
