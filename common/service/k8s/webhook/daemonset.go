@@ -12,7 +12,7 @@ import (
 
 // 处理 StatefulSet 资源
 func (m *ResourceMutator) handleDaemonset(ctx context.Context, req admission.Request) admission.Response {
-	slog.Info("处理 Daemonset admission 请求")
+	// slog.Info("处理 Daemonset admission 请求")
 
 	modified := false
 	// 解码请求中的 StatefulSet 资源
