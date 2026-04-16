@@ -441,7 +441,7 @@ func SyncSecret(params *K3kSync) error {
 // cert-manager 集群同步到子集群的secret
 func SyncToChildSecret(secret *corev1.Secret) error {
 	if secret.Annotations == nil {
-		slog.Error("SyncToChildSecret", "err", "secret annotations is nil")
+		// slog.Error("SyncToChildSecret", "err", "secret annotations is nil")
 		return nil
 	}
 	// if secret.Type != corev1.SecretTypeTLS {
