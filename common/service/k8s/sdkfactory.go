@@ -41,6 +41,7 @@ func NewK8sClient() *singleton {
 		instance.sdks = make(map[string]*Sdk)
 		instance.expires = make(map[string]int64)
 	})
+	instance.Sdk = NewK8sClientInner()
 	return instance
 }
 

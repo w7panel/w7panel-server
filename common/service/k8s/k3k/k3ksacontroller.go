@@ -165,25 +165,25 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	// 	logger.Error(err, "Failed to create registries ConfigMap")
 	// 	return ctrl.Result{RequeueAfter: time.Second * 10}, err
 	// }\
-	err = r.limitClient.Delete(ctx, sa)
-	if err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			logger.Error(err, "Failed to handle limit range")
-			return ctrl.Result{RequeueAfter: time.Minute}, nil
-		}
-		// return ctrl.Result{}, nil
-	}
+	// err = r.limitClient.Delete(ctx, sa)
+	// if err != nil {
+	// 	if client.IgnoreNotFound(err) != nil {
+	// 		logger.Error(err, "Failed to handle limit range")
+	// 		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	// 	}
+	// 	// return ctrl.Result{}, nil
+	// }
 
 	if !k3kUser.IsClusterReady() {
 		slog.Error("cluster not ready", "uname", k3kUser.GetName())
 		return ctrl.Result{}, nil
 	}
 
-	err = r.limitClient.Handle(ctx, sa)
-	if err != nil {
-		logger.Error(err, "Failed to handle limit range")
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
-	}
+	// err = r.limitClient.Handle(ctx, sa)
+	// if err != nil {
+	// 	logger.Error(err, "Failed to handle limit range")
+	// 	return ctrl.Result{RequeueAfter: time.Minute}, nil
+	// }
 
 	err = r.storage.Handle(ctx, k3kUser)
 	if err != nil {

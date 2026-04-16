@@ -235,6 +235,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		// 安全的未授权接口 - 只返回必要的公开字段
 		engine.GET("/panel-api/v1/noauth/site/beian", controller2.Site{}.Beian)
+		engine.GET("/panel-api/v1/noauth/site/beian2", controller2.Site{}.Beian2)
 		engine.GET("/panel-api/v1/noauth/site/k3k-config", controller2.Site{}.K3kConfig)
 		engine.GET("/panel-api/v1/noauth/site/init-user", controller2.Site{}.InitUser)
 		engine.GET("/panel-api/v1/noauth/site/lianxi", controller2.Site{}.Lianxi)
