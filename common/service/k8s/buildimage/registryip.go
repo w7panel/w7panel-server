@@ -35,23 +35,26 @@ func panelRegistryServerIpUseSdk(sdk *k8s.Sdk, hostIp string) (string, error) {
 	}
 	for _, pod := range podlist.Items {
 		if pod.Status.Phase == "Running" {
-			if hostIp != "" && hostIp == pod.Status.HostIP {
-				panelDomain := pod.Status.PodIP
-				return panelDomain, nil
+			if hostIp != "" {
+				if hostIp == pod.Status.HostIP {
+					panelDomain := pod.Status.PodIP
+					return panelDomain, nil
+				}
 			} else {
 				panelDomain := pod.Status.PodIP
 				return panelDomain, nil
 			}
-
 		}
 	}
 	// 子集群pod
 	pods2List, err := sdk.ClientSet.CoreV1().Pods("default").List(context.Background(), metav1.ListOptions{LabelSelector: "k3k-agent-pod=true"})
 	for _, pod2 := range pods2List.Items {
 		if pod2.Status.Phase == "Running" {
-			if hostIp != "" && hostIp == pod2.Status.HostIP {
-				panelDomain := pod2.Status.PodIP
-				return panelDomain, nil
+			if hostIp != "" {
+				if hostIp == pod2.Status.HostIP {
+					panelDomain := pod2.Status.PodIP
+					return panelDomain, nil
+				}
 			} else {
 				panelDomain := pod2.Status.PodIP
 				return panelDomain, nil
