@@ -11,12 +11,12 @@ import (
 
 type K3kCvmOrder struct {
 	*v1alpha1.Cvm
-	*k3kUserOverSelling
+	*k3kCvmOverSelling
 	*k3kCvmTime
 	cost *K3kCost
 }
 
-func Newk3kCvmOrder(cvm *v1alpha1.Cvm, overUser *k3kUserOverSelling, userTime *k3kCvmTime, cost *K3kCost) *K3kCvmOrder {
+func Newk3kCvmOrder(cvm *v1alpha1.Cvm, overUser *k3kCvmOverSelling, userTime *k3kCvmTime, cost *K3kCost) *K3kCvmOrder {
 	return &K3kCvmOrder{cvm, overUser, userTime, cost}
 }
 
@@ -47,15 +47,24 @@ func (u *K3kCvmOrder) SetExpandOrder(orderSn string) {
 }
 
 func (u *K3kCvmOrder) GetBaseOrderSn() string {
-	return u.Labels[W7_BASE_ORDER_SN]
+	if u.Spec.BaseOrder == nil {
+		return ""
+	}
+	return u.Spec.BaseOrder.OrderSn
 }
 
 func (u *K3kCvmOrder) GetRenewOrderSn() string {
-	return u.Labels[W7_RENEW_ORDER_SN]
+	if u.Spec.RenewOrder == nil {
+		return ""
+	}
+	return u.Spec.RenewOrder.OrderSn
 }
 
 func (u *K3kCvmOrder) GetExpandOrderSn() string {
-	return u.Labels[W7_EXPAND_ORDER_SN]
+	if u.Spec.ExpandOrder == nil {
+		return ""
+	}
+	return u.Spec.ExpandOrder.OrderSn
 }
 
 func (u *K3kCvmOrder) SetBaseOrderPaid(info *console.OrderInfo) {
@@ -68,6 +77,24 @@ func (u *K3kCvmOrder) SetBaseOrderPaid(info *console.OrderInfo) {
 		// u.Labels[W7_BASE_ORDER_STATUS] = W7_ORDER_PAID
 		u.Spec.BaseOrder.Status = W7_ORDER_PAID
 		u.changeExpireTime(int(info.GetHour()))
+		baseResource := BuyResource{
+			Cpu:       info.Cpu,
+			Memory:    info.Memory,
+			Storage:   info.Storage,
+			Bandwidth: info.Bandwidth,
+		}
+		u.Spec.BaseResource = v1alpha1.CvmResource{
+			CPU:       baseResource.Cpu,
+			Memory:    baseResource.Memory,
+			Storage:   baseResource.Storage,
+			Bandwidth: baseResource.Bandwidth,
+		}
+		u.Spec.Resource = v1alpha1.CvmResource{
+			CPU:       baseResource.Cpu,
+			Memory:    baseResource.Memory,
+			Storage:   baseResource.Storage,
+			Bandwidth: baseResource.Bandwidth,
+		}
 		rs := overselling.OrderInfoToResource(info)
 		u.Annotations[W7_OVER_BASE_RESOURCE] = rs.JsonString()
 		u.Annotations[W7_QUOTA_LIMIT_LOCK] = "true" //锁定配额，防止配额被费用套餐覆盖
@@ -99,6 +126,10 @@ func (u *K3kCvmOrder) SetExpandOrderPaid(info *console.OrderInfo) {
 	if u.Spec.ExpandOrder.OrderSn == info.OrderSn && u.Spec.ExpandOrder.Status != W7_ORDER_PAID {
 		// u.Labels[K3K_BUY_MODE] = "renew"
 		u.Spec.ExpandOrder.Status = W7_ORDER_PAID
+		u.Spec.Resource.CPU += info.Cpu
+		u.Spec.Resource.Memory += info.Memory
+		u.Spec.Resource.Storage += info.Storage
+		u.Spec.Resource.Bandwidth += info.Bandwidth
 		u.Spec.OverMode = "wait"
 	}
 	// if u.Labels[W7_EXPAND_ORDER_SN] == info.OrderSn && u.Labels[W7_EXPAND_ORDER_STATUS] != W7_ORDER_PAID {
@@ -133,11 +164,10 @@ func (u *K3kCvmOrder) NeedCreateOrder() bool {
 		return pass == "false"
 	}
 	if u.NeedBuyResource() {
-		status, ok := u.Labels[W7_BASE_ORDER_STATUS]
-		if !ok {
+		if u.Spec.BaseOrder == nil {
 			return true
 		}
-		if status == W7_ORDER_PAID {
+		if u.Spec.BaseOrder.Status == W7_ORDER_PAID {
 			return false
 		}
 		return true
@@ -180,11 +210,10 @@ func (u *K3kCvmOrder) CanCreateBaseOrderError() error {
 		}
 	}
 	if u.NeedBuyResource() {
-		status, ok := u.Labels[W7_BASE_ORDER_STATUS]
-		if !ok {
+		if u.Spec.BaseOrder == nil {
 			return nil
 		}
-		if status == W7_ORDER_PAID {
+		if u.Spec.BaseOrder.Status == W7_ORDER_PAID {
 			return errors.New("已经购买基础资源，无法重复购买")
 		}
 		return nil

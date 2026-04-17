@@ -12,15 +12,11 @@ func CreateBaseResourceCvmOrder(baseResource *types.BuyBaseResource, user *types
 	if err != nil {
 		return nil, err
 	}
-	err = orderApi.CheckCanBuy(user)
+	err = orderApi.CheckCanBuyCvm(baseResource.CvmName)
 	if err != nil {
 		return nil, err
 	}
-	err = user.CanCreateBaseOrderError()
-	if err != nil {
-		return nil, err
-	}
-	return orderApi.CreateBaseResourceOrder(baseResource, user)
+	return orderApi.CreateBaseResourceCvmOrder(baseResource, user)
 }
 
 func CreateRenewCvmOrder(baseResource *types.BuyRenewResource, user *types.K3kUser) (*console.PayResult, error) {
@@ -29,15 +25,11 @@ func CreateRenewCvmOrder(baseResource *types.BuyRenewResource, user *types.K3kUs
 	if err != nil {
 		return nil, err
 	}
-	err = orderApi.CheckCanBuy(user)
+	err = orderApi.CheckCanBuyCvm(baseResource.CvmName)
 	if err != nil {
 		return nil, err
 	}
-	err = user.CanRenewError()
-	if err != nil {
-		return nil, err
-	}
-	return orderApi.CreateRenewOrder(baseResource, user)
+	return orderApi.CreateRenewCvmOrder(baseResource, user)
 
 }
 
@@ -47,14 +39,10 @@ func CreateExpandCvmOrder(baseResource *types.BuyExpandResource, user *types.K3k
 	if err != nil {
 		return nil, err
 	}
-	err = orderApi.CheckCanBuy(user)
+	err = orderApi.CheckCanBuyCvm(baseResource.CvmName)
 	if err != nil {
 		return nil, err
 	}
-	err = user.CanExpandError()
-	if err != nil {
-		return nil, err
-	}
-	return orderApi.CreateExpandOrder(baseResource, user)
+	return orderApi.CreateExpandCvmOrder(baseResource, user)
 
 }

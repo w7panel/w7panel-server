@@ -7,7 +7,6 @@ import (
 
 type k3kCvmOverSelling struct {
 	*v1alpha1.Cvm
-	*k3kUserBase
 	overResource     *overselling.Resource
 	overBaseResource *overselling.Resource
 }
@@ -29,15 +28,15 @@ func Newk3kCvmOverSelling(cvm *v1alpha1.Cvm) *k3kCvmOverSelling {
 }
 
 func (k *k3kCvmOverSelling) IsOverSellingWait() bool {
-	return k.Labels[W7_OVER_MODE] == "wait"
+	return k.Spec.OverMode == "wait"
 }
 
 func (k *k3kCvmOverSelling) IsOverSellingSuccess() bool {
-	return k.Labels[W7_OVER_MODE] == "success"
+	return k.Spec.OverMode == "success"
 }
 
 func (k *k3kCvmOverSelling) IsOverSellingNoResource() bool {
-	return k.Labels[W7_OVER_MODE] == "no-resource"
+	return k.Spec.OverMode == "no-resource"
 }
 
 func (u *k3kCvmOverSelling) NeedOverSellingCheck() bool {
@@ -46,7 +45,7 @@ func (u *k3kCvmOverSelling) NeedOverSellingCheck() bool {
 
 // 是否可以超额检查
 func (u *k3kCvmOverSelling) CanOverSellingCheck() bool {
-	return u.Labels[W7_OVER_MODE] == "wait" || u.Labels[W7_OVER_MODE] == "no-resource"
+	return u.Spec.OverMode == "wait" || u.Spec.OverMode == "no-resource"
 }
 
 func (u *k3kCvmOverSelling) GetOverResource() *overselling.Resource {
@@ -57,7 +56,7 @@ func (u *k3kCvmOverSelling) GetOverResource() *overselling.Resource {
 }
 
 func (u *k3kCvmOverSelling) IsExpand() bool {
-	return u.Labels[W7_EXPAND_ORDER_STATUS] == W7_ORDER_PAID
+	return u.Spec.ExpandOrder != nil && u.Spec.ExpandOrder.Status == W7_ORDER_PAID
 }
 
 // wait no-resource success

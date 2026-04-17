@@ -193,6 +193,7 @@ type BuyBaseResource struct {
 	UnitQuantity
 	BuyResource
 	CouponCode string `form:"couponCode"`
+	CvmName    string `form:"cvm"`
 }
 
 // 续费

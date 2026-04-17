@@ -9,7 +9,9 @@ import (
 
 	k3kv1 "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -122,7 +124,7 @@ func (r *K3kCvmController) createOrUpdateCluster(ctx context.Context, cvm *cvmv1
 		cluster.Annotations[K3kCvmNamespaceAnno] = cvm.Namespace
 
 		cluster.Spec = r.toClusterSpec(cvm)
-		return nil
+		return controllerutil.SetControllerReference(cvm, cluster, r.Scheme)
 	})
 	if err != nil {
 		return nil, err
@@ -150,6 +152,19 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.Cvm) (ctrl.Result, error) {
 	slog.Info("Handling Cvm deletion", "name", cvm.Name, "namespace", cvm.Namespace)
 
+	cluster := &k3kv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      r.getClusterName(cvm),
+			Namespace: r.getClusterNamespace(cvm),
+		},
+	}
+	if err := r.Delete(ctx, cluster); err != nil && !apierrors.IsNotFound(err) {
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
+	if err := r.ensureClusterDeleted(ctx, cvm); err != nil {
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
+
 	controllerutil.RemoveFinalizer(cvm, K3kCvmFinalizerName)
 	if err := r.Update(ctx, cvm); err != nil {
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
@@ -160,7 +175,7 @@ func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.
 
 func (r *K3kCvmController) getClusterName(cvm *cvmv1alpha1.Cvm) string {
 	if cvm.Annotations != nil {
-		if name := cvm.Annotations["w7.cc/k3k-name"]; name != "" {
+		if name := cvm.Annotations[k3ktypes.K3K_NAME]; name != "" {
 			return name
 		}
 	}
@@ -169,9 +184,21 @@ func (r *K3kCvmController) getClusterName(cvm *cvmv1alpha1.Cvm) string {
 
 func (r *K3kCvmController) getClusterNamespace(cvm *cvmv1alpha1.Cvm) string {
 	if cvm.Annotations != nil {
-		if ns := cvm.Annotations["w7.cc/k3k-namespace"]; ns != "" {
+		if ns := cvm.Annotations[k3ktypes.K3K_NAMESPACE]; ns != "" {
 			return ns
 		}
 	}
 	return "default"
+}
+
+func (r *K3kCvmController) ensureClusterDeleted(ctx context.Context, cvm *cvmv1alpha1.Cvm) error {
+	cluster := &k3kv1.Cluster{}
+	err := r.Get(ctx, client.ObjectKey{
+		Name:      r.getClusterName(cvm),
+		Namespace: r.getClusterNamespace(cvm),
+	}, cluster)
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	return err
 }
