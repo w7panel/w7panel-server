@@ -3,7 +3,6 @@ package longhorn
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -234,17 +233,16 @@ func updateVolumeReplicaCountApi(name string, count int) error {
 }
 
 func longhornVolumeApiAction(volumeName string, action string, json string) error {
-	slog.Info("longhornclient longhornVolumeApiAction: ", "volumeName", volumeName, "action", action)
+
 	postUrl := baseUrl + "/v1/volumes/" + volumeName + "?action=" + action
 	response, err := resty.New().R().SetBody(json).SetHeader("content-type", "application/json").SetHeader("Accept", "application/json").Post(postUrl)
 	if err != nil {
 		// slog.Error("longhornclient longhornVolumeApiAction error: ", "err", err)
 		return err
 	}
-
 	if response.StatusCode() != http.StatusOK {
 		// slog.Error("longhornclient longhornVolumeApiAction error response: %s", "err", response.String())
-		return errors.New("longhornclient UpdateVolumeReplicaCount error: " + response.Status() + ": content: " + response.String())
+		return errors.New("longhornclient longhornVolumeApiAction error: " + response.Status() + ": content: " + response.String())
 	}
 	return nil
 }
@@ -262,6 +260,11 @@ func LonghornVolumeAttach(volumeName string, nodeName string, attachmentID strin
 */
 func LonghornVolumeDetach(volumeName, attachmentID string, forceDetach bool) error {
 	return longhornVolumeApiAction(volumeName, "detach", `{"forceDetach":`+strconv.FormatBool(forceDetach)+`,"attachmentID":"`+attachmentID+`","hostId":""}`)
+}
+
+// {"name":"cloned-pvc-249bbeea-bb94-489a-9-4eae22bc"}
+func LonghornVolumeCancelExpansion(volumeName string) error {
+	return longhornVolumeApiAction(volumeName, "cancelExpansion", `{"name":"`+volumeName+`"}`)
 }
 func LonghorStoragePercentage(value string) error {
 	postUrl := baseUrl + "/v1/settings/storage-over-provisioning-percentage"
