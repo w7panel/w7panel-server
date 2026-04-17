@@ -282,7 +282,7 @@ func LonghorStoragePercentage(value string) error {
 
 	if response.StatusCode() != http.StatusOK {
 		// slog.Error("longhornclient LonghorStoragePercentage error response: %s", "err", response.String())
-		return errors.New("longhornclient LonghorStoragePercentage error: " + response.Status() + ": content: " + response.String())
+		return errors.New(response.String())
 	}
 	return nil
 }
