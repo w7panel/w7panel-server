@@ -64,6 +64,10 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		CreationTimestamp string `json:"creationTimestamp"`
 		AccessMode        string `json:"accessMode"`
 		SnapShotSize      int64  `json:"snapShotSize"`
+		IsExpanding       bool   `json:"isExpanding"` //是否在扩容中
+		ExpandErr         string `json:"expandErr"`   //扩容失败消息
+		State             string `json:"state"`       //volume状态
+		VolumeName        string `json:"volumeName"`
 	}
 
 	sdk := k8s.NewK8sClient().Sdk
@@ -82,6 +86,11 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	engineList, err := longhornclient.GetEngineList()
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
 
 	// func
 	result := map[string]VolumesStatus{}
@@ -90,6 +99,7 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 			continue
 		}
 		size := volume.Status.ActualSize //已使用空间 /1024/1024/ MB
+		isExpanding, expandErrstr := longhorn.IsVolumeExpanding(volume.Name, engineList)
 		vs := VolumesStatus{
 			NumberOfReplicas:  volume.Spec.NumberOfReplicas,
 			Robustness:        string(volume.Status.Robustness),
@@ -98,6 +108,10 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 			AccessMode:        string(volume.Spec.AccessMode),
 			CreationTimestamp: volume.CreationTimestamp.Format("2006-01-02 15:04:05"),
 			SnapShotSize:      longhorn.GetSnapshopSize(volume.Name, snapList),
+			IsExpanding:       isExpanding,
+			ExpandErr:         expandErrstr,
+			State:             string(volume.Status.State),
+			VolumeName:        volume.Name,
 			// CreatedAt:        volume.Status.KubernetesStatus.PVCName,
 			// CreatedAt:        volume.Status.CreatedAt,
 		}

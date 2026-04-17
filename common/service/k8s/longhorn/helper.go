@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	longhornV1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
+	"github.com/samber/lo"
 	"github.com/w7panel/w7panel/common/service/k8s"
 )
 
@@ -172,6 +173,7 @@ func containsAll(a, b []string) bool {
 	return true
 }
 
+// 快照大小
 func GetSnapshopSize(volumeName string, snapList *longhornV1beta2.SnapshotList) int64 {
 	var size int64
 	for _, snap := range snapList.Items {
@@ -180,4 +182,19 @@ func GetSnapshopSize(volumeName string, snapList *longhornV1beta2.SnapshotList) 
 		}
 	}
 	return size
+}
+
+// 是否扩容中
+func IsVolumeExpanding(volumeName string, eList *longhornV1beta2.EngineList) (bool, string) {
+	filterList := lo.Filter(eList.Items, func(eg longhornV1beta2.Engine, index int) bool {
+		return eg.Labels["longhornvolume"] == volumeName
+	})
+	lastExpanErr := ""
+	for _, eg := range filterList {
+		if eg.Status.IsExpanding {
+			return true, eg.Status.LastExpansionError
+		}
+	}
+
+	return false, lastExpanErr
 }
