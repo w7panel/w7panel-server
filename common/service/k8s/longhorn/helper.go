@@ -196,8 +196,8 @@ func IsVolumeExpanding(volume longhornV1beta2.Volume, eList *longhornV1beta2.Eng
 	keys := lo.Keys(egSort)
 	sort.Strings(keys)
 	for _, v := range keys {
-		eg := egSort[v]
-		if eg.Status.IsExpanding && volume.Spec.Size != eg.Status.CurrentSize && volume.Status.State == "attached" {
+		eg, ok := egSort[v]
+		if ok && eg.Status.IsExpanding && volume.Spec.Size != eg.Status.CurrentSize && volume.Status.State == "attached" {
 			return true, eg.Status.LastExpansionError
 		}
 	}
