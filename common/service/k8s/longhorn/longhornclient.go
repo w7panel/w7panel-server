@@ -64,6 +64,10 @@ func (c *longhornclient) GetSnapshotList() (*longhornV1beta2.SnapshotList, error
 	return c.client.LonghornV1beta2().Snapshots(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
 }
 
+func (c *longhornclient) GetEngineList() (*longhornV1beta2.EngineList, error) {
+	return c.client.LonghornV1beta2().Engines(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
+}
+
 func (c *longhornclient) GetNodeList() (*longhornV1beta2.NodeList, error) {
 	return c.client.LonghornV1beta2().Nodes(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
 }
