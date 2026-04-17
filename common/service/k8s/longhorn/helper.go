@@ -3,6 +3,7 @@ package longhorn
 import (
 	"fmt"
 	"log/slog"
+	"sort"
 
 	longhornV1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	"github.com/samber/lo"
@@ -184,17 +185,22 @@ func GetSnapshopSize(volumeName string, snapList *longhornV1beta2.SnapshotList) 
 	return size
 }
 
-// 是否扩容中
-func IsVolumeExpanding(volumeName string, eList *longhornV1beta2.EngineList) (bool, string) {
+// 是否扩容中 longhorn ui的逻辑
+func IsVolumeExpanding(volume longhornV1beta2.Volume, eList *longhornV1beta2.EngineList) (bool, string) {
 	filterList := lo.Filter(eList.Items, func(eg longhornV1beta2.Engine, index int) bool {
-		return eg.Labels["longhornvolume"] == volumeName
+		return eg.Labels["longhornvolume"] == volume.Name
 	})
-	lastExpanErr := ""
-	for _, eg := range filterList {
-		if eg.Status.IsExpanding {
+	egSort := lo.KeyBy(filterList, func(eg2 longhornV1beta2.Engine) string {
+		return eg2.Name
+	})
+	keys := lo.Keys(egSort)
+	sort.Strings(keys)
+	for _, v := range keys {
+		eg := egSort[v]
+		if eg.Status.IsExpanding && volume.Spec.Size != eg.Status.CurrentSize && volume.Status.State == "attached" {
 			return true, eg.Status.LastExpansionError
 		}
 	}
 
-	return false, lastExpanErr
+	return false, ""
 }
