@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/go-resty/resty/v2"
 	longhornV1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
@@ -248,6 +249,20 @@ func longhornVolumeApiAction(volumeName string, action string, json string) erro
 	return nil
 }
 
+/**
+{"hostId":"server1","disableFrontend":true,"AttachedBy":"","attacherType":"","AttachmentID":"longhorn-ui"}
+*/
+
+func LonghornVolumeAttach(volumeName string, nodeName string, attachmentID string, attachBy string, attacherType string) error {
+	return longhornVolumeApiAction(volumeName, "attach", `{"hostId":"`+nodeName+`","disableFrontend":true,"AttachedBy":"`+attachBy+`","attacherType":"`+attacherType+`","AttachmentID":"`+attachmentID+`"}`)
+}
+
+/*
+{"forceDetach":true,"attachmentID":"longhorn-ui","hostId":""}
+*/
+func LonghornVolumeDetach(volumeName, attachmentID string, forceDetach bool) error {
+	return longhornVolumeApiAction(volumeName, "detach", `{"forceDetach":`+strconv.FormatBool(forceDetach)+`,"attachmentID":"`+attachmentID+`","hostId":""}`)
+}
 func LonghorStoragePercentage(value string) error {
 	postUrl := baseUrl + "/v1/settings/storage-over-provisioning-percentage"
 	json := `{"actions":{},"applied":true,"definition":{"category":"scheduling","default":"100","description":"The over-provisioning percentage defines how much storage can be allocated relative to the hard drive's capacity","displayName":"Storage Over Provisioning Percentage","range":{"minimum":0},"readOnly":false,"required":true,"type":"int"},"id":"storage-over-provisioning-percentage","links":{"self":"http://longhorn.fan.b2.sz.w7.com/v1/settings/storage-over-provisioning-percentage"},"name":"storage-over-provisioning-percentage","type":"setting","value":"%s"}`
