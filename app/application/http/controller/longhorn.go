@@ -1,6 +1,9 @@
 package controller
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -16,6 +19,35 @@ type Longhorn struct {
 	controller.Abstract
 }
 
+func (self Longhorn) Install(http *gin.Context) {
+	namespace := http.Query("namespace")
+	token := http.MustGet("k8s_token").(string)
+	client, err := k8s.NewK8sClient().Channel(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	// client := k8s.NewK8sClient()
+	if namespace == "" {
+		namespace = client.GetNamespace()
+	}
+	koData, ok := os.LookupEnv("KO_DATA_PATH")
+	if !ok {
+		self.JsonResponseWithServerError(http, errors.New("找不到longhorn yaml"))
+	}
+	body, err := os.ReadFile(filepath.Join(koData, "/yaml/longhorn/longhornfull.yaml"))
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	err = client.ApplyBytes(body, *k8s.NewApplyOptions(namespace))
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonSuccessResponse(http)
+
+}
 func (self Longhorn) GetNeedDeleteReplicas(http *gin.Context) {
 	type ParamsValidate struct {
 		DiskSelector string `form:"diskselector" binding:"required"`
@@ -99,7 +131,7 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 			continue
 		}
 		size := volume.Status.ActualSize //已使用空间 /1024/1024/ MB
-		isExpanding, expandErrstr := longhorn.IsVolumeExpanding(volume.Name, engineList)
+		isExpanding, expandErrstr := longhorn.IsVolumeExpanding(volume, engineList)
 		vs := VolumesStatus{
 			NumberOfReplicas:  volume.Spec.NumberOfReplicas,
 			Robustness:        string(volume.Status.Robustness),
