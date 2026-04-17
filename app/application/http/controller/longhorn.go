@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 
 	// "github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
@@ -113,40 +112,50 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 
 	扩容卷
 */
-func (self Longhorn) Expand(http *gin.Context) {
-
-	token := http.MustGet("k8s_token").(string)
-	user, err := k3k.TokenToK3kUser(token)
+func (self Longhorn) Attach(http *gin.Context) {
+	// {"hostId":"server1","disableFrontend":true,"AttachedBy":"","attacherType":"","AttachmentID":"longhorn-ui"}
+	type VolumeAttach struct {
+		HostId          string `json:"hostId" binding:"required"`
+		DisableFrontend bool   `json:"disableFrontend"`
+		AttachedBy      string `json:"AttachedBy"`
+		AttachmentID    string `json:"AttachmentID"`
+		AttacherType    string `json:"attacherType"`
+	}
+	params := VolumeAttach{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	if params.AttachmentID == "" {
+		params.AttachmentID = "longhorn-ui"
+	}
+	volName := http.Param("volumeName")
+	err := longhorn.LonghornVolumeAttach(volName, params.HostId, params.AttachmentID, params.AttachedBy, params.AttacherType)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if user.IsVirtual() {
+	self.JsonSuccessResponse(http)
 
+}
+
+func (self Longhorn) Detach(http *gin.Context) {
+	//{forceDetach: true, attachmentID: "longhorn-ui", hostId: ""}
+	type VolumeDetach struct {
+		ForceDetach  bool   `json:"forceDetach"`
+		AttachmentID string `json:"attachmentID"`
+		HostId       string `json:"hostId"`
 	}
-	// type ParamsValidate struct {
-	// 	Namespace string `form:"namespace" binding:"required"`
-	// 	Name	  string `form:"name" binding:"required"`
-	// 	Size	  string `form:"size" binding:"required"`
-	// }
-	// params := ParamsValidate{}
-	// if !self.Validate(http, &params) {
-	// 	return
-	// }
-	// sdk, err := k8s.NewK8sClient().Channel(http.MustGet("k8s_token").(string))
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(http, err)
-	// 	return
-	// }
-	// longhornclient, err := longhorn.NewLonghornClient(sdk)
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(http, err)
-	// 	return
-	// }
-	// err = longhornclient.Expand(params.Namespace, params.Name, params.Size)
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(http, err)
-	// 	return
-	// }
-	// self.JsonResponseWithoutError(http, nil)
+	params := VolumeDetach{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	if params.AttachmentID == "" {
+		params.AttachmentID = "longhorn-ui"
+	}
+	err := longhorn.LonghornVolumeDetach(http.MustGet("volume_name").(string), params.AttachmentID, params.ForceDetach)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponse(http, nil, nil, 200)
 }
