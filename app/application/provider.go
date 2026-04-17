@@ -236,12 +236,12 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		engine.Any("/panel-api/v1/s3bucket", middleware.Auth{}.Process, controller2.File{}.Upload).Use(middleware.Cors{}.Process)
 		engine.Any("s3bucket", middleware.Auth{}.Process, controller2.File{}.Upload).Use(middleware.Cors{}.Process) //s3fakeserver 不支持多路径
 
-		// 安全的未授权接口 - 只返回必要的公开字段
-		engine.GET("/panel-api/v1/noauth/site/beian", controller2.Site{}.Beian)
-		engine.GET("/panel-api/v1/noauth/site/beian2", controller2.Site{}.Beian2)
-		engine.GET("/panel-api/v1/noauth/site/k3k-config", controller2.Site{}.K3kConfig)
-		engine.GET("/panel-api/v1/noauth/site/init-user", controller2.Site{}.InitUser)
-		engine.GET("/panel-api/v1/noauth/site/lianxi", controller2.Site{}.Lianxi)
+		// 安全的未授权接口 - 只返回必要的公开字段 加1分钟缓存
+		engine.GET("/panel-api/v1/noauth/site/beian", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.Beian)
+		engine.GET("/panel-api/v1/noauth/site/beian2", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.Beian2)
+		engine.GET("/panel-api/v1/noauth/site/k3k-config", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.K3kConfig)
+		engine.GET("/panel-api/v1/noauth/site/init-user", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.InitUser)
+		engine.GET("/panel-api/v1/noauth/site/lianxi", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.Lianxi)
 
 		engine.GET("/panel-api/v1/microapp/top", middleware.Auth{}.Process, controller2.MicroApp{}.List)                     //获取microapp列表
 		engine.Any("/panel-api/v1/microapp/:name/proxy/*path", middleware.Auth{}.Process, controller2.Proxy{}.ProxyMicroApp) //microapp proxy
