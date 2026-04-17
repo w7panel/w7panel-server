@@ -186,7 +186,7 @@ func GetSnapshopSize(volumeName string, snapList *longhornV1beta2.SnapshotList) 
 }
 
 // 是否扩容中 longhorn ui的逻辑
-func IsVolumeExpanding(volume longhornV1beta2.Volume, eList *longhornV1beta2.EngineList) (bool, string) {
+func IsVolumeExpanding(volume *longhornV1beta2.Volume, eList *longhornV1beta2.EngineList) (bool, string) {
 	filterList := lo.Filter(eList.Items, func(eg longhornV1beta2.Engine, index int) bool {
 		return eg.Labels["longhornvolume"] == volume.Name
 	})
@@ -197,7 +197,12 @@ func IsVolumeExpanding(volume longhornV1beta2.Volume, eList *longhornV1beta2.Eng
 	sort.Strings(keys)
 	for _, v := range keys {
 		eg, ok := egSort[v]
-		if ok && eg.Status.IsExpanding && volume.Spec.Size != eg.Status.CurrentSize && volume.Status.State == "attached" {
+		if !ok {
+			slog.Error("volume %s is not expanding", "name", volume.Name)
+			continue
+		}
+		if ok && volume.Spec.Size != eg.Status.CurrentSize && volume.Status.State == "attached" {
+			slog.Error("volume %s is expanding", "name", volume.Name)
 			return true, eg.Status.LastExpansionError
 		}
 	}

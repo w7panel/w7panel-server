@@ -131,7 +131,8 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 			continue
 		}
 		size := volume.Status.ActualSize //已使用空间 /1024/1024/ MB
-		isExpanding, expandErrstr := longhorn.IsVolumeExpanding(volume, engineList)
+		isExpanding, expandErrstr := longhorn.IsVolumeExpanding(&volume, engineList)
+		isExpanding = true
 		vs := VolumesStatus{
 			NumberOfReplicas:  volume.Spec.NumberOfReplicas,
 			Robustness:        string(volume.Status.Robustness),
