@@ -17,7 +17,7 @@ import (
 var lclient *longhornclient
 
 func init() {
-	lclient, _ = NewLonghornClient(k8s.NewK8sClient().Sdk)
+	lclient, _ = NewLonghornClient(k8s.NewK8sClientInner())
 }
 
 func OnStart() error {

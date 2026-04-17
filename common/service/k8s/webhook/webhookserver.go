@@ -203,7 +203,7 @@ func setRequestLimit(pod *v1.Pod, cpu resource.Quantity, memory resource.Quantit
 }
 
 func (m *ResourceMutator) handleK3sPod(ctx context.Context, pod *v1.Pod, req admission.Request, clusterName string) admission.Response {
-	slog.Info("处理 Pod admission handleK3sPod 请求")
+	// slog.Info("处理 Pod admission handleK3sPod 请求")
 
 	// 检查是否需要修改
 	modified := false

@@ -44,6 +44,7 @@ spec:
           annotations:
             w7.cc/title: "微擎面板订单"
             title: "微擎面板订单"
+            w7.cc/deny-delete: "true"
         spec:
           {{- with .Values.imagePullSecrets }}
           imagePullSecrets:

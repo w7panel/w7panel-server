@@ -588,7 +588,7 @@ func ToShellJob2(manifest K8sResourceInterface, ingress K8sResourceIngressInterf
 	deploymentName := manifest.GetName()
 	namespace := manifest.GetNamespace()
 	cdToken := manifest.GetThirdpartyCDToken()
-	// afterSeconds := int32(3600)
+	afterSeconds := int32(3600)
 	shellTitle := "[应用安装时触发]"
 	deployTitle := "安装脚本"
 	if shellType == "upgrade" {
@@ -807,8 +807,8 @@ func ToShellJob2(manifest K8sResourceInterface, ingress K8sResourceIngressInterf
 			Annotations: annotations,
 		},
 		Spec: batchv1.JobSpec{
-			// TTLSecondsAfterFinished: &afterSeconds,
-			BackoffLimit: &backofflimit,
+			TTLSecondsAfterFinished: &afterSeconds,
+			BackoffLimit:            &backofflimit,
 			// Selector: &metav1.LabelSelector{
 			// 	MatchLabels: matchlabels,
 			// },
@@ -861,7 +861,7 @@ func ToHelmShellJob(p K8sResourceInterface, shell ManifestShellInterface) *batch
 	labels["w7.cc/job-source"] = "appgroup"
 	labels["w7.cc/identifie"] = p.GetIdentifie()
 	labels["w7.cc/helm-install"] = "true"
-
+	afterSeconds := int32(300)
 	container := corev1.Container{
 		Name:  "helm-go",
 		Image: helper.SelfImage(),
@@ -902,8 +902,8 @@ func ToHelmShellJob(p K8sResourceInterface, shell ManifestShellInterface) *batch
 			Annotations: annotations,
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: &backofflimit,
-			// TTLSecondsAfterFinished: &afterSeconds,
+			BackoffLimit:            &backofflimit,
+			TTLSecondsAfterFinished: &afterSeconds,
 			// BackoffLimit: &backofflimit,
 			// Selector: &metav1.LabelSelector{
 			// 	MatchLabels: matchlabels,

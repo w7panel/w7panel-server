@@ -19,6 +19,8 @@ package v1alpha1
 
 // AuthApplyConfiguration represents a declarative configuration of the Auth type for use
 // with apply.
+//
+// 该用secret存储
 type AuthApplyConfiguration struct {
 	Username *string `json:"username,omitempty"`
 	Password *string `json:"password,omitempty"`

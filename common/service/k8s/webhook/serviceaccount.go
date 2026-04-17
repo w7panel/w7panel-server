@@ -18,7 +18,7 @@ import (
 
 // 处理 Service 资源
 func (m *ResourceMutator) handleServiceAccount(ctx context.Context, req admission.Request) admission.Response {
-	slog.Info("处理 ServiceAccount admission 请求")
+	// slog.Info("处理 ServiceAccount admission 请求")
 
 	if req.Operation != "UPDATE" {
 		return admission.Allowed("无需修改 ServiceAccount")

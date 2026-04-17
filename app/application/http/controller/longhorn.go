@@ -1,11 +1,13 @@
 package controller
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 
 	// "github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
@@ -17,6 +19,35 @@ type Longhorn struct {
 	controller.Abstract
 }
 
+func (self Longhorn) Install(http *gin.Context) {
+	namespace := http.Query("namespace")
+	token := http.MustGet("k8s_token").(string)
+	client, err := k8s.NewK8sClient().Channel(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	// client := k8s.NewK8sClient()
+	if namespace == "" {
+		namespace = client.GetNamespace()
+	}
+	koData, ok := os.LookupEnv("KO_DATA_PATH")
+	if !ok {
+		self.JsonResponseWithServerError(http, errors.New("找不到longhorn yaml"))
+	}
+	body, err := os.ReadFile(filepath.Join(koData, "/yaml/longhorn/longhornfull.yaml"))
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	err = client.ApplyBytes(body, *k8s.NewApplyOptions(namespace))
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonSuccessResponse(http)
+
+}
 func (self Longhorn) GetNeedDeleteReplicas(http *gin.Context) {
 	type ParamsValidate struct {
 		DiskSelector string `form:"diskselector" binding:"required"`
@@ -65,6 +96,10 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		CreationTimestamp string `json:"creationTimestamp"`
 		AccessMode        string `json:"accessMode"`
 		SnapShotSize      int64  `json:"snapShotSize"`
+		IsExpanding       bool   `json:"isExpanding"` //是否在扩容中
+		ExpandErr         string `json:"expandErr"`   //扩容失败消息
+		State             string `json:"state"`       //volume状态
+		VolumeName        string `json:"volumeName"`
 	}
 
 	sdk := k8s.NewK8sClient().Sdk
@@ -83,6 +118,11 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	engineList, err := longhornclient.GetEngineList()
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
 
 	// func
 	result := map[string]VolumesStatus{}
@@ -91,6 +131,8 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 			continue
 		}
 		size := volume.Status.ActualSize //已使用空间 /1024/1024/ MB
+		isExpanding, expandErrstr := longhorn.IsVolumeExpanding(&volume, engineList)
+		// isExpanding = true
 		vs := VolumesStatus{
 			NumberOfReplicas:  volume.Spec.NumberOfReplicas,
 			Robustness:        string(volume.Status.Robustness),
@@ -99,6 +141,10 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 			AccessMode:        string(volume.Spec.AccessMode),
 			CreationTimestamp: volume.CreationTimestamp.Format("2006-01-02 15:04:05"),
 			SnapShotSize:      longhorn.GetSnapshopSize(volume.Name, snapList),
+			IsExpanding:       isExpanding,
+			ExpandErr:         expandErrstr,
+			State:             string(volume.Status.State),
+			VolumeName:        volume.Name,
 			// CreatedAt:        volume.Status.KubernetesStatus.PVCName,
 			// CreatedAt:        volume.Status.CreatedAt,
 		}
@@ -113,40 +159,62 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 
 	扩容卷
 */
-func (self Longhorn) Expand(http *gin.Context) {
-
-	token := http.MustGet("k8s_token").(string)
-	user, err := k3k.TokenToK3kUser(token)
+func (self Longhorn) Attach(http *gin.Context) {
+	// {"hostId":"server1","disableFrontend":true,"AttachedBy":"","attacherType":"","AttachmentID":"longhorn-ui"}
+	type VolumeAttach struct {
+		HostId          string `json:"hostId" binding:"required"`
+		DisableFrontend bool   `json:"disableFrontend"`
+		AttachedBy      string `json:"AttachedBy"`
+		AttachmentID    string `json:"AttachmentID"`
+		AttacherType    string `json:"attacherType"`
+	}
+	params := VolumeAttach{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	if params.AttachmentID == "" {
+		params.AttachmentID = "longhorn-ui"
+	}
+	volName := http.Param("volumeName")
+	err := longhorn.LonghornVolumeAttach(volName, params.HostId, params.AttachmentID, params.AttachedBy, params.AttacherType)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if user.IsVirtual() {
+	self.JsonSuccessResponse(http)
 
+}
+
+func (self Longhorn) Detach(http *gin.Context) {
+	//{forceDetach: true, attachmentID: "longhorn-ui", hostId: ""}
+	type VolumeDetach struct {
+		ForceDetach  bool   `json:"forceDetach"`
+		AttachmentID string `json:"attachmentID"`
+		HostId       string `json:"hostId"`
 	}
-	// type ParamsValidate struct {
-	// 	Namespace string `form:"namespace" binding:"required"`
-	// 	Name	  string `form:"name" binding:"required"`
-	// 	Size	  string `form:"size" binding:"required"`
-	// }
-	// params := ParamsValidate{}
-	// if !self.Validate(http, &params) {
-	// 	return
-	// }
-	// sdk, err := k8s.NewK8sClient().Channel(http.MustGet("k8s_token").(string))
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(http, err)
-	// 	return
-	// }
-	// longhornclient, err := longhorn.NewLonghornClient(sdk)
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(http, err)
-	// 	return
-	// }
-	// err = longhornclient.Expand(params.Namespace, params.Name, params.Size)
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(http, err)
-	// 	return
-	// }
-	// self.JsonResponseWithoutError(http, nil)
+	params := VolumeDetach{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	if params.AttachmentID == "" {
+		params.AttachmentID = "longhorn-ui"
+	}
+	volName := http.Param("volumeName")
+	err := longhorn.LonghornVolumeDetach(volName, params.AttachmentID, params.ForceDetach)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponse(http, nil, nil, 200)
+}
+func (self Longhorn) CancelExpansion(http *gin.Context) {
+	//{forceDetach: true, attachmentID: "longhorn-ui", hostId: ""}
+
+	volName := http.Param("volumeName")
+	err := longhorn.LonghornVolumeCancelExpansion(volName)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponse(http, nil, nil, 200)
 }
