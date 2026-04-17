@@ -152,7 +152,19 @@ func (self Longhorn) Detach(http *gin.Context) {
 	if params.AttachmentID == "" {
 		params.AttachmentID = "longhorn-ui"
 	}
-	err := longhorn.LonghornVolumeDetach(http.MustGet("volume_name").(string), params.AttachmentID, params.ForceDetach)
+	volName := http.Param("volumeName")
+	err := longhorn.LonghornVolumeDetach(volName, params.AttachmentID, params.ForceDetach)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponse(http, nil, nil, 200)
+}
+func (self Longhorn) CancelExpansion(http *gin.Context) {
+	//{forceDetach: true, attachmentID: "longhorn-ui", hostId: ""}
+
+	volName := http.Param("volumeName")
+	err := longhorn.LonghornVolumeCancelExpansion(volName)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return

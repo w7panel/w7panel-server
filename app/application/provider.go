@@ -181,6 +181,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.GET("/longhorn/volumes/status", middleware.Auth{}.Process, controller2.Longhorn{}.GetVolumesStatus)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/attach", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.Attach)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/detach", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.Detach)
+			localApiGroup.POST("/longhorn/volumes/:volumeName/cancel-expansion", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.CancelExpansion)
 
 			// localApiGroup.GET("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGc)
 			// localApiGroup.POST("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGcToggle)
