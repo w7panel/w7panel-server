@@ -230,7 +230,7 @@ func newForClientConfig(clientConfig clientcmd.ClientConfig, namespace string) (
 }
 
 func NewForRestConfig(config *rest.Config, namespace string) (*Sdk, error) {
-	startTime := time.Now()
+
 	debug, ok := os.LookupEnv("SDK_DEBUG")
 	if ok && debug == "true" {
 		config.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
@@ -238,24 +238,20 @@ func NewForRestConfig(config *rest.Config, namespace string) (*Sdk, error) {
 		}
 	}
 
-	newClientSetStart := time.Now()
 	clientSet, err := kubernetes.NewForConfig(config)
-	slog.Info("[PERF] NewForRestConfig - NewForConfig(clientSet) took %v", "duration", time.Since(newClientSetStart))
+
 	if err != nil {
 		return nil, err
 	}
 
-	newDynamicStart := time.Now()
 	dynamicClient, err := dynamic.NewForConfig(config)
-	slog.Info("[PERF] NewForRestConfig - NewForConfig(dynamic) took %v", "duration", time.Since(newDynamicStart))
+
 	if err != nil {
 		return nil, err
 	}
 
-	restmapCacheStart := time.Now()
 	restmapCache := memory.NewMemCacheClient(clientSet.Discovery())
 	restmap := restmapper.NewDeferredDiscoveryRESTMapper(restmapCache)
-	slog.Info("[PERF] NewForRestConfig - REST mapper setup took %v", "duration", time.Since(restmapCacheStart))
 
 	ctx := context.Background()
 	sdk := &Sdk{
@@ -266,7 +262,7 @@ func NewForRestConfig(config *rest.Config, namespace string) (*Sdk, error) {
 		dynamicClient: dynamicClient,
 		restMapper:    restmap,
 	}
-	slog.Info("[PERF] NewForRestConfig total time %v", "duration", time.Since(startTime))
+
 	return sdk, nil
 }
 
