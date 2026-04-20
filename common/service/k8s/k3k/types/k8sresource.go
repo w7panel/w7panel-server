@@ -102,7 +102,7 @@ func ToK3kJob(k3kUser *K3kUser) *batchv1.Job {
 	backofflimit := int32(1)
 
 	// 创建Job对象
-	afterSeconds := int32(600)
+	afterSeconds := int32(3600)
 	job := &batchv1.Job{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "batch/v1",
