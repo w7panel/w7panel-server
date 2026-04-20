@@ -277,6 +277,10 @@ func LonghornVolumeDetach(volumeName, attachmentID string, forceDetach bool) err
 func LonghornVolumeCancelExpansion(volumeName string) error {
 	return longhornVolumeApiAction(volumeName, "cancelExpansion", `{"name":"`+volumeName+`"}`)
 }
+func LonghornVolumeTrimFilesystem(volumeName string) error {
+	return longhornVolumeApiAction(volumeName, "trimFilesystem", `{"name":"`+volumeName+`"}`)
+}
+
 func LonghorStoragePercentage(value string) error {
 	postUrl := baseUrl + "/v1/settings/storage-over-provisioning-percentage"
 	json := `{"actions":{},"applied":true,"definition":{"category":"scheduling","default":"100","description":"The over-provisioning percentage defines how much storage can be allocated relative to the hard drive's capacity","displayName":"Storage Over Provisioning Percentage","range":{"minimum":0},"readOnly":false,"required":true,"type":"int"},"id":"storage-over-provisioning-percentage","links":{"self":"http://longhorn.fan.b2.sz.w7.com/v1/settings/storage-over-provisioning-percentage"},"name":"storage-over-provisioning-percentage","type":"setting","value":"%s"}`
