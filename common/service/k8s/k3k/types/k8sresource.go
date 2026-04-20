@@ -122,7 +122,7 @@ func ToK3kJob(k3kUser *K3kUser) *batchv1.Job {
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: helper.ServiceAccountName(),
+					ServiceAccountName: k3kUser.Name,
 					//挂载hostPath
 					RestartPolicy: corev1.RestartPolicyNever,
 
@@ -648,7 +648,7 @@ func ToK3kWeihJob(k3kUser *K3kUser) *batchv1.Job {
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: helper.ServiceAccountName(),
+					ServiceAccountName: k3kUser.Name,
 					//挂载hostPath
 					RestartPolicy: corev1.RestartPolicyNever,
 
