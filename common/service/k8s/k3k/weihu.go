@@ -41,11 +41,20 @@ func (c *Weihu) ClearNoWeihuPod(ctx context.Context) error {
 			continue
 		}
 		val, ok := pod.Labels["w7.cc/weihu"]
-		if !ok || val != "true" { //删除非维护模式的pod
-			err := c.sdk.ClientSet.CoreV1().Pods(c.namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("删除pod失败", "pod", pod.Name, "err", err)
-				return err
+		if !ok || val != "true" { //删除非维护模式的pod //k3k pod 会有finalizers
+			if pod.DeletionTimestamp != nil { //正在删除的pod
+				pod.Finalizers = []string{}
+				_, err := c.sdk.ClientSet.CoreV1().Pods(c.namespace).Update(context.TODO(), &pod, metav1.UpdateOptions{})
+				if err != nil {
+					slog.Error("更新pod失败", "pod", pod.Name, "err", err)
+					return err
+				}
+			} else {
+				err := c.sdk.ClientSet.CoreV1().Pods(c.namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
+				if err != nil {
+					slog.Error("删除pod失败", "pod", pod.Name, "err", err)
+					return err
+				}
 			}
 		}
 	}
