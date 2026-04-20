@@ -175,7 +175,7 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	if k3kUser.IsWeihu() {
 		if !k3kUser.HasWeihuJob() {
 			jobName := k3kUser.GenerateWeihuJobName()
-			_, err = controllerutil.CreateOrPatch(ctx, r.Client, k3kUser, func() error {
+			_, err = controllerutil.CreateOrPatch(ctx, r.Client, k3kUser.ServiceAccount, func() error {
 				k3kUser.SetWeihuJobName(jobName)
 				return nil
 			})

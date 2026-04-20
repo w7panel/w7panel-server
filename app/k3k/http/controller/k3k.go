@@ -323,7 +323,7 @@ func (self K3k) SyncMicroApp(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
-	slog.Error("同步SyncMicroApp")
+	// slog.Error("同步SyncMicroApp")
 	microapp.Sync(params.K3kName, params.K3kNamespace)
 	self.JsonSuccessResponse(http)
 	return
