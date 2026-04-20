@@ -198,7 +198,7 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	} else {
 		jobName := k3kUser.GetWeihuJobName()
 		if jobName != "" {
-			job := types.ToK3kWeihJob(k3kUser, jobName)
+			job := types.ToK3kWeihJob(k3kUser)
 			err := r.Client.Delete(ctx, job)
 			if err != nil {
 				if !k8serrors.IsNotFound(err) {
