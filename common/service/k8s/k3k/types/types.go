@@ -51,6 +51,7 @@ const (
 	K3K_CLUSTER_MODE_SHARED  = "shared"
 	K3K_USER_MODE            = "w7.cc/user-mode" //用户模式
 	W7_WH_MODE               = "w7.cc/weihu"     //维护模式
+	W7_WH_JOB                = "w7.cc/weihu-job" //维护模式
 
 	K3K_NAME       = "w7.cc/k3k-name"       //集群名称
 	K3K_NAMESPACE  = "w7.cc/k3k-namespace"  //命名空间

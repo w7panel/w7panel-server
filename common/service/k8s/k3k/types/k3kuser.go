@@ -236,6 +236,20 @@ func (u *k3kUser) IsWeihu() bool {
 	return u.Labels[W7_WH_MODE] == "true"
 }
 
+func (u *k3kUser) HasWeihuJob() bool {
+	return u.Labels[W7_WH_JOB] != ""
+}
+
+func (u *k3kUser) SetWeihuJobName(name string) {
+	u.Labels[W7_WH_JOB] = name
+}
+func (u *k3kUser) GetWeihuJobName() string {
+	return u.Labels[W7_WH_JOB]
+}
+func (u *k3kUser) GenerateWeihuJobName() string {
+	return "k3k-" + u.Name + "-" + strings.ToLower(helper.RandomString(10))
+}
+
 func (u *k3kUser) SetWeihu(ok bool) {
 	val := "false"
 	if ok {
