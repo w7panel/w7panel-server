@@ -185,7 +185,7 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 			}
 		}
 		if k3kUser.HasWeihuJob() {
-			job := types.ToK3kWeihJob(k3kUser, jobName)
+			job := types.ToK3kWeihJob(k3kUser)
 			err := r.Client.Create(ctx, job)
 			if err != nil {
 				if k8serrors.IsAlreadyExists(err) {
