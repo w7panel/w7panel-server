@@ -118,6 +118,13 @@ func handlePodLimit(client client.Client, sdk *k8s.Sdk, pod *corev1.Pod, namespa
 			pod.Annotations["kubernetes.io/ingress-bandwidth"] = quantitystr
 			modified = true
 		}
+		if k3kUser.IsWeihu() {
+			if pod.Labels == nil {
+				pod.Labels = make(map[string]string)
+			}
+			pod.Labels["w7.cc/weihu"] = "true"
+			modified = true
+		}
 	}
 	return modified
 }

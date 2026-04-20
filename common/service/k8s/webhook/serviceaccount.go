@@ -46,7 +46,7 @@ func (m *ResourceMutator) handleServiceAccount(ctx context.Context, req admissio
 	oldL := oldK3kUser.GetLimitRange()
 	newL := k3kUsr.GetLimitRange()
 	if oldL.IsCpuMemoryBandWidthChange(newL) || oldK3kUser.IsWeihu() != k3kUsr.IsWeihu() {
-		defer m.restartClusterServer(ctx, k3kUsr.GetK3kNamespace()+"-server", k3kUsr.GetK3kNamespace(), k3kUsr.GetBandWidth())
+		defer m.restartClusterServer(ctx, k3kUsr.GetK3kNamespace()+"-server", k3kUsr.GetK3kNamespace(), k3kUsr.GetBandWidth(), k3kUsr.IsWeihu())
 		return admission.Allowed("修改 ServiceAccount 的 CPU 和内存限制")
 	}
 
@@ -112,7 +112,7 @@ func (m *ResourceMutator) DoPause(ctx context.Context, oldK3kUser *k3ktypes.K3kU
 	return nil
 }
 
-func (m *ResourceMutator) restartClusterServer(ctx context.Context, statefulSetName string, namespace string, bandwidth resource.Quantity) error {
+func (m *ResourceMutator) restartClusterServer(ctx context.Context, statefulSetName string, namespace string, bandwidth resource.Quantity, isWh bool) error {
 	time.AfterFunc(time.Second*3, func() {
 		statuset := &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
@@ -129,6 +129,14 @@ func (m *ResourceMutator) restartClusterServer(ctx context.Context, statefulSetN
 		_, err = controllerutil.CreateOrPatch(context.Background(), m.client, statuset, func() error {
 			if statuset.Annotations == nil {
 				statuset.Annotations = make(map[string]string)
+			}
+			if statuset.Labels == nil {
+				statuset.Labels = make(map[string]string)
+			}
+			if isWh {
+				statuset.Labels["w7.cc/weihu"] = "true"
+			} else {
+				delete(statuset.Labels, "w7.cc/weihu")
 			}
 			statuset.Annotations["restart"] = time.Now().String()
 			if statuset.Spec.Template.Annotations == nil {
