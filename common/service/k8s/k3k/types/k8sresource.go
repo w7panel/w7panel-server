@@ -657,7 +657,7 @@ func ToK3kWeihJob(k3kUser *K3kUser, jobName string) *batchv1.Job {
 							Env:             envs,
 							WorkingDir:      "/tmp",
 							ImagePullPolicy: corev1.PullAlways,
-							Command:         []string{"sh", "-c", "w7panel k3k weih --clusterName ${K3K_NAME} --k3knamespace ${K3K_NAMESPACE}"},
+							Command:         []string{"sh", "-c", "w7panel weihu --clusterName ${K3K_NAME} --k3knamespace ${K3K_NAMESPACE}"},
 
 							// SecurityContext: &corev1.SecurityContext{,
 							// Args:            []string{shellkubectl.kubernetes.io/restartedAt
