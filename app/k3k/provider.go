@@ -20,6 +20,7 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(consoleShell.QxUpgrade))
 	console.RegisterCommand(new(consoleShell.K3kOrderReturnCheck))    //处理有退款记录的用户
 	console.RegisterCommand(new(consoleShell.K3kOrderReturnCheckOne)) //处理有退款记录的用户one
+	console.RegisterCommand(new(consoleShell.Weihu))                  //维护模式下的job
 	p.RegisterHttpRoutes(httpServer)
 	// if facade.Config.GetBool("k3k.watch") {
 	// 	go k3kapi.Watch()

@@ -11,6 +11,7 @@ import (
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/sa"
+	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 
 	corev1 "k8s.io/api/core/v1"
@@ -165,44 +166,47 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	// 	logger.Error(err, "Failed to create registries ConfigMap")
 	// 	return ctrl.Result{RequeueAfter: time.Second * 10}, err
 	// }\
-	// err = r.limitClient.Delete(ctx, sa)
-	// if err != nil {
-	// 	if client.IgnoreNotFound(err) != nil {
-	// 		logger.Error(err, "Failed to handle limit range")
-	// 		return ctrl.Result{RequeueAfter: time.Minute}, nil
-	// 	}
-	// 	// return ctrl.Result{}, nil
-	// }
 
 	if !k3kUser.IsClusterReady() {
 		slog.Error("cluster not ready", "uname", k3kUser.GetName())
 		return ctrl.Result{}, nil
 	}
 
-	// err = r.limitClient.Handle(ctx, sa)
-	// if err != nil {
-	// 	logger.Error(err, "Failed to handle limit range")
-	// 	return ctrl.Result{RequeueAfter: time.Minute}, nil
-	// }
+	if k3kUser.IsWeihu() {
+		if !k3kUser.HasWeihuJob() {
+			jobName := k3kUser.GenerateWeihuJobName()
+			job := types.ToK3kWeihJob(k3kUser, jobName)
+			err := r.Client.Create(ctx, job)
+			if err != nil {
+				slog.Error("failed to create weihu job", "err", err)
+				return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
+			}
+			k3kUser.SetWeihuJobName(jobName)
+			err = r.Client.Update(ctx, k3kUser)
+			if err != nil {
+				slog.Error("failed to update weihu job2", "err", err)
+				return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
+			}
+		}
+
+	} else {
+		jobName := k3kUser.GetWeihuJobName()
+		if jobName == "" {
+			return ctrl.Result{}, nil
+		}
+		job := types.ToK3kWeihJob(k3kUser, jobName)
+		err := r.Client.Delete(ctx, job)
+		if err != nil {
+			slog.Error("failed to delete weihu job", "err", err)
+			return ctrl.Result{RequeueAfter: time.Minute * 5}, nil
+		}
+	}
 
 	err = r.storage.Handle(ctx, k3kUser)
 	if err != nil {
 		logger.Error(err, "Failed to handle storage")
 		// return ctrl.Result{}, err
 	}
-
-	// err = r.createKubeconfig(ctx, k3kUser)
-	// if err != nil {
-	// 	requeue := true
-	// 	if errors.IsNotFound(err) {
-	// 		requeue = false
-	// 	}
-	// 	slog.Error("cr kubeconfig error", "error", err.Error(), "uname", k3kUser.GetName(), "requeue", requeue)
-	// 	if !requeue {
-	// 		return ctrl.Result{}, err
-	// 	}
-	// 	return ctrl.Result{RequeueAfter: time.Second * 30}, err
-	// }
 
 	err = r.createAgent(ctx, k3kUser)
 	if err != nil {
