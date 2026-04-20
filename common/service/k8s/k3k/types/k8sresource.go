@@ -591,7 +591,7 @@ func ToK3kPanelEndpointService(k3kUser *K3kUser) *corev1.Service {
 	}
 }
 
-func ToK3kWeihJob(k3kUser *K3kUser, jobName string) *batchv1.Job {
+func ToK3kWeihJob(k3kUser *K3kUser) *batchv1.Job {
 
 	// 设置环境变量
 	//ToK3kJob
@@ -615,7 +615,7 @@ func ToK3kWeihJob(k3kUser *K3kUser, jobName string) *batchv1.Job {
 		// 设置Job的标签
 	}
 	labels := map[string]string{
-		"job-name":    jobName,
+		"job-name":    k3kUser.GetWeihuJobName(),
 		"k3k-sa":      k3kUser.Name,
 		"k3k-job":     "true",
 		"w7.cc/weihu": "true",
@@ -635,7 +635,7 @@ func ToK3kWeihJob(k3kUser *K3kUser, jobName string) *batchv1.Job {
 			Kind:       "Job",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        jobName,
+			Name:        k3kUser.GetWeihuJobName(),
 			Labels:      labels,
 			Annotations: annotations,
 			Namespace:   k3kUser.GetK3kNamespace(),
