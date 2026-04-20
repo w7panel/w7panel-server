@@ -3,12 +3,14 @@ package console
 import (
 	"context"
 	"log/slog"
+	"os"
+	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Weihu struct {
@@ -43,40 +45,33 @@ func (c Weihu) Handle(cmd *cobra.Command, args []string) {
 k3k 集群维护模式
 */
 func (c Weihu) HandleK3k(clusterName, namespace string) {
-	sdk := k8s.NewK8sClient()
-	pods, err := sdk.ClientSet.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: "cluster=" + clusterName,
-	})
+	sdk := k8s.NewK8sClient().Sdk
+	wh := k3k.NewWeihu(sdk, clusterName, namespace)
+	//controll runtime 重试3次
+	ctx := context.Background()
+	//设置超时时间5秒
+	ctx, cancel := context.WithTimeout(ctx, time.Minute*5)
+	defer cancel()
+	err := helper.Retry(func() error {
+		return wh.ClearNoWeihuPod(ctx)
+	}, 3, time.Second*5)
 	if err != nil {
-		slog.Error("获取k3k pod 失败 重试中", "err", err)
+		slog.Error("清理非维护模式pod err", "error", err)
+		os.Exit(1)
 		return
 	}
-	for _, pod := range pods.Items {
-		if pod.Status.Phase == corev1.PodRunning {
-			slog.Info("开始维护模式", "pod", pod.Name)
-			err := sdk.ClientSet.CoreV1().Pods(namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("删除pod失败", "pod", pod.Name, "err", err)
-			}
-		}
-	}
-}
-func (c Weihu) clearHandleK3k(clusterName, namespace string) {
-	sdk := k8s.NewK8sClient()
-	pods, err := sdk.ClientSet.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: "cluster=" + clusterName,
-	})
+
+	err = helper.Retry(func() error {
+		return wh.ClearTicket(ctx)
+	}, 3, time.Second*5)
 	if err != nil {
-		slog.Error("获取k3k pod 失败 重试中", "err", err)
+		slog.Error("清理longhorn ticket err", "error", err)
+		os.Exit(1)
 		return
 	}
-	for _, pod := range pods.Items {
-		if pod.Status.Phase == corev1.PodRunning {
-			slog.Info("开始维护模式", "pod", pod.Name)
-			err := sdk.ClientSet.CoreV1().Pods(namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("删除pod失败", "pod", pod.Name, "err", err)
-			}
-		}
-	}
+	slog.Info("等待30秒,检查集群是否正常")
+	time.Sleep(time.Second * 30)
+	err = helper.RetryFullSuccess(func() error {
+		return wh.CheckOk(ctx)
+	}, 3, time.Second*5)
 }
