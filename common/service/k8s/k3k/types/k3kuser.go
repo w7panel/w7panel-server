@@ -246,6 +246,12 @@ func (u *k3kUser) SetWeihuJobName(name string) {
 func (u *k3kUser) GetWeihuJobName() string {
 	return u.Labels[W7_WH_JOB]
 }
+func (u *k3kUser) SetWHJobStatus(status string) {
+	u.Labels[W7_WH_JOB_STATUS] = status
+}
+func (u *k3kUser) GetWHJobStatus() string {
+	return u.Labels[W7_WH_JOB_STATUS]
+}
 func (u *k3kUser) GenerateWeihuJobName() string {
 	return "k3k-" + u.Name + "-" + strings.ToLower(helper.RandomString(10))
 }

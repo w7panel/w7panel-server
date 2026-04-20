@@ -201,14 +201,14 @@ func (s *singleton) Clear(k3kName string) {
 //	*clientcmdapi.Config: 解析后的kubeconfig配置
 //	error: 如果获取kubeconfig失败，则返回错误信息
 func GetK3kKubeConfig(sigClient client.Client, k3kconfig *K3kConfig) (*clientcmdapi.Config, error) {
-	startTime := time.Now()
+	// startTime := time.Now()
 
 	secret := &corev1.Secret{}
 	kubeConfigName := "k3k-" + k3kconfig.Name + "-kubeconfig"
 
-	getSecretStart := time.Now()
+	// getSecretStart := time.Now()
 	err := sigClient.Get(context.TODO(), types.NamespacedName{Name: kubeConfigName, Namespace: k3kconfig.Namespace}, secret)
-	log.Printf("[PERF] GetK3kKubeConfig - Get Secret took %v", time.Since(getSecretStart))
+	// log.Printf("[PERF] GetK3kKubeConfig - Get Secret took %v", time.Since(getSecretStart))
 	if err != nil {
 		return nil, err
 	}
@@ -218,10 +218,10 @@ func GetK3kKubeConfig(sigClient client.Client, k3kconfig *K3kConfig) (*clientcmd
 		return nil, errors.New("kubeconfig.yaml is empty")
 	}
 
-	loadStart := time.Now()
+	// loadStart := time.Now()
 	kubeconfig, err := clientcmd.Load(kubeconfigYaml)
-	log.Printf("[PERF] GetK3kKubeConfig - Load kubeconfig took %v", time.Since(loadStart))
-	log.Printf("[PERF] GetK3kKubeConfig total time %v", time.Since(startTime))
+	// log.Printf("[PERF] GetK3kKubeConfig - Load kubeconfig took %v", time.Since(loadStart))
+	// log.Printf("[PERF] GetK3kKubeConfig total time %v", time.Since(startTime))
 	return kubeconfig, err
 }
 
