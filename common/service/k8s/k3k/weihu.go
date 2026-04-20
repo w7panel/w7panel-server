@@ -133,16 +133,13 @@ func (c *Weihu) RefreshPod(ctx context.Context, pod *corev1.Pod) (*corev1.Pod, e
 	}
 	return pod, nil
 }
+
+/*
+*
+Multi-Attach error for volume "pvc-fd42de17-d618-4ee2-9a9b-8cdf62c32957" Volume is already used by pod(s) test123-oomkgmeo-57f8d8bf8b-r7x4q
+*/
 func (c *Weihu) TryFixNotRunningPod(ctx context.Context, pod *corev1.Pod) error {
-	refreshPod := func() (*corev1.Pod, error) {
-		pod, err := c.sdk.ClientSet.CoreV1().Pods(c.namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-		if err != nil {
-			slog.Error("获取pod失败", "pod", pod.Name, "err", err)
-			return nil, err
-		}
-		return pod, nil
-	}
-	pod, err := refreshPod()
+	pod, err := c.RefreshPod(ctx, pod)
 	if err != nil {
 		return err
 	}
@@ -167,7 +164,16 @@ func (c *Weihu) TryFixNotRunningPod(ctx context.Context, pod *corev1.Pod) error 
 					// slog.Info("volume hasn't been attached yet, 重新创建pod")
 					//pvc 关联的volume 未挂载 //TOOD 挂载哪个nodeId ???
 				}
+				continue
 
+			}
+			//Multi-Attach error for volume "pvc-fd42de17-d618-4ee2-9a9b-8cdf62c32957" Volume is already used by pod(s) test123-oomkgmeo-57f8d8bf8b-r7x4q
+			if event.Reason == "FailedAttachVolume" {
+				if strings.Contains(event.Message, "Multi-Attach error") {
+					slog.Error("volume is already used by pods, 删除pod并重新创建", "pod", pod.Name)
+					return c.ClearPod(ctx) //清理占用volume 的pod
+
+				}
 			}
 		}
 		return errors.New("k3k pod not running")
