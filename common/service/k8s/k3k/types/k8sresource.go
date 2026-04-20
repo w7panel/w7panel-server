@@ -638,7 +638,7 @@ func ToK3kWeihJob(k3kUser *K3kUser, jobName string) *batchv1.Job {
 			Name:        jobName,
 			Labels:      labels,
 			Annotations: annotations,
-			Namespace:   k3kUser.GetNamespace(),
+			Namespace:   k3kUser.GetK3kNamespace(),
 		},
 		Spec: batchv1.JobSpec{
 			TTLSecondsAfterFinished: &afterSeconds,
