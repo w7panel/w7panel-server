@@ -195,7 +195,7 @@ func (c *Weihu) GetVolumeName(ctx context.Context) (string, error) {
 		return "", errors.New("pvc volumeName is empty")
 	}
 	c.volumeName = pvcName.Spec.VolumeName
-	return c.clusterName, nil
+	return c.volumeName, nil
 }
 func (c *Weihu) ClearTicket(ctx context.Context) error {
 	volumeName, err := c.GetVolumeName(ctx)

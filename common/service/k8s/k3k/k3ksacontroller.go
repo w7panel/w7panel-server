@@ -173,8 +173,8 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	}
 
 	if k3kUser.IsWeihu() {
+		jobName := k3kUser.GenerateWeihuJobName()
 		if !k3kUser.HasWeihuJob() {
-			jobName := k3kUser.GenerateWeihuJobName()
 			_, err = controllerutil.CreateOrPatch(ctx, r.Client, k3kUser.ServiceAccount, func() error {
 				k3kUser.SetWeihuJobName(jobName)
 				return nil
@@ -183,16 +183,15 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 				slog.Error("failed to update weihu job2", "err", err)
 				return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
 			}
-			job := types.ToK3kWeihJob(k3kUser, jobName)
-			err := r.Client.Create(ctx, job)
-			if err != nil {
-				if k8serrors.IsAlreadyExists(err) {
-					slog.Error("failed to create weihu job", "err", err)
-					return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
-				}
+		}
+		job := types.ToK3kWeihJob(k3kUser, jobName)
+		err := r.Client.Create(ctx, job)
+		if err != nil {
+			if k8serrors.IsAlreadyExists(err) {
+				slog.Error("failed to create weihu job", "err", err)
+				return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
 			}
 		}
-
 	} else {
 		jobName := k3kUser.GetWeihuJobName()
 		if jobName != "" {
