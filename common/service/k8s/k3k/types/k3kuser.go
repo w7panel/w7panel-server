@@ -402,6 +402,8 @@ func (u *k3kUser) ToArray() map[string]string {
 		"w7.cc/diff-month": u.GetDiffMonths().String(),
 		W7_ROLE:            u.GetRole(),
 		W7_WH_MODE:         u.Labels[W7_WH_MODE],
+		W7_WH_JOB:          u.Labels[W7_WH_JOB],
+		W7_WH_JOB_STATUS:   u.GetWHJobStatus(),
 	}
 	if !u.IsClusterUser() {
 		// result[W7_FILE_EDITTOR] = "true"

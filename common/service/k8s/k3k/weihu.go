@@ -162,7 +162,7 @@ func (c *Weihu) TryFixNotRunningPod(ctx context.Context, pod *corev1.Pod) error 
 				    InvalidArgument desc = volume pvc-ce0e697a-d6a4-4136-a366-a638618fd9e8
 				    hasn't been attached yet
 				*/
-				slog.Error("volume hasn't been attached yet, 删除pod并重新创建", "pod", pod.Name)
+				slog.Error("volume hasn't been attached yet, 删除pod并重新创建", "pod", pod.Name) //TODO ???
 				if strings.Contains(event.Message, "volume hasn't been attached yet") {
 					// slog.Info("volume hasn't been attached yet, 重新创建pod")
 					//pvc 关联的volume 未挂载 //TOOD 挂载哪个nodeId ???
