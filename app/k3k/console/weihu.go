@@ -40,6 +40,15 @@ func (c Weihu) Handle(cmd *cobra.Command, args []string) {
 	c.HandleK3k(whOp.clusterName, whOp.k3kNamespace)
 }
 
+/**
+Events:
+  Type     Reason       Age                  From               Message
+  ----     ------       ----                 ----               -------
+  Normal   Scheduled    9m8s                 default-scheduler  Successfully assigned k3k-console-164315/k3k-console-164315-server-0 to server1
+  Warning  FailedMount  49s (x12 over 9m3s)  kubelet            MountVolume.MountDevice failed for volume "pvc-ce0e697a-d6a4-4136-a366-a638618fd9e8" : rpc error: code = InvalidArgument desc = volume pvc-ce0e697a-d6a4-4136-a366-a638618fd9e8 hasn't been attached yet
+
+
+*/
 /*
 *
 k3k 集群维护模式
@@ -74,4 +83,9 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 	err = helper.RetryFullSuccess(func() error {
 		return wh.CheckOk(ctx)
 	}, 3, time.Second*5)
+	if err != nil {
+		slog.Error("检查集群异常", "error", err)
+		os.Exit(1)
+		return
+	}
 }

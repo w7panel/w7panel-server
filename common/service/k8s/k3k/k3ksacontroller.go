@@ -13,8 +13,8 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/sa"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
-
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -175,30 +175,35 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	if k3kUser.IsWeihu() {
 		if !k3kUser.HasWeihuJob() {
 			jobName := k3kUser.GenerateWeihuJobName()
-			job := types.ToK3kWeihJob(k3kUser, jobName)
-			err := r.Client.Create(ctx, job)
-			if err != nil {
-				slog.Error("failed to create weihu job", "err", err)
-				return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
-			}
-			k3kUser.SetWeihuJobName(jobName)
-			err = r.Client.Update(ctx, k3kUser)
+			_, err = controllerutil.CreateOrPatch(ctx, r.Client, k3kUser, func() error {
+				k3kUser.SetWeihuJobName(jobName)
+				return nil
+			})
 			if err != nil {
 				slog.Error("failed to update weihu job2", "err", err)
 				return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
+			}
+			job := types.ToK3kWeihJob(k3kUser, jobName)
+			err := r.Client.Create(ctx, job)
+			if err != nil {
+				if k8serrors.IsAlreadyExists(err) {
+					slog.Error("failed to create weihu job", "err", err)
+					return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
+				}
 			}
 		}
 
 	} else {
 		jobName := k3kUser.GetWeihuJobName()
-		if jobName == "" {
-			return ctrl.Result{}, nil
-		}
-		job := types.ToK3kWeihJob(k3kUser, jobName)
-		err := r.Client.Delete(ctx, job)
-		if err != nil {
-			slog.Error("failed to delete weihu job", "err", err)
-			return ctrl.Result{RequeueAfter: time.Minute * 5}, nil
+		if jobName != "" {
+			job := types.ToK3kWeihJob(k3kUser, jobName)
+			err := r.Client.Delete(ctx, job)
+			if err != nil {
+				if !k8serrors.IsNotFound(err) {
+					slog.Error("failed to delete weihu job", "err", err)
+					return ctrl.Result{RequeueAfter: time.Minute * 5}, nil
+				}
+			}
 		}
 	}
 
