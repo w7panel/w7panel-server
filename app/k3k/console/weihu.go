@@ -11,6 +11,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type Weihu struct {
@@ -58,12 +59,13 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 	wh := k3k.NewWeihu(sdk, clusterName, namespace)
 	//controll runtime 重试3次
 	ctx := context.Background()
+	retry := 3
 	//设置超时时间5秒
 	ctx, cancel := context.WithTimeout(ctx, time.Minute*5)
 	defer cancel()
 	err := helper.Retry(func() error {
 		return wh.ClearNoWeihuPod(ctx)
-	}, 3, time.Second*5)
+	}, retry, time.Second*10)
 	if err != nil {
 		slog.Error("清理非维护模式pod err", "error", err)
 		os.Exit(1)
@@ -71,13 +73,58 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 	}
 
 	err = helper.Retry(func() error {
-		return wh.ClearTicket(ctx)
+		return wh.TrimFilesystem(ctx)
 	}, 3, time.Second*5)
 	if err != nil {
-		slog.Error("清理longhorn ticket err", "error", err)
+		slog.Error("清理longhorn trimSystem err", "error", err)
+		// 不退出
+	}
+
+	var whPod *corev1.Pod
+	for i := 0; i < retry; i++ {
+		whPod, err = wh.GetWeihuingPod(ctx)
+		if err != nil {
+			slog.Error("获取维护模式pod err", "error", err, "retry", retry)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+	}
+	if whPod == nil {
+		slog.Error("获取维护pod err", "error", err)
 		os.Exit(1)
 		return
 	}
+	if whPod.Status.Phase != corev1.PodRunning {
+		//尝试修复 not running pod
+		slog.Info("维护pod 非running, 尝试修复")
+		err = helper.Retry(func() error {
+			return wh.TryFixNotRunningPod(ctx, whPod)
+		}, retry, time.Second*10)
+		if err != nil {
+			slog.Error("尝试修复not running pod err", "error", err)
+			os.Exit(1)
+			return
+		}
+	}
+	//刷新pod 状态 检查是否启动
+	for i := 0; i < retry; i++ {
+		whPod, err = wh.RefreshPod(ctx, whPod)
+		if err != nil {
+			slog.Error("刷新pod err", "error", err)
+			time.Sleep(time.Second * 15)
+			continue
+		}
+		if whPod.Status.Phase == corev1.PodRunning {
+			slog.Info("维护模式pod 启动成功")
+			break
+		}
+	}
+	if whPod.Status.Phase != corev1.PodRunning {
+		slog.Error("维护模式pod 启动失败")
+		os.Exit(1)
+		return
+	}
+
 	slog.Info("等待30秒,检查集群是否正常")
 	time.Sleep(time.Second * 30)
 	err = helper.RetryFullSuccess(func() error {
