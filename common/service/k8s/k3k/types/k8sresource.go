@@ -102,7 +102,7 @@ func ToK3kJob(k3kUser *K3kUser) *batchv1.Job {
 	backofflimit := int32(1)
 
 	// 创建Job对象
-	afterSeconds := int32(600)
+	afterSeconds := int32(3600)
 	job := &batchv1.Job{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "batch/v1",
@@ -589,4 +589,85 @@ func ToK3kPanelEndpointService(k3kUser *K3kUser) *corev1.Service {
 			},
 		},
 	}
+}
+
+func ToK3kWeihJob(k3kUser *K3kUser, jobName string) *batchv1.Job {
+
+	// 设置环境变量
+	//ToK3kJob
+	envs := []corev1.EnvVar{
+		{
+			Name:  "K3K_NAME",
+			Value: k3kUser.GetK3kName(),
+		},
+		{
+			Name:  "K3K_NAMESPACE",
+			Value: k3kUser.GetK3kNamespace(),
+		},
+	}
+	// 设置Job的注解
+	title := "集群维护模式"
+	annotations := map[string]string{
+		"title":              title,
+		"w7.cc/title":        title,
+		"w7.cc/deploy-title": "集群维护模式",
+
+		// 设置Job的标签
+	}
+	labels := map[string]string{
+		"job-name":    jobName,
+		"k3k-sa":      k3kUser.Name,
+		"k3k-job":     "true",
+		"w7.cc/weihu": "true",
+	}
+	// labels["w7.cc/job-source"] = "appgroup"
+	// labels["searchJob"] = p.GetName() + "-build-" + shellType
+
+	// 设置Job的重试次数和超时时间
+	// labels["w7.cc/shell-type"] = shellType
+	backofflimit := int32(3)
+
+	// 创建Job对象
+	afterSeconds := int32(600)
+	job := &batchv1.Job{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "batch/v1",
+			Kind:       "Job",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        jobName,
+			Labels:      labels,
+			Annotations: annotations,
+			Namespace:   "default",
+		},
+		Spec: batchv1.JobSpec{
+			TTLSecondsAfterFinished: &afterSeconds,
+			BackoffLimit:            &backofflimit,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					ServiceAccountName: helper.ServiceAccountName(),
+					//挂载hostPath
+					RestartPolicy: corev1.RestartPolicyNever,
+
+					Containers: []corev1.Container{
+						{
+							Name:            "create-cluster",
+							Image:           helper.SelfImage(),
+							Env:             envs,
+							WorkingDir:      "/tmp",
+							ImagePullPolicy: corev1.PullAlways,
+							Command:         []string{"sh", "-c", "w7panel weihu --clusterName ${K3K_NAME} --k3knamespace ${K3K_NAMESPACE}"},
+
+							// SecurityContext: &corev1.SecurityContext{,
+							// Args:            []string{shellkubectl.kubernetes.io/restartedAt
+						},
+					},
+				},
+			},
+		},
+	}
+	return job
 }

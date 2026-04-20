@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -62,6 +63,23 @@ func (r *K3kJobController) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			logger.Error(err, "Failed to get ServiceAccount")
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
+		if job.Labels[k3ktypes.W7_WH_MODE] == "true" {
+			_, err := controllerutil.CreateOrPatch(ctx, r.Client, sa, func() error {
+				if job.Status.Succeeded > 0 {
+					sa.Labels[k3ktypes.W7_WH_JOB_STATUS] = k3ktypes.K3K_STATUS_COMPLETE
+				}
+				if job.Status.Failed > 0 {
+					sa.Labels[k3ktypes.W7_WH_JOB_STATUS] = k3ktypes.K3K_STATUS_FAILED
+				}
+				return nil
+			})
+			if err != nil {
+				logger.Error(err, "Failed to update weihu job status")
+				return ctrl.Result{RequeueAfter: time.Minute}, err
+			}
+			return ctrl.Result{}, nil
+		}
+
 		if sa.Annotations[k3ktypes.K3K_JOB_NAME] != job.Name {
 			return ctrl.Result{}, nil
 		}

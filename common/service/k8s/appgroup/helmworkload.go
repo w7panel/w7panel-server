@@ -183,6 +183,13 @@ func (h *HelmWorkload) releaseToAppGroup(release *release.Release) *v1alpha1Type
 		Items: []v1alpha1Types.AppGroupItemStatus{},
 		Ready: true,
 	}
+	if group.Annotations == nil {
+		group.Annotations = map[string]string{}
+	}
+	val5, ok5 := annotations[zpktypes.HELM_DENY_DELETE]
+	if ok5 {
+		group.Annotations[zpktypes.HELM_DENY_DELETE] = val5
+	}
 	return group
 }
 

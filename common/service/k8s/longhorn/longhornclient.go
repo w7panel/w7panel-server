@@ -63,7 +63,14 @@ func (c *longhornclient) GetVolumeList() (*longhornV1beta2.VolumeList, error) {
 func (c *longhornclient) GetSnapshotList() (*longhornV1beta2.SnapshotList, error) {
 	return c.client.LonghornV1beta2().Snapshots(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
 }
+func (c *longhornclient) GetVolumeAttachment(name string) (*longhornV1beta2.VolumeAttachment, error) {
+	return c.client.LonghornV1beta2().VolumeAttachments(c.namespace).Get(c.sdk.Ctx, name, v1.GetOptions{})
+}
 
+func (c *longhornclient) ClearVolumeAttachmentTicket(vt *longhornV1beta2.VolumeAttachment) (*longhornV1beta2.VolumeAttachment, error) {
+	vt.Spec.AttachmentTickets = make(map[string]*longhornV1beta2.AttachmentTicket)
+	return c.client.LonghornV1beta2().VolumeAttachments(c.namespace).Update(c.sdk.Ctx, vt, v1.UpdateOptions{})
+}
 func (c *longhornclient) GetEngineList() (*longhornV1beta2.EngineList, error) {
 	return c.client.LonghornV1beta2().Engines(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
 }
@@ -270,6 +277,10 @@ func LonghornVolumeDetach(volumeName, attachmentID string, forceDetach bool) err
 func LonghornVolumeCancelExpansion(volumeName string) error {
 	return longhornVolumeApiAction(volumeName, "cancelExpansion", `{"name":"`+volumeName+`"}`)
 }
+func LonghornVolumeTrimFilesystem(volumeName string) error {
+	return longhornVolumeApiAction(volumeName, "trimFilesystem", `{"name":"`+volumeName+`"}`)
+}
+
 func LonghorStoragePercentage(value string) error {
 	postUrl := baseUrl + "/v1/settings/storage-over-provisioning-percentage"
 	json := `{"actions":{},"applied":true,"definition":{"category":"scheduling","default":"100","description":"The over-provisioning percentage defines how much storage can be allocated relative to the hard drive's capacity","displayName":"Storage Over Provisioning Percentage","range":{"minimum":0},"readOnly":false,"required":true,"type":"int"},"id":"storage-over-provisioning-percentage","links":{"self":"http://longhorn.fan.b2.sz.w7.com/v1/settings/storage-over-provisioning-percentage"},"name":"storage-over-provisioning-percentage","type":"setting","value":"%s"}`

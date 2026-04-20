@@ -236,6 +236,27 @@ func (u *k3kUser) IsWeihu() bool {
 	return u.Labels[W7_WH_MODE] == "true"
 }
 
+func (u *k3kUser) HasWeihuJob() bool {
+	return u.Labels[W7_WH_JOB] != ""
+}
+
+func (u *k3kUser) SetWeihuJobName(name string) {
+	u.Labels[W7_WH_JOB] = name
+	u.Labels[W7_WH_JOB_STATUS] = K3K_STATUS_RUNNING
+}
+func (u *k3kUser) GetWeihuJobName() string {
+	return u.Labels[W7_WH_JOB]
+}
+func (u *k3kUser) SetWHJobStatus(status string) {
+	u.Labels[W7_WH_JOB_STATUS] = status
+}
+func (u *k3kUser) GetWHJobStatus() string {
+	return u.Labels[W7_WH_JOB_STATUS]
+}
+func (u *k3kUser) GenerateWeihuJobName() string {
+	return "k3k-" + u.Name + "-" + strings.ToLower(helper.RandomString(10))
+}
+
 func (u *k3kUser) SetWeihu(ok bool) {
 	val := "false"
 	if ok {
@@ -381,6 +402,8 @@ func (u *k3kUser) ToArray() map[string]string {
 		"w7.cc/diff-month": u.GetDiffMonths().String(),
 		W7_ROLE:            u.GetRole(),
 		W7_WH_MODE:         u.Labels[W7_WH_MODE],
+		W7_WH_JOB:          u.Labels[W7_WH_JOB],
+		W7_WH_JOB_STATUS:   u.GetWHJobStatus(),
 	}
 	if !u.IsClusterUser() {
 		// result[W7_FILE_EDITTOR] = "true"

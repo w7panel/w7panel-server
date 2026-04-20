@@ -323,7 +323,7 @@ func (self K3k) SyncMicroApp(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
-	slog.Error("同步SyncMicroApp")
+	// slog.Error("同步SyncMicroApp")
 	microapp.Sync(params.K3kName, params.K3kNamespace)
 	self.JsonSuccessResponse(http)
 	return
@@ -400,4 +400,21 @@ func (self K3k) WhMoshi(http *gin.Context) {
 	}
 	k3k.WhMoshiToggle(client.Sdk, user)
 	self.JsonSuccessResponse(http)
+}
+
+// 维护救援模式job 重新新建job
+func (self K3k) WhJob(http *gin.Context) {
+	token := http.MustGet("k8s_token").(string)
+	user, err := k3k.TokenToK3kUser(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	err = k3k.WhJob(k8s.NewK8sClient().Sdk, user)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonSuccessResponse(http)
+	return
 }
