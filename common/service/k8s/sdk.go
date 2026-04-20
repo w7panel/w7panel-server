@@ -531,7 +531,7 @@ func (self *Sdk) RunExec(ptyHandler PtyHandler, namespace string, podName string
 }
 
 func (self *Sdk) CreateTokenRequest(serviceAccount string, expireSeconds int64, audiences []string) (string, error) {
-	startTime := time.Now()
+	// startTime := time.Now()
 	tokenReq := v1.TokenRequest{
 		Spec: v1.TokenRequestSpec{
 			ExpirationSeconds: &expireSeconds,
@@ -544,12 +544,7 @@ func (self *Sdk) CreateTokenRequest(serviceAccount string, expireSeconds int64, 
 		},
 	}
 
-	createTokenStart := time.Now()
 	result, err := self.ClientSet.CoreV1().ServiceAccounts(self.namespace).CreateToken(self.Ctx, serviceAccount, &tokenReq, metav1.CreateOptions{})
-	createTokenTime := time.Since(createTokenStart)
-
-	slog.Info("[PERF] Sdk.CreateTokenRequest - CreateToken took %v", "duration", createTokenTime)
-	slog.Info("[PERF] Sdk.CreateTokenRequest total time %v", "duration", time.Since(startTime))
 
 	if err != nil {
 		return "", err

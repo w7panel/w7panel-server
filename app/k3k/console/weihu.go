@@ -67,7 +67,7 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 		return wh.ClearNoWeihuPod(ctx)
 	}, retry, time.Second*10)
 	if err != nil {
-		slog.Error("清理非维护模式pod err", "error", err)
+		slog.Error("清理非维护模式pod err, 请重试", "error", err)
 		os.Exit(1)
 		return
 	}
@@ -101,7 +101,7 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 			return wh.TryFixNotRunningPod(ctx, whPod)
 		}, retry, time.Second*10)
 		if err != nil {
-			slog.Error("尝试修复not running pod err", "error", err)
+			slog.Error("尝试修复集群失败", "error", err)
 			os.Exit(1)
 			return
 		}
@@ -120,7 +120,7 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 		}
 	}
 	if whPod.Status.Phase != corev1.PodRunning {
-		slog.Error("维护模式pod 启动失败")
+		slog.Error("维护模式pod 启动失败, 请重试")
 		os.Exit(1)
 		return
 	}
@@ -131,8 +131,9 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 		return wh.CheckOk(ctx)
 	}, 3, time.Second*5)
 	if err != nil {
-		slog.Error("检查集群异常", "error", err)
+		slog.Error("集群访问异常，请重试", "error", err)
 		os.Exit(1)
 		return
 	}
+	slog.Info("集群救援成功")
 }
