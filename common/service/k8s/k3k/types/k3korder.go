@@ -7,6 +7,7 @@ import (
 
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
+	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -194,6 +195,15 @@ type BuyBaseResource struct {
 	BuyResource
 	CouponCode string `form:"couponCode"`
 	CvmName    string `form:"cvm"`
+}
+
+func (b *BuyBaseResource) ToCvmResource() *cvmv1alpha1.CvmResource {
+	return &cvmv1alpha1.CvmResource{
+		CPU:       b.Cpu,
+		Memory:    b.Memory,
+		Storage:   b.Storage,
+		Bandwidth: b.Bandwidth,
+	}
 }
 
 // 续费

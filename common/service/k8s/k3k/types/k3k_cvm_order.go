@@ -83,13 +83,13 @@ func (u *K3kCvmOrder) SetBaseOrderPaid(info *console.OrderInfo) {
 			Storage:   info.Storage,
 			Bandwidth: info.Bandwidth,
 		}
-		u.Spec.BaseResource = v1alpha1.CvmResource{
+		u.Spec.BaseResource = &v1alpha1.CvmResource{
 			CPU:       baseResource.Cpu,
 			Memory:    baseResource.Memory,
 			Storage:   baseResource.Storage,
 			Bandwidth: baseResource.Bandwidth,
 		}
-		u.Spec.Resource = v1alpha1.CvmResource{
+		u.Spec.Resource = &v1alpha1.CvmResource{
 			CPU:       baseResource.Cpu,
 			Memory:    baseResource.Memory,
 			Storage:   baseResource.Storage,

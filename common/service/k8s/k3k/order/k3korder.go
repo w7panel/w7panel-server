@@ -114,14 +114,14 @@ func (k *K3kOrderApi) getCvm(user *types.K3kUser, cvmName string) (*cvmv1alpha1.
 		return nil, fmt.Errorf("cvm不能为空")
 	}
 	cvm := &cvmv1alpha1.Cvm{}
-	if err := k.client.Get(k.sdk.Ctx, client.ObjectKey{Name: cvmName}, cvm); err != nil {
+	if err := k.client.Get(k.sdk.Ctx, client.ObjectKey{Name: cvmName, Namespace: user.GetK3kNamespace()}, cvm); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("cvm不存在")
 		}
 		return nil, err
 	}
-	if cvm.Annotations != nil {
-		if namespace := cvm.Annotations[types.K3K_NAMESPACE]; namespace != "" && namespace != user.GetK3kNamespace() {
+	if cvm.Labels != nil {
+		if namespace := cvm.Labels[types.K3K_NAMESPACE]; namespace != "" && namespace != user.GetK3kNamespace() {
 			return nil, fmt.Errorf("cvm不属于当前用户")
 		}
 	}
@@ -251,6 +251,7 @@ func (k *K3kOrderApi) CreateBaseResourceCvmOrder(baseResource *types.BuyBaseReso
 	params["buymode"] = BASE_BUY
 	params["price"] = compute.GetDiscountPrice(BASE_BUY).String()
 	params["hour"] = strconv.FormatFloat(currentUq.GetHours(), 'f', 2, 64)
+	params["cvm_name"] = cvm.Name
 	if err := k.LockCoupon(conponCode, used); err != nil {
 		slog.Error("lock coupon code error", "code", conponCode, "err", err)
 		return nil, errors.New("lock coupon code error")
@@ -763,9 +764,7 @@ func createOrderByName(orderName string, mainConfig *config.W7Config, currentCon
 
 }
 func CreateBaseResourceOrder(baseResource *types.BuyBaseResource, user *types.K3kUser) (*console.PayResult, error) {
-	if baseResource.CvmName != "" {
-		return CreateBaseResourceCvmOrder(baseResource, user)
-	}
+
 	sdk := k8s.NewK8sClient().Sdk
 	orderApi, err := NewK3kOrderApi(sdk)
 	if err != nil {

@@ -6,9 +6,7 @@ import (
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:scope=Cluster,path=cvms,shortName=cv,singular=cvm
 type Cvm struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -24,16 +22,17 @@ type CvmResource struct {
 }
 
 type CvmSpec struct {
-	StorageClassName string      `json:"storageClassName,omitempty"`
-	Workload         Workload    `json:"workload,omitempty"`
-	Resource         CvmResource `json:"resource,omitempty"` //可使用资源
-	BaseOrder        *CvmOrder   `json:"baseOrder,omitempty"`
-	ExpandOrder      *CvmOrder   `json:"expandOrder,omitempty"`
-	RenewOrder       *CvmOrder   `json:"renewOrder,omitempty"`
-	BaseResource     CvmResource `json:"baseResource,omitempty"` //首次购买资源 暂存在这个字段
-	ExpireTime       string      `json:"expireTime,omitempty"`   //到期时间
-	RecycleTime      string      `json:"recycleTime,omitempty"`  //回收时间RECYCLE
-	OverMode         string      `json:"overMode,omitempty"`     //资源状态 wait(等待检测) no-resource(无资源) success(检测通过)
+	StorageClassName string       `json:"storageClassName,omitempty"`
+	Workload         Workload     `json:"workload,omitempty"`
+	Resource         *CvmResource `json:"resource,omitempty"` //可使用资源
+	BaseOrder        *CvmOrder    `json:"baseOrder,omitempty"`
+	ExpandOrder      *CvmOrder    `json:"expandOrder,omitempty"`
+	RenewOrder       *CvmOrder    `json:"renewOrder,omitempty"`
+	BaseResource     *CvmResource `json:"baseResource,omitempty"` //首次购买资源 暂存在这个字段
+	ExpireTime       string       `json:"expireTime,omitempty"`   //到期时间
+	RecycleTime      string       `json:"recycleTime,omitempty"`  //回收时间RECYCLE
+	OverMode         string       `json:"overMode,omitempty"`     //资源状态 wait(等待检测) no-resource(无资源) success(检测通过)
+	Rescue           bool         `json:"rescue,omitempty"`       //是否救援模式
 }
 
 type CvmOrder struct {

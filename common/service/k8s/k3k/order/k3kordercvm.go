@@ -1,18 +1,53 @@
 package order
 
 import (
+	"context"
+
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func CreateBaseResourceCvmOrder(baseResource *types.BuyBaseResource, user *types.K3kUser) (*console.PayResult, error) {
+func CreateBaseResourceCvmOrder(ctx context.Context, baseResource *types.BuyBaseResource, user *types.K3kUser) (*console.PayResult, error) {
 	sdk := k8s.NewK8sClient().Sdk
 	orderApi, err := NewK3kOrderApi(sdk)
 	if err != nil {
 		return nil, err
 	}
-	err = orderApi.CheckCanBuyCvm(baseResource.CvmName)
+	// 如果没传cvm name 会自动创建一个
+	cvmName := helper.RandomString(15)
+	if baseResource.CvmName != "" {
+		cvmName = baseResource.CvmName
+		_, err := orderApi.getCvm(user, cvmName)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return nil, err
+			}
+			cvm := &cvmv1alpha1.Cvm{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      cvmName,
+					Namespace: user.GetK3kNamespace(),
+				},
+				Spec: cvmv1alpha1.CvmSpec{
+					BaseResource: baseResource.ToCvmResource(),
+				},
+			}
+			sigClient, err := sdk.ToSigClient()
+			if err != nil {
+				return nil, err
+			}
+			err = sigClient.Create(ctx, cvm)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	err = orderApi.CheckCanBuyCvm(cvmName)
 	if err != nil {
 		return nil, err
 	}
