@@ -617,6 +617,7 @@ func ToK3kWeihJob(k3kUser *K3kUser, jobName string) *batchv1.Job {
 	labels := map[string]string{
 		"job-name":    jobName,
 		"k3k-sa":      k3kUser.Name,
+		"k3k-job":     "true",
 		"w7.cc/weihu": "true",
 	}
 	// labels["w7.cc/job-source"] = "appgroup"
