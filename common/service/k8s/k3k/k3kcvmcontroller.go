@@ -9,8 +9,8 @@ import (
 
 	k3kv1 "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -99,34 +99,55 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 		logger.Error(err, "Failed to create/update k3k Cluster")
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
-	_ = cluster
+	if err := r.syncClusterStatus(ctx, cvm, cluster); err != nil {
+		logger.Error(err, "Failed to sync cluster status to cvm")
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
 
 	return ctrl.Result{}, nil
 }
 
 func (r *K3kCvmController) createOrUpdateCluster(ctx context.Context, cvm *cvmv1alpha1.Cvm) (*k3kv1.Cluster, error) {
-	cluster := &k3kv1.Cluster{
+	desiredCluster := &k3kv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      r.getClusterName(cvm),
 			Namespace: r.getClusterNamespace(cvm),
 		},
 	}
 
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cluster, func() error {
-		if cluster.Labels == nil {
-			cluster.Labels = make(map[string]string)
-		}
-		if cluster.Annotations == nil {
-			cluster.Annotations = make(map[string]string)
-		}
-		cluster.Labels["cvm-uid"] = string(cvm.UID)
-		cluster.Labels[K3kCvmNameLabel] = cvm.Name
-		cluster.Annotations[K3kCvmNamespaceAnno] = cvm.Namespace
+	desiredCluster.Labels = map[string]string{
+		"cvm-uid": string(cvm.UID),
+	}
+	desiredCluster.Spec = r.toClusterSpec(cvm)
+	if err := controllerutil.SetControllerReference(cvm, desiredCluster, r.Scheme); err != nil {
+		return nil, err
+	}
 
-		cluster.Spec = r.toClusterSpec(cvm)
-		return controllerutil.SetControllerReference(cvm, cluster, r.Scheme)
-	})
+	cluster := &k3kv1.Cluster{}
+	err := r.Get(ctx, client.ObjectKeyFromObject(desiredCluster), cluster)
+	if apierrors.IsNotFound(err) {
+		if err := r.Create(ctx, desiredCluster); err != nil {
+			return nil, err
+		}
+		return desiredCluster, nil
+	}
 	if err != nil {
+		return nil, err
+	}
+
+	if apiequality.Semantic.DeepEqual(cluster.Labels, desiredCluster.Labels) &&
+		apiequality.Semantic.DeepEqual(cluster.Annotations, desiredCluster.Annotations) &&
+		apiequality.Semantic.DeepEqual(cluster.Spec, desiredCluster.Spec) &&
+		apiequality.Semantic.DeepEqual(cluster.OwnerReferences, desiredCluster.OwnerReferences) {
+		return cluster, nil
+	}
+
+	patchBase := cluster.DeepCopy()
+	cluster.Labels = desiredCluster.Labels
+	cluster.Annotations = desiredCluster.Annotations
+	cluster.Spec = desiredCluster.Spec
+	cluster.OwnerReferences = desiredCluster.OwnerReferences
+	if err := r.Patch(ctx, cluster, client.MergeFrom(patchBase)); err != nil {
 		return nil, err
 	}
 
@@ -138,14 +159,25 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 	spec := k3kv1.ClusterSpec{
 		Servers: &servers,
 	}
-
-	if cvm.Spec.StorageClassName != "" {
-		spec.Persistence.StorageClassName = &cvm.Spec.StorageClassName
+	spec.Mode = k3kv1.VirtualClusterMode
+	// serverArgs:
+	// - '--kubelet-arg=$cgroup_root'
+	// - '--disable=traefik'
+	// - '--embedded-registry'
+	// - '--disable-network-policy'
+	spec.ServerArgs = []string{
+		"--kubelet-arg=$cgroup_root",
+		"--disable=traefik",
+		"--embedded-registry",
+		"--disable-network-policy",
 	}
-	if cvm.Spec.Resource.Storage > 0 {
-		spec.Persistence.StorageRequestSize = fmt.Sprintf("%dGi", cvm.Spec.Resource.Storage)
+	if cvm.Spec.StorageClassName != "" && cvm.Spec.Resource.Storage > 0 {
+		spec.Persistence = k3kv1.PersistenceConfig{
+			StorageClassName:   &cvm.Spec.StorageClassName,
+			Type:               k3kv1.DynamicPersistenceMode,
+			StorageRequestSize: fmt.Sprintf("%dGi", cvm.Spec.Resource.Storage),
+		}
 	}
-
 	return spec
 }
 
@@ -154,8 +186,8 @@ func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.
 
 	cluster := &k3kv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      r.getClusterName(cvm),
-			Namespace: r.getClusterNamespace(cvm),
+			Name:      cvm.Name,
+			Namespace: cvm.Namespace,
 		},
 	}
 	if err := r.Delete(ctx, cluster); err != nil && !apierrors.IsNotFound(err) {
@@ -174,21 +206,11 @@ func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.
 }
 
 func (r *K3kCvmController) getClusterName(cvm *cvmv1alpha1.Cvm) string {
-	if cvm.Annotations != nil {
-		if name := cvm.Annotations[k3ktypes.K3K_NAME]; name != "" {
-			return name
-		}
-	}
 	return cvm.Name
 }
 
 func (r *K3kCvmController) getClusterNamespace(cvm *cvmv1alpha1.Cvm) string {
-	if cvm.Annotations != nil {
-		if ns := cvm.Annotations[k3ktypes.K3K_NAMESPACE]; ns != "" {
-			return ns
-		}
-	}
-	return "default"
+	return cvm.Namespace
 }
 
 func (r *K3kCvmController) ensureClusterDeleted(ctx context.Context, cvm *cvmv1alpha1.Cvm) error {
@@ -201,4 +223,29 @@ func (r *K3kCvmController) ensureClusterDeleted(ctx context.Context, cvm *cvmv1a
 		return nil
 	}
 	return err
+}
+
+func (r *K3kCvmController) syncClusterStatus(ctx context.Context, cvm *cvmv1alpha1.Cvm, cluster *k3kv1.Cluster) error {
+	newStatus := cvmv1alpha1.CvmStatus{
+		Phase:         string(cluster.Status.Phase),
+		ReadyReplicas: r.clusterReadyReplicas(cluster),
+		Conditions:    cluster.Status.Conditions,
+	}
+
+	if cvm.Status.Phase == newStatus.Phase &&
+		cvm.Status.ReadyReplicas == newStatus.ReadyReplicas &&
+		apiequality.Semantic.DeepEqual(cvm.Status.Conditions, newStatus.Conditions) {
+		return nil
+	}
+
+	cvm = cvm.DeepCopy()
+	cvm.Status = newStatus
+	return r.Status().Update(ctx, cvm)
+}
+
+func (r *K3kCvmController) clusterReadyReplicas(cluster *k3kv1.Cluster) int32 {
+	if cluster.Status.Phase == k3kv1.ClusterReady {
+		return 1
+	}
+	return 0
 }

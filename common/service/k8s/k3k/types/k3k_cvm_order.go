@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/w7panel/w7panel/common/service/console"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
 	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 )
 
@@ -95,9 +94,9 @@ func (u *K3kCvmOrder) SetBaseOrderPaid(info *console.OrderInfo) {
 			Storage:   baseResource.Storage,
 			Bandwidth: baseResource.Bandwidth,
 		}
-		rs := overselling.OrderInfoToResource(info)
-		u.Annotations[W7_OVER_BASE_RESOURCE] = rs.JsonString()
-		u.Annotations[W7_QUOTA_LIMIT_LOCK] = "true" //锁定配额，防止配额被费用套餐覆盖
+		// rs := overselling.OrderInfoToResource(info)
+		// u.Annotations[W7_OVER_BASE_RESOURCE] = rs.JsonString()
+		// u.Annotations[W7_QUOTA_LIMIT_LOCK] = "true" //锁定配额，防止配额被费用套餐覆盖
 		u.Spec.OverMode = "wait"
 
 	}
