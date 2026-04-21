@@ -64,7 +64,7 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 	ctx, cancel := context.WithTimeout(ctx, time.Minute*5)
 	defer cancel()
 	err := helper.Retry(func() error {
-		return wh.ClearNoWeihuPod(ctx)
+		return wh.ClearPod(ctx)
 	}, retry, time.Second*10)
 	if err != nil {
 		slog.Error("清理非维护模式pod err, 请重试", "error", err)
