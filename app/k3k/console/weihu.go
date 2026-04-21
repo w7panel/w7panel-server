@@ -72,6 +72,8 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 		return
 	}
 
+	return
+
 	err = helper.Retry(func() error {
 		return wh.TrimFilesystem(ctx)
 	}, 3, time.Second*5)
