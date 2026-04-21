@@ -626,7 +626,7 @@ func ToK3kWeihJob(k3kUser *K3kUser) *batchv1.Job {
 
 	// 设置Job的重试次数和超时时间
 	// labels["w7.cc/shell-type"] = shellType
-	backofflimit := int32(3)
+	backofflimit := int32(1)
 
 	// 创建Job对象
 	afterSeconds := int32(600)
