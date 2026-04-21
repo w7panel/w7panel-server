@@ -47,7 +47,7 @@ func CreateBaseResourceCvmOrder(ctx context.Context, baseResource *types.BuyBase
 		}
 	}
 
-	err = orderApi.CheckCanBuyCvm(cvmName)
+	err = orderApi.CheckCanBuy(user)
 	if err != nil {
 		return nil, err
 	}
