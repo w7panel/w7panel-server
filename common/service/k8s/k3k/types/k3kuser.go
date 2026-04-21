@@ -403,6 +403,7 @@ func (u *k3kUser) ToArray() map[string]string {
 		W7_WH_MODE:         u.Labels[W7_WH_MODE],
 		W7_WH_JOB:          u.Labels[W7_WH_JOB],
 		W7_WH_JOB_STATUS:   u.GetWHJobStatus(),
+		"server-pod-name":  u.GetServer0Name(),
 	}
 	if !u.IsClusterUser() {
 		// result[W7_FILE_EDITTOR] = "true"
@@ -525,6 +526,10 @@ func (u *k3kUser) IsShared() bool {
 
 func (u *k3kUser) GetClusterServer0PvcName() string {
 	return "varlibrancherk3s-" + u.GetK3kNamespace() + "-server-0"
+}
+
+func (u *k3kUser) GetServer0Name() string {
+	return u.GetK3kNamespace() + "-server-0"
 }
 
 func (u *k3kUser) GetBandWidth() resource.Quantity {
