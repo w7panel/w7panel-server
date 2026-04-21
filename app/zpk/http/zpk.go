@@ -453,6 +453,7 @@ func (self Zpk) UpgradeInfo(http *gin.Context) {
 	}
 	upgradeCheck := logic.NewUpgradeCheck(client)
 	upgradeCheck.WithCDToken(params.ThirdpartyCDToken)
+	upgradeCheck.WithPanelToken(http.MustGet("k8s_token").(string))
 	result := upgradeCheck.Check(params.Namespace, params.ReleaseName)
 
 	self.JsonResponse(http, result, nil, 200)
