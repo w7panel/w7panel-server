@@ -174,7 +174,17 @@ func (c *Weihu) TryFixNotRunningPod(ctx context.Context, pod *corev1.Pod) error 
 					return c.ClearPod(ctx) //清理占用volume 的pod
 
 				}
+				if strings.Contains(event.Message, "volume is currently attached to different") {
+					slog.Error("attached to different, 删除pod并重新创建", "pod", pod.Name)
+					return c.ClearPod(ctx) //清理占用volume 的pod
+
+				}
 			}
+			/**
+			  Warning  FailedAttachVolume  84s (x4 over 3m18s)  attachdetach-controller  AttachVolume.Attach failed for volume "pvc-ce0e697a-d6a4-4136-a366-a638618fd9e8" : rpc error: code = Internal desc = volume pvc-ce0e697a-d6a4-4136-a366-a638618fd9e8 failed to attach to node agent1 with attachmentID csi-0228e3d6427c0b1117833bf3ac38fb62cf2b0fd2602893f19ea9bedef0dc1069: the volume is currently attached to different node server1
+
+			*/
+
 		}
 		return errors.New("k3k pod not running")
 	}
