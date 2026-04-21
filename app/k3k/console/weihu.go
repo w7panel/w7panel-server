@@ -34,7 +34,7 @@ func (c Weihu) Configure(cmd *cobra.Command) {
 }
 
 func (c Weihu) GetDescription() string {
-	return "维护模式job"
+	return "救援模式job"
 }
 
 func (c Weihu) Handle(cmd *cobra.Command, args []string) {
@@ -114,7 +114,7 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 			continue
 		}
 		if whPod.Status.Phase == corev1.PodRunning {
-			slog.Info("维护模式pod 启动成功")
+			slog.Info("救援pod 启动成功")
 			break
 		}
 		time.Sleep(time.Second * 15)
