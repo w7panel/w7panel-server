@@ -67,6 +67,12 @@ func (c *longhornclient) GetVolumeAttachment(name string) (*longhornV1beta2.Volu
 	return c.client.LonghornV1beta2().VolumeAttachments(c.namespace).Get(c.sdk.Ctx, name, v1.GetOptions{})
 }
 
+func (c *longhornclient) GetVolumeAttachmentList() (*longhornV1beta2.VolumeAttachmentList, error) {
+	return c.client.LonghornV1beta2().VolumeAttachments(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
+}
+func (c *longhornclient) UpdateVolumeAttachment(vt *longhornV1beta2.VolumeAttachment) (*longhornV1beta2.VolumeAttachment, error) {
+	return c.client.LonghornV1beta2().VolumeAttachments(c.namespace).Update(c.sdk.Ctx, vt, v1.UpdateOptions{})
+}
 func (c *longhornclient) ClearVolumeAttachmentTicket(vt *longhornV1beta2.VolumeAttachment) (*longhornV1beta2.VolumeAttachment, error) {
 	vt.Spec.AttachmentTickets = make(map[string]*longhornV1beta2.AttachmentTicket)
 	return c.client.LonghornV1beta2().VolumeAttachments(c.namespace).Update(c.sdk.Ctx, vt, v1.UpdateOptions{})

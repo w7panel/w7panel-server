@@ -209,3 +209,21 @@ func IsVolumeExpanding(volume *longhornV1beta2.Volume, eList *longhornV1beta2.En
 
 	return false, ""
 }
+
+func IsVolumeLock(volume *longhornV1beta2.Volume, eList *longhornV1beta2.VolumeAttachmentList) (bool, string) {
+	vtList := lo.Filter(eList.Items, func(eg longhornV1beta2.VolumeAttachment, index int) bool {
+		return eg.Spec.Volume == volume.Name
+	})
+	if len(vtList) > 0 {
+		first := vtList[0]
+		if len(first.Spec.AttachmentTickets) > 1 {
+			for _, ticket := range first.Spec.AttachmentTickets {
+				if ticket.ID == "longhorn-ui" {
+					continue
+				}
+				return true, ticket.NodeID
+			}
+		}
+	}
+	return false, ""
+}
