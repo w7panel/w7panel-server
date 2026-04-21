@@ -125,15 +125,15 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 		return
 	}
 
-	slog.Info("等待30秒,检查集群是否正常")
-	time.Sleep(time.Second * 30)
-	err = helper.RetryFullSuccess(func() error {
-		return wh.CheckOk(ctx)
-	}, 3, time.Second*5)
-	if err != nil {
-		slog.Error("集群访问异常，请重试", "error", err)
-		os.Exit(1)
-		return
-	}
-	slog.Info("集群救援成功")
+	// slog.Info("等待30秒,检查集群是否正常")
+	// time.Sleep(time.Second * 30)
+	// err = helper.RetryFullSuccess(func() error {
+	// 	return wh.CheckOk(ctx)
+	// }, 3, time.Second*5)
+	// if err != nil {
+	// 	slog.Error("集群访问异常，请重试", "error", err)
+	// 	os.Exit(1)
+	// 	return
+	// }
+	slog.Info("集群救援结束, 等待集群启动中...")
 }
