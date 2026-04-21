@@ -262,6 +262,11 @@ func WhMoshiToggle(sdk *k8s.Sdk, k3kuser *types.K3kUser) error {
 	_, err = controllerutil.CreateOrPatch(context.TODO(), sigClient, k3kuser.ServiceAccount, func() error {
 		// k3kuser.SetLoginTime()
 		k3kuser.SetWeihu(!k3kuser.IsWeihu())
+		if k3kuser.IsWeihu() {
+			k3kuser.SetWHJobStatus(k3ktypes.K3K_STATUS_UNKNOW)
+		} else {
+			k3kuser.SetWHJobStatus("")
+		}
 		return nil
 	})
 
@@ -290,6 +295,7 @@ func WhJob(sdk *k8s.Sdk, k3kuser *types.K3kUser) error {
 
 	_, err = controllerutil.CreateOrPatch(context.TODO(), sigClient, k3kuser.ServiceAccount, func() error {
 		k3kuser.SetWeihuJobName(k3kuser.GenerateWeihuJobName())
+		k3kuser.SetWHJobStatus(k3ktypes.K3K_STATUS_RUNNING)
 		return nil
 	})
 

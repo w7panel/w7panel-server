@@ -242,7 +242,6 @@ func (u *k3kUser) HasWeihuJob() bool {
 
 func (u *k3kUser) SetWeihuJobName(name string) {
 	u.Labels[W7_WH_JOB] = name
-	u.Labels[W7_WH_JOB_STATUS] = K3K_STATUS_RUNNING
 }
 func (u *k3kUser) GetWeihuJobName() string {
 	return u.Labels[W7_WH_JOB]
