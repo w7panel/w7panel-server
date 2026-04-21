@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -100,6 +101,8 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		ExpandErr         string `json:"expandErr"`   //扩容失败消息
 		State             string `json:"state"`       //volume状态
 		VolumeName        string `json:"volumeName"`
+		IsLock            string `json:"isLock"`     //是否锁定
+		LockNodeId        string `json:"lockNodeId"` //锁定nodeId
 	}
 
 	sdk := k8s.NewK8sClient().Sdk
@@ -123,6 +126,11 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	vtList, err := longhornclient.GetVolumeAttachmentList()
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
 
 	// func
 	result := map[string]VolumesStatus{}
@@ -132,6 +140,7 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		}
 		size := volume.Status.ActualSize //已使用空间 /1024/1024/ MB
 		isExpanding, expandErrstr := longhorn.IsVolumeExpanding(&volume, engineList)
+		isLock, nodeId := longhorn.IsVolumeLock(&volume, vtList)
 		// isExpanding = true
 		vs := VolumesStatus{
 			NumberOfReplicas:  volume.Spec.NumberOfReplicas,
@@ -145,6 +154,9 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 			ExpandErr:         expandErrstr,
 			State:             string(volume.Status.State),
 			VolumeName:        volume.Name,
+			IsLock:            strconv.FormatBool(isLock),
+			LockNodeId:        nodeId,
+
 			// CreatedAt:        volume.Status.KubernetesStatus.PVCName,
 			// CreatedAt:        volume.Status.CreatedAt,
 		}
