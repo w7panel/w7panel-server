@@ -30,7 +30,7 @@ func (c *Weihu) GetPvcName() string {
 // 删除非维护模式pod
 func (c *Weihu) ClearNoWeihuPod(ctx context.Context) error {
 	pods, err := c.sdk.ClientSet.CoreV1().Pods(c.namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: "cluster=" + c.namespace,
+		LabelSelector: "cluster=" + c.clusterName,
 	})
 	if err != nil {
 		if k8errors.IsNotFound(err) {
@@ -68,7 +68,7 @@ func (c *Weihu) ClearNoWeihuPod(ctx context.Context) error {
 
 func (c *Weihu) ClearPod(ctx context.Context) error {
 	pods, err := c.sdk.ClientSet.CoreV1().Pods(c.namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: "cluster=" + c.namespace,
+		LabelSelector: "cluster=" + c.clusterName,
 	})
 	if err != nil {
 		if k8errors.IsNotFound(err) {
