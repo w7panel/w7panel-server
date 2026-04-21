@@ -108,11 +108,12 @@ func ToK3kJob(k3kUser *K3kUser) *batchv1.Job {
 			APIVersion: "batch/v1",
 			Kind:       "Job",
 		},
+		// k3kUser.GetK3kNamespace() serviceAccountName  必须使用k3kUser.Name 不能给他权限 所以用default namespace
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
 			Labels:      labels,
 			Annotations: annotations,
-			Namespace:   k3kUser.GetK3kNamespace(),
+			Namespace:   "default", //k3kUser.GetK3kNamespace(), 面板serviceaccount 在default 命名空间下
 		},
 		Spec: batchv1.JobSpec{
 			TTLSecondsAfterFinished: &afterSeconds,
@@ -122,7 +123,7 @@ func ToK3kJob(k3kUser *K3kUser) *batchv1.Job {
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: k3kUser.Name,
+					ServiceAccountName: helper.ServiceAccountName(),
 					//挂载hostPath
 					RestartPolicy: corev1.RestartPolicyNever,
 
@@ -638,7 +639,7 @@ func ToK3kWeihJob(k3kUser *K3kUser) *batchv1.Job {
 			Name:        k3kUser.GetWeihuJobName(),
 			Labels:      labels,
 			Annotations: annotations,
-			Namespace:   k3kUser.GetK3kNamespace(),
+			Namespace:   "default", //k3kUser.GetK3kNamespace(), 面板serviceaccount 在default 命名空间下
 		},
 		Spec: batchv1.JobSpec{
 			TTLSecondsAfterFinished: &afterSeconds,
@@ -648,7 +649,7 @@ func ToK3kWeihJob(k3kUser *K3kUser) *batchv1.Job {
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: k3kUser.Name,
+					ServiceAccountName: helper.ServiceAccountName(),
 					//挂载hostPath
 					RestartPolicy: corev1.RestartPolicyNever,
 
