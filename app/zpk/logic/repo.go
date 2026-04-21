@@ -51,13 +51,19 @@ func LoadPackage2(uri string, token string, checkUpgrade bool) (*types.ManifestP
 	repo := NewRepo(uri, token, "")
 	repo.SetCheckUpgrade(checkUpgrade)
 	return repo.Load()
-	// if (scheme == "http" || scheme == "https") && strings.HasPrefix(uri, "http") {
-	// 	return LoadPackageByHttp(uri)
-	// } else {
-	// 	return LoadPackageFromConsole(uri)
-	// }
 
-	// return nil, errors.New("scheme is not supported")
+}
+func LoadPackageWithPanelToken(uri string, token string, checkUpgrade bool, panelToken string) (*types.ManifestPackage, error) {
+	//获取source scheme
+	scheme := getSourceUri(uri)
+	if scheme == "" {
+		return nil, errors.New("uri is not valid")
+	}
+	repo := NewRepo(uri, token, "")
+	repo.SetCheckUpgrade(checkUpgrade)
+	repo.SetPanelToken(panelToken)
+	return repo.Load()
+
 }
 
 func (self *repo) SetUpgrade(upgrade bool) string {

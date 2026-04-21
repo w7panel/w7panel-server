@@ -43,6 +43,7 @@ type UpgradeCheck struct {
 	groupApi          *appgroup.AppGroupApi
 	helmApi           *k8s.Helm
 	thirdPartyCDToken string
+	panelToken        string
 }
 
 func NewUpgradeCheck(sdk *k8s.Sdk) *UpgradeCheck {
@@ -60,6 +61,10 @@ func NewUpgradeCheck(sdk *k8s.Sdk) *UpgradeCheck {
 
 func (u *UpgradeCheck) WithCDToken(cdToken string) {
 	u.thirdPartyCDToken = cdToken
+}
+
+func (u *UpgradeCheck) WithPanelToken(panelToken string) {
+	u.panelToken = panelToken
 }
 
 func (u *UpgradeCheck) Check(namespace string, groupname string) *UpgradeInfo {
@@ -123,7 +128,8 @@ func (u *UpgradeCheck) CheckHelmRepo(group *appv1.AppGroup) (*UpgradeInfo, error
 }
 
 func (u *UpgradeCheck) CheckZpk(group *appv1.AppGroup) (*UpgradeInfo, error) {
-	pk, err := LoadPackage2(group.Spec.ZpkUrl, u.thirdPartyCDToken, true)
+	// repo := logic.NewRepo(group.Spec.ZpkUrl, u.thirdPartyCDToken)
+	pk, err := LoadPackageWithPanelToken(group.Spec.ZpkUrl, u.thirdPartyCDToken, true, u.panelToken)
 	if err != nil {
 		return nil, err
 	}
