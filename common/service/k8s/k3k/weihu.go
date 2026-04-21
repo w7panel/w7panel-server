@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	corev1 "k8s.io/api/core/v1"
@@ -30,7 +31,7 @@ func (c *Weihu) GetPvcName() string {
 // 删除非维护模式pod
 func (c *Weihu) ClearNoWeihuPod(ctx context.Context) error {
 	pods, err := c.sdk.ClientSet.CoreV1().Pods(c.namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: "cluster=" + c.namespace,
+		LabelSelector: "cluster=" + c.clusterName,
 	})
 	if err != nil {
 		if k8errors.IsNotFound(err) {
@@ -68,7 +69,7 @@ func (c *Weihu) ClearNoWeihuPod(ctx context.Context) error {
 
 func (c *Weihu) ClearPod(ctx context.Context) error {
 	pods, err := c.sdk.ClientSet.CoreV1().Pods(c.namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: "cluster=" + c.namespace,
+		LabelSelector: "cluster=" + c.clusterName,
 	})
 	if err != nil {
 		if k8errors.IsNotFound(err) {
@@ -162,7 +163,7 @@ func (c *Weihu) TryFixNotRunningPod(ctx context.Context, pod *corev1.Pod) error 
 				slog.Error("volume hasn't been attached yet, 删除pod并重新创建", "pod", pod.Name) //TODO ???
 				if strings.Contains(event.Message, "volume hasn't been attached yet") {
 					// slog.Info("volume hasn't been attached yet, 重新创建pod")
-					//pvc 关联的volume 未挂载 //TOOD 挂载哪个nodeId ???
+					// return c.ClearPod(ctx)
 				}
 				continue
 
@@ -174,16 +175,24 @@ func (c *Weihu) TryFixNotRunningPod(ctx context.Context, pod *corev1.Pod) error 
 					return c.ClearPod(ctx) //清理占用volume 的pod
 
 				}
+				/**
+				  Warning  FailedAttachVolume  84s (x4 over 3m18s)  attachdetach-controller  AttachVolume.Attach failed for volume "pvc-ce0e697a-d6a4-4136-a366-a638618fd9e8" : rpc error: code = Internal desc = volume pvc-ce0e697a-d6a4-4136-a366-a638618fd9e8 failed to attach to node agent1 with attachmentID csi-0228e3d6427c0b1117833bf3ac38fb62cf2b0fd2602893f19ea9bedef0dc1069: the volume is currently attached to different node server1
+				*/
+				if strings.Contains(event.Message, "volume is currently attached to different") {
+					slog.Error("attached to different, 删除pod并重新创建", "pod", pod.Name)
+					// 清除ticket
+					return c.ClearTicket(ctx)
+
+				}
 			}
 		}
-		return errors.New("k3k pod not running")
 	}
 	return nil
 }
 
 func (c *Weihu) getPodEvents(ctx context.Context, pod *corev1.Pod) (*corev1.EventList, error) {
 	events, err := c.sdk.ClientSet.CoreV1().Events(c.namespace).List(ctx, metav1.ListOptions{
-		FieldSelector: "involvedObject.name=" + pod.Name,
+		FieldSelector: "involvedObject.name=" + pod.Name + ",involvedObject.uid=" + string(pod.GetUID()) + ",involvedObject.namespace=" + pod.Namespace,
 	})
 	return events, err
 }
@@ -227,21 +236,22 @@ func (c *Weihu) ClearTicket(ctx context.Context) error {
 		slog.Info("volumeAttachment不存在ticket, 无需清理")
 		return nil
 	}
-	if len(volumeAttachment.Spec.AttachmentTickets) > 0 {
-		slog.Info("volumeAttachment存在ticket, 清除...", "volumeName", volumeName)
-		_, err = longhornClient.ClearVolumeAttachmentTicket(volumeAttachment)
+	if len(volumeAttachment.Spec.AttachmentTickets) > 1 {
+		nticket := make(map[string]*v1beta2.AttachmentTicket)
+		for k, v := range volumeAttachment.Spec.AttachmentTickets {
+			if v.ID == "longhorn-ui" {
+				continue
+			}
+			nticket[k] = v
+		}
+		volumeAttachment.Spec.AttachmentTickets = nticket
+		_, err = longhornClient.UpdateVolumeAttachment(volumeAttachment)
 		if err != nil {
 			slog.Error("清除volumeAttachmentTicket失败", "volumeName", volumeName, "err", err)
 			return err
 		}
 	}
 
-	slog.Info("优化存储Longhorn TrimFilesystem...")
-	err = longhorn.LonghornVolumeTrimFilesystem(volumeName)
-	if err != nil {
-		slog.Error("trim volume失败", "volumeName", volumeName, "err", err)
-		return err
-	}
 	return nil
 }
 

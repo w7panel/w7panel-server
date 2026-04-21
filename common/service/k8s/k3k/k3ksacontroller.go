@@ -184,18 +184,21 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 				return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
 			}
 		}
-		job := types.ToK3kWeihJob(k3kUser, jobName)
-		err := r.Client.Create(ctx, job)
-		if err != nil {
-			if k8serrors.IsAlreadyExists(err) {
-				slog.Error("failed to create weihu job", "err", err)
-				return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
+		if k3kUser.HasWeihuJob() {
+			job := types.ToK3kWeihJob(k3kUser)
+			err := r.Client.Create(ctx, job)
+			if err != nil {
+				if k8serrors.IsAlreadyExists(err) {
+					slog.Error("failed to create weihu job", "err", err)
+					return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
+				}
 			}
 		}
+
 	} else {
 		jobName := k3kUser.GetWeihuJobName()
 		if jobName != "" {
-			job := types.ToK3kWeihJob(k3kUser, jobName)
+			job := types.ToK3kWeihJob(k3kUser)
 			err := r.Client.Delete(ctx, job)
 			if err != nil {
 				if !k8serrors.IsNotFound(err) {

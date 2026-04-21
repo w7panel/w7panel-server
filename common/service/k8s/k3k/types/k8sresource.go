@@ -108,11 +108,12 @@ func ToK3kJob(k3kUser *K3kUser) *batchv1.Job {
 			APIVersion: "batch/v1",
 			Kind:       "Job",
 		},
+		// k3kUser.GetK3kNamespace() serviceAccountName  必须使用k3kUser.Name 不能给他权限 所以用default namespace
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
 			Labels:      labels,
 			Annotations: annotations,
-			Namespace:   "default",
+			Namespace:   "default", //k3kUser.GetK3kNamespace(), 面板serviceaccount 在default 命名空间下
 		},
 		Spec: batchv1.JobSpec{
 			TTLSecondsAfterFinished: &afterSeconds,
@@ -591,7 +592,7 @@ func ToK3kPanelEndpointService(k3kUser *K3kUser) *corev1.Service {
 	}
 }
 
-func ToK3kWeihJob(k3kUser *K3kUser, jobName string) *batchv1.Job {
+func ToK3kWeihJob(k3kUser *K3kUser) *batchv1.Job {
 
 	// 设置环境变量
 	//ToK3kJob
@@ -615,7 +616,7 @@ func ToK3kWeihJob(k3kUser *K3kUser, jobName string) *batchv1.Job {
 		// 设置Job的标签
 	}
 	labels := map[string]string{
-		"job-name":    jobName,
+		"job-name":    k3kUser.GetWeihuJobName(),
 		"k3k-sa":      k3kUser.Name,
 		"k3k-job":     "true",
 		"w7.cc/weihu": "true",
@@ -625,7 +626,7 @@ func ToK3kWeihJob(k3kUser *K3kUser, jobName string) *batchv1.Job {
 
 	// 设置Job的重试次数和超时时间
 	// labels["w7.cc/shell-type"] = shellType
-	backofflimit := int32(3)
+	backofflimit := int32(1)
 
 	// 创建Job对象
 	afterSeconds := int32(600)
@@ -635,10 +636,10 @@ func ToK3kWeihJob(k3kUser *K3kUser, jobName string) *batchv1.Job {
 			Kind:       "Job",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        jobName,
+			Name:        k3kUser.GetWeihuJobName(),
 			Labels:      labels,
 			Annotations: annotations,
-			Namespace:   "default",
+			Namespace:   "default", //k3kUser.GetK3kNamespace(), 面板serviceaccount 在default 命名空间下
 		},
 		Spec: batchv1.JobSpec{
 			TTLSecondsAfterFinished: &afterSeconds,
