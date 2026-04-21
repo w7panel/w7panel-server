@@ -6,6 +6,7 @@ import (
 
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
+	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -72,6 +73,35 @@ func (c *ResourceClient) GetUsed(callback func(*corev1.ServiceAccount) *Resource
 			continue
 		}
 		if item.Labels["k3k.io/cluster-status"] != "ready" {
+			continue
+		}
+		userRs := callback(&item)
+		cpup.Add(userRs.CPU)
+		memoryp.Add(userRs.Memory)
+	}
+	storage, err := c.storageScheduled()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Resource{
+		CPU:     cpu,
+		Memory:  memory,
+		Storage: storage,
+	}, nil
+}
+func (c *ResourceClient) GetUsedCvm(callback func(*cvmv1alpha1.Cvm) *Resource) (*Resource, error) {
+	list := &cvmv1alpha1.CvmList{}
+	err := c.client.List(c.sdk.Ctx, list, &sigclient.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	cpu := resource.MustParse("0")
+	memory := resource.MustParse("0")
+	cpup := &cpu
+	memoryp := &memory
+	for _, item := range list.Items {
+		if item.Labels == nil {
 			continue
 		}
 		userRs := callback(&item)

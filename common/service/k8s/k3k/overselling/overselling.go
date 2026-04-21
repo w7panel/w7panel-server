@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
+	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -22,6 +23,37 @@ func CanAddResource(rs *Resource, callback func(*corev1.ServiceAccount) *Resourc
 	}
 	// 获取已使用的资源
 	used, err := client.GetUsed(callback)
+	if err != nil {
+		return err
+	}
+	// 克隆已使用资源并添加新资源
+	clone := used.Clone()
+	usedStr := used.JsonString()
+	//打印 clone.String()
+	clone.Add(*rs)
+	currentStr := current.JsonString()
+	cloneStr := clone.JsonString()
+	slog.Info("debug can add resource", "usedStr", usedStr, "currentStr", currentStr, "cloneStr", cloneStr)
+	// 检查当前资源是否大于等于（包含）新增后的总使用量
+	if current.Dayu(*clone) {
+		return nil
+	}
+	// return nil
+	return errors.New("resource not enough")
+}
+
+func CanAddResourceCvm(rs *Resource, callback func(*cvmv1alpha1.Cvm) *Resource) error {
+	client, err := NewResourceClient(k8s.NewK8sClient().Sdk)
+	if err != nil {
+		return err
+	}
+	// 获取当前超售资源配额
+	current, err := client.GetOverlingResource()
+	if err != nil {
+		return err
+	}
+	// 获取已使用的资源
+	used, err := client.GetUsedCvm(callback)
 	if err != nil {
 		return err
 	}
