@@ -263,7 +263,7 @@ func WhMoshiToggle(sdk *k8s.Sdk, k3kuser *types.K3kUser) error {
 		// k3kuser.SetLoginTime()
 		k3kuser.SetWeihu(!k3kuser.IsWeihu())
 		if k3kuser.IsWeihu() {
-			k3kuser.SetWHJobStatus(k3ktypes.K3K_STATUS_UNKNOW)
+			k3kuser.SetWHJobStatus(k3ktypes.K3K_STATUS_RUNNING)
 		} else {
 			k3kuser.SetWHJobStatus("")
 		}
