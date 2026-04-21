@@ -176,7 +176,8 @@ func (c *Weihu) TryFixNotRunningPod(ctx context.Context, pod *corev1.Pod) error 
 				}
 				if strings.Contains(event.Message, "volume is currently attached to different") {
 					slog.Error("attached to different, 删除pod并重新创建", "pod", pod.Name)
-					return c.ClearPod(ctx) //清理占用volume 的pod
+					// 清除ticket
+					return c.ClearTicket(ctx)
 
 				}
 			}
@@ -193,7 +194,7 @@ func (c *Weihu) TryFixNotRunningPod(ctx context.Context, pod *corev1.Pod) error 
 
 func (c *Weihu) getPodEvents(ctx context.Context, pod *corev1.Pod) (*corev1.EventList, error) {
 	events, err := c.sdk.ClientSet.CoreV1().Events(c.namespace).List(ctx, metav1.ListOptions{
-		FieldSelector: "involvedObject.name=" + pod.Name,
+		FieldSelector: "involvedObject.name=" + pod.Name + ",involvedObject.uid=" + string(pod.GetUID()) + ",involvedObject.namespace=" + pod.Namespace,
 	})
 	return events, err
 }
@@ -246,12 +247,6 @@ func (c *Weihu) ClearTicket(ctx context.Context) error {
 		}
 	}
 
-	slog.Info("优化存储Longhorn TrimFilesystem...")
-	err = longhorn.LonghornVolumeTrimFilesystem(volumeName)
-	if err != nil {
-		slog.Error("trim volume失败", "volumeName", volumeName, "err", err)
-		return err
-	}
 	return nil
 }
 

@@ -72,8 +72,6 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 		return
 	}
 
-	return
-
 	err = helper.Retry(func() error {
 		return wh.TrimFilesystem(ctx)
 	}, 3, time.Second*5)
@@ -99,15 +97,14 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 	if whPod.Status.Phase != corev1.PodRunning {
 		//尝试修复 not running pod
 		slog.Info("维护pod 非running, 尝试修复")
-		err = helper.Retry(func() error {
-			return wh.TryFixNotRunningPod(ctx, whPod)
-		}, retry, time.Second*10)
+		err = wh.TryFixNotRunningPod(ctx, whPod)
 		if err != nil {
-			slog.Error("尝试修复集群失败", "error", err)
+			slog.Error("尝试修复 pod err", "error", err)
 			os.Exit(1)
 			return
 		}
 	}
+	time.Sleep(time.Second * 5)
 	//刷新pod 状态 检查是否启动
 	for i := 0; i < retry; i++ {
 		whPod, err = wh.RefreshPod(ctx, whPod)
@@ -120,6 +117,7 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 			slog.Info("维护模式pod 启动成功")
 			break
 		}
+		time.Sleep(time.Second * 15)
 	}
 	if whPod.Status.Phase != corev1.PodRunning {
 		slog.Error("维护模式pod 启动失败, 请重试")
