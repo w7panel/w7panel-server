@@ -151,15 +151,15 @@ func (u *K3kCvmOrder) SetExpandOrderPaid(info *console.OrderInfo) {
 	if u.Spec.ExpandOrder.OrderSn == info.OrderSn && u.Spec.ExpandOrder.Status != W7_ORDER_PAID {
 		// u.Labels[K3K_BUY_MODE] = "renew"
 		u.Spec.ExpandOrder.Status = W7_ORDER_PAID
-		base := u.Spec.PurchasedResource
-		if base == nil {
-			base = u.Spec.Resource
+		u.Spec.ExpandOrder.Hour = int(info.GetHour())
+		u.Spec.ExpandOrder.Resource = &v1alpha1.CvmResource{
+			CPU:       info.Cpu,
+			Memory:    info.Memory,
+			Storage:   info.Storage,
+			Bandwidth: info.Bandwidth,
 		}
-		if base == nil {
-			base = u.Spec.BaseResource
-		}
+		base := u.Spec.DesiredResource
 		u.Spec.PurchasedResource = addCvmResource(base, info.Cpu, info.Memory, info.Storage, info.Bandwidth)
-		u.Spec.DesiredResource = copyCvmResource(u.Spec.PurchasedResource)
 		if u.Spec.ProvisionMode == "" {
 			u.Spec.ProvisionMode = "order-required"
 		}

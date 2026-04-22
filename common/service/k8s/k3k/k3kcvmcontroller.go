@@ -24,6 +24,11 @@ const (
 	K3kCvmFinalizerName = "cvm.k3k.io/finalizer"
 	K3kCvmNameLabel     = "w7.cc/cvm-name"
 	K3kCvmNamespaceAnno = "w7.cc/cvm-namespace"
+
+	capacityCheckStatePending    = "pending"
+	capacityCheckStateWait       = "wait"
+	capacityCheckStateSuccess    = "success"
+	capacityCheckStateNoResource = "no-resource"
 )
 
 type K3kCvmController struct {
@@ -100,7 +105,15 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 	if updated {
-		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
+		return ctrl.Result{}, nil
+	}
+	if capacityCheckState(cvm) != capacityCheckStateSuccess {
+		logger.Info("Skip cluster reconcile until capacity check succeeds",
+			"namespace", req.Namespace,
+			"name", req.Name,
+			"capacityCheckState", capacityCheckState(cvm),
+		)
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 
 	cluster, err := r.createOrUpdateCluster(ctx, cvm)
@@ -117,49 +130,22 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 }
 
 func (r *K3kCvmController) createOrUpdateCluster(ctx context.Context, cvm *cvmv1alpha1.Cvm) (*k3kv1.Cluster, error) {
-	desiredCluster := &k3kv1.Cluster{
+	cluster := &k3kv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      r.getClusterName(cvm),
 			Namespace: r.getClusterNamespace(cvm),
 		},
 	}
-
-	desiredCluster.Labels = map[string]string{
-		"cvm-uid": string(cvm.UID),
-	}
-	desiredCluster.Spec = r.toClusterSpec(cvm)
-	if err := controllerutil.SetControllerReference(cvm, desiredCluster, r.Scheme); err != nil {
-		return nil, err
-	}
-
-	cluster := &k3kv1.Cluster{}
-	err := r.Get(ctx, client.ObjectKeyFromObject(desiredCluster), cluster)
-	if apierrors.IsNotFound(err) {
-		if err := r.Create(ctx, desiredCluster); err != nil {
-			return nil, err
+	_, err := controllerutil.CreateOrPatch(ctx, r.Client, cluster, func() error {
+		cluster.Labels = map[string]string{
+			"cvm-uid": string(cvm.UID),
 		}
-		return desiredCluster, nil
-	}
+		cluster.Spec = r.toClusterSpec(cvm)
+		return controllerutil.SetControllerReference(cvm, cluster, r.Scheme)
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	if apiequality.Semantic.DeepEqual(cluster.Labels, desiredCluster.Labels) &&
-		apiequality.Semantic.DeepEqual(cluster.Annotations, desiredCluster.Annotations) &&
-		apiequality.Semantic.DeepEqual(cluster.Spec, desiredCluster.Spec) &&
-		apiequality.Semantic.DeepEqual(cluster.OwnerReferences, desiredCluster.OwnerReferences) {
-		return cluster, nil
-	}
-
-	patchBase := cluster.DeepCopy()
-	cluster.Labels = desiredCluster.Labels
-	cluster.Annotations = desiredCluster.Annotations
-	cluster.Spec = desiredCluster.Spec
-	cluster.OwnerReferences = desiredCluster.OwnerReferences
-	if err := r.Patch(ctx, cluster, client.MergeFrom(patchBase)); err != nil {
-		return nil, err
-	}
-
 	return cluster, nil
 }
 
@@ -214,6 +200,14 @@ func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.
 	return ctrl.Result{}, nil
 }
 
+// no-resource 无可用资源 wait 待处理 success 资源检查通过
+func (r *K3kCvmController) checkResource(cvm *cvmv1alpha1.Cvm) string {
+	if cvm.Status.CapacityCheckState == capacityCheckStateWait {
+		//直接返回success 后期加功能
+		return capacityCheckStateSuccess
+	}
+	return capacityCheckStateNoResource
+}
 func (r *K3kCvmController) getClusterName(cvm *cvmv1alpha1.Cvm) string {
 	return cvm.Name
 }
@@ -235,25 +229,22 @@ func (r *K3kCvmController) ensureClusterDeleted(ctx context.Context, cvm *cvmv1a
 }
 
 func (r *K3kCvmController) syncClusterStatus(ctx context.Context, cvm *cvmv1alpha1.Cvm, cluster *k3kv1.Cluster) error {
-	newStatus := cvmv1alpha1.CvmStatus{
-		Phase:              string(cluster.Status.Phase),
-		ReadyReplicas:      r.clusterReadyReplicas(cluster),
-		EffectiveResource:  cvm.Status.EffectiveResource,
-		CapacityCheckState: capacityCheckState(cvm),
-		Conditions:         cluster.Status.Conditions,
-	}
+	newPhase := string(cluster.Status.Phase)
+	newReadyReplicas := r.clusterReadyReplicas(cluster)
+	newConditions := cluster.Status.Conditions
 
-	if cvm.Status.Phase == newStatus.Phase &&
-		cvm.Status.ReadyReplicas == newStatus.ReadyReplicas &&
-		apiequality.Semantic.DeepEqual(cvm.Status.EffectiveResource, newStatus.EffectiveResource) &&
-		cvm.Status.CapacityCheckState == newStatus.CapacityCheckState &&
-		apiequality.Semantic.DeepEqual(cvm.Status.Conditions, newStatus.Conditions) {
+	if cvm.Status.Phase == newPhase &&
+		cvm.Status.ReadyReplicas == newReadyReplicas &&
+		apiequality.Semantic.DeepEqual(cvm.Status.Conditions, newConditions) {
 		return nil
 	}
 
+	statusBase := cvm.DeepCopy()
 	cvm = cvm.DeepCopy()
-	cvm.Status = newStatus
-	return r.Status().Update(ctx, cvm)
+	cvm.Status.Phase = newPhase
+	cvm.Status.ReadyReplicas = newReadyReplicas
+	cvm.Status.Conditions = newConditions
+	return r.Status().Patch(ctx, cvm, client.MergeFrom(statusBase))
 }
 
 func (r *K3kCvmController) clusterReadyReplicas(cluster *k3kv1.Cluster) int32 {
@@ -264,29 +255,26 @@ func (r *K3kCvmController) clusterReadyReplicas(cluster *k3kv1.Cluster) int32 {
 }
 
 func (r *K3kCvmController) reconcileEffectiveResource(ctx context.Context, cvm *cvmv1alpha1.Cvm) (bool, error) {
-	state := capacityCheckState(cvm)
-	if state == "" {
-		return false, nil
-	}
-
-	desiredEffective := cvm.Status.EffectiveResource
-	if state == "success" {
-		if cvm.Spec.PurchasedResource != nil {
-			desiredEffective = copyResource(cvm.Spec.PurchasedResource)
-		} else if cvm.Spec.DesiredResource != nil {
-			desiredEffective = copyResource(cvm.Spec.Resource)
-		}
-	}
+	state := r.checkResource(cvm)
 
 	updated := false
-	if !apiequality.Semantic.DeepEqual(cvm.Spec.Resource, desiredEffective) || cvm.Spec.OverMode != state {
-		patchBase := cvm.DeepCopy()
-		cvm.Spec.DesiredResource = copyResource(desiredEffective)
-		if err := r.Patch(ctx, cvm, client.MergeFrom(patchBase)); err != nil {
-			return false, err
+	desiredEffective := cvm.Status.EffectiveResource
+	if state == capacityCheckStateSuccess {
+		if cvm.Spec.PurchasedResource != nil {
+			desiredEffective = copyResource(cvm.Spec.PurchasedResource)
+			if !apiequality.Semantic.DeepEqual(cvm.Spec.DesiredResource, cvm.Spec.PurchasedResource) {
+				patchBase := cvm.DeepCopy()
+				cvm.Spec.DesiredResource = copyResource(cvm.Spec.PurchasedResource)
+				if err := r.Patch(ctx, cvm, client.MergeFrom(patchBase)); err != nil {
+					return false, err
+				}
+				updated = true
+			}
+		} else if cvm.Spec.DesiredResource != nil {
+			desiredEffective = copyResource(cvm.Spec.DesiredResource)
 		}
-		updated = true
 	}
+
 	if !apiequality.Semantic.DeepEqual(cvm.Status.EffectiveResource, desiredEffective) || cvm.Status.CapacityCheckState != state {
 		statusBase := cvm.DeepCopy()
 		cvm.Status.CapacityCheckState = state
@@ -300,10 +288,11 @@ func (r *K3kCvmController) reconcileEffectiveResource(ctx context.Context, cvm *
 }
 
 func capacityCheckState(cvm *cvmv1alpha1.Cvm) string {
+
 	if cvm.Status.CapacityCheckState != "" {
 		return cvm.Status.CapacityCheckState
 	}
-	return cvm.Spec.OverMode
+	return capacityCheckStatePending
 }
 
 func copyResource(resource *cvmv1alpha1.CvmResource) *cvmv1alpha1.CvmResource {

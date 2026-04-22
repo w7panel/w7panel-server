@@ -20,16 +20,11 @@ func (k *K3kOrderApi) getCvm(user *types.K3kUser, cvmName string) (*cvmv1alpha1.
 		return nil, fmt.Errorf("cvm不能为空")
 	}
 	cvm := &cvmv1alpha1.Cvm{}
-	if err := k.client.Get(k.sdk.Ctx, client.ObjectKey{Name: cvmName}, cvm); err != nil {
+	if err := k.client.Get(k.sdk.Ctx, client.ObjectKey{Name: cvmName, Namespace: user.GetK3kNamespace()}, cvm); err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("cvm不存在")
+			return nil, err
 		}
 		return nil, err
-	}
-	if cvm.Annotations != nil {
-		if namespace := cvm.Annotations[types.K3K_NAMESPACE]; namespace != "" && namespace != user.GetK3kNamespace() {
-			return nil, fmt.Errorf("cvm不属于当前用户")
-		}
 	}
 	return cvm, nil
 }

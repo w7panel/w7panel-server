@@ -19,23 +19,21 @@ func CreateBaseResourceCvmOrder(ctx context.Context, baseResource *types.BuyBase
 		return nil, err
 	}
 	// 如果没传cvm name 会自动创建一个
-	cvmName := helper.RandomString(15)
-	if baseResource.CvmName != "" {
-		cvmName = baseResource.CvmName
-		_, err := orderApi.getCvm(user, cvmName)
+
+	if baseResource.CvmName == "" {
+		baseResource.CvmName = helper.RandomString(10)
+		_, err := orderApi.getCvm(user, baseResource.CvmName)
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				return nil, err
 			}
 			cvm := &cvmv1alpha1.Cvm{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      cvmName,
+					Name:      baseResource.CvmName,
 					Namespace: user.GetK3kNamespace(),
 				},
 				Spec: cvmv1alpha1.CvmSpec{
-					BaseResource:    baseResource.ToCvmResource(),
-					DesiredResource: baseResource.ToCvmResource(),
-					ProvisionMode:   "order-required",
+					ProvisionMode: "order-required",
 				},
 			}
 			sigClient, err := sdk.ToSigClient()
