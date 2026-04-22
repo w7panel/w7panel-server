@@ -158,7 +158,7 @@ func (u *K3kCvmOrder) SetExpandOrderPaid(info *console.OrderInfo) {
 			Storage:   info.Storage,
 			Bandwidth: info.Bandwidth,
 		}
-		base := u.Spec.DesiredResource
+		base := u.Spec.PurchasedResource
 		u.Spec.PurchasedResource = addCvmResource(base, info.Cpu, info.Memory, info.Storage, info.Bandwidth)
 		if u.Spec.ProvisionMode == "" {
 			u.Spec.ProvisionMode = "order-required"

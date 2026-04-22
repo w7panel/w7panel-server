@@ -4,6 +4,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	K3kCvmFinalizerName = "cvm.k3k.io/finalizer"
+	K3kCvmNameLabel     = "w7.cc/cvm-name"
+	K3kCvmNamespaceAnno = "w7.cc/cvm-namespace"
+
+	capacityCheckStatePending    = "pending"
+	capacityCheckStateWait       = "wait"
+	capacityCheckStateSuccess    = "success"
+	capacityCheckStateNoResource = "no-resource"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
@@ -22,17 +33,18 @@ type CvmResource struct {
 }
 
 type CvmSpec struct {
-	StorageClassName  string       `json:"storageClassName,omitempty"`
-	Workload          Workload     `json:"workload,omitempty"`
-	DesiredResource   *CvmResource `json:"desiredResource,omitempty"`   // 目标资源
-	PurchasedResource *CvmResource `json:"purchasedResource,omitempty"` // 已购买资源，待检测后生效
-	ProvisionMode     string       `json:"provisionMode,omitempty"`     // 开通模式 order-required/admin-bypass
-	BaseOrder         *CvmOrder    `json:"baseOrder,omitempty"`         // 首次购买 基础订单
-	ExpandOrder       *CvmOrder    `json:"expandOrder,omitempty"`       // 扩容订单
-	RenewOrder        *CvmOrder    `json:"renewOrder,omitempty"`        // 续费订单 延长到期时间
-	ExpireTime        string       `json:"expireTime,omitempty"`        // 到期时间
-	RecycleTime       string       `json:"recycleTime,omitempty"`       // 回收时间RECYCLE
-	Rescue            bool         `json:"rescue,omitempty"`            // 是否救援模式
+	StorageClassName   string       `json:"storageClassName,omitempty"`
+	Workload           Workload     `json:"workload,omitempty"`
+	DesiredResource    *CvmResource `json:"desiredResource,omitempty"`    // 目标资源
+	PurchasedResource  *CvmResource `json:"purchasedResource,omitempty"`  // 已购买资源，待检测后生效
+	ProvisionMode      string       `json:"provisionMode,omitempty"`      // 开通模式 order-required/admin-bypass
+	BaseOrder          *CvmOrder    `json:"baseOrder,omitempty"`          // 首次购买 基础订单
+	ExpandOrder        *CvmOrder    `json:"expandOrder,omitempty"`        // 扩容订单
+	RenewOrder         *CvmOrder    `json:"renewOrder,omitempty"`         // 续费订单 延长到期时间
+	ExpireTime         string       `json:"expireTime,omitempty"`         // 到期时间
+	RecycleTime        string       `json:"recycleTime,omitempty"`        // 回收时间RECYCLE
+	Rescue             bool         `json:"rescue,omitempty"`             // 是否救援模式
+	CapacityCheckState string       `json:"capacityCheckState,omitempty"` // wait/no-resource/success
 }
 
 // 购买信息

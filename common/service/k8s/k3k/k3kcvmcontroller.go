@@ -98,24 +98,13 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 		}
 		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 	}
-
-	updated, err := r.reconcileEffectiveResource(ctx, cvm)
+	err := r.checkResource(ctx, cvm)
 	if err != nil {
-		logger.Error(err, "Failed to reconcile cvm effective resource")
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
-	}
-	if updated {
-		return ctrl.Result{}, nil
-	}
-	if capacityCheckState(cvm) != capacityCheckStateSuccess {
-		logger.Info("Skip cluster reconcile until capacity check succeeds",
-			"namespace", req.Namespace,
-			"name", req.Name,
-			"capacityCheckState", capacityCheckState(cvm),
-		)
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
+		logger.Error(err, "Failed to check resource")
+		return ctrl.Result{RequeueAfter: time.Minute * 5}, nil
 	}
 
+	
 	cluster, err := r.createOrUpdateCluster(ctx, cvm)
 	if err != nil {
 		logger.Error(err, "Failed to create/update k3k Cluster")
@@ -201,12 +190,16 @@ func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.
 }
 
 // no-resource 无可用资源 wait 待处理 success 资源检查通过
-func (r *K3kCvmController) checkResource(cvm *cvmv1alpha1.Cvm) string {
-	if cvm.Status.CapacityCheckState == capacityCheckStateWait {
-		//直接返回success 后期加功能
-		return capacityCheckStateSuccess
+func (r *K3kCvmController) checkResource(ctx context.Context, cvm *cvmv1alpha1.Cvm) error {
+	if cvm.Spec.CapacityCheckState == capacityCheckStateWait {
+		_, err := controllerutil.CreateOrPatch(ctx, r.Client, cvm, func() error {
+			cvm.Spec.CapacityCheckState = capacityCheckStateSuccess
+			cvm.Spec.DesiredResource = copyResource(cvm.Spec.PurchasedResource) //购买资源覆盖DesiredResource
+			return nil
+		})
+		return err
 	}
-	return capacityCheckStateNoResource
+	return nil
 }
 func (r *K3kCvmController) getClusterName(cvm *cvmv1alpha1.Cvm) string {
 	return cvm.Name

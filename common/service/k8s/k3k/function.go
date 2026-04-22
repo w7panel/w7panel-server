@@ -3,6 +3,7 @@ package k3k
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
@@ -13,8 +14,10 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -177,6 +180,16 @@ func getServiceAccountResource(sa *corev1.ServiceAccount) *overselling.Resource 
 		return lqr.GetHardResource()
 	}
 	return overselling.EmptyResource()
+}
+
+func getCvmResource(cvm *cvmv1alpha1.Cvm) *overselling.Resource {
+
+	return &overselling.Resource{
+		CPU:       resource.MustParse(fmt.Sprintf("%dm", cvm.Spec.DesiredResource.CPU)),
+		Memory:    resource.MustParse(fmt.Sprintf("%dGi", cvm.Spec.DesiredResource.Memory)),
+		Storage:   resource.MustParse(fmt.Sprintf("%dGi", cvm.Spec.DesiredResource.Storage)),
+		BandWidth: resource.MustParse(fmt.Sprintf("%dM", cvm.Spec.DesiredResource.Bandwidth)),
+	}
 }
 
 func TryCheckOverSellingResource(sdk *k8s.Sdk, k3kuser *types.K3kUser) error {
