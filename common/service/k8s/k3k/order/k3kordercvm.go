@@ -33,7 +33,9 @@ func CreateBaseResourceCvmOrder(ctx context.Context, baseResource *types.BuyBase
 					Namespace: user.GetK3kNamespace(),
 				},
 				Spec: cvmv1alpha1.CvmSpec{
-					BaseResource: baseResource.ToCvmResource(),
+					BaseResource:    baseResource.ToCvmResource(),
+					DesiredResource: baseResource.ToCvmResource(),
+					ProvisionMode:   "order-required",
 				},
 			}
 			sigClient, err := sdk.ToSigClient()

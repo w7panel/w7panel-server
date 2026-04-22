@@ -22,22 +22,28 @@ type CvmResource struct {
 }
 
 type CvmSpec struct {
-	StorageClassName string       `json:"storageClassName,omitempty"`
-	Workload         Workload     `json:"workload,omitempty"`
-	Resource         *CvmResource `json:"resource,omitempty"` //可使用资源
-	BaseOrder        *CvmOrder    `json:"baseOrder,omitempty"`
-	ExpandOrder      *CvmOrder    `json:"expandOrder,omitempty"`
-	RenewOrder       *CvmOrder    `json:"renewOrder,omitempty"`
-	BaseResource     *CvmResource `json:"baseResource,omitempty"` //首次购买资源 暂存在这个字段
-	ExpireTime       string       `json:"expireTime,omitempty"`   //到期时间
-	RecycleTime      string       `json:"recycleTime,omitempty"`  //回收时间RECYCLE
-	OverMode         string       `json:"overMode,omitempty"`     //资源状态 wait(等待检测) no-resource(无资源) success(检测通过)
-	Rescue           bool         `json:"rescue,omitempty"`       //是否救援模式
+	StorageClassName  string       `json:"storageClassName,omitempty"`
+	Workload          Workload     `json:"workload,omitempty"`
+	Resource          *CvmResource `json:"resource,omitempty"`          // 当前已生效资源，兼容旧逻辑
+	DesiredResource   *CvmResource `json:"desiredResource,omitempty"`   // 目标资源
+	PurchasedResource *CvmResource `json:"purchasedResource,omitempty"` // 已购买资源，待检测后生效
+	BaseResource      *CvmResource `json:"baseResource,omitempty"`      // 基础订单资源
+	ProvisionMode     string       `json:"provisionMode,omitempty"`     // 开通模式 order-required/admin-bypass
+	BaseOrder         *CvmOrder    `json:"baseOrder,omitempty"`         // 首次购买 基础订单
+	ExpandOrder       *CvmOrder    `json:"expandOrder,omitempty"`       // 扩容订单
+	RenewOrder        *CvmOrder    `json:"renewOrder,omitempty"`        // 续费订单 延长到期时间
+	ExpireTime        string       `json:"expireTime,omitempty"`        // 到期时间
+	RecycleTime       string       `json:"recycleTime,omitempty"`       // 回收时间RECYCLE
+	OverMode          string       `json:"overMode,omitempty"`          // 兼容旧字段，等价于 status.capacityCheckState
+	Rescue            bool         `json:"rescue,omitempty"`            // 是否救援模式
 }
 
+// 购买信息
 type CvmOrder struct {
-	OrderSn string `json:"orderSn"`
-	Status  string `json:"status,omitempty"`
+	OrderSn  string       `json:"orderSn"`
+	Status   string       `json:"status,omitempty"`
+	Resource *CvmResource `json:"resource,omitempty"`
+	Hour     int64        `json:"hour,omitempty"`
 }
 
 type Workload struct {
@@ -48,9 +54,11 @@ type Workload struct {
 // 【微擎面板&集群云主机：云主机业务分离成独立应用】
 // https://www.tapd.cn/tapd_fe/62789787/story/detail/1162789787001015242
 type CvmStatus struct {
-	Phase         string             `json:"phase,omitempty"`
-	ReadyReplicas int32              `json:"readyReplicas,omitempty"`
-	Conditions    []metav1.Condition `json:"conditions,omitempty"`
+	Phase              string             `json:"phase,omitempty"`
+	ReadyReplicas      int32              `json:"readyReplicas,omitempty"`
+	EffectiveResource  *CvmResource       `json:"effectiveResource,omitempty"`
+	CapacityCheckState string             `json:"capacityCheckState,omitempty"` // wait/no-resource/success
+	Conditions         []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +genclient

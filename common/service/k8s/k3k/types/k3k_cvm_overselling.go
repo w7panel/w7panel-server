@@ -28,15 +28,15 @@ func Newk3kCvmOverSelling(cvm *v1alpha1.Cvm) *k3kCvmOverSelling {
 }
 
 func (k *k3kCvmOverSelling) IsOverSellingWait() bool {
-	return k.Spec.OverMode == "wait"
+	return k.capacityCheckState() == "wait"
 }
 
 func (k *k3kCvmOverSelling) IsOverSellingSuccess() bool {
-	return k.Spec.OverMode == "success"
+	return k.capacityCheckState() == "success"
 }
 
 func (k *k3kCvmOverSelling) IsOverSellingNoResource() bool {
-	return k.Spec.OverMode == "no-resource"
+	return k.capacityCheckState() == "no-resource"
 }
 
 func (u *k3kCvmOverSelling) NeedOverSellingCheck() bool {
@@ -45,7 +45,8 @@ func (u *k3kCvmOverSelling) NeedOverSellingCheck() bool {
 
 // 是否可以超额检查
 func (u *k3kCvmOverSelling) CanOverSellingCheck() bool {
-	return u.Spec.OverMode == "wait" || u.Spec.OverMode == "no-resource"
+	state := u.capacityCheckState()
+	return state == "wait" || state == "no-resource"
 }
 
 func (u *k3kCvmOverSelling) GetOverResource() *overselling.Resource {
@@ -57,6 +58,13 @@ func (u *k3kCvmOverSelling) GetOverResource() *overselling.Resource {
 
 func (u *k3kCvmOverSelling) IsExpand() bool {
 	return u.Spec.ExpandOrder != nil && u.Spec.ExpandOrder.Status == W7_ORDER_PAID
+}
+
+func (u *k3kCvmOverSelling) capacityCheckState() string {
+	if u.Status.CapacityCheckState != "" {
+		return u.Status.CapacityCheckState
+	}
+	return u.Spec.OverMode
 }
 
 // wait no-resource success

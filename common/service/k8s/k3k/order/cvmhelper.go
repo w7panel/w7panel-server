@@ -11,9 +11,15 @@ import (
 )
 
 func currentCvmBuyResource(cvm *cvmv1alpha1.Cvm) types.BuyResource {
-	resource := cvm.Spec.Resource
-	if resource.CPU == 0 && resource.Memory == 0 && resource.Storage == 0 && resource.Bandwidth == 0 {
+	resource := cvm.Spec.PurchasedResource
+	if resource == nil {
+		resource = cvm.Spec.Resource
+	}
+	if resource == nil {
 		resource = cvm.Spec.BaseResource
+	}
+	if resource == nil {
+		resource = &cvmv1alpha1.CvmResource{}
 	}
 	return types.BuyResource{
 		Cpu:       resource.CPU,

@@ -19,6 +19,35 @@ func Newk3kCvmOrder(cvm *v1alpha1.Cvm, overUser *k3kCvmOverSelling, userTime *k3
 	return &K3kCvmOrder{cvm, overUser, userTime, cost}
 }
 
+func copyCvmResource(resource *v1alpha1.CvmResource) *v1alpha1.CvmResource {
+	if resource == nil {
+		return nil
+	}
+	return &v1alpha1.CvmResource{
+		CPU:       resource.CPU,
+		Memory:    resource.Memory,
+		Storage:   resource.Storage,
+		Bandwidth: resource.Bandwidth,
+	}
+}
+
+func addCvmResource(base *v1alpha1.CvmResource, cpu, memory, storage, bandwidth int64) *v1alpha1.CvmResource {
+	if base == nil {
+		base = &v1alpha1.CvmResource{}
+	}
+	resource := copyCvmResource(base)
+	resource.CPU += cpu
+	resource.Memory += memory
+	resource.Storage += storage
+	resource.Bandwidth += bandwidth
+	return resource
+}
+
+func (u *K3kCvmOrder) setCapacityCheckPending() {
+	u.Spec.OverMode = "wait"
+	u.Status.CapacityCheckState = "wait"
+}
+
 func (u *K3kCvmOrder) SetBaseOrder(orderSn string) {
 
 	u.Spec.BaseOrder = &v1alpha1.CvmOrder{
@@ -88,16 +117,15 @@ func (u *K3kCvmOrder) SetBaseOrderPaid(info *console.OrderInfo) {
 			Storage:   baseResource.Storage,
 			Bandwidth: baseResource.Bandwidth,
 		}
-		u.Spec.Resource = &v1alpha1.CvmResource{
-			CPU:       baseResource.Cpu,
-			Memory:    baseResource.Memory,
-			Storage:   baseResource.Storage,
-			Bandwidth: baseResource.Bandwidth,
+		u.Spec.DesiredResource = copyCvmResource(u.Spec.BaseResource)
+		u.Spec.PurchasedResource = copyCvmResource(u.Spec.BaseResource)
+		if u.Spec.ProvisionMode == "" {
+			u.Spec.ProvisionMode = "order-required"
 		}
 		// rs := overselling.OrderInfoToResource(info)
 		// u.Annotations[W7_OVER_BASE_RESOURCE] = rs.JsonString()
 		// u.Annotations[W7_QUOTA_LIMIT_LOCK] = "true" //锁定配额，防止配额被费用套餐覆盖
-		u.Spec.OverMode = "wait"
+		u.setCapacityCheckPending()
 
 	}
 }
@@ -125,11 +153,19 @@ func (u *K3kCvmOrder) SetExpandOrderPaid(info *console.OrderInfo) {
 	if u.Spec.ExpandOrder.OrderSn == info.OrderSn && u.Spec.ExpandOrder.Status != W7_ORDER_PAID {
 		// u.Labels[K3K_BUY_MODE] = "renew"
 		u.Spec.ExpandOrder.Status = W7_ORDER_PAID
-		u.Spec.Resource.CPU += info.Cpu
-		u.Spec.Resource.Memory += info.Memory
-		u.Spec.Resource.Storage += info.Storage
-		u.Spec.Resource.Bandwidth += info.Bandwidth
-		u.Spec.OverMode = "wait"
+		base := u.Spec.PurchasedResource
+		if base == nil {
+			base = u.Spec.Resource
+		}
+		if base == nil {
+			base = u.Spec.BaseResource
+		}
+		u.Spec.PurchasedResource = addCvmResource(base, info.Cpu, info.Memory, info.Storage, info.Bandwidth)
+		u.Spec.DesiredResource = copyCvmResource(u.Spec.PurchasedResource)
+		if u.Spec.ProvisionMode == "" {
+			u.Spec.ProvisionMode = "order-required"
+		}
+		u.setCapacityCheckPending()
 	}
 	// if u.Labels[W7_EXPAND_ORDER_SN] == info.OrderSn && u.Labels[W7_EXPAND_ORDER_STATUS] != W7_ORDER_PAID {
 	// 	// u.Labels[K3K_BUY_MODE] = "renew"
