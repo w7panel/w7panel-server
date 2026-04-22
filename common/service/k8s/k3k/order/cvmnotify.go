@@ -52,10 +52,11 @@ func (k *K3kOrderApi) MockNotifyPaidOrderCvm(user *types.K3kUser, sn string) err
 	if err != nil {
 		return err
 	}
-	_, err = controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, cvm, func() error {
+	cvmClone := cvm.DeepCopy()
+	_, err = controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, cvmClone, func() error {
 		k.mu.Lock()
 		defer k.mu.Unlock()
-		cvmOrder, err := newCvmOrder(cvm, user)
+		cvmOrder, err := newCvmOrder(cvmClone, user)
 		if err != nil {
 			return err
 		}

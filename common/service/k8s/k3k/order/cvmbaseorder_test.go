@@ -42,7 +42,7 @@ func TestCreateBaseResourceOrderCvm(t *testing.T) {
 		Storage:   5,
 		Bandwidth: 50,
 	}
-	pay, err := CreateBaseResourceCvmOrder(context.Background(), &types.BuyBaseResource{CvmName: "ainotndjun", CouponCode: "", BaseConfigName: "admin", UnitQuantity: types.UnitQuantity{Unit: "month", Quantity: 1}, BuyResource: bs}, k3kUser)
+	pay, err := CreateBaseResourceCvmOrder(context.Background(), &types.BuyBaseResource{CvmName: "jshinqhsvd", CouponCode: "", BaseConfigName: "admin", UnitQuantity: types.UnitQuantity{Unit: "month", Quantity: 1}, BuyResource: bs}, k3kUser)
 	if err != nil {
 		t.Error(err)
 		return
@@ -74,7 +74,7 @@ func TestMockNotifyCvm(t *testing.T) {
 		return
 	}
 	k3kUser := types.NewK3kUser(sa)
-	MockNotifyOrderCvm(k3kUser, "20260422192934OD5F9K")
+	MockNotifyOrderCvm(k3kUser, "20260422194414PE26DK")
 
 	// t.Log(pay)
 }

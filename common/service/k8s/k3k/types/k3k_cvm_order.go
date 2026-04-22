@@ -117,10 +117,10 @@ func (u *K3kCvmOrder) SetBaseOrderPaid(info *console.OrderInfo) {
 			Storage:   baseResource.Storage,
 			Bandwidth: baseResource.Bandwidth,
 		}
-		if u.Spec.PurchasedResource == nil {
-			u.Spec.PurchasedResource = &v1alpha1.CvmResource{}
+		if u.Spec.PendingPurchasedResource == nil {
+			u.Spec.PendingPurchasedResource = &v1alpha1.CvmResource{}
 		}
-		u.Spec.PurchasedResource.Add(u.Spec.BaseOrder.Resource)
+		u.Spec.PendingPurchasedResource.Add(u.Spec.BaseOrder.Resource)
 		// u.Spec.PendingPurchasedResource = addCvmResource(u.Spec.PendingPurchasedResource, info.Cpu, info.Memory, info.Storage, info.Bandwidth)
 
 		u.setCapacityCheckPending()
