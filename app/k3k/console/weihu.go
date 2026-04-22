@@ -79,6 +79,12 @@ func (c Weihu) HandleK3k(clusterName, namespace string) {
 		slog.Error("清理longhorn trimSystem err", "error", err)
 		// 不退出
 	}
+	slog.Info("清理longhorn volume ticket")
+	err = wh.ClearTicket(ctx)
+	if err != nil {
+		slog.Error("清理longhorn volume ticket err", "error", err)
+		// 不退出
+	}
 
 	var whPod *corev1.Pod
 	for i := 0; i < retry; i++ {
