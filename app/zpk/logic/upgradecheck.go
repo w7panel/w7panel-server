@@ -129,7 +129,7 @@ func (u *UpgradeCheck) CheckHelmRepo(group *appv1.AppGroup) (*UpgradeInfo, error
 
 func (u *UpgradeCheck) CheckZpk(group *appv1.AppGroup) (*UpgradeInfo, error) {
 	// repo := logic.NewRepo(group.Spec.ZpkUrl, u.thirdPartyCDToken)
-	pk, err := LoadPackageWithPanelToken(group.Spec.ZpkUrl, u.thirdPartyCDToken, true, u.panelToken)
+	pk, err := LoadPackageWithPanelToken(group.Spec.ZpkUrl, u.thirdPartyCDToken, true, u.panelToken, group.Spec.Version)
 	if err != nil {
 		return nil, err
 	}
