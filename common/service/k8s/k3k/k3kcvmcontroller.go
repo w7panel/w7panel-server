@@ -104,7 +104,6 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: time.Minute * 5}, nil
 	}
 
-	
 	cluster, err := r.createOrUpdateCluster(ctx, cvm)
 	if err != nil {
 		logger.Error(err, "Failed to create/update k3k Cluster")
@@ -247,46 +246,37 @@ func (r *K3kCvmController) clusterReadyReplicas(cluster *k3kv1.Cluster) int32 {
 	return 0
 }
 
-func (r *K3kCvmController) reconcileEffectiveResource(ctx context.Context, cvm *cvmv1alpha1.Cvm) (bool, error) {
-	state := r.checkResource(cvm)
+// func (r *K3kCvmController) reconcileEffectiveResource(ctx context.Context, cvm *cvmv1alpha1.Cvm) (bool, error) {
 
-	updated := false
-	desiredEffective := cvm.Status.EffectiveResource
-	if state == capacityCheckStateSuccess {
-		if cvm.Spec.PurchasedResource != nil {
-			desiredEffective = copyResource(cvm.Spec.PurchasedResource)
-			if !apiequality.Semantic.DeepEqual(cvm.Spec.DesiredResource, cvm.Spec.PurchasedResource) {
-				patchBase := cvm.DeepCopy()
-				cvm.Spec.DesiredResource = copyResource(cvm.Spec.PurchasedResource)
-				if err := r.Patch(ctx, cvm, client.MergeFrom(patchBase)); err != nil {
-					return false, err
-				}
-				updated = true
-			}
-		} else if cvm.Spec.DesiredResource != nil {
-			desiredEffective = copyResource(cvm.Spec.DesiredResource)
-		}
-	}
+// 	updated := false
+// 	desiredEffective := cvm.Status.EffectiveResource
+// 	if state == capacityCheckStateSuccess {
+// 		if cvm.Spec.PurchasedResource != nil {
+// 			desiredEffective = copyResource(cvm.Spec.PurchasedResource)
+// 			if !apiequality.Semantic.DeepEqual(cvm.Spec.DesiredResource, cvm.Spec.PurchasedResource) {
+// 				patchBase := cvm.DeepCopy()
+// 				cvm.Spec.DesiredResource = copyResource(cvm.Spec.PurchasedResource)
+// 				if err := r.Patch(ctx, cvm, client.MergeFrom(patchBase)); err != nil {
+// 					return false, err
+// 				}
+// 				updated = true
+// 			}
+// 		} else if cvm.Spec.DesiredResource != nil {
+// 			desiredEffective = copyResource(cvm.Spec.DesiredResource)
+// 		}
+// 	}
 
-	if !apiequality.Semantic.DeepEqual(cvm.Status.EffectiveResource, desiredEffective) || cvm.Status.CapacityCheckState != state {
-		statusBase := cvm.DeepCopy()
-		cvm.Status.CapacityCheckState = state
-		cvm.Status.EffectiveResource = copyResource(desiredEffective)
-		if err := r.Status().Patch(ctx, cvm, client.MergeFrom(statusBase)); err != nil {
-			return false, err
-		}
-		updated = true
-	}
-	return updated, nil
-}
-
-func capacityCheckState(cvm *cvmv1alpha1.Cvm) string {
-
-	if cvm.Status.CapacityCheckState != "" {
-		return cvm.Status.CapacityCheckState
-	}
-	return capacityCheckStatePending
-}
+// 	if !apiequality.Semantic.DeepEqual(cvm.Status.EffectiveResource, desiredEffective) || cvm.Status.CapacityCheckState != state {
+// 		statusBase := cvm.DeepCopy()
+// 		cvm.Status.CapacityCheckState = state
+// 		cvm.Status.EffectiveResource = copyResource(desiredEffective)
+// 		if err := r.Status().Patch(ctx, cvm, client.MergeFrom(statusBase)); err != nil {
+// 			return false, err
+// 		}
+// 		updated = true
+// 	}
+// 	return updated, nil
+// }
 
 func copyResource(resource *cvmv1alpha1.CvmResource) *cvmv1alpha1.CvmResource {
 	if resource == nil {
