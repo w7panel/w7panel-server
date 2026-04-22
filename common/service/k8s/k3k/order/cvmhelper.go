@@ -11,7 +11,7 @@ import (
 )
 
 func currentCvmBuyResource(cvm *cvmv1alpha1.Cvm) types.BuyResource {
-	resource := cvm.Spec.DesiredResource
+	resource := cvm.Spec.PurchasedResource
 	if resource == nil {
 		resource = &cvmv1alpha1.CvmResource{}
 	}

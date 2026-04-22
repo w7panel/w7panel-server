@@ -183,12 +183,16 @@ func getServiceAccountResource(sa *corev1.ServiceAccount) *overselling.Resource 
 }
 
 func getCvmResource(cvm *cvmv1alpha1.Cvm) *overselling.Resource {
+	resourceSpec := cvm.Status.EffectiveResource
+	if resourceSpec == nil {
+		resourceSpec = &cvmv1alpha1.CvmResource{}
+	}
 
 	return &overselling.Resource{
-		CPU:       resource.MustParse(fmt.Sprintf("%dm", cvm.Spec.DesiredResource.CPU)),
-		Memory:    resource.MustParse(fmt.Sprintf("%dGi", cvm.Spec.DesiredResource.Memory)),
-		Storage:   resource.MustParse(fmt.Sprintf("%dGi", cvm.Spec.DesiredResource.Storage)),
-		BandWidth: resource.MustParse(fmt.Sprintf("%dM", cvm.Spec.DesiredResource.Bandwidth)),
+		CPU:       resource.MustParse(fmt.Sprintf("%dm", resourceSpec.CPU)),
+		Memory:    resource.MustParse(fmt.Sprintf("%dGi", resourceSpec.Memory)),
+		Storage:   resource.MustParse(fmt.Sprintf("%dGi", resourceSpec.Storage)),
+		BandWidth: resource.MustParse(fmt.Sprintf("%dM", resourceSpec.Bandwidth)),
 	}
 }
 

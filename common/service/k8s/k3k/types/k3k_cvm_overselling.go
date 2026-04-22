@@ -1,29 +1,20 @@
 package types
 
 import (
+	"fmt"
+
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
 	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type k3kCvmOverSelling struct {
 	*v1alpha1.Cvm
-	overResource     *overselling.Resource
-	overBaseResource *overselling.Resource
 }
 
 func Newk3kCvmOverSelling(cvm *v1alpha1.Cvm) *k3kCvmOverSelling {
 	u := &k3kCvmOverSelling{}
 	u.Cvm = cvm
-	u.overResource = overselling.EmptyResource()
-	overstr, ok2 := cvm.Annotations[W7_OVER_RESOURCE]
-	if ok2 {
-		u.overResource = overselling.CreateFromString(overstr)
-	}
-	u.overBaseResource = overselling.EmptyResource()
-	overBasestr, ok3 := cvm.Annotations[W7_OVER_BASE_RESOURCE]
-	if ok3 {
-		u.overBaseResource = overselling.CreateFromString(overBasestr)
-	}
 	return u
 }
 
@@ -50,10 +41,13 @@ func (u *k3kCvmOverSelling) CanOverSellingCheck() bool {
 }
 
 func (u *k3kCvmOverSelling) GetOverResource() *overselling.Resource {
-	if u.IsExpand() {
-		return u.overResource
+	rs := u.Spec.PendingPurchasedResource
+	return &overselling.Resource{
+		CPU:       resource.MustParse(fmt.Sprintf("%dm", rs.CPU)),
+		Memory:    resource.MustParse(fmt.Sprintf("%dGi", rs.Memory)),
+		Storage:   resource.MustParse(fmt.Sprintf("%dGi", rs.Storage)),
+		BandWidth: resource.MustParse(fmt.Sprintf("%dM", rs.Bandwidth)),
 	}
-	return u.overBaseResource
 }
 
 func (u *k3kCvmOverSelling) IsExpand() bool {
@@ -61,8 +55,8 @@ func (u *k3kCvmOverSelling) IsExpand() bool {
 }
 
 func (u *k3kCvmOverSelling) capacityCheckState() string {
-	if u.Status.CapacityCheckState != "" {
-		return u.Status.CapacityCheckState
+	if u.Spec.CapacityCheckState != "" {
+		return u.Spec.CapacityCheckState
 	}
 	return ""
 }

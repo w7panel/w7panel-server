@@ -42,7 +42,7 @@ mcp:
 k3k:
   watch: ${K3K_WATCH-false}
 cvm:
-  watch: ${CVM_WATCH-false}   
+  enabled: ${CVM_ENABLED-false}   
 server:
   http:
     host: ${W7PANEL_HTTP_SERVER_HOST-0.0.0.0}

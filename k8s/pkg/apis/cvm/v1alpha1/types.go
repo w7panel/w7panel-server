@@ -32,19 +32,73 @@ type CvmResource struct {
 	Bandwidth int64 `json:"bandwidth,omitempty"`
 }
 
+func (u *CvmResource) Add(rs *CvmResource) {
+	if rs == nil {
+		rs = &CvmResource{}
+	}
+	u.CPU += rs.CPU
+	u.Memory += rs.Memory
+	u.Storage += rs.Storage
+	u.Bandwidth += rs.Bandwidth
+}
+func (u *CvmResource) Sub(rs *CvmResource) {
+	if rs == nil {
+		rs = &CvmResource{}
+	}
+	u.CPU -= rs.CPU
+	u.Memory -= rs.Memory
+	u.Storage -= rs.Storage
+	u.Bandwidth -= rs.Bandwidth
+}
+func (u *CvmResource) IsEmpty() bool {
+	return u.CPU == 0 && u.Memory == 0 && u.Storage == 0 && u.Bandwidth == 0
+}
+
 type CvmSpec struct {
-	StorageClassName   string       `json:"storageClassName,omitempty"`
-	Workload           Workload     `json:"workload,omitempty"`
-	DesiredResource    *CvmResource `json:"desiredResource,omitempty"`    // 目标资源
-	PurchasedResource  *CvmResource `json:"purchasedResource,omitempty"`  // 已购买资源，待检测后生效
-	ProvisionMode      string       `json:"provisionMode,omitempty"`      // 开通模式 order-required/admin-bypass
-	BaseOrder          *CvmOrder    `json:"baseOrder,omitempty"`          // 首次购买 基础订单
-	ExpandOrder        *CvmOrder    `json:"expandOrder,omitempty"`        // 扩容订单
-	RenewOrder         *CvmOrder    `json:"renewOrder,omitempty"`         // 续费订单 延长到期时间
-	ExpireTime         string       `json:"expireTime,omitempty"`         // 到期时间
-	RecycleTime        string       `json:"recycleTime,omitempty"`        // 回收时间RECYCLE
-	Rescue             bool         `json:"rescue,omitempty"`             // 是否救援模式
-	CapacityCheckState string       `json:"capacityCheckState,omitempty"` // wait/no-resource/success
+	StorageClassName         string       `json:"storageClassName,omitempty"`
+	Workload                 Workload     `json:"workload,omitempty"`
+	UserResource             *CvmResource `json:"userResource,omitempty"`             // 强制指定资源，直接生效
+	PurchasedResource        *CvmResource `json:"purchasedResource,omitempty"`        // 累计已购买资源，待容量检测后生效
+	PendingPurchasedResource *CvmResource `json:"pendingPurchasedResource,omitempty"` // 购买待生效的资源
+	CapacityCheckState       string       `json:"capacityCheckState,omitempty"`       // wait/no-resource/success
+	BaseOrder                *CvmOrder    `json:"baseOrder,omitempty"`                // 首次购买 基础订单
+	ExpandOrder              *CvmOrder    `json:"expandOrder,omitempty"`              // 扩容订单
+	RenewOrder               *CvmOrder    `json:"renewOrder,omitempty"`               // 续费订单 延长到期时间
+	ExpireTime               string       `json:"expireTime,omitempty"`               // 到期时间
+	RecycleTime              string       `json:"recycleTime,omitempty"`              // 回收时间RECYCLE
+	Rescue                   bool         `json:"rescue,omitempty"`                   // 是否救援模式
+
+}
+
+func (u *Cvm) AddPurchasedResource(rs *CvmResource) {
+	if rs == nil {
+		rs = &CvmResource{}
+	}
+	if u.Spec.PurchasedResource == nil {
+		u.Spec.PurchasedResource = &CvmResource{}
+		return
+	}
+	u.Spec.PurchasedResource.Add(rs)
+}
+
+// 资源检查通过
+func (u *Cvm) CheckSuccess() {
+	u.Spec.CapacityCheckState = capacityCheckStateSuccess
+	u.AddPurchasedResource(u.Spec.PendingPurchasedResource)
+}
+
+func (u *Cvm) CheckNoResource() {
+	u.Spec.CapacityCheckState = capacityCheckStateNoResource
+}
+
+func (u *Cvm) IsEmpty() bool {
+	if u.Spec.PurchasedResource == nil {
+		u.Spec.PurchasedResource = &CvmResource{}
+	}
+	if u.Spec.UserResource == nil {
+		u.Spec.UserResource = &CvmResource{}
+	}
+	return u.Spec.UserResource.IsEmpty() && u.Spec.PurchasedResource.IsEmpty()
 }
 
 // 购买信息
@@ -63,11 +117,10 @@ type Workload struct {
 // 【微擎面板&集群云主机：云主机业务分离成独立应用】
 // https://www.tapd.cn/tapd_fe/62789787/story/detail/1162789787001015242
 type CvmStatus struct {
-	Phase              string             `json:"phase,omitempty"`
-	ReadyReplicas      int32              `json:"readyReplicas,omitempty"`
-	EffectiveResource  *CvmResource       `json:"effectiveResource,omitempty"`
-	CapacityCheckState string             `json:"capacityCheckState,omitempty"` // wait/no-resource/success
-	Conditions         []metav1.Condition `json:"conditions,omitempty"`
+	Phase             string             `json:"phase,omitempty"`
+	ReadyReplicas     int32              `json:"readyReplicas,omitempty"`
+	EffectiveResource *CvmResource       `json:"effectiveResource,omitempty"` // UserResource + PurchasedResource
+	Conditions        []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +genclient

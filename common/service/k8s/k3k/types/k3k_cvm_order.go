@@ -31,20 +31,20 @@ func copyCvmResource(resource *v1alpha1.CvmResource) *v1alpha1.CvmResource {
 	}
 }
 
-func addCvmResource(base *v1alpha1.CvmResource, cpu, memory, storage, bandwidth int64) *v1alpha1.CvmResource {
-	if base == nil {
-		base = &v1alpha1.CvmResource{}
-	}
-	resource := copyCvmResource(base)
-	resource.CPU += cpu
-	resource.Memory += memory
-	resource.Storage += storage
-	resource.Bandwidth += bandwidth
-	return resource
-}
+// func addCvmResource(base *v1alpha1.CvmResource, cpu, memory, storage, bandwidth int64) *v1alpha1.CvmResource {
+// 	if base == nil {
+// 		base = &v1alpha1.CvmResource{}
+// 	}
+// 	resource := copyCvmResource(base)
+// 	resource.CPU += cpu
+// 	resource.Memory += memory
+// 	resource.Storage += storage
+// 	resource.Bandwidth += bandwidth
+// 	return resource
+// }
 
 func (u *K3kCvmOrder) setCapacityCheckPending() {
-	u.Status.CapacityCheckState = "wait"
+	u.Spec.CapacityCheckState = "wait"
 }
 
 func (u *K3kCvmOrder) SetBaseOrder(orderSn string) {
@@ -117,10 +117,11 @@ func (u *K3kCvmOrder) SetBaseOrderPaid(info *console.OrderInfo) {
 			Storage:   baseResource.Storage,
 			Bandwidth: baseResource.Bandwidth,
 		}
-		u.Spec.PurchasedResource = copyCvmResource(u.Spec.BaseOrder.Resource)
-		if u.Spec.ProvisionMode == "" {
-			u.Spec.ProvisionMode = "order-required"
+		if u.Spec.PurchasedResource == nil {
+			u.Spec.PurchasedResource = &v1alpha1.CvmResource{}
 		}
+		u.Spec.PurchasedResource.Add(u.Spec.BaseOrder.Resource)
+		// u.Spec.PendingPurchasedResource = addCvmResource(u.Spec.PendingPurchasedResource, info.Cpu, info.Memory, info.Storage, info.Bandwidth)
 
 		u.setCapacityCheckPending()
 
@@ -158,11 +159,11 @@ func (u *K3kCvmOrder) SetExpandOrderPaid(info *console.OrderInfo) {
 			Storage:   info.Storage,
 			Bandwidth: info.Bandwidth,
 		}
-		base := u.Spec.PurchasedResource
-		u.Spec.PurchasedResource = addCvmResource(base, info.Cpu, info.Memory, info.Storage, info.Bandwidth)
-		if u.Spec.ProvisionMode == "" {
-			u.Spec.ProvisionMode = "order-required"
+		if u.Spec.PendingPurchasedResource == nil {
+			u.Spec.PendingPurchasedResource = &v1alpha1.CvmResource{}
 		}
+		u.Spec.PendingPurchasedResource.Add(u.Spec.ExpandOrder.Resource)
+
 		u.setCapacityCheckPending()
 	}
 	// if u.Labels[W7_EXPAND_ORDER_SN] == info.OrderSn && u.Labels[W7_EXPAND_ORDER_STATUS] != W7_ORDER_PAID {
@@ -191,22 +192,22 @@ func (u *K3kCvmOrder) SetOrderStatus(info *console.OrderInfo) {
 	}
 }
 
-func (u *K3kCvmOrder) NeedCreateOrder() bool {
-	pass, ok := u.Labels[W7_BASE_ORDER_PASS]
-	if ok {
-		return pass == "false"
-	}
-	if u.NeedBuyResource() {
-		if u.Spec.BaseOrder == nil {
-			return true
-		}
-		if u.Spec.BaseOrder.Status == W7_ORDER_PAID {
-			return false
-		}
-		return true
-	}
-	return false
-}
+// func (u *K3kCvmOrder) NeedCreateOrder() bool {
+// 	pass, ok := u.Labels[W7_BASE_ORDER_PASS]
+// 	if ok {
+// 		return pass == "false"
+// 	}
+// 	if u.NeedBuyResource() {
+// 		if u.Spec.BaseOrder == nil {
+// 			return true
+// 		}
+// 		if u.Spec.BaseOrder.Status == W7_ORDER_PAID {
+// 			return false
+// 		}
+// 		return true
+// 	}
+// 	return false
+// }
 
 // 是否可以续费
 
@@ -222,26 +223,13 @@ func (u *K3kCvmOrder) NeedRenew() bool {
 			return true
 		}
 	}
-	// if err := u.CanRenewError(); err != nil {
-	// 	expireTime, err := u.GetExpireTime()
-	// 	if err != nil {
-	// 		return false
-	// 	}
-	// 	if expireTime.Before(time.Now()) { //3天内可以续费
-	// 		// if expireTime.Before(time.Now().Add(-time.Hour * 72)) { //3天内可以续费
-	// 		return true
-	// 	}
-	// }
+
 	return false
 }
 
+// 有错就是false
 func (u *K3kCvmOrder) CanCreateBaseOrderError() error {
-	pass, ok := u.Labels[W7_BASE_ORDER_PASS]
-	if ok {
-		if pass == "false" {
-			return nil
-		}
-	}
+
 	if u.NeedBuyResource() {
 		if u.Spec.BaseOrder == nil {
 			return nil

@@ -46,6 +46,11 @@ func (r *RoleBinding) createRoleAndBinding(ctx context.Context, name string, nam
 				Resources: []string{"pods"}, // 只包含命名空间级别的资源
 				Verbs:     []string{"get", "list", "watch"},
 			},
+			{
+				APIGroups: []string{"cvm.w7.cc"},
+				Resources: []string{"cvms"}, // cvm 只读
+				Verbs:     []string{"get", "list", "watch"},
+			},
 		},
 	}
 

@@ -3,6 +3,7 @@ package k3k
 import (
 	"context"
 	"log/slog"
+	"os"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
 
@@ -76,10 +77,12 @@ func SetupK3kControllers(mgr ctrl.Manager) error {
 		slog.Error("failed to setup job controller", "error", err)
 		return err
 	}
-
-	if err := setupCvmController(mgr, sdk); err != nil {
-		slog.Error("failed to setup cvm controller", "error", err)
-		return err
+	cvmWatch, ok := os.LookupEnv("CVM_ENABLED")
+	if ok && cvmWatch == "true" {
+		if err := setupCvmController(mgr, sdk); err != nil {
+			slog.Error("failed to setup cvm controller", "error", err)
+			return err
+		}
 	}
 
 	// if err := setupCvmClusterController(mgr, sdk); err != nil {
