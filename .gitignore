@@ -43,3 +43,5 @@ k8s-offline-*.tgz
 /main
 *.tar
 /test.sh
+/publish.sh
+publish.sh

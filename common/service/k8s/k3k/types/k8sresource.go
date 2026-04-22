@@ -607,11 +607,11 @@ func ToK3kWeihJob(k3kUser *K3kUser) *batchv1.Job {
 		},
 	}
 	// 设置Job的注解
-	title := "集群维护模式"
+	title := "集群救援"
 	annotations := map[string]string{
 		"title":              title,
 		"w7.cc/title":        title,
-		"w7.cc/deploy-title": "集群维护模式",
+		"w7.cc/deploy-title": "集群救援",
 
 		// 设置Job的标签
 	}
