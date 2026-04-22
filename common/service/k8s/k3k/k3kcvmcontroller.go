@@ -96,7 +96,7 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 			logger.Error(err, "Failed to add finalizer")
 			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
-		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+		return ctrl.Result{}, nil
 	}
 	err := r.checkResource(ctx, cvm)
 	if err != nil {
@@ -110,7 +110,6 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 	// 资源为空 不创建cluster资源
 	if cvm.IsEmpty() {
 		return ctrl.Result{}, nil
-
 	}
 	cluster, err := r.createOrUpdateCluster(ctx, cvm)
 	if err != nil {
@@ -128,8 +127,8 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 func (r *K3kCvmController) createOrUpdateCluster(ctx context.Context, cvm *cvmv1alpha1.Cvm) (*k3kv1.Cluster, error) {
 	cluster := &k3kv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      r.getClusterName(cvm),
-			Namespace: r.getClusterNamespace(cvm),
+			Name:      cvm.Name,
+			Namespace: cvm.Namespace,
 		},
 	}
 	_, err := controllerutil.CreateOrPatch(ctx, r.Client, cluster, func() error {
@@ -208,19 +207,12 @@ func (r *K3kCvmController) checkResource(ctx context.Context, cvm *cvmv1alpha1.C
 	}
 	return nil
 }
-func (r *K3kCvmController) getClusterName(cvm *cvmv1alpha1.Cvm) string {
-	return cvm.Name
-}
-
-func (r *K3kCvmController) getClusterNamespace(cvm *cvmv1alpha1.Cvm) string {
-	return cvm.Namespace
-}
 
 func (r *K3kCvmController) ensureClusterDeleted(ctx context.Context, cvm *cvmv1alpha1.Cvm) error {
 	cluster := &k3kv1.Cluster{}
 	err := r.Get(ctx, client.ObjectKey{
-		Name:      r.getClusterName(cvm),
-		Namespace: r.getClusterNamespace(cvm),
+		Name:      cvm.Name,
+		Namespace: cvm.Namespace,
 	}, cluster)
 	if apierrors.IsNotFound(err) {
 		return nil
@@ -229,55 +221,36 @@ func (r *K3kCvmController) ensureClusterDeleted(ctx context.Context, cvm *cvmv1a
 }
 
 func (r *K3kCvmController) syncClusterStatus(ctx context.Context, cvm *cvmv1alpha1.Cvm, cluster *k3kv1.Cluster) error {
-	newPhase := string(cluster.Status.Phase)
-	newReadyReplicas := r.clusterReadyReplicas(cluster)
-	newConditions := cluster.Status.Conditions
-
-	if cvm.Status.Phase == newPhase &&
-		cvm.Status.ReadyReplicas == newReadyReplicas &&
-		apiequality.Semantic.DeepEqual(cvm.Status.Conditions, newConditions) {
+	refreshCluster := func() error {
+		return r.Get(ctx, client.ObjectKey{
+			Name:      cvm.Name,
+			Namespace: cvm.Namespace,
+		}, cluster)
+	}
+	err := refreshCluster()
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	base := cvm.DeepCopy()
+	cvm.Status.ClusterPhase = k3kv1.ClusterPhase(cluster.Status.Phase)
+	cvm.Status.Conditions = cluster.Status.Conditions
+	if apiequality.Semantic.DeepEqual(cvm.Status, base.Status) {
 		return nil
 	}
-
-	statusBase := cvm.DeepCopy()
-	cvm = cvm.DeepCopy()
-	cvm.Status.Phase = newPhase
-	cvm.Status.ReadyReplicas = newReadyReplicas
-	cvm.Status.Conditions = newConditions
-	return r.Status().Patch(ctx, cvm, client.MergeFrom(statusBase))
-}
-
-func (r *K3kCvmController) clusterReadyReplicas(cluster *k3kv1.Cluster) int32 {
-	if cluster.Status.Phase == k3kv1.ClusterReady {
-		return 1
-	}
-	return 0
+	return r.Status().Patch(ctx, cvm, client.MergeFrom(base))
 }
 
 func (r *K3kCvmController) reconcileResourceStatus(ctx context.Context, cvm *cvmv1alpha1.Cvm) error {
-	desiredEffective := desiredEffectiveResource(cvm)
-	// state := cvm.Spec.CapacityCheckState
-	eq := apiequality.Semantic.DeepEqual(cvm.Status.EffectiveResource, desiredEffective)
-	if eq {
+	base := cvm.DeepCopy()
+	cvm.ComputeStatus()
+	if apiequality.Semantic.DeepEqual(cvm.Status, base.Status) {
 		return nil
 	}
-	statusBase := cvm.DeepCopy()
-	cvm = cvm.DeepCopy()
-	cvm.Status.EffectiveResource = copyResource(desiredEffective)
-	// cvm.Status.CapacityCheckState = state
-	return r.Status().Patch(ctx, cvm, client.MergeFrom(statusBase))
-}
+	return r.Status().Patch(ctx, cvm, client.MergeFrom(base))
 
-func copyResource(resource *cvmv1alpha1.CvmResource) *cvmv1alpha1.CvmResource {
-	if resource == nil {
-		return nil
-	}
-	return &cvmv1alpha1.CvmResource{
-		CPU:       resource.CPU,
-		Memory:    resource.Memory,
-		Storage:   resource.Storage,
-		Bandwidth: resource.Bandwidth,
-	}
 }
 
 func addResources(left, right *cvmv1alpha1.CvmResource) *cvmv1alpha1.CvmResource {

@@ -2,12 +2,12 @@ apiVersion: cvm.w7.cc/v1alpha1
 kind: Cvm
 metadata:
     name: cvm-test
-    namespace: default
+    namespace: k3k-console-164315
 spec:
-    resource:
+    userResource:
         cpu: 2
         memory: 4
-        storage: 5
+        storage: 10
         bandwidth: 1
     storageClassName: local-path
 

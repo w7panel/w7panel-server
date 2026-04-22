@@ -1,6 +1,9 @@
 package v1alpha1
 
 import (
+	"time"
+
+	k3kv1 "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -8,11 +11,29 @@ const (
 	K3kCvmFinalizerName = "cvm.k3k.io/finalizer"
 	K3kCvmNameLabel     = "w7.cc/cvm-name"
 	K3kCvmNamespaceAnno = "w7.cc/cvm-namespace"
+	CvmExpired          = "w7.cc/expired"
+	LabelPhase          = "w7.cc/phase"
 
 	capacityCheckStatePending    = "pending"
 	capacityCheckStateWait       = "wait"
 	capacityCheckStateSuccess    = "success"
 	capacityCheckStateNoResource = "no-resource"
+)
+
+type Phase string
+
+const (
+	// ClusterPending      = ClusterPhase("Pending")
+	// ClusterProvisioning = ClusterPhase("Provisioning")
+	// ClusterReady        = ClusterPhase("Ready")
+	// ClusterFailed       = ClusterPhase("Failed")
+	// ClusterTerminating  = ClusterPhase("Terminating")
+	// ClusterUnknown      = ClusterPhase("Unknown")
+	PhaseEmpty      = Phase("empty")      //无资源
+	PhaseNoEmpty    = Phase("noempty")    //有资源
+	PhaseRecycle    = Phase("recycle")    //待回收
+	PhaseRecycleing = Phase("recycleing") //回收中
+	PhaseCreating   = Phase("creating")   //创建种
 )
 
 // +genclient
@@ -23,35 +44,6 @@ type Cvm struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              CvmSpec   `json:"spec"`
 	Status            CvmStatus `json:"status,omitempty"`
-}
-
-type CvmResource struct {
-	CPU       int64 `json:"cpu,omitempty"`
-	Memory    int64 `json:"memory,omitempty"`
-	Storage   int64 `json:"storage,omitempty"`
-	Bandwidth int64 `json:"bandwidth,omitempty"`
-}
-
-func (u *CvmResource) Add(rs *CvmResource) {
-	if rs == nil {
-		rs = &CvmResource{}
-	}
-	u.CPU += rs.CPU
-	u.Memory += rs.Memory
-	u.Storage += rs.Storage
-	u.Bandwidth += rs.Bandwidth
-}
-func (u *CvmResource) Sub(rs *CvmResource) {
-	if rs == nil {
-		rs = &CvmResource{}
-	}
-	u.CPU -= rs.CPU
-	u.Memory -= rs.Memory
-	u.Storage -= rs.Storage
-	u.Bandwidth -= rs.Bandwidth
-}
-func (u *CvmResource) IsEmpty() bool {
-	return u.CPU == 0 && u.Memory == 0 && u.Storage == 0 && u.Bandwidth == 0
 }
 
 type CvmSpec struct {
@@ -117,10 +109,55 @@ type Workload struct {
 // 【微擎面板&集群云主机：云主机业务分离成独立应用】
 // https://www.tapd.cn/tapd_fe/62789787/story/detail/1162789787001015242
 type CvmStatus struct {
-	Phase             string             `json:"phase,omitempty"`
-	ReadyReplicas     int32              `json:"readyReplicas,omitempty"`
+	Phase        string             `json:"phase,oomitempty"`
+	ClusterPhase k3kv1.ClusterPhase `json:"clusterPhase,omitempty"`
+	// ReadyReplicas     int32              `json:"readyReplicas,omitempty"`
 	EffectiveResource *CvmResource       `json:"effectiveResource,omitempty"` // UserResource + PurchasedResource
 	Conditions        []metav1.Condition `json:"conditions,omitempty"`
+	IsExpired         bool               `json:"isExpired,omitempty"`   //是否过期
+	IsRecycling       bool               `json:"isRecycling,omitempty"` //是否回收中
+}
+
+func (u *Cvm) ComputeStatus() {
+	if u.Labels == nil {
+		u.Labels = map[string]string{}
+	}
+	if u.Spec.ExpireTime != "" {
+		etime, err := time.Parse(time.RFC3339, u.Spec.ExpireTime)
+		if err == nil {
+			u.Status.IsExpired = etime.Before(time.Now())
+			u.Labels[CvmExpired] = u.Name
+		}
+	}
+	if u.Spec.RecycleTime != "" {
+		rtime, err := time.Parse(time.RFC3339, u.Spec.RecycleTime)
+		if err == nil {
+			if rtime.Before(time.Now()) {
+				u.Status.IsRecycling = true
+			}
+		}
+	}
+	// 无资源 有资源 待回收 回收中 创建中
+	if u.IsEmpty() {
+		u.Status.Phase = string(PhaseEmpty)
+	} else {
+		u.Status.Phase = string(PhaseNoEmpty)
+		if u.Status.IsExpired {
+			u.Status.Phase = string(PhaseRecycle)
+			if u.Status.IsRecycling {
+				u.Status.Phase = string(PhaseRecycleing)
+			}
+		} else {
+			if u.Status.ClusterPhase != k3kv1.ClusterReady {
+				u.Status.Phase = string(PhaseCreating)
+			}
+		}
+	}
+	//判断是否回收中
+
+	u.Status.EffectiveResource = &CvmResource{}
+	u.Status.EffectiveResource.Add(u.Spec.UserResource)
+	u.Status.EffectiveResource.Add(u.Spec.PurchasedResource)
 }
 
 // +genclient
@@ -131,4 +168,33 @@ type CvmList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Cvm `json:"items"`
+}
+
+type CvmResource struct {
+	CPU       int64 `json:"cpu,omitempty"`
+	Memory    int64 `json:"memory,omitempty"`
+	Storage   int64 `json:"storage,omitempty"`
+	Bandwidth int64 `json:"bandwidth,omitempty"`
+}
+
+func (u *CvmResource) Add(rs *CvmResource) {
+	if rs == nil {
+		rs = &CvmResource{}
+	}
+	u.CPU += rs.CPU
+	u.Memory += rs.Memory
+	u.Storage += rs.Storage
+	u.Bandwidth += rs.Bandwidth
+}
+func (u *CvmResource) Sub(rs *CvmResource) {
+	if rs == nil {
+		rs = &CvmResource{}
+	}
+	u.CPU -= rs.CPU
+	u.Memory -= rs.Memory
+	u.Storage -= rs.Storage
+	u.Bandwidth -= rs.Bandwidth
+}
+func (u *CvmResource) IsEmpty() bool {
+	return u.CPU == 0 && u.Memory == 0 && u.Storage == 0 && u.Bandwidth == 0
 }
