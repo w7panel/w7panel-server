@@ -122,11 +122,7 @@ func (in *CvmResource) DeepCopy() *CvmResource {
 func (in *CvmSpec) DeepCopyInto(out *CvmSpec) {
 	*out = *in
 	out.Workload = in.Workload
-	if in.Resource != nil {
-		in, out := &in.Resource, &out.Resource
-		*out = new(CvmResource)
-		**out = **in
-	}
+
 	if in.DesiredResource != nil {
 		in, out := &in.DesiredResource, &out.DesiredResource
 		*out = new(CvmResource)
@@ -152,11 +148,7 @@ func (in *CvmSpec) DeepCopyInto(out *CvmSpec) {
 		*out = new(CvmOrder)
 		**out = **in
 	}
-	if in.BaseResource != nil {
-		in, out := &in.BaseResource, &out.BaseResource
-		*out = new(CvmResource)
-		**out = **in
-	}
+
 	return
 }
 

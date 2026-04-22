@@ -24,17 +24,14 @@ type CvmResource struct {
 type CvmSpec struct {
 	StorageClassName  string       `json:"storageClassName,omitempty"`
 	Workload          Workload     `json:"workload,omitempty"`
-	Resource          *CvmResource `json:"resource,omitempty"`          // 当前已生效资源，兼容旧逻辑
 	DesiredResource   *CvmResource `json:"desiredResource,omitempty"`   // 目标资源
 	PurchasedResource *CvmResource `json:"purchasedResource,omitempty"` // 已购买资源，待检测后生效
-	BaseResource      *CvmResource `json:"baseResource,omitempty"`      // 基础订单资源
 	ProvisionMode     string       `json:"provisionMode,omitempty"`     // 开通模式 order-required/admin-bypass
 	BaseOrder         *CvmOrder    `json:"baseOrder,omitempty"`         // 首次购买 基础订单
 	ExpandOrder       *CvmOrder    `json:"expandOrder,omitempty"`       // 扩容订单
 	RenewOrder        *CvmOrder    `json:"renewOrder,omitempty"`        // 续费订单 延长到期时间
 	ExpireTime        string       `json:"expireTime,omitempty"`        // 到期时间
 	RecycleTime       string       `json:"recycleTime,omitempty"`       // 回收时间RECYCLE
-	OverMode          string       `json:"overMode,omitempty"`          // 兼容旧字段，等价于 status.capacityCheckState
 	Rescue            bool         `json:"rescue,omitempty"`            // 是否救援模式
 }
 
@@ -43,7 +40,7 @@ type CvmOrder struct {
 	OrderSn  string       `json:"orderSn"`
 	Status   string       `json:"status,omitempty"`
 	Resource *CvmResource `json:"resource,omitempty"`
-	Hour     int64        `json:"hour,omitempty"`
+	Hour     int          `json:"hour,omitempty"`
 }
 
 type Workload struct {

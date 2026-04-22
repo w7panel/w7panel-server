@@ -44,7 +44,6 @@ func addCvmResource(base *v1alpha1.CvmResource, cpu, memory, storage, bandwidth 
 }
 
 func (u *K3kCvmOrder) setCapacityCheckPending() {
-	u.Spec.OverMode = "wait"
 	u.Status.CapacityCheckState = "wait"
 }
 
@@ -104,6 +103,7 @@ func (u *K3kCvmOrder) SetBaseOrderPaid(info *console.OrderInfo) {
 
 		// u.Labels[W7_BASE_ORDER_STATUS] = W7_ORDER_PAID
 		u.Spec.BaseOrder.Status = W7_ORDER_PAID
+		u.Spec.BaseOrder.Hour = int(info.GetHour())
 		u.changeExpireTime(int(info.GetHour()))
 		baseResource := BuyResource{
 			Cpu:       info.Cpu,
@@ -111,20 +111,17 @@ func (u *K3kCvmOrder) SetBaseOrderPaid(info *console.OrderInfo) {
 			Storage:   info.Storage,
 			Bandwidth: info.Bandwidth,
 		}
-		u.Spec.BaseResource = &v1alpha1.CvmResource{
+		u.Spec.BaseOrder.Resource = &v1alpha1.CvmResource{
 			CPU:       baseResource.Cpu,
 			Memory:    baseResource.Memory,
 			Storage:   baseResource.Storage,
 			Bandwidth: baseResource.Bandwidth,
 		}
-		u.Spec.DesiredResource = copyCvmResource(u.Spec.BaseResource)
-		u.Spec.PurchasedResource = copyCvmResource(u.Spec.BaseResource)
+		u.Spec.PurchasedResource = copyCvmResource(u.Spec.BaseOrder.Resource)
 		if u.Spec.ProvisionMode == "" {
 			u.Spec.ProvisionMode = "order-required"
 		}
-		// rs := overselling.OrderInfoToResource(info)
-		// u.Annotations[W7_OVER_BASE_RESOURCE] = rs.JsonString()
-		// u.Annotations[W7_QUOTA_LIMIT_LOCK] = "true" //锁定配额，防止配额被费用套餐覆盖
+
 		u.setCapacityCheckPending()
 
 	}
@@ -141,6 +138,7 @@ func (u *K3kCvmOrder) SetRenewOrderPaid(info *console.OrderInfo) {
 	if u.Spec.RenewOrder.OrderSn == info.OrderSn && u.Spec.RenewOrder.Status != W7_ORDER_PAID {
 		// u.Labels[K3K_BUY_MODE] = "renew"
 		u.Spec.RenewOrder.Status = W7_ORDER_PAID
+		u.Spec.RenewOrder.Hour = int(info.GetHour())
 		u.changeExpireTime(int(info.GetHour()))
 	}
 }

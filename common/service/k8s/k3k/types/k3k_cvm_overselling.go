@@ -64,7 +64,7 @@ func (u *k3kCvmOverSelling) capacityCheckState() string {
 	if u.Status.CapacityCheckState != "" {
 		return u.Status.CapacityCheckState
 	}
-	return u.Spec.OverMode
+	return ""
 }
 
 // wait no-resource success

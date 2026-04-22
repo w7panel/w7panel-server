@@ -180,11 +180,11 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 		"--embedded-registry",
 		"--disable-network-policy",
 	}
-	if cvm.Spec.StorageClassName != "" && cvm.Spec.Resource.Storage > 0 {
+	if cvm.Spec.StorageClassName != "" && cvm.Spec.DesiredResource.Storage > 0 {
 		spec.Persistence = k3kv1.PersistenceConfig{
 			StorageClassName:   &cvm.Spec.StorageClassName,
 			Type:               k3kv1.DynamicPersistenceMode,
-			StorageRequestSize: fmt.Sprintf("%dGi", cvm.Spec.Resource.Storage),
+			StorageRequestSize: fmt.Sprintf("%dGi", cvm.Spec.DesiredResource.Storage),
 		}
 	}
 	return spec
@@ -273,7 +273,7 @@ func (r *K3kCvmController) reconcileEffectiveResource(ctx context.Context, cvm *
 	if state == "success" {
 		if cvm.Spec.PurchasedResource != nil {
 			desiredEffective = copyResource(cvm.Spec.PurchasedResource)
-		} else if cvm.Spec.Resource != nil {
+		} else if cvm.Spec.DesiredResource != nil {
 			desiredEffective = copyResource(cvm.Spec.Resource)
 		}
 	}
@@ -281,8 +281,7 @@ func (r *K3kCvmController) reconcileEffectiveResource(ctx context.Context, cvm *
 	updated := false
 	if !apiequality.Semantic.DeepEqual(cvm.Spec.Resource, desiredEffective) || cvm.Spec.OverMode != state {
 		patchBase := cvm.DeepCopy()
-		cvm.Spec.OverMode = state
-		cvm.Spec.Resource = copyResource(desiredEffective)
+		cvm.Spec.DesiredResource = copyResource(desiredEffective)
 		if err := r.Patch(ctx, cvm, client.MergeFrom(patchBase)); err != nil {
 			return false, err
 		}
