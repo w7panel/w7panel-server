@@ -36,3 +36,34 @@ func (k *K3kOrderApi) NotifyCvmOrder(user *types.K3kUser, cvmName string, sn str
 	}
 	return err
 }
+
+func (k *K3kOrderApi) MockNotifyPaidOrderCvm(user *types.K3kUser, sn string) error {
+	slog.Error("订单通知", "orderSn", sn)
+	w7config, err := k.w7respo.Get(user.Name)
+	if err != nil {
+		return err
+	}
+	orderInfo, err := getOrderSn(user, w7config, sn)
+	if err != nil {
+		slog.Warn("获取订单信息失败", "orderSn", sn, "error", err)
+	}
+	orderInfo.OrderStatus = "paid"
+	cvm, err := k.getCvm(user, orderInfo.CvmName)
+	if err != nil {
+		return err
+	}
+	_, err = controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, cvm, func() error {
+		k.mu.Lock()
+		defer k.mu.Unlock()
+		cvmOrder, err := newCvmOrder(cvm, user)
+		if err != nil {
+			return err
+		}
+		cvmOrder.SetOrderStatus(orderInfo)
+		return nil
+	})
+	if err != nil {
+		slog.Warn("更新订单状态失败", "orderSn", sn, "error", err)
+	}
+	return err
+}

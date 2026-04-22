@@ -127,6 +127,9 @@ func (u *Cvm) ComputeStatus() {
 		if err == nil {
 			u.Status.IsExpired = etime.Before(time.Now())
 			u.Labels[CvmExpired] = u.Name
+			if u.Spec.RecycleTime == "" {
+				u.Spec.RecycleTime = etime.Add(-time.Hour * 24 * 3).Format(time.RFC3339)
+			}
 		}
 	}
 	if u.Spec.RecycleTime != "" {
@@ -137,7 +140,7 @@ func (u *Cvm) ComputeStatus() {
 			}
 		}
 	}
-	// 无资源 有资源 待回收 回收中 创建中
+	// 无资源 有资源 待回收 回收中 创建
 	if u.IsEmpty() {
 		u.Status.Phase = string(PhaseEmpty)
 	} else {

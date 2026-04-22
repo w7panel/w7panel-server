@@ -6,6 +6,7 @@ import (
 
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 )
@@ -40,4 +41,13 @@ func getOrderSnByName(orderName string, w7config *config.W7Config, orderSn strin
 		return nil, err
 	}
 	return info, nil
+}
+
+func MockNotifyOrderCvm(user *types.K3kUser, sn string) error {
+	sdk := k8s.NewK8sClient().Sdk
+	orderApi, err := NewK3kOrderApi(sdk)
+	if err != nil {
+		return err
+	}
+	return orderApi.MockNotifyPaidOrderCvm(user, sn)
 }
