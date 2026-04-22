@@ -45,3 +45,4 @@ k8s-offline-*.tgz
 /test.sh
 /publish.sh
 publish.sh
+pub.sh
