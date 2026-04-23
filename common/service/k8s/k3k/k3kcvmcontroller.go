@@ -10,8 +10,10 @@ import (
 	k3kv1 "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
+	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -162,6 +164,11 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 		"--embedded-registry",
 		"--disable-network-policy",
 	}
+	spec.ServerLimit = v1.ResourceList{
+		v1.ResourceCPU:    resource.MustParse(fmt.Sprintf("%d", effective.CPU)),
+		v1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dGi", effective.Memory)),
+	}
+
 	if cvm.Spec.StorageClassName != "" && effective != nil && effective.Storage > 0 {
 		spec.Persistence = k3kv1.PersistenceConfig{
 			StorageClassName:   &cvm.Spec.StorageClassName,

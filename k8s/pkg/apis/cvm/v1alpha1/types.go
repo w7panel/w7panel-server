@@ -33,7 +33,7 @@ const (
 	PhaseNoEmpty    = Phase("noempty")    //有资源
 	PhaseRecycle    = Phase("recycle")    //待回收
 	PhaseRecycleing = Phase("recycleing") //回收中
-	PhaseCreating   = Phase("creating")   //创建种
+	PhaseCreating   = Phase("creating")   //创建中
 )
 
 // +genclient
@@ -77,6 +77,7 @@ func (u *Cvm) AddPurchasedResource(rs *CvmResource) {
 func (u *Cvm) CheckSuccess() {
 	u.Spec.CapacityCheckState = capacityCheckStateSuccess
 	u.AddPurchasedResource(u.Spec.PendingPurchasedResource)
+	u.Spec.PendingPurchasedResource = &CvmResource{}
 }
 
 func (u *Cvm) CheckNoResource() {
@@ -109,9 +110,8 @@ type Workload struct {
 // 【微擎面板&集群云主机：云主机业务分离成独立应用】
 // https://www.tapd.cn/tapd_fe/62789787/story/detail/1162789787001015242
 type CvmStatus struct {
-	Phase        string             `json:"phase,oomitempty"`
-	ClusterPhase k3kv1.ClusterPhase `json:"clusterPhase,omitempty"`
-	// ReadyReplicas     int32              `json:"readyReplicas,omitempty"`
+	Phase             string             `json:"phase,omitempty"`
+	ClusterPhase      k3kv1.ClusterPhase `json:"clusterPhase,omitempty"`
 	EffectiveResource *CvmResource       `json:"effectiveResource,omitempty"` // UserResource + PurchasedResource
 	Conditions        []metav1.Condition `json:"conditions,omitempty"`
 	IsExpired         bool               `json:"isExpired,omitempty"`   //是否过期
@@ -122,6 +122,8 @@ func (u *Cvm) ComputeStatus() {
 	if u.Labels == nil {
 		u.Labels = map[string]string{}
 	}
+	u.Status.IsExpired = false
+	u.Status.IsRecycling = false
 	if u.Spec.ExpireTime != "" {
 		etime, err := time.Parse(time.RFC3339, u.Spec.ExpireTime)
 		if err == nil {
@@ -157,7 +159,6 @@ func (u *Cvm) ComputeStatus() {
 		}
 	}
 	//判断是否回收中
-
 	u.Status.EffectiveResource = &CvmResource{}
 	u.Status.EffectiveResource.Add(u.Spec.UserResource)
 	u.Status.EffectiveResource.Add(u.Spec.PurchasedResource)

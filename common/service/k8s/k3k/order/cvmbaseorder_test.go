@@ -74,7 +74,7 @@ func TestMockNotifyCvm(t *testing.T) {
 		return
 	}
 	k3kUser := types.NewK3kUser(sa)
-	MockNotifyOrderCvm(k3kUser, "20260422194414PE26DK")
+	MockNotifyOrderCvm(k3kUser, "2026042309593032BEZN")
 
 	// t.Log(pay)
 }
