@@ -132,7 +132,8 @@ func (s *singleton) GetK3kClusterSdkByConfig(k3kconfig *K3kConfig) (*Sdk, error)
 
 	// token, err := sdk.CreateTokenRequest(k3kconfig.Name, 7200, []string{})
 	//k3k cluster 使用addons挂载 不能使用动态k3kconfig.Name 写死default
-	token, err := sdk.CreateTokenRequest("default", 7200, []string{})
+	// addons 不能使用 k3kcvmcontroller.go 动态绑定rolebings 改回k3kconfig.Name
+	token, err := sdk.CreateTokenRequest(k3kconfig.Name, 7200, []string{})
 
 	if err != nil {
 		return nil, err

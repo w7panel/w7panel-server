@@ -350,6 +350,12 @@ func (r *K3kCvmController) createAgent(ctx context.Context, cvm *cvmv1alpha1.Cvm
 		slog.Warn("failed to get sigclient", "err", err)
 		return err
 	}
+	rolebings := k3ktypes.ToClusterRoleBinding(cvm)
+	_, err = controllerutil.CreateOrUpdate(ctx, clientSigClient, rolebings, func() error { return nil })
+	if err != nil {
+		slog.Warn("failed to create rolebings", "err", err)
+		return err
+	}
 	// 子集群service
 	agentService := k3ktypes.ToK3kAgentService(cvm)
 	_, err = controllerutil.CreateOrUpdate(ctx, clientSigClient, agentService, func() error { return nil })

@@ -9,6 +9,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -529,70 +530,6 @@ func ToVirtualIngressService(cvm *cvmv1alpha1.Cvm) *corev1.Service {
 		},
 	}
 }
-func ToK3kPanelPodIpEndpoint(k3kUser *K3kUser) *corev1.Endpoints {
-
-	return &corev1.Endpoints{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "Endpoints",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      helper.PanelRootSvcName(),
-			Namespace: "default",
-			Labels: map[string]string{
-				"k3k-sa":   k3kUser.Name,
-				"k3k-name": k3kUser.GetK3kName(),
-			},
-		},
-		Subsets: []corev1.EndpointSubset{
-			{
-				Addresses: []corev1.EndpointAddress{
-					{
-						IP: os.Getenv("POD_IP"),
-					},
-				},
-				Ports: []corev1.EndpointPort{
-					{
-						Port: 8000,
-					},
-				},
-			},
-		},
-	}
-}
-
-func ToK3kPanelEndpointService(k3kUser *K3kUser) *corev1.Service {
-
-	return &corev1.Service{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "Service",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      helper.PanelRootSvcName(),
-			Namespace: k3kUser.GetK3kNamespace(),
-			Labels: map[string]string{
-				"k3k-sa":   k3kUser.Name,
-				"k3k-name": "default",
-			},
-		},
-		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "http",
-					Port:       8000,
-					TargetPort: intstr.FromInt(8000),
-					Protocol:   corev1.ProtocolTCP,
-				},
-				{
-					Name:       "https",
-					Port:       443,
-					TargetPort: intstr.FromInt(443),
-				},
-			},
-		},
-	}
-}
 
 func ToK3kWeihJob(k3kUser *K3kUser) *batchv1.Job {
 
@@ -673,4 +610,20 @@ func ToK3kWeihJob(k3kUser *K3kUser) *batchv1.Job {
 		},
 	}
 	return job
+}
+
+func ToClusterRoleBinding(cvm *cvmv1alpha1.Cvm) *rbacv1.ClusterRoleBinding {
+	return &rbacv1.ClusterRoleBinding{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "rbac.authorization.k8s.io/v1",
+			Kind:       "ClusterRoleBinding",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: cvm.GetK3kName(),
+		},
+		RoleRef: rbacv1.RoleRef{
+			Kind: "ClusterRole",
+			Name: "cluster-admin",
+		},
+	}
 }
