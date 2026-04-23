@@ -164,10 +164,43 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 		"--embedded-registry",
 		"--disable-network-policy",
 	}
-	spec.ServerLimit = v1.ResourceList{
-		v1.ResourceCPU:    resource.MustParse(fmt.Sprintf("%d", effective.CPU)),
-		v1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dGi", effective.Memory)),
+	spec.ServerEnvs = []v1.EnvVar{
+		{
+			Name: "GOMAXPROCS",
+			ValueFrom: &v1.EnvVarSource{
+				ResourceFieldRef: &v1.ResourceFieldSelector{
+					Divisor:  resource.MustParse("1"),
+					Resource: "limits.cpu",
+				},
+			},
+		},
+		{
+			Name: "K3K_HOST_IP",
+			ValueFrom: &v1.EnvVarSource{
+				FieldRef: &v1.ObjectFieldSelector{
+					APIVersion: "v1",
+					FieldPath:  "status.hostIP",
+				},
+			},
+		},
+		{
+			Name:  "TZ",
+			Value: "Asia/Shanghai",
+		},
 	}
+	//https://rancher.github.io/k3k-product-docs/k3k/1.0.2/en/how-tos-for-user/addons.html
+	// 0.3.5 还是是用v1alpha1 导致暂时无法升级到1.0.1
+	// spec.Addons = []k3kv1.Addon{
+	// 	{
+	// 		SecretNamespace: "default",
+	// 		SecretRef:       "k3k.addon",
+	// 	},
+	// }
+	// 测试暂时去掉 limit
+	// spec.ServerLimit = v1.ResourceList{
+	// 	v1.ResourceCPU:    resource.MustParse(fmt.Sprintf("%d", effective.CPU)),
+	// 	v1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dGi", effective.Memory)),
+	// }
 
 	if cvm.Spec.StorageClassName != "" && effective != nil && effective.Storage > 0 {
 		spec.Persistence = k3kv1.PersistenceConfig{

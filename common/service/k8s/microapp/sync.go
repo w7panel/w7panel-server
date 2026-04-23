@@ -10,7 +10,7 @@ import (
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 )
 
-func Sync(k3kName, k3kNs string) error {
+func Sync(k3kName, k3kNs, cvmName string) error {
 
 	rootSdk := k8s.NewK8sClient().Sdk
 	rootList, err := loadMicroAppList(rootSdk)
@@ -22,7 +22,7 @@ func Sync(k3kName, k3kNs string) error {
 	if !ok || currentRole == "" {
 		currentRole = "normal"
 	}
-	k3kConfig := k8s.NewK3kConfig(k3kName, k3kNs, helper.GetApiServerHost(k3kNs))
+	k3kConfig := k8s.NewK3kConfig(k3kName, k3kNs, helper.GetApiServerHost(k3kNs), cvmName)
 	root := k8s.NewK8sClient()
 	clientsdk, err := root.GetK3kClusterSdkByConfig(k3kConfig)
 	if err != nil {

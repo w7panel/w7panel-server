@@ -312,6 +312,9 @@ func (k *K3kOrderApi) NotifyOrder(user *types.K3kUser, sn string) error {
 	if err != nil {
 		slog.Warn("获取订单信息失败", "orderSn", sn, "error", err)
 	}
+	if orderInfo.CvmName != "" {
+		return k.NotifyCvmOrder(user, orderInfo.CvmName, sn)
+	}
 
 	_, err = controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, user.ServiceAccount, func() error {
 		k.mu.Lock()

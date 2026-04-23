@@ -148,10 +148,54 @@ func (self K3k) DomainWhiteList(http *gin.Context) {
 
 	云端注册需要 转化token
 */
+func (self K3k) LoginCurrent(http *gin.Context) {
+
+	type ParamsValidate struct {
+		CvmName string `form:"cvmName" validate:"required"`
+	}
+	params := ParamsValidate{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	token := http.MustGet("k8s_token").(string)
+	client, err := k8s.NewK8sClient().Channel(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	user, err := k3k.TokenToK3kUser(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+
+	seconds := facade.Config.GetInt64("app.login_seconds")
+	sa, err := client.Login2(user.Name, "", false)
+	if err != nil {
+		err2 := fmt.Errorf("用户名密码不正确")
+		self.JsonResponseWithError(http, err2, 500)
+		return
+	}
+	token, isK3kUser, err := k3k.LoginByServiceAccount(client, sa, seconds, true, params.CvmName)
+	if err != nil {
+		err2 := fmt.Errorf("用户名密码不正确")
+		self.JsonResponseWithError(http, err2, 500)
+		return
+	}
+	rs := service.GetRefreshToken(sa.Name)
+	self.JsonResponseWithoutError(http, gin.H{
+		"token":        token,
+		"expire":       time.Now().Add(time.Duration(seconds) * time.Second).Unix(),
+		"isK3kUser":    isK3kUser,
+		"refreshToken": rs.Token,
+	})
+}
+
 func (self K3k) Login(http *gin.Context) {
 
 	type ParamsValidate struct {
 		K3kUserName string `form:"k3kUserName" validate:"required"`
+		CvmName     string `form:"cvmName" validate:"required"`
 	}
 	params := ParamsValidate{}
 	if !self.Validate(http, &params) {
@@ -179,7 +223,7 @@ func (self K3k) Login(http *gin.Context) {
 		self.JsonResponseWithError(http, err2, 500)
 		return
 	}
-	token, isK3kUser, err := k3k.LoginByServiceAccount(client, sa, seconds, true)
+	token, isK3kUser, err := k3k.LoginByServiceAccount(client, sa, seconds, true, params.CvmName)
 	if err != nil {
 		err2 := fmt.Errorf("用户名密码不正确")
 		self.JsonResponseWithError(http, err2, 500)
@@ -324,7 +368,7 @@ func (self K3k) SyncMicroApp(http *gin.Context) {
 		return
 	}
 	// slog.Error("同步SyncMicroApp")
-	microapp.Sync(params.K3kName, params.K3kNamespace)
+	microapp.Sync(params.K3kName, params.K3kNamespace, params.CvmName)
 	self.JsonSuccessResponse(http)
 	return
 }

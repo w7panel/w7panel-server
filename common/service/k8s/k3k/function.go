@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func LoginByServiceAccount(client *k8s.Sdk, sa *v1.ServiceAccount, seconds int64, updateK3kUser bool) (string, bool, error) {
+func LoginByServiceAccount(client *k8s.Sdk, sa *v1.ServiceAccount, seconds int64, updateK3kUser bool, cvmName string) (string, bool, error) {
 	k3kUser := types.NewK3kUser(sa)
 	isK3kUser := false
 	if k3kUser.IsClusterUser() {
@@ -44,7 +44,7 @@ func LoginByServiceAccount(client *k8s.Sdk, sa *v1.ServiceAccount, seconds int64
 		return "", false, err
 	}
 
-	token, err := client.CreateTokenRequest(sa.Name, seconds, k3kUser.GetTokenAud())
+	token, err := client.CreateTokenRequest(sa.Name, seconds, k3kUser.GetTokenAud(cvmName))
 	if err != nil {
 		return "", false, err
 	}

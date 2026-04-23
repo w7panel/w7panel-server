@@ -63,7 +63,6 @@ func (self Zpk) GetConfig(http *gin.Context) {
 	// repo.SetCheckUpgrade(true)
 	token := http.MustGet("k8s_token").(string)
 	repo.SetPanelToken(token)
-	k8sToken := k8s.NewK8sToken(token)
 	client, err := k8s.NewK8sClient().Channel(token)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
@@ -87,7 +86,7 @@ func (self Zpk) GetConfig(http *gin.Context) {
 		return
 	}
 	mPackage.ReplaceDefault()
-	rootConfig := mPackage.ToPackageAddConfig(params.ReleaseName, k8sToken.IsShared())
+	rootConfig := mPackage.ToPackageAddConfig(params.ReleaseName, false)
 	rootConfig.IsUpgrade = upgrade
 	if dependsEnv != nil {
 		rootConfig = dependsEnv.ReplacePackageAddConfig(mPackage, rootConfig)
@@ -95,7 +94,7 @@ func (self Zpk) GetConfig(http *gin.Context) {
 	config = append(config, rootConfig)
 	for _, p := range mPackage.Children {
 		p.ReplaceDefault()
-		childConfig := p.ToPackageAddConfig(params.ReleaseName, k8sToken.IsShared())
+		childConfig := p.ToPackageAddConfig(params.ReleaseName, false)
 		childConfig.IsUpgrade = upgrade
 		if dependsEnv != nil {
 			childConfig = dependsEnv.ReplacePackageAddConfig(p, childConfig)
@@ -243,7 +242,7 @@ func (self Zpk) Install(http *gin.Context) {
 		params.IngressHost, params.IngressSeletorName, params.IngressClassName)
 	packageApps.ForceHttps(params.IngressForceHttps)
 	// packageApps.Root.K3kMode = k8sToken.K3kMode()
-	isChild := k8sToken.IsVirtual() || k8sToken.IsShared()
+	isChild := k8sToken.IsK3kCluster()
 
 	realToken := ""
 	config, err := client.ToRESTConfig()
@@ -253,7 +252,7 @@ func (self Zpk) Install(http *gin.Context) {
 	if config != nil {
 		realToken = config.BearerToken
 	}
-	if k8sToken.IsVirtual() {
+	if k8sToken.IsK3kCluster() {
 		registryHost, err := bi.PanelRegistryServerHostUseSdk(client)
 		if err != nil {
 			slog.Warn("get registry host err", "err", err)
@@ -269,11 +268,11 @@ func (self Zpk) Install(http *gin.Context) {
 	packageApps.Root.RealToken = realToken
 	for _, child := range packageApps.Children {
 		child.ServiceAccountName = sa
-		if k8sToken.IsVirtual() {
+		if k8sToken.IsK3kCluster() {
 			child.IngressClassName = packageApps.Root.IngressClassName
 		}
 		child.K8sToken = k8sToken
-		child.IsChild = k8sToken.IsVirtual() || k8sToken.IsShared()
+		child.IsChild = k8sToken.IsK3kCluster()
 		child.RealToken = realToken
 
 	}

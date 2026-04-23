@@ -194,7 +194,7 @@ type BuyBaseResource struct {
 	UnitQuantity
 	BuyResource
 	CouponCode string `form:"couponCode"`
-	CvmName    string `form:"cvm"`
+	CvmName    string `form:"cvmName"`
 }
 
 func (b *BuyBaseResource) ToCvmResource() *cvmv1alpha1.CvmResource {
@@ -211,14 +211,14 @@ type BuyRenewResource struct {
 	BaseConfigName string `form:"baseOAuthConfigName"`
 	UnitQuantity
 	CouponCode string `form:"couponCode"`
-	CvmName    string `form:"cvm"`
+	CvmName    string `form:"cvmName"`
 }
 
 type BuyExpandResource struct {
 	// BuyResource
 	BaseConfigName string `form:"baseOAuthConfigName"`
 	BuyResource
-	CvmName string `form:"cvm"`
+	CvmName string `form:"cvmName"`
 }
 
 func (b *BuyExpandResource) Valid() error {

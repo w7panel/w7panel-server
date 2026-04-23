@@ -149,7 +149,7 @@ func (self Auth) ConsoleLogin(http *gin.Context) {
 
 func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Context, updateK3kUser bool) {
 	seconds := facade.Config.GetInt64("app.login_seconds")
-	token, isK3kUser, err := k3k.LoginByServiceAccount(sdk, sa, seconds, updateK3kUser)
+	token, isK3kUser, err := k3k.LoginByServiceAccount(sdk, sa, seconds, updateK3kUser, "")
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			self.JsonResponseWithError(http, errors.New("用户不存在"), 500)

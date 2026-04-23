@@ -24,13 +24,15 @@ type K3kConfig struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
 	ApiServer string `json:"apiServer"`
+	CvmName   string `json:"cvmName"`
 }
 
-func NewK3kConfig(name, namespace, apiServer string) *K3kConfig {
+func NewK3kConfig(name, namespace, apiServer, cvmName string) *K3kConfig {
 	return &K3kConfig{
 		Name:      name,
 		Namespace: namespace,
 		ApiServer: apiServer,
+		CvmName:   cvmName,
 	}
 }
 
@@ -182,39 +184,26 @@ func (t *K8sToken) GetExpireTime() (*jwtv5.NumericDate, error) {
 }
 
 // u.Name,
-//
-//	u.GetRole(),
-//	u.Annotations[W7_CONSOLE_ID],
-//	u.GetK3kName(),
-//	u.GetK3kNamespace(),
-//	u.GetApiServerHost(),
-//	u.GetClusterMode(),
-//	u.GetClusterPolicy(),
-//	u.GetLockVersion(),
-//	u.GetClusterPolicyVersion(),
-//	"https://kubernetes.default.svc.cluster.local",
-//	"k3s",
-//
+/*
+func (u *k3kUser) GetTokenAud(cvmName string) []string {
+	return []string{
+		u.Name,
+		u.GetRole(),
+		u.Labels[W7_CONSOLE_ID],
+		cvmName,
+		u.GetK3kNamespace(),
+		"https://kubernetes.default.svc.cluster.local",
+		"k3s",
+	}
+}
+*/
 // 判断是不是虚拟集群
 func (t *K8sToken) IsK3kCluster() bool {
 	s, err := t.GetAudience()
 	if err != nil {
 		return false
 	}
-	return len(s) >= 6
-}
-func (t *K8sToken) IsVirtual() bool {
-	return t.K3kMode() == "virtual"
-}
-
-func (t *K8sToken) K3kMode() string {
-	if t.IsK3kCluster() {
-		v, err := t.GetAudience()
-		if err == nil {
-			return v[6]
-		}
-	}
-	return ""
+	return len(s) == 7 && s[3] != ""
 }
 
 // k3kuser.go 如果是集群用户返回founder 为了显示菜单
@@ -230,23 +219,6 @@ func (t *K8sToken) Role() string {
 	return s[1]
 }
 
-func (t *K8sToken) IsShared() bool {
-	return t.K3kMode() == "shared"
-}
-
-// u.Name,  0
-//
-//	u.GetRole(), 1
-//	u.Annotations[W7_CONSOLE_ID], 2
-//	u.GetK3kName(), 3
-//	u.GetK3kNamespace(), 4
-//	u.GetApiServerHost(), 5
-//	u.GetClusterMode(), 6
-//	u.GetClusterPolicy(), 7
-//	u.GetLockVersion(), 8
-//	u.GetClusterPolicyVersion(), 9
-//	"https://kubernetes.default.svc.cluster.local",
-//	"k3s",
 func (t *K8sToken) GetPolicyName() string {
 	if t.IsK3kCluster() {
 		v, err := t.GetAudience()
@@ -288,9 +260,10 @@ func (t *K8sToken) GetK3kConfig() (*K3kConfig, error) {
 	}
 
 	return &K3kConfig{
-		Name:      aud[3],
+		Name:      aud[0],
 		Namespace: aud[4],
 		ApiServer: aud[5],
+		CvmName:   aud[3],
 	}, nil
 }
 func (t *K8sToken) GetRole() string {

@@ -11,7 +11,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	k3kTypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
-	"github.com/w7panel/w7panel/common/service/k8s/shell"
+	"github.com/w7panel/w7panel/common/service/k8s/pid"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,7 +32,7 @@ func (m *ResourceMutator) handlePod(ctx context.Context, req admission.Request) 
 			return admission.Denied("不允许创建pod")
 		}
 	}
-	shell.WebHookPid(pod.DeepCopy())
+	pid.WebHookPid(pod.DeepCopy())
 	// // 检查 Pod 是否有 ownerReferences.kind=Cluster
 	// _, isClusterNormalPod := pod.Labels["k3k.io/clusterName"]
 	// if isClusterNormalPod {

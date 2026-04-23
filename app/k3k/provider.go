@@ -45,8 +45,10 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			k3kGroup.POST("/sync-secret", controller2.K3k{}.SyncSecret)                                     //
 			k3kGroup.POST("/sync-down-static", controller2.K3k{}.SyncDownStatic)                            //
 			k3kGroup.POST("/sync-microapp", controller2.K3k{}.SyncMicroApp)                                 //microapp同步到子集群
-			k3kGroup.POST("/login", middleware.Auth{}.Process, controller2.K3k{}.Login)                     //
-			k3kGroup.POST("/wh", middleware.Auth{}.Process, controller2.K3k{}.WhMoshi)                      // 维护模式 切换
+			// 主集群login 需要验证是否founder
+			k3kGroup.POST("/login", middleware.Auth{}.Process, controller2.K3k{}.Login)           //
+			k3kGroup.POST("/loginCvm", middleware.Auth{}.Process, controller2.K3k{}.LoginCurrent) //
+			k3kGroup.POST("/wh", middleware.Auth{}.Process, controller2.K3k{}.WhMoshi)            // 维护模式 切换
 
 			k3kGroup.GET("/order/config", middleware.Auth{}.Process, controller2.Order{}.GetConfig) // 获取配置
 			k3kGroup.GET("/order/price", middleware.Auth{}.Process, controller2.Order{}.GetPrice)   // 获取当前价格

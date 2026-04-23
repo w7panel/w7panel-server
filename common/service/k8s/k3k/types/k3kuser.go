@@ -86,11 +86,12 @@ func (u *k3kUser) IsClusterLabelReady() bool {
 	return u.Labels[K3K_CLUSTER_STATUS] == K3K_STATUS_USER_READY
 }
 func (u *k3kUser) IsK3kUser() bool {
-	return u.Labels[K3K_USER_MODE] == "cluster"
+	return false //去掉 cluster用户
+	// return u.Labels[K3K_USER_MODE] == "cluster"
 }
 
 func (u *k3kUser) IsClusterUser() bool {
-	return u.Labels[K3K_USER_MODE] == "cluster"
+	return u.IsK3kUser()
 }
 
 func (u *k3kUser) IsNormalUser() bool {
@@ -136,10 +137,10 @@ func (u *k3kUser) GetClusterPolicy() string {
 }
 
 func (u *k3kUser) GetK3kNamespace() string {
-	name, ok := u.Labels[K3K_NAMESPACE]
-	if ok {
-		return name
-	}
+	// name, ok := u.Labels[K3K_NAMESPACE]
+	// if ok {
+	// 	return name
+	// }
 	return "k3k-" + u.GetName()
 }
 
@@ -431,28 +432,13 @@ func (u *k3kUser) GetRole() string {
 	return "normal"
 }
 
-func (u *k3kUser) GetTokenAud() []string {
-	if !u.IsK3kUser() {
-		return []string{
-			u.Name,
-			u.GetRole(),
-			u.Labels[W7_CONSOLE_ID],
-			"https://kubernetes.default.svc.cluster.local",
-			"k3s",
-		}
-	}
-	// return []string{}
+func (u *k3kUser) GetTokenAud(cvmName string) []string {
 	return []string{
 		u.Name,
 		u.GetRole(),
 		u.Labels[W7_CONSOLE_ID],
-		u.GetK3kName(),
+		cvmName,
 		u.GetK3kNamespace(),
-		u.GetApiServerHost(),
-		u.GetClusterMode(),
-		u.GetClusterPolicy(),
-		u.GetLockVersion(),
-		u.GetClusterPolicyVersion(),
 		"https://kubernetes.default.svc.cluster.local",
 		"k3s",
 	}
