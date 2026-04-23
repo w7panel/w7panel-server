@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"runtime/debug"
 	"time"
 
@@ -125,10 +124,10 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 		}
 		return ctrl.Result{}, nil
 	}
-	if !k3kUser.IsClusterUser() {
-		// Not our ServiceAccount, ignore it
-		return ctrl.Result{}, nil
-	}
+	// if !k3kUser.IsClusterUser() {
+	// 	// Not our ServiceAccount, ignore it
+	// 	return ctrl.Result{}, nil
+	// }
 
 	// 处理资源回收阶段
 	if err := r.deleteRc.HandleResourceRecycleStatus(ctx, sa, k3kUser); err != nil {
@@ -166,6 +165,9 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	// 	logger.Error(err, "Failed to create registries ConfigMap")
 	// 	return ctrl.Result{RequeueAfter: time.Second * 10}, err
 	// }\
+	if true {
+		return ctrl.Result{}, nil
+	}
 
 	if !k3kUser.IsClusterReady() {
 		slog.Error("cluster not ready", "uname", k3kUser.GetName())
@@ -209,108 +211,9 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 		}
 	}
 
-	err = r.storage.Handle(ctx, k3kUser)
-	if err != nil {
-		logger.Error(err, "Failed to handle storage")
-		// return ctrl.Result{}, err
-	}
-
-	err = r.createAgent(ctx, k3kUser)
-	if err != nil {
-		slog.Error("k3ksacontroller agent error", "err", err, "uname", k3kUser.GetName())
-		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
-	}
-
 	if k3kUser.HasExpireTime() {
 		return ctrl.Result{RequeueAfter: time.Minute * 30}, nil
 	}
 
 	return ctrl.Result{}, nil
-}
-
-func (r *K3kServiceAccountController) createAgent(ctx context.Context, k3kUser *k3ktypes.K3kUser) error {
-
-	root := k8s.NewK8sClient()
-	clientSdk, err := root.GetK3kClusterSdkByConfig(k3kUser.ToK3kConfig())
-	if err != nil {
-		slog.Warn("failed to get sdk", "err", err)
-		return err
-	}
-	clientSigClient, err := clientSdk.ToSigClient()
-	if err != nil {
-		slog.Warn("failed to get sigclient", "err", err)
-		return err
-	}
-
-	agentService := k3ktypes.ToK3kAgentService(k3kUser)
-	_, err = controllerutil.CreateOrUpdate(ctx, clientSigClient, agentService, func() error { return nil })
-	if err != nil {
-		slog.Warn("failed to create agentService", "err", err)
-		return err
-	}
-
-	ingService := k3ktypes.ToVirtualIngressService(k3kUser)
-	clone := ingService.DeepCopy()
-	_, err = controllerutil.CreateOrPatch(ctx, r.Client, clone, func() error {
-		clone.Spec = ingService.Spec
-		return nil
-	})
-	if err != nil {
-		slog.Warn("failed to create ingService", "err", err)
-		return err
-	}
-
-	// endpoints := k3ktypes.ToK3kPanelPodIpEndpoint(k3kUser)
-	// _, err = controllerutil.CreateOrUpdate(ctx, clientSigClient, endpoints, func() error { return nil })
-	// if err != nil {
-	// 	slog.Warn("failed to create endpoints", "err", err)
-	// 	// return err
-	// }
-
-	// endpointsSvc := k3ktypes.ToK3kPanelEndpointService(k3kUser)
-	// _, err = controllerutil.CreateOrUpdate(ctx, clientSigClient, endpointsSvc, func() error { return nil })
-	// if err != nil {
-	// 	slog.Warn("failed to create endpointsSvc", "err", err)
-	// 	// return err
-	// }
-
-	ds := k3ktypes.ToK3kDaemonSet(k3kUser)
-	copy := ds.DeepCopy()
-	result, err := controllerutil.CreateOrPatch(ctx, clientSigClient, copy, func() error {
-		//copy 变成 etcd 返回的 ds
-		copy.Annotations = ds.Annotations
-		// host-ip helm-version 任意一个变动就patch 更新 否则 不更新
-		copy.Annotations["root-node-ip"] = os.Getenv("NODE_IP") //
-		copy.Annotations["helm-version"] = os.Getenv("HELM_VERSION")
-		// copy.Labels["d"]
-		copy.Spec = ds.Spec
-		return nil
-	})
-	if err != nil {
-		slog.Warn("failed to create daemonSet", "err", err)
-		return err
-	}
-	slog.Error("create agent daemonset", "result", result, "name", k3kUser.GetName())
-	// helmVersion := os.Getenv("HELM_VERSION") //pod.Annotations["helm-version"]
-	// podVersion := pod.Annotations["helm-version"]
-	// rootPodIp := pod.Annotations["root-pod-ip"]
-	// needReCreate := helmVersion != podVersion && helmVersion != "" || rootPodIp != os.Getenv("ROOT_POD_IP")
-	// // If pod is in failed state, delete and recreate it
-	// if pod.Status.Phase == corev1.PodUnknown || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed || needReCreate {
-	// 	if err := clientSigClient.Delete(ctx, pod); err != nil {
-	// 		slog.Warn("failed to delete pod", "err", err)
-	// 		return err
-	// 	}
-	// 	return r.createPod(ctx, clientSigClient, k3kUser)
-	// }
-	return nil
-}
-
-func (r *K3kServiceAccountController) createPod(ctx context.Context, client client.Client, k3kUser *k3ktypes.K3kUser) error {
-	pod := k3ktypes.ToK3kPod(k3kUser)
-	if err := client.Create(ctx, pod); err != nil {
-		slog.Warn("failed to create agent", "err", err)
-		return err
-	}
-	return nil
 }

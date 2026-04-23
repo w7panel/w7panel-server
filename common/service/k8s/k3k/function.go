@@ -25,16 +25,16 @@ import (
 func LoginByServiceAccount(client *k8s.Sdk, sa *v1.ServiceAccount, seconds int64, updateK3kUser bool, cvmName string) (string, bool, error) {
 	k3kUser := types.NewK3kUser(sa)
 	isK3kUser := false
-	if k3kUser.IsClusterUser() {
-		isK3kUser = true
-		if sa.Annotations[types.K3K_CLUSTER_POLICY_VERSION] == "" {
-			sa.Annotations[types.K3K_CLUSTER_POLICY_VERSION] = "1"
-		}
-		policyName, ok := sa.Annotations[types.K3K_CLUSTER_POLICY]
-		if ok {
-			sa.Annotations[types.K3K_CLUSTER_POLICY_VERSION] = types.GetPolicyVersion(policyName)
-		}
-	}
+	// if k3kUser.IsClusterUser() {
+	// 	isK3kUser = true
+	// 	if sa.Annotations[types.K3K_CLUSTER_POLICY_VERSION] == "" {
+	// 		sa.Annotations[types.K3K_CLUSTER_POLICY_VERSION] = "1"
+	// 	}
+	// 	policyName, ok := sa.Annotations[types.K3K_CLUSTER_POLICY]
+	// 	if ok {
+	// 		sa.Annotations[types.K3K_CLUSTER_POLICY_VERSION] = types.GetPolicyVersion(policyName)
+	// 	}
+	// }
 	// if refreshCdToken {
 
 	// }
@@ -228,9 +228,9 @@ func InitCluster(sdk *k8s.Sdk, user *types.K3kUser) error {
 	}
 	k3kClient := k3ktypes.NewK3kClient(sigClient)
 
-	if !user.IsClusterUser() {
-		return errors.New("非集群用户,无法操作")
-	}
+	// if !user.IsClusterUser() {
+	// 	return errors.New("非集群用户,无法操作")
+	// }
 	if user.NeedCreateOrder() {
 		return errors.New("未购买集群资源,无法操作")
 	}

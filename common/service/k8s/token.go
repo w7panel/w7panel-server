@@ -40,21 +40,16 @@ func (t *K3kConfig) GetK3kAgentName() string {
 	return helper.GetK3kAgentName(t.Name)
 }
 
-// 内部ingress name
-func (t *K3kConfig) GetK3kAgentInnerIngressHost() string {
-	return helper.GetK3kAgentName(t.Name) + ".w7panel.xyz"
-}
-
 func (t *K3kConfig) GetK3kAgentLbHost() string {
 	return t.GetVirtualIngressServiceName() + "." + t.Namespace + ".svc:8000"
 }
 
 func (t *K3kConfig) GetK3kServer0Name() string {
-	return helper.GetK3kServer0Name(t.Name)
+	return helper.GetK3kServer0Name(t.CvmName)
 }
 
 func (t *K3kConfig) GetK3kServer0ContainerName() string {
-	return helper.GetK3kServer0ContainerName(t.Name)
+	return helper.GetK3kServer0ContainerName(t.CvmName)
 }
 
 func (t *K3kConfig) GetCacheKey() string {
@@ -69,7 +64,7 @@ func (t *K3kConfig) ToAgentSvc() string {
 }
 
 func (u *K3kConfig) GetVirtualIngressServiceName() string {
-	return u.Namespace + "-service-w7"
+	return helper.GetVirtualIngressServiceName(u.Namespace, u.Name)
 }
 
 func NewK8sToken(token string) *K8sToken {
@@ -204,6 +199,17 @@ func (t *K8sToken) IsK3kCluster() bool {
 		return false
 	}
 	return len(s) == 7 && s[3] != ""
+}
+
+func (t *K8sToken) GetCvmName() string {
+	s, err := t.GetAudience()
+	if err != nil {
+		return ""
+	}
+	if len(s) == 7 {
+		return s[3]
+	}
+	return ""
 }
 
 // k3kuser.go 如果是集群用户返回founder 为了显示菜单

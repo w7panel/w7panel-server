@@ -89,6 +89,7 @@ func (s *singleton) loadFromCache(token string) (*Sdk, error) {
 	}
 	return sdk, nil
 }
+
 func (s *singleton) GetK3kClusterSdkByConfig(k3kconfig *K3kConfig) (*Sdk, error) {
 
 	s.mu.Lock()

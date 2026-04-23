@@ -340,7 +340,7 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 	path := gin.Param("path")
 
 	token := gin.MustGet("k8s_token").(string)
-
+	k8stoken := k8s.NewK8sToken(token)
 	k3kuser, err := k3k.TokenToK3kUser(token)
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
@@ -373,11 +373,11 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 	// 	return
 	// }
 	// ZZZ
-	if microAppObj.IsFromRoot() || !k3kuser.IsClusterUser() {
+	if microAppObj.IsFromRoot() || !k8stoken.IsK3kCluster() {
 		if helper.IsK3kVirtual() { //转发到子集群pod后 强制设置成founder
 			role = "founder"
 		}
-		proxy := microapp.NewMicroAppProxy(microAppObj, k3kuser.IsClusterUser(), role)
+		proxy := microapp.NewMicroAppProxy(microAppObj, k8stoken.IsK3kCluster(), role)
 		revert, err := proxy.Proxy(path)
 		if err != nil {
 			self.JsonResponseWithServerError(gin, err)
@@ -387,7 +387,7 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 		return
 	}
 	// --->panel--->sub-cluster--->microapp--->回到ZZZ 处
-	if k3kuser.IsClusterUser() {
+	if k8stoken.IsK3kCluster() {
 
 		k8stoken := k8s.NewK8sToken(token)
 		config, err := k8stoken.GetK3kConfig()

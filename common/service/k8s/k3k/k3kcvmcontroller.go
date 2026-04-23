@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	k3kv1 "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -21,6 +24,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+func CvmToK3kConfig(cvm *cvmv1alpha1.Cvm) *k8s.K3kConfig {
+	return k8s.NewK3kConfig(strings.ReplaceAll(cvm.Namespace, "k3k-", ""), cvm.Namespace, "", cvm.Name)
+}
 
 const (
 	K3kCvmFinalizerName = "cvm.k3k.io/finalizer"
@@ -120,6 +127,10 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 	}
 	if err := r.syncClusterStatus(ctx, cvm, cluster); err != nil {
 		logger.Error(err, "Failed to sync cluster status to cvm")
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
+	if err := r.createAgent(ctx, cvm); err != nil {
+		logger.Error(err, "Failed to create agent")
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 
@@ -323,4 +334,69 @@ func isZeroResource(resource *cvmv1alpha1.CvmResource) bool {
 
 func desiredEffectiveResource(cvm *cvmv1alpha1.Cvm) *cvmv1alpha1.CvmResource {
 	return addResources(cvm.Spec.UserResource, cvm.Spec.PurchasedResource)
+}
+
+func (r *K3kCvmController) createAgent(ctx context.Context, cvm *cvmv1alpha1.Cvm) error {
+
+	root := k8s.NewK8sClient()
+	config := CvmToK3kConfig(cvm)
+	clientSdk, err := root.GetK3kClusterSdkByConfig(config)
+	if err != nil {
+		slog.Warn("failed to get sdk", "err", err)
+		return err
+	}
+	clientSigClient, err := clientSdk.ToSigClient()
+	if err != nil {
+		slog.Warn("failed to get sigclient", "err", err)
+		return err
+	}
+	// 子集群service
+	agentService := k3ktypes.ToK3kAgentService(cvm)
+	_, err = controllerutil.CreateOrUpdate(ctx, clientSigClient, agentService, func() error { return nil })
+	if err != nil {
+		slog.Warn("failed to create agentService", "err", err)
+		return err
+	}
+	//主集群入口service
+	ingService := k3ktypes.ToVirtualIngressService(cvm)
+	clone := ingService.DeepCopy()
+	_, err = controllerutil.CreateOrPatch(ctx, r.Client, clone, func() error {
+		clone.Spec = ingService.Spec
+		return nil
+	})
+	if err != nil {
+		slog.Warn("failed to create ingService", "err", err)
+		return err
+	}
+
+	ds := k3ktypes.ToK3kDaemonSet(cvm)
+	copy := ds.DeepCopy()
+	_, err = controllerutil.CreateOrPatch(ctx, clientSigClient, copy, func() error {
+		//copy 变成 etcd 返回的 ds
+		copy.Annotations = ds.Annotations
+		// host-ip helm-version 任意一个变动就patch 更新 否则 不更新
+		copy.Annotations["root-node-ip"] = os.Getenv("NODE_IP") //
+		copy.Annotations["helm-version"] = os.Getenv("HELM_VERSION")
+		// copy.Labels["d"]
+		copy.Spec = ds.Spec
+		return nil
+	})
+	if err != nil {
+		slog.Warn("failed to create daemonSet", "err", err)
+		return err
+	}
+	// slog.Error("create agent daemonset", "result", result, "name", k3kUser.GetName())
+	// helmVersion := os.Getenv("HELM_VERSION") //pod.Annotations["helm-version"]
+	// podVersion := pod.Annotations["helm-version"]
+	// rootPodIp := pod.Annotations["root-pod-ip"]
+	// needReCreate := helmVersion != podVersion && helmVersion != "" || rootPodIp != os.Getenv("ROOT_POD_IP")
+	// // If pod is in failed state, delete and recreate it
+	// if pod.Status.Phase == corev1.PodUnknown || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed || needReCreate {
+	// 	if err := clientSigClient.Delete(ctx, pod); err != nil {
+	// 		slog.Warn("failed to delete pod", "err", err)
+	// 		return err
+	// 	}
+	// 	return r.createPod(ctx, clientSigClient, k3kUser)
+	// }
+	return nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
-	"github.com/w7panel/w7panel/common/service/k8s"
 
 	// _ "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 
@@ -12,8 +11,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -114,23 +111,6 @@ func (k *K3kClient) GetPolicyByName(name string) (*v1alpha1.VirtualClusterPolicy
 		return nil, err
 	}
 	return policy, err
-}
-
-func (k *K3kClient) GetKubeConfig(user *K3kUser) (*clientcmdapi.Config, error) {
-	kubeconfig, err := k8s.GetK3kKubeConfig(k.k3kClient, user.ToK3kConfig())
-	return kubeconfig, err
-}
-
-func (k *K3kClient) GetKubeConfigYaml(user *K3kUser) ([]byte, error) {
-	kubeconfig, err := k.GetKubeConfig(user)
-	if err != nil {
-		return nil, err
-	}
-	kubeconfigData, err := clientcmd.Write(*kubeconfig)
-	if err != nil {
-		return nil, err
-	}
-	return kubeconfigData, err
 }
 
 func (k *K3kClient) GetCluster(user *K3kUser) (*v1alpha1.Cluster, error) {

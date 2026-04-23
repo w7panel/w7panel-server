@@ -38,45 +38,6 @@ func (self K3k) Info(http *gin.Context) {
 	// rootSdk := k8s.NewK8sClient().Sdk
 	if user != nil {
 		result := user.ToArray()
-		if user.IsClusterUser() {
-			// clusterMode := user.GetClusterMode()
-			// configMapName := "k3k." + clusterMode + ".config"
-			// ns := rootSdk.GetNamespace()
-			// if ns == "" {
-			// 	ns = "default"
-			// }
-			// sigclient, err := rootSdk.ToSigClient()
-			// if err != nil {
-			// 	slog.Error("获取集群配置失败", "error", err)
-			// }
-			// if err == nil {
-			// 	obj := &metav1.PartialObjectMetadata{
-			// 		ObjectMeta: metav1.ObjectMeta{
-			// 			Name:      user.GetClusterPolicy(),
-			// 			Namespace: user.Namespace,
-			// 		},
-			// 		TypeMeta: metav1.TypeMeta{
-			// 			APIVersion: "k3k.io/v1alpha1",
-			// 			Kind:       "VirtualClusterPolicy",
-			// 		},
-			// 	}
-			// 	okey := types.NamespacedName{Name: user.GetClusterPolicy(), Namespace: user.Namespace}
-			// 	err := sigclient.Get(context.TODO(), okey, obj)
-			// 	if err != nil {
-			// 		slog.Error("获取集群策略失败", "error", err)
-			// 	}
-			// 	if err == nil {
-			// 		result["w7.cc/menu"] = obj.Annotations["permission"]
-			// 	}
-			// }
-			// configmap, err := rootSdk.ClientSet.CoreV1().ConfigMaps(ns).Get(rootSdk.Ctx, configMapName, metav1.GetOptions{})
-			// if err != nil {
-			// 	slog.Error("获取集群配置失败", "error", err)
-			// }
-			// if configmap != nil {
-			// 	result["w7.cc/menu"] = configmap.Data["menu"]
-			// }
-		}
 		self.JsonResponseWithoutError(http, result)
 		return
 	}

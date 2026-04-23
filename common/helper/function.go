@@ -733,6 +733,9 @@ func GetK3kServer0Name(name string) string {
 func GetK3kServer0ContainerName(name string) string {
 	return "k3k-" + name + "-server"
 }
+func GetVirtualIngressServiceName(ns, name string) string {
+	return ns + "-" + name + "-service-w7"
+}
 
 func GetApiServerHost(k3kNamespce string) string {
 	if IsLocalMock() {

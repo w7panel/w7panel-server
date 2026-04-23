@@ -85,13 +85,14 @@ func (u *k3kUser) IsClusterRecycle() bool {
 func (u *k3kUser) IsClusterLabelReady() bool {
 	return u.Labels[K3K_CLUSTER_STATUS] == K3K_STATUS_USER_READY
 }
-func (u *k3kUser) IsK3kUser() bool {
-	return false //去掉 cluster用户
-	// return u.Labels[K3K_USER_MODE] == "cluster"
-}
+
+// func (u *k3kUser) IsK3kUser() bool {
+// 	return false //去掉 cluster用户
+// 	// return u.Labels[K3K_USER_MODE] == "cluster"
+// }
 
 func (u *k3kUser) IsClusterUser() bool {
-	return u.IsK3kUser()
+	return false
 }
 
 func (u *k3kUser) IsNormalUser() bool {
@@ -121,19 +122,21 @@ func (u *k3kUser) GetUserMode() string {
 	return ""
 }
 func (u *k3kUser) GetClusterMode() string {
-	name, ok := u.Annotations[K3K_CLUSTER_MODE]
-	if ok {
-		return name
-	}
-	return "unknown"
+	return "virtual"
+	// name, ok := u.Annotations[K3K_CLUSTER_MODE]
+	// if ok {
+	// 	return name
+	// }
+	// return "unknown"
 }
 
 func (u *k3kUser) GetClusterPolicy() string {
-	name, ok := u.Annotations[K3K_CLUSTER_POLICY]
-	if ok {
-		return name
-	}
-	return ""
+	return "default"
+	// name, ok := u.Annotations[K3K_CLUSTER_POLICY]
+	// if ok {
+	// 	return name
+	// }
+	// return ""
 }
 
 func (u *k3kUser) GetK3kNamespace() string {
@@ -209,19 +212,15 @@ func (u *k3kUser) GetClusterDataStorageRequestSize() string {
 }
 
 func (u *k3kUser) GetAgentName() string {
-	return helper.GetK3kAgentName(u.GetK3kName())
+	return helper.GetK3kAgentName(u.Name)
 }
 
-func (u *k3kUser) GetVirtualIngressServiceName() string {
-	return u.GetK3kNamespace() + "-service-w7"
+func (u *k3kUser) GetVirtualIngressServiceName(cvmName string) string {
+	return helper.GetVirtualIngressServiceName(u.GetK3kNamespace(), cvmName)
 }
 
 func (u *k3kUser) GetApiServerHost() string {
 	return helper.GetApiServerHost(u.GetK3kNamespace())
-}
-
-func (u *k3kUser) GetKubeconfigMapName() string {
-	return "k3k-kubeconfig-" + u.GetK3kName()
 }
 
 func (u *k3kUser) GetDefaultVolumeName() string {
@@ -310,6 +309,7 @@ func (u *k3kUser) GetDebugMode() string {
 	if !u.IsClusterUser() {
 		return "true"
 	}
+
 	name, ok := u.Annotations[K3K_DEBUG]
 	if ok {
 		return name
@@ -321,9 +321,9 @@ func (u *k3kUser) CanInitCluster() bool {
 	if !u.IsOverSellingSuccess() {
 		return false
 	}
-	if u.IsClusterUser() {
-		return u.IsClusterCreating() || u.IsClusterNew()
-	}
+	// if u.IsClusterUser() {
+	// 	return u.IsClusterCreating() || u.IsClusterNew()
+	// }
 	return false
 }
 func (u *k3kUser) ToArray() map[string]string {
@@ -407,10 +407,10 @@ func (u *k3kUser) ToArray() map[string]string {
 		"w7.cc/server-pod-name":       u.GetServer0Name(),
 		"w7.cc/server-container-name": u.GetServer0ContainerName(),
 	}
-	if !u.IsClusterUser() {
-		// result[W7_FILE_EDITTOR] = "true"
-		// result[W7_WEB_SHELL] = "true"
-	}
+	// if !u.IsClusterUser() {
+	// result[W7_FILE_EDITTOR] = "true"
+	// result[W7_WEB_SHELL] = "true"
+	// }
 	return result
 
 }
@@ -476,11 +476,12 @@ func (u *k3kUser) ReNew() {
 	delete(u.Labels, W7_BASE_ORDER_STATUS)
 }
 
-func (u *k3kUser) ToK3kConfig() *k8s.K3kConfig {
+func (u *k3kUser) ToK3kConfig(cvmName string) *k8s.K3kConfig {
 	return &k8s.K3kConfig{
 		Name:      u.GetK3kName(),
 		Namespace: u.GetK3kNamespace(),
 		ApiServer: u.GetApiServerHost(),
+		CvmName:   cvmName,
 	}
 }
 

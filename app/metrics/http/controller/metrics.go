@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	"github.com/w7panel/w7panel/common/service/k8s/metrics"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
@@ -586,13 +585,10 @@ func (self Metrics) MetricsState(http *gin.Context) {
 
 func (self Metrics) Usage(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
+	k8sToken := k8s.NewK8sToken(token)
+
 	uage := metrics.NewK3kUsage(k8s.NewK8sClient().Sdk)
-	cpu, memory, cputotal, memorytotal, err := uage.GetResourceUsage(user)
+	cpu, memory, cputotal, memorytotal, err := uage.GetResourceUsage(k8sToken)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
@@ -612,13 +608,9 @@ func (self Metrics) Usage(http *gin.Context) {
 
 func (self Metrics) UsageDisk(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
+
 	uage := metrics.NewK3kUsage(k8s.NewK8sClient().Sdk)
-	usage, total, err := uage.GetResourceDiskUsage(user)
+	usage, total, err := uage.GetResourceDiskUsage(k8s.NewK8sToken(token))
 	if err != nil {
 		response := gin.H{
 			"disk": gin.H{

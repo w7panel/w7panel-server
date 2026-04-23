@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/w7panel/w7panel/common/helper"
+	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -147,18 +148,18 @@ func ToK3kJob(k3kUser *K3kUser) *batchv1.Job {
 	return job
 }
 
-func ToK3kDaemonSet(k3kUser *K3kUser) *appsv1.DaemonSet {
+func ToK3kDaemonSet(cvm *cvmv1alpha1.Cvm) *appsv1.DaemonSet {
 	labels := map[string]string{
 		"k3k-agent-pod": "true",
-		"k3k-sa":        k3kUser.Name,
-		"k3k-name":      k3kUser.GetK3kName(),
-		"k3k-namespace": k3kUser.GetK3kNamespace(),
+		"k3k-sa":        cvm.Name,
+		"k3k-name":      cvm.GetK3kName(),
+		"k3k-namespace": cvm.GetK3kNamespace(),
 		// "w7.cc/daemonset": "w7",// 加label 会导致已有daemonset 无法patch 只能删除 新建daemonset
 	}
-	pod := ToK3kPod(k3kUser)
+	pod := ToK3kPod(cvm)
 	ds := &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   k3kUser.GetAgentName(),
+			Name:   cvm.GetAgentName(),
 			Labels: labels,
 			Annotations: map[string]string{
 				"helm-version":     os.Getenv("HELM_VERSION"),
@@ -185,9 +186,9 @@ func ToK3kDaemonSet(k3kUser *K3kUser) *appsv1.DaemonSet {
 	return ds
 }
 
-func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
+func ToK3kPod(cvm *cvmv1alpha1.Cvm) *corev1.Pod {
 	// shell := "cd /tmp && k3kcli kubeconfig generate --namespace $K3K_NAMESPACE --name $K3K_NAME && k8s-offline"
-	clusterMode := k3kUser.GetClusterMode()
+	clusterMode := "virtual"
 	// cacheKey := "k3k-" + k3kUser.GetName()
 	// panelToken, ok := helper.Get(cacheKey)
 	// if !ok {
@@ -203,11 +204,11 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 	envs := []corev1.EnvVar{
 		{
 			Name:  "K3K_NAME",
-			Value: k3kUser.GetK3kName(),
+			Value: cvm.GetK3kName(),
 		},
 		{
 			Name:  "K3K_NAMESPACE",
-			Value: k3kUser.GetK3kNamespace(),
+			Value: cvm.GetK3kNamespace(),
 		},
 		// {
 		// 	Name:  "KUBECONFIG", //k3k-k7-k7-kubeconfig.yaml
@@ -215,19 +216,19 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 		// },
 		{
 			Name:  "K3K_CLUSTER_HOST",
-			Value: k3kUser.GetK3kNamespace() + "-service." + k3kUser.GetK3kNamespace() + "",
+			Value: cvm.GetK3kNamespace() + "-service." + cvm.Namespace + "",
 		},
 		{
 			Name:  "K3K_MODE",
-			Value: k3kUser.GetClusterMode(),
+			Value: "virtual",
 		},
 		{
 			Name:  "SERVICE_ACCOUNT_NAME",
-			Value: k3kUser.GetK3kName(),
+			Value: cvm.GetK3kName(),
 		},
 		{
 			Name:  "STORAGE_CLASS_NAME",
-			Value: k3kUser.GetStorageClass(),
+			Value: cvm.Spec.StorageClassName,
 		},
 		{
 			Name:  "WEBHOOK_ENABLED",
@@ -263,7 +264,7 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 		},
 		{
 			Name:  "SVC_NAME",
-			Value: k3kUser.GetAgentName(),
+			Value: cvm.GetAgentName(),
 		},
 		{
 			Name:  "SVC_LB_CLASS",
@@ -329,13 +330,13 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 			Kind:       "Pod",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      k3kUser.GetAgentName(),
-			Namespace: k3kUser.Namespace,
+			Name:      cvm.GetAgentName(),
+			Namespace: cvm.Namespace,
 			Labels: map[string]string{
 				"k3k-agent-pod": "true",
-				"k3k-sa":        k3kUser.Name,
-				"k3k-name":      k3kUser.GetK3kName(),
-				"k3k-namespace": k3kUser.GetK3kNamespace(),
+				"k3k-sa":        cvm.GetK3kName(),
+				"k3k-name":      cvm.GetK3kName(),
+				"k3k-namespace": cvm.GetK3kNamespace(),
 				// "w7.cc/daemonset": "w7",
 			},
 			Annotations: map[string]string{
@@ -366,7 +367,7 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 					},
 				},
 			},
-			ServiceAccountName: k3kUser.Name,
+			ServiceAccountName: cvm.GetK3kName(),
 			HostPID:            true,
 			// AutomountServiceAccountToken: true,
 			InitContainers: []corev1.Container{
@@ -434,20 +435,21 @@ func ToK3kPod(k3kUser *K3kUser) *corev1.Pod {
 	return pod
 }
 
-func ToK3kAgentService(k3kUser *K3kUser) *corev1.Service {
+// 子集群service
+func ToK3kAgentService(cvm *cvmv1alpha1.Cvm) *corev1.Service {
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "Service",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        k3kUser.GetAgentName(),
-			Namespace:   k3kUser.Namespace,
+			Name:        cvm.GetAgentName(),
+			Namespace:   cvm.Namespace,
 			Annotations: map[string]string{"w7.cc/title": "agent服务"},
 			Labels: map[string]string{
-				"k3k-sa":        k3kUser.Name,
-				"k3k-name":      k3kUser.GetK3kName(),
-				"k3k-namespace": k3kUser.GetK3kNamespace(),
+				"k3k-sa":        cvm.GetK3kName(),
+				"k3k-name":      cvm.GetK3kName(),
+				"k3k-namespace": cvm.GetK3kNamespace(),
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -467,28 +469,28 @@ func ToK3kAgentService(k3kUser *K3kUser) *corev1.Service {
 			},
 			Selector: map[string]string{
 				"k3k-agent-pod": "true",
-				"k3k-name":      k3kUser.GetK3kName(),
-				"k3k-namespace": k3kUser.GetK3kNamespace(),
+				"k3k-name":      cvm.GetK3kName(),
+				"k3k-namespace": cvm.GetK3kNamespace(),
 			},
 		},
 	}
 }
 
-func ToVirtualIngressService(k3kUser *K3kUser) *corev1.Service {
+func ToVirtualIngressService(cvm *cvmv1alpha1.Cvm) *corev1.Service {
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "Service",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        k3kUser.GetVirtualIngressServiceName(),
-			Namespace:   k3kUser.GetK3kNamespace(),
+			Name:        cvm.GetVirtualIngressServiceName(),
+			Namespace:   cvm.GetK3kNamespace(),
 			Annotations: map[string]string{"w7.cc/title": "k3k服务w7"},
 			Labels: map[string]string{
-				"k3k-sa":        k3kUser.Name,
-				"k3k-name":      k3kUser.GetK3kName(),
-				"k3k-namespace": k3kUser.GetK3kNamespace(),
-				"cluster":       k3kUser.GetK3kName(),
+				"k3k-sa":        cvm.GetK3kName(),
+				"k3k-name":      cvm.GetK3kName(),
+				"k3k-namespace": cvm.GetK3kNamespace(),
+				"cluster":       cvm.GetK3kName(),
 				"role":          "server",
 			},
 		},
@@ -521,7 +523,7 @@ func ToVirtualIngressService(k3kUser *K3kUser) *corev1.Service {
 			},
 			Selector: map[string]string{
 				// "cluster": "true",
-				"cluster": k3kUser.GetK3kName(),
+				"cluster": cvm.Name,
 				"role":    "server",
 			},
 		},

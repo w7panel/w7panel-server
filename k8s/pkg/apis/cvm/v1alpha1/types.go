@@ -1,9 +1,11 @@
 package v1alpha1
 
 import (
+	"strings"
 	"time"
 
 	k3kv1 "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
+	"github.com/w7panel/w7panel/common/helper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -64,6 +66,19 @@ type CvmSpec struct {
 
 }
 
+func (u *Cvm) GetAgentName() string {
+	return helper.GetK3kAgentName(u.GetK3kName())
+}
+func (u *Cvm) GetK3kName() string {
+	return strings.ReplaceAll(u.Namespace, "k3k-", "")
+}
+func (u *Cvm) GetVirtualIngressServiceName() string {
+	return helper.GetVirtualIngressServiceName(u.Namespace, u.Name)
+}
+
+func (u *Cvm) GetK3kNamespace() string {
+	return u.Namespace
+}
 func (u *Cvm) AddPurchasedResource(rs *CvmResource) {
 	if rs == nil {
 		rs = &CvmResource{}

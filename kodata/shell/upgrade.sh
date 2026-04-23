@@ -59,18 +59,6 @@ kubectl create -f $KO_DATA_PATH/yaml/permission || echo "已存在"
 # 创始人直接替换
 kubectl apply -f $KO_DATA_PATH/yaml/permission/k3k.permission.founder.yaml
 
-echo "卸载异常面板"
-w7panel uninstall-store-panel
-
-echo "新版metrics  "
-w7panel metrics:upgrade
-
-echo "升级权限菜单"
-w7panel qx-upgrade
-
-echo "域名解析配置"
-w7panel domain-config
-
 # echo "升级站点管理"
 # w7panel sitemanager-upgrade --version=1.0.24 --identifie=w7_php --is-agent=false
 # w7panel sitemanager-upgrade --version=1.0.24 --identifie=w7_go --is-agent=false
@@ -86,3 +74,21 @@ kubectl apply -f $KO_DATA_PATH/yaml/longhorn/default-data-locality.yaml || echo 
 echo "higress config"
 # higress 可能未启动成功 导致crd未创建 job设置重试3次
 kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
+
+
+
+kubectl create secret generic k3k.addon --from-file=manifests.yaml=$KO_DATA_PATH/yaml/k3k/k3k.addon.yaml --dry-run=client -o yaml | kubectl apply -f - || echo "已存在k3k.addon"
+
+kubectl apply -f $KO_DATA_PATH/yaml/k3k/virtualclusterpolicy.yaml
+
+echo "卸载异常面板"
+w7panel uninstall-store-panel
+
+echo "新版metrics  "
+w7panel metrics:upgrade
+
+echo "升级权限菜单"
+w7panel qx-upgrade
+
+echo "域名解析配置"
+w7panel domain-config

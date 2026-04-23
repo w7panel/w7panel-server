@@ -238,13 +238,14 @@ func (c *ConsoleCdClient) PreInstall(consoleurl string, clusterId string) (*PreI
 
 func (c *ConsoleCdClient) CreatePanelOrder(urlValues url.Values) (*PayResult, error) {
 	result := &PayResult{}
-	response, err := c.client.R().SetAuthToken(c.token).SetFormDataFromValues(urlValues).SetResult(result).Post(ConsoleCDPanelOrderApi)
+	cerr := &ConsoleError{}
+	response, err := c.client.R().SetAuthToken(c.token).SetFormDataFromValues(urlValues).SetResult(result).SetError(cerr).Post(ConsoleCDPanelOrderApi)
 	if err != nil {
 		return nil, err
 	}
 	if response.StatusCode() > 299 {
 		slog.Warn("CreatePanelOrder error", "statusCode", response.StatusCode(), "response", response.String())
-		return nil, errors.New("CreatePanelOrder error" + response.String())
+		return nil, cerr
 	}
 	return result, err
 }
