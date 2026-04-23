@@ -169,28 +169,28 @@ mount --make-shared /run
 			}
 
 		}
-		container.Env = append(container.Env, v1.EnvVar{
-			Name: "GOMAXPROCS",
-			ValueFrom: &v1.EnvVarSource{
-				ResourceFieldRef: &v1.ResourceFieldSelector{
-					Divisor:  resource.MustParse("1"),
-					Resource: "limits.cpu",
-				},
-			},
-		})
-		container.Env = append(container.Env, v1.EnvVar{
-			Name: "K3K_HOST_IP",
-			ValueFrom: &v1.EnvVarSource{
-				FieldRef: &v1.ObjectFieldSelector{
-					APIVersion: "v1",
-					FieldPath:  "status.hostIP",
-				},
-			},
-		})
-		container.Env = append(container.Env, v1.EnvVar{
-			Name:  "TZ",
-			Value: "Asia/Shanghai",
-		})
+		// container.Env = append(container.Env, v1.EnvVar{
+		// 	Name: "GOMAXPROCS",
+		// 	ValueFrom: &v1.EnvVarSource{
+		// 		ResourceFieldRef: &v1.ResourceFieldSelector{
+		// 			Divisor:  resource.MustParse("1"),
+		// 			Resource: "limits.cpu",
+		// 		},
+		// 	},
+		// })
+		// container.Env = append(container.Env, v1.EnvVar{
+		// 	Name: "K3K_HOST_IP",
+		// 	ValueFrom: &v1.EnvVarSource{
+		// 		FieldRef: &v1.ObjectFieldSelector{
+		// 			APIVersion: "v1",
+		// 			FieldPath:  "status.hostIP",
+		// 		},
+		// 	},
+		// })
+		// container.Env = append(container.Env, v1.EnvVar{
+		// 	Name:  "TZ",
+		// 	Value: "Asia/Shanghai",
+		// })
 		modified = true
 	}
 	if statefulset.Spec.Template.Annotations == nil {

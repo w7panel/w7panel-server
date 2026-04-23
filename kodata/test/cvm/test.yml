@@ -1,0 +1,40 @@
+apiVersion: cvm.w7.cc/v1alpha1
+kind: Cvm
+metadata:
+    name: test
+    namespace: k3k-console-164315
+spec:
+    baseOrder:
+        hour: 720
+        orderSn: 20260422194414PE26DK
+        resource:
+            bandwidth: 50
+            cpu: 3
+            memory: 4
+            storage: 5
+        status: paid
+    capacityCheckState: success
+    expandOrder:
+        hour: 705
+        orderSn: 202604230956092MVLXE
+        resource:
+            bandwidth: 50
+            cpu: 3
+            memory: 4
+            storage: 5
+        status: paid
+    expireTime: '2026-08-20 11:44:31'
+    pendingPurchasedResource: {}
+    purchasedResource:
+        bandwidth: 100
+        cpu: 6
+        memory: 8
+        storage: 10
+    renewOrder:
+        hour: 2160
+        orderSn: 2026042309593032BEZN
+        status: paid
+    storageClassName: local-path
+    workload:
+        templateName: ''
+
