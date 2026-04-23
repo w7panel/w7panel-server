@@ -244,6 +244,7 @@ func (r *K3kCvmController) syncClusterStatus(ctx context.Context, cvm *cvmv1alph
 	base := cvm.DeepCopy()
 	cvm.Status.ClusterPhase = k3kv1.ClusterPhase(cluster.Status.Phase)
 	cvm.Status.Conditions = cluster.Status.Conditions
+	cvm.ComputeStatus()
 	if apiequality.Semantic.DeepEqual(cvm.Status, base.Status) {
 		return nil
 	}

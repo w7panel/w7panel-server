@@ -7,6 +7,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// 【微擎面板&集群云主机：云主机业务分离成独立应用】
+// https://www.tapd.cn/tapd_fe/62789787/story/detail/1162789787001015242
 const (
 	K3kCvmFinalizerName = "cvm.k3k.io/finalizer"
 	K3kCvmNameLabel     = "w7.cc/cvm-name"
@@ -107,27 +109,28 @@ type Workload struct {
 	TemplateName    string `json:"templateName"`
 }
 
-// 【微擎面板&集群云主机：云主机业务分离成独立应用】
-// https://www.tapd.cn/tapd_fe/62789787/story/detail/1162789787001015242
 type CvmStatus struct {
 	Phase             string             `json:"phase,omitempty"`
 	ClusterPhase      k3kv1.ClusterPhase `json:"clusterPhase,omitempty"`
 	EffectiveResource *CvmResource       `json:"effectiveResource,omitempty"` // UserResource + PurchasedResource
 	Conditions        []metav1.Condition `json:"conditions,omitempty"`
-	IsExpired         bool               `json:"isExpired,omitempty"`   //是否过期
-	IsRecycling       bool               `json:"isRecycling,omitempty"` //是否回收中
+	IsExpired         *bool              `json:"isExpired,omitempty"`   //是否过期
+	IsRecycling       *bool              `json:"isRecycling,omitempty"` //是否回收中
 }
 
 func (u *Cvm) ComputeStatus() {
 	if u.Labels == nil {
 		u.Labels = map[string]string{}
 	}
-	u.Status.IsExpired = false
-	u.Status.IsRecycling = false
+
+	isExpired := false
+	isRecycling := false
+	u.Status.IsExpired = &isExpired
+	u.Status.IsRecycling = &isRecycling
 	if u.Spec.ExpireTime != "" {
 		etime, err := time.Parse(time.RFC3339, u.Spec.ExpireTime)
 		if err == nil {
-			u.Status.IsExpired = etime.Before(time.Now())
+			*u.Status.IsExpired = etime.Before(time.Now())
 			u.Labels[CvmExpired] = u.Name
 			if u.Spec.RecycleTime == "" {
 				u.Spec.RecycleTime = etime.Add(-time.Hour * 24 * 3).Format(time.RFC3339)
@@ -138,7 +141,7 @@ func (u *Cvm) ComputeStatus() {
 		rtime, err := time.Parse(time.RFC3339, u.Spec.RecycleTime)
 		if err == nil {
 			if rtime.Before(time.Now()) {
-				u.Status.IsRecycling = true
+				*u.Status.IsRecycling = true
 			}
 		}
 	}
@@ -147,9 +150,9 @@ func (u *Cvm) ComputeStatus() {
 		u.Status.Phase = string(PhaseEmpty)
 	} else {
 		u.Status.Phase = string(PhaseNoEmpty)
-		if u.Status.IsExpired {
+		if u.Status.IsExpired != nil && *u.Status.IsExpired {
 			u.Status.Phase = string(PhaseRecycle)
-			if u.Status.IsRecycling {
+			if u.Status.IsRecycling != nil && *u.Status.IsRecycling {
 				u.Status.Phase = string(PhaseRecycleing)
 			}
 		} else {

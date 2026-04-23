@@ -262,7 +262,6 @@ spec:
                   type: object
                 type: array
               effectiveResource:
-                description: ReadyReplicas     int32              `json:"readyReplicas,omitempty"`
                 properties:
                   bandwidth:
                     format: int64
@@ -283,8 +282,6 @@ spec:
                 type: boolean
               phase:
                 type: string
-            required:
-            - phase
             type: object
         required:
         - spec
