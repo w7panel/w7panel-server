@@ -445,7 +445,7 @@ func ToK3kAgentService(cvm *cvmv1alpha1.Cvm) *corev1.Service {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cvm.GetAgentName(),
-			Namespace:   cvm.Namespace,
+			Namespace:   "default",
 			Annotations: map[string]string{"w7.cc/title": "agent服务"},
 			Labels: map[string]string{
 				"k3k-sa":        cvm.GetK3kName(),
@@ -624,6 +624,23 @@ func ToClusterRoleBinding(cvm *cvmv1alpha1.Cvm) *rbacv1.ClusterRoleBinding {
 		RoleRef: rbacv1.RoleRef{
 			Kind: "ClusterRole",
 			Name: "cluster-admin",
+		},
+	}
+}
+
+func ToServiceAccount(cvm *cvmv1alpha1.Cvm) *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "ServiceAccount",
+		},
+
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cvm.GetK3kName(),
+			Namespace: "default",
+			Labels: map[string]string{
+				"w7.cc/cvm-name": cvm.Name,
+			},
 		},
 	}
 }
