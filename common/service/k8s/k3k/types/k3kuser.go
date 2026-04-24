@@ -97,6 +97,11 @@ func (u *k3kUser) IsNormalUser() bool {
 	return u.Labels[K3K_USER_MODE] == "normal"
 }
 
+// 测试不让agent 每次重建
+func (u *k3kUser) SkipDaemonset() bool {
+	return u.Labels["w7.cc/skip-ds"] == "true"
+}
+
 func (u *k3kUser) IsInitK3k() bool {
 	name, ok := u.Labels[K3K_NAME]
 	if ok {
