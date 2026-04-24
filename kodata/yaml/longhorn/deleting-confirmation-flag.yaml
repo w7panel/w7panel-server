@@ -5,4 +5,4 @@ metadata:
     namespace: longhorn-system
 status:
     applied: true
-value: 'false' # 是否允许删除
+value: 'true' # 是否允许删除

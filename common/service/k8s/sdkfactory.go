@@ -109,66 +109,60 @@ func (s *singleton) loadFromCache(token string) (*Sdk, error) {
 	return sdk, nil
 }
 func (s *singleton) GetK3kClusterSdkByConfig(k3kconfig *K3kConfig) (*Sdk, error) {
-	startTime := time.Now()
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	// 检查缓存是否存在且未过期
-	cacheCheckStart := time.Now()
+	// cacheCheckStart := time.Now()
 	if sdk, ok := s.sdks[k3kconfig.Name]; ok {
 		if expireTime, ok := s.expires[k3kconfig.Name]; ok && expireTime > time.Now().Unix() {
-			log.Printf("[PERF] GetK3kClusterSdkByConfig - cache hit took %v", time.Since(cacheCheckStart))
-			log.Printf("[PERF] GetK3kClusterSdkByConfig total time %v", time.Since(startTime))
+
 			return sdk, nil
 		}
 	}
-	log.Printf("[PERF] GetK3kClusterSdkByConfig - cache miss/check took %v", time.Since(cacheCheckStart))
 
-	toSigStart := time.Now()
+	// toSigStart := time.Now()
 	sigClient, err := s.Sdk.ToSigClient()
-	log.Printf("[PERF] GetK3kClusterSdkByConfig - ToSigClient took %v", time.Since(toSigStart))
+
 	if err != nil {
 		return nil, err
 	}
 
-	getKubeConfigStart := time.Now()
 	kubeconfig, err := GetK3kKubeConfig(sigClient, k3kconfig)
-	log.Printf("[PERF] GetK3kClusterSdkByConfig - GetK3kKubeConfig took %v", time.Since(getKubeConfigStart))
+
 	if err != nil {
 		return nil, err
 	}
 
-	clientConfigStart := time.Now()
 	clientconfig := clientcmd.NewDefaultClientConfig(*kubeconfig, &clientcmd.ConfigOverrides{})
 	restConfig, err := clientconfig.ClientConfig()
-	log.Printf("[PERF] GetK3kClusterSdkByConfig - client config setup took %v", time.Since(clientConfigStart))
+
 	if err != nil {
 		return nil, err
 	}
 
-	newSdkStart := time.Now()
 	sdk, err := NewForRestConfig(restConfig, "default")
-	log.Printf("[PERF] GetK3kClusterSdkByConfig - NewForRestConfig took %v", time.Since(newSdkStart))
+
 	if err != nil {
 		return nil, err
 	}
 
-	createTokenStart := time.Now()
 	token, err := sdk.CreateTokenRequest(k3kconfig.Name, 7200, []string{})
-	log.Printf("[PERF] GetK3kClusterSdkByConfig - CreateTokenRequest took %v", time.Since(createTokenStart))
+
 	if err != nil {
 		return nil, err
 	}
 
 	// 缓存结果并设置过期时间(1小时)
-	channelStart := time.Now()
+
 	result, err := sdk.Channel(token)
-	log.Printf("[PERF] GetK3kClusterSdkByConfig - final Channel took %v", time.Since(channelStart))
+
 	if err == nil {
 		s.sdks[k3kconfig.Name] = result
 		s.expires[k3kconfig.Name] = time.Now().Add(time.Hour).Unix()
 	}
-	log.Printf("[PERF] GetK3kClusterSdkByConfig total time %v", time.Since(startTime))
+
 	return result, err
 }
 func (s *singleton) GetK3kClusterSdk(k8stoken *K8sToken) (*Sdk, error) {
@@ -207,14 +201,14 @@ func (s *singleton) Clear(k3kName string) {
 //	*clientcmdapi.Config: 解析后的kubeconfig配置
 //	error: 如果获取kubeconfig失败，则返回错误信息
 func GetK3kKubeConfig(sigClient client.Client, k3kconfig *K3kConfig) (*clientcmdapi.Config, error) {
-	startTime := time.Now()
+	// startTime := time.Now()
 
 	secret := &corev1.Secret{}
 	kubeConfigName := "k3k-" + k3kconfig.Name + "-kubeconfig"
 
-	getSecretStart := time.Now()
+	// getSecretStart := time.Now()
 	err := sigClient.Get(context.TODO(), types.NamespacedName{Name: kubeConfigName, Namespace: k3kconfig.Namespace}, secret)
-	log.Printf("[PERF] GetK3kKubeConfig - Get Secret took %v", time.Since(getSecretStart))
+	// log.Printf("[PERF] GetK3kKubeConfig - Get Secret took %v", time.Since(getSecretStart))
 	if err != nil {
 		return nil, err
 	}
@@ -224,10 +218,10 @@ func GetK3kKubeConfig(sigClient client.Client, k3kconfig *K3kConfig) (*clientcmd
 		return nil, errors.New("kubeconfig.yaml is empty")
 	}
 
-	loadStart := time.Now()
+	// loadStart := time.Now()
 	kubeconfig, err := clientcmd.Load(kubeconfigYaml)
-	log.Printf("[PERF] GetK3kKubeConfig - Load kubeconfig took %v", time.Since(loadStart))
-	log.Printf("[PERF] GetK3kKubeConfig total time %v", time.Since(startTime))
+	// log.Printf("[PERF] GetK3kKubeConfig - Load kubeconfig took %v", time.Since(loadStart))
+	// log.Printf("[PERF] GetK3kKubeConfig total time %v", time.Since(startTime))
 	return kubeconfig, err
 }
 

@@ -111,6 +111,7 @@ func fetchWebZipAndDownload(zpkUrl string, releaseName, version string) error {
 	req := helper.RetryHttpClient().R()
 	if version != "" {
 		req.SetQueryParam("cur_version", version)
+		slog.Error("下载静态资源地址", "url", zpkUrl, "version", version)
 	}
 	resp, err := req.Get(zpkUrl)
 	if err != nil {

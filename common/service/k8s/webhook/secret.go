@@ -2,7 +2,6 @@ package webhook
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -14,7 +13,7 @@ import (
 
 // 处理 secret 资源
 func (m *ResourceMutator) handleSecret(ctx context.Context, req admission.Request) admission.Response {
-	slog.Error("处理 secret admission 请求")
+	// slog.Error("处理 secret admission 请求")
 
 	// if req.Operation == "DELETE" {
 	// 	return admission.Allowed("")

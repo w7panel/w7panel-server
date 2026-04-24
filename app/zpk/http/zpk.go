@@ -453,6 +453,7 @@ func (self Zpk) UpgradeInfo(http *gin.Context) {
 	}
 	upgradeCheck := logic.NewUpgradeCheck(client)
 	upgradeCheck.WithCDToken(params.ThirdpartyCDToken)
+	upgradeCheck.WithPanelToken(http.MustGet("k8s_token").(string))
 	result := upgradeCheck.Check(params.Namespace, params.ReleaseName)
 
 	self.JsonResponse(http, result, nil, 200)
@@ -880,9 +881,12 @@ func (self Zpk) BuildImageCronJob(http *gin.Context) {
 
 // 本地安装制品库的域名
 func (self Zpk) LocalZpkUrl(http *gin.Context) {
-
+	instance := http.Query("instance")
+	if instance == "" {
+		instance = "w7-zpkv2"
+	}
 	sdk := k8s.NewK8sClient().Sdk
-	ingressList, err := sdk.ClientSet.NetworkingV1().Ingresses("default").List(sdk.Ctx, metav1.ListOptions{LabelSelector: "app.kubernetes.io/instance=w7-zpkv2"})
+	ingressList, err := sdk.ClientSet.NetworkingV1().Ingresses("default").List(sdk.Ctx, metav1.ListOptions{LabelSelector: "app.kubernetes.io/instance=" + instance})
 	if err != nil || len(ingressList.Items) == 0 {
 		self.JsonResponseWithoutError(http, gin.H{
 			"host":       "",
@@ -892,7 +896,7 @@ func (self Zpk) LocalZpkUrl(http *gin.Context) {
 	}
 
 	ingress := ingressList.Items[0]
-	deployments, err := sdk.ClientSet.AppsV1().Deployments(ingress.GetNamespace()).List(sdk.Ctx, metav1.ListOptions{LabelSelector: "app.kubernetes.io/instance=w7-zpkv2"})
+	deployments, err := sdk.ClientSet.AppsV1().Deployments(ingress.GetNamespace()).List(sdk.Ctx, metav1.ListOptions{LabelSelector: "app.kubernetes.io/instance=" + instance})
 	if err != nil || len(deployments.Items) == 0 {
 		self.JsonResponseWithoutError(http, gin.H{
 			"host":       "",

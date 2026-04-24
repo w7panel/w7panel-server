@@ -864,7 +864,7 @@ func ProxyUrl(proxyUrl string, path string, host string, headers map[string]stri
 		res.Header.Del("access-control-expose-headers")
 		return nil
 	}
-	
+
 	slog.Info("Reverse proxy created successfully")
 	return proxy, nil
 }
@@ -1199,4 +1199,29 @@ func PanelInnerUrl() string {
 // 主集群svcname
 func PanelRootSvcName() string {
 	return "w7panel-root-svc"
+}
+
+func Retry(fn func() error, retry int, sleep time.Duration) error {
+	lasterr := errors.New("retry err")
+	for i := 0; i < retry; i++ {
+		lasterr = fn()
+		if lasterr == nil {
+			return nil
+		}
+		time.Sleep(sleep)
+	}
+	return lasterr
+}
+
+// 重试n次都成功
+func RetryFullSuccess(fn func() error, retry int, sleep time.Duration) error {
+	lasterr := errors.New("retry err")
+	for i := 0; i < retry; i++ {
+		lasterr = fn()
+		if lasterr != nil {
+			return lasterr
+		}
+		time.Sleep(sleep)
+	}
+	return lasterr
 }
