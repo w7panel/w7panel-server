@@ -33,8 +33,8 @@ const (
 	// ClusterFailed       = ClusterPhase("Failed")
 	// ClusterTerminating  = ClusterPhase("Terminating")
 	// ClusterUnknown      = ClusterPhase("Unknown")
-	PhaseEmpty      = Phase("empty")      //无资源
-	PhaseNoEmpty    = Phase("noempty")    //有资源
+	PhaseNew        = Phase("new")        //无资源
+	PhaseReady      = Phase("ready")      //有资源
 	PhaseRecycle    = Phase("recycle")    //待回收
 	PhaseRecycleing = Phase("recycleing") //回收中
 	PhaseCreating   = Phase("creating")   //创建中
@@ -162,17 +162,20 @@ func (u *Cvm) ComputeStatus() {
 	}
 	// 无资源 有资源 待回收 回收中 创建
 	if u.IsEmpty() {
-		u.Status.Phase = string(PhaseEmpty)
+		u.Status.Phase = string(PhaseNew)
 	} else {
-		u.Status.Phase = string(PhaseNoEmpty)
 		if u.Status.IsExpired != nil && *u.Status.IsExpired {
 			u.Status.Phase = string(PhaseRecycle)
 			if u.Status.IsRecycling != nil && *u.Status.IsRecycling {
-				u.Status.Phase = string(PhaseRecycleing)
+				u.Status.Phase = string(PhaseNew) //超过回收时间 则清理成无资源
 			}
 		} else {
-			if u.Status.ClusterPhase != k3kv1.ClusterReady {
-				u.Status.Phase = string(PhaseCreating)
+			u.Status.Phase = string(PhaseCreating)
+			if u.Status.ClusterPhase == k3kv1.ClusterTerminating {
+				u.Status.Phase = string(PhaseRecycleing) //有资源
+			}
+			if u.Status.ClusterPhase == k3kv1.ClusterReady {
+				u.Status.Phase = string(PhaseReady) //有资源
 			}
 		}
 	}
