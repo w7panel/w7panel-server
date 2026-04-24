@@ -37,9 +37,12 @@ func (k *K3kOrderApi) CreateBaseResourceCvmOrder(baseResource *types.BuyBaseReso
 	if err != nil {
 		return nil, err
 	}
-	if err := cvmOrder.CanCreateBaseOrderError(); err != nil {
-		return nil, err
+	if cvmOrder.CanBaseBuy() == false {
+		return nil, errors.New("不支持购买")
 	}
+	// if err := cvmOrder.CanCreateBaseOrderError(); err != nil {
+	// 	return nil, err
+	// }
 	currentUq := baseResource.UnitQuantity
 	if currentUq.IsEmpty() {
 		return nil, fmt.Errorf("购买时长不能为空")

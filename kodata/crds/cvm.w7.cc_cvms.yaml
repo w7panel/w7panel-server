@@ -197,10 +197,13 @@ spec:
                 type: object
             type: object
           status:
-            description: |-
-              【微擎面板&集群云主机：云主机业务分离成独立应用】
-              https://www.tapd.cn/tapd_fe/62789787/story/detail/1162789787001015242
             properties:
+              canBaseBuy:
+                type: boolean
+              canExpandBuy:
+                type: boolean
+              canRenewBuy:
+                type: boolean
               clusterPhase:
                 description: ClusterPhase is a high-level summary of the cluster's
                   current lifecycle state.

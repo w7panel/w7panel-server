@@ -20,8 +20,11 @@ func (k *K3kOrderApi) CreateRenewCvmOrder(baseResource *types.BuyRenewResource, 
 	if err != nil {
 		return nil, err
 	}
-	if err := cvmOrder.CanRenewError(); err != nil {
-		return nil, err
+	// if err := cvmOrder.CanRenewError(); err != nil {
+	// 	return nil, err
+	// }
+	if cvmOrder.CanRenew() == false {
+		return nil, errors.New("不支持续费")
 	}
 	currentResource := currentCvmBuyResource(cvm)
 	compute := types.NewK3kOrderCompute(currentResource, baseResource.UnitQuantity, user.GetCost(), nil)

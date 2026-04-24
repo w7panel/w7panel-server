@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/smithy-go/ptr"
 	k3kv1 "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/w7panel/w7panel/common/helper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,12 +28,12 @@ const (
 type Phase string
 
 const (
-	// ClusterPending      = ClusterPhase("Pending")
-	// ClusterProvisioning = ClusterPhase("Provisioning")
-	// ClusterReady        = ClusterPhase("Ready")
-	// ClusterFailed       = ClusterPhase("Failed")
-	// ClusterTerminating  = ClusterPhase("Terminating")
-	// ClusterUnknown      = ClusterPhase("Unknown")
+	// ClusterPending      = ClusterPhase("Pending") //创建中
+	// ClusterProvisioning = ClusterPhase("Provisioning") //配置中
+	// ClusterReady        = ClusterPhase("Ready") //运行中
+	// ClusterFailed       = ClusterPhase("Failed") //失败
+	// ClusterTerminating  = ClusterPhase("Terminating") //回收中
+	// ClusterUnknown      = ClusterPhase("Unknown") //未知
 	PhaseNew        = Phase("new")        //无资源
 	PhaseReady      = Phase("ready")      //有资源
 	PhaseRecycle    = Phase("recycle")    //待回收
@@ -129,10 +130,18 @@ type CvmStatus struct {
 	ClusterPhase      k3kv1.ClusterPhase `json:"clusterPhase,omitempty"`
 	EffectiveResource *CvmResource       `json:"effectiveResource,omitempty"` // UserResource + PurchasedResource
 	Conditions        []metav1.Condition `json:"conditions,omitempty"`
-	IsExpired         *bool              `json:"isExpired,omitempty"`   //是否过期
-	IsRecycling       *bool              `json:"isRecycling,omitempty"` //是否回收中
+	IsExpired         *bool              `json:"isExpired,omitempty"`    //是否过期
+	IsRecycling       *bool              `json:"isRecycling,omitempty"`  //是否回收中
+	CanBaseBuy        *bool              `json:"canBaseBuy,omitempty"`   //是否可以购买基础套餐
+	CanExpandBuy      *bool              `json:"canExpandBuy,omitempty"` //是否可以扩容
+	CanRenewBuy       *bool              `json:"canRenewBuy,omitempty"`  //是否可以续费
 }
 
+func (u *Cvm) computeBuy() {
+	u.Status.CanBaseBuy = ptr.Bool(u.IsEmpty() && u.Spec.BaseOrder.Status != "paid") //是否购买基础套餐
+	u.Status.CanExpandBuy = ptr.Bool(!u.IsEmpty() && u.Spec.ExpireTime != "")        //是否可以扩容
+	u.Status.CanRenewBuy = ptr.Bool(!u.IsEmpty() && u.Spec.ExpireTime != "")         //是否可以续费
+}
 func (u *Cvm) ComputeStatus() {
 	if u.Labels == nil {
 		u.Labels = map[string]string{}
@@ -183,6 +192,7 @@ func (u *Cvm) ComputeStatus() {
 	u.Status.EffectiveResource = &CvmResource{}
 	u.Status.EffectiveResource.Add(u.Spec.UserResource)
 	u.Status.EffectiveResource.Add(u.Spec.PurchasedResource)
+	u.computeBuy()
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

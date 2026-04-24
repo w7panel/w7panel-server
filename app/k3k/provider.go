@@ -46,9 +46,9 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			k3kGroup.POST("/sync-down-static", controller2.K3k{}.SyncDownStatic) //
 			k3kGroup.POST("/sync-microapp", controller2.K3k{}.SyncMicroApp)      //microapp同步到子集群
 			// 主集群login 需要验证是否founder
-			k3kGroup.POST("/login", middleware.Auth{}.Process, controller2.K3k{}.Login)           //
-			k3kGroup.POST("/loginCvm", middleware.Auth{}.Process, controller2.K3k{}.LoginCurrent) //
-			k3kGroup.POST("/wh", middleware.Auth{}.Process, controller2.K3k{}.WhMoshi)            // 维护模式 切换
+			k3kGroup.POST("/login", middleware.Auth{}.Process, controller2.K3k{}.Login) //
+			// k3kGroup.POST("/loginCvm", middleware.Auth{}.Process, controller2.K3k{}.LoginCurrent) //
+			k3kGroup.POST("/wh", middleware.Auth{}.Process, controller2.K3k{}.WhMoshi) // 维护模式 切换
 
 			k3kGroup.GET("/order/config", middleware.Auth{}.Process, controller2.Order{}.GetConfig) // 获取配置
 			k3kGroup.GET("/order/price", middleware.Auth{}.Process, controller2.Order{}.GetPrice)   // 获取当前价格
@@ -62,7 +62,11 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			k3kGroup.POST("/order/license", middleware.Auth{}.Process, controller2.Order{}.CreateLicenseOrder) // 面板授权购买
 
-			k3kGroup.POST("/storage/resize", middleware.Auth{}.Process, controller2.K3k{}.ResizeSysStorage) // 扩容系统存储
+			// k3kGroup.POST("/storage/resize", middleware.Auth{}.Process, controller2.K3k{}.ResizeSysStorage) // 扩容系统存储
+
+			k3kGroup.GET("/cvm", middleware.Auth{}.Process, controller2.Cvm{}.List)                                       // cvm列表
+			k3kGroup.GET("/cvm/v1/:namespace/info/:name", middleware.Auth{}.Process, controller2.Cvm{}.Info)              // cvm详情
+			k3kGroup.GET("/cvm/:namespace/action/:name/login", middleware.Auth{}.Process, controller2.K3k{}.LoginCvm) // cvm 登录
 
 		}
 

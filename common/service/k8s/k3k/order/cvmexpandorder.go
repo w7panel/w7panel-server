@@ -1,6 +1,7 @@
 package order
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -19,8 +20,11 @@ func (k *K3kOrderApi) CreateExpandCvmOrder(baseResource *types.BuyExpandResource
 	if err != nil {
 		return nil, err
 	}
-	if err := cvmOrder.CanExpandError(); err != nil {
-		return nil, err
+	// if err := cvmOrder.CanExpandError(); err != nil {
+	// 	return nil, err
+	// }
+	if cvmOrder.CanExpand() == false {
+		return nil, errors.New("不支持扩容")
 	}
 	if err := baseResource.Valid(); err != nil {
 		return nil, err

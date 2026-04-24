@@ -116,10 +116,21 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 		logger.Error(err, "Failed to reconcile effective resource")
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
-	// 资源为空 不创建cluster资源
-	if cvm.IsEmpty() {
+
+	if cvm.IsEmpty() || *cvm.Status.IsExpired {
+		// 过期后直接删除cluster
+		cluster := &k3kv1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      cvm.Name,
+				Namespace: cvm.Namespace,
+			},
+		}
+		if err := r.Delete(ctx, cluster); err != nil && !apierrors.IsNotFound(err) {
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
 		return ctrl.Result{}, nil
 	}
+
 	cluster, err := r.createOrUpdateCluster(ctx, cvm)
 	if err != nil {
 		logger.Error(err, "Failed to create/update k3k Cluster")

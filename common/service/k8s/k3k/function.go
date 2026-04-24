@@ -17,8 +17,10 @@ import (
 	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -318,4 +320,22 @@ func WhJob(sdk *k8s.Sdk, k3kuser *types.K3kUser) error {
 
 	// TODO: 尝试添加资源
 	return err
+}
+
+func GetCvm(ctx context.Context, sdk *k8s.Sdk, namespace, cvmName string) (*cvmv1alpha1.Cvm, error) {
+	if cvmName == "" {
+		return nil, fmt.Errorf("cvm不能为空")
+	}
+	sigClient, err := sdk.ToSigClient()
+	if err != nil {
+		return nil, err
+	}
+	cvm := &cvmv1alpha1.Cvm{}
+	if err := sigClient.Get(ctx, client.ObjectKey{Name: cvmName, Namespace: namespace}, cvm); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, err
+		}
+		return nil, err
+	}
+	return cvm, nil
 }

@@ -1,7 +1,6 @@
 package types
 
 import (
-	"errors"
 	"time"
 
 	"github.com/w7panel/w7panel/common/service/console"
@@ -228,47 +227,53 @@ func (u *K3kCvmOrder) NeedRenew() bool {
 }
 
 // 有错就是false
-func (u *K3kCvmOrder) CanCreateBaseOrderError() error {
+func (u *K3kCvmOrder) CanBaseBuy() bool {
 
-	if u.NeedBuyResource() {
-		if u.Spec.BaseOrder == nil {
-			return nil
-		}
-		if u.Spec.BaseOrder.Status == W7_ORDER_PAID {
-			return errors.New("已经购买基础资源，无法重复购买")
-		}
-		return nil
-	}
-	return errors.New("当前用户未配置费用套餐，无法购买")
+	u.ComputeStatus()
+	return *u.Status.CanBaseBuy
+	// if u.NeedBuyResource() {
+	// 	if u.Spec.BaseOrder == nil {
+	// 		return nil
+	// 	}
+	// 	if u.Spec.BaseOrder.Status == W7_ORDER_PAID {
+	// 		return errors.New("已经购买基础资源，无法重复购买")
+	// 	}
+	// 	return nil
+	// }
+	// return errors.New("当前用户未配置费用套餐，无法购买")
 }
 
-func (u *K3kCvmOrder) CanRenewError() error {
-	if u.NeedBuyResource() {
-		_, err := u.GetExpireTime() // 如果没有过期时间，则不需要续费
-		if err != nil {
-			return errors.New("未购买基础资源，无需购买")
-		}
-		return nil
-	}
-	return errors.New("当前用户未配置费用套餐，无法购买")
+func (u *K3kCvmOrder) CanRenew() bool {
+	u.ComputeStatus()
+	return *u.Status.CanRenewBuy
+	// if u.NeedBuyResource() {
+	// 	_, err := u.GetExpireTime() // 如果没有过期时间，则不需要续费
+	// 	if err != nil {
+	// 		return errors.New("未购买基础资源，无需购买")
+	// 	}
+	// 	return nil
+	// }
+	// return errors.New("当前用户未配置费用套餐，无法购买")
 }
 
-func (u *K3kCvmOrder) CanExpandError() error {
-	if !u.IsOverSellingSuccess() {
-		return errors.New("超额检查失败，无法扩容")
-	}
-	if u.NeedBuyResource() {
-		extime, err := u.GetExpireTime() // 如果没有过期时间，则不需要续费
-		if err != nil {
-			return errors.New("未购买基础资源，无法扩容")
-		}
-		ok := extime.After(time.Now())
-		if ok {
-			return nil
-		}
-		return errors.New("基础资源已过期，无法扩容")
-	}
-	return errors.New("当前用户未配置费用套餐，无法购买")
+func (u *K3kCvmOrder) CanExpand() bool {
+	u.ComputeStatus()
+	return *u.Status.CanExpandBuy
+	// if !u.IsOverSellingSuccess() {
+	// 	return errors.New("超额检查失败，无法扩容")
+	// }
+	// if u.NeedBuyResource() {
+	// 	extime, err := u.GetExpireTime() // 如果没有过期时间，则不需要续费
+	// 	if err != nil {
+	// 		return errors.New("未购买基础资源，无法扩容")
+	// 	}
+	// 	ok := extime.After(time.Now())
+	// 	if ok {
+	// 		return nil
+	// 	}
+	// 	return errors.New("基础资源已过期，无法扩容")
+	// }
+	// return errors.New("当前用户未配置费用套餐，无法购买")
 }
 
 func (u *K3kCvmOrder) NeedBuyResource() bool {

@@ -109,27 +109,28 @@ func (self K3k) DomainWhiteList(http *gin.Context) {
 
 	云端注册需要 转化token
 */
-func (self K3k) LoginCurrent(http *gin.Context) {
+func (self K3k) LoginCvm(http *gin.Context) {
 
-	type ParamsValidate struct {
-		CvmName string `form:"cvmName" validate:"required"`
-	}
-	params := ParamsValidate{}
-	if !self.Validate(http, &params) {
-		return
-	}
 	token := http.MustGet("k8s_token").(string)
-	client, err := k8s.NewK8sClient().Channel(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
+	k8sToken := k8s.NewK8sToken(token)
+	name := http.Param("name")
+	namespace := http.Param("namespace")
+
+	if k8sToken.IsK3kCluster() {
+		namespace = k8sToken.GetNamespace()
 	}
 	user, err := k3k.TokenToK3kUser(token)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	client := k8s.NewK8sClient().Sdk
 
+	cvm, err := k3k.GetCvm(http, client, namespace, name)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
 	seconds := facade.Config.GetInt64("app.login_seconds")
 	sa, err := client.Login2(user.Name, "", false)
 	if err != nil {
@@ -137,7 +138,7 @@ func (self K3k) LoginCurrent(http *gin.Context) {
 		self.JsonResponseWithError(http, err2, 500)
 		return
 	}
-	token, isK3kUser, err := k3k.LoginByServiceAccount(client, sa, seconds, true, params.CvmName)
+	token, isK3kUser, err := k3k.LoginByServiceAccount(client, sa, seconds, true, cvm.Name)
 	if err != nil {
 		err2 := fmt.Errorf("用户名密码不正确")
 		self.JsonResponseWithError(http, err2, 500)
