@@ -89,8 +89,10 @@ func (s *singleton) loadFromCache(token string) (*Sdk, error) {
 	}
 	return sdk, nil
 }
-
 func (s *singleton) GetK3kClusterSdkByConfig(k3kconfig *K3kConfig) (*Sdk, error) {
+	return s.GetK3kClusterSdkByConfig0(k3kconfig, true)
+}
+func (s *singleton) GetK3kClusterSdkByConfig0(k3kconfig *K3kConfig, createToken bool) (*Sdk, error) {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -129,6 +131,10 @@ func (s *singleton) GetK3kClusterSdkByConfig(k3kconfig *K3kConfig) (*Sdk, error)
 	if err != nil {
 		return nil, err
 	}
+	//k3kcvmcontroller 需要先创建k3kconfig.Name 的serviceaccount 才能CreateTokenRequest
+	if !createToken {
+		return sdk, nil
+	}
 
 	// token, err := sdk.CreateTokenRequest(k3kconfig.Name, 7200, []string{})
 	//k3k cluster 使用addons挂载 不能使用动态k3kconfig.Name 写死default
@@ -157,7 +163,7 @@ func (s *singleton) GetK3kClusterSdk(k8stoken *K8sToken) (*Sdk, error) {
 		return nil, err
 	}
 
-	result, err := s.GetK3kClusterSdkByConfig(k3kconfig)
+	result, err := s.GetK3kClusterSdkByConfig0(k3kconfig, true)
 	return result, err
 }
 

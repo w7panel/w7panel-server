@@ -351,7 +351,7 @@ func (r *K3kCvmController) createAgent(ctx context.Context, cvm *cvmv1alpha1.Cvm
 
 	root := k8s.NewK8sClient()
 	config := CvmToK3kConfig(cvm)
-	clientSdk, err := root.GetK3kClusterSdkByConfig(config)
+	clientSdk, err := root.GetK3kClusterSdkByConfig0(config, false)
 	if err != nil {
 		slog.Warn("failed to get sdk", "err", err)
 		return err
