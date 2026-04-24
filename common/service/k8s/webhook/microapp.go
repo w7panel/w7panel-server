@@ -16,7 +16,7 @@ import (
 
 // not use in webhook
 func (m *ResourceMutator) handleMicroApp(ctx context.Context, req admission.Request) admission.Response {
-	slog.Info("处理 MicroApp admission 请求")
+	// slog.Info("处理 MicroApp admission 请求")
 
 	modified := false
 	microApp := &microapp.MicroApp{}

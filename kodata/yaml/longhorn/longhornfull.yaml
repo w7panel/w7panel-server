@@ -75,23 +75,23 @@ spec:
   updateStrategy:
     type: RollingUpdate
 ---
-apiVersion: v1
-kind: Node
-metadata:
-  name: server1
-  labels:
-    node-role.kubernetes.io/storage: 'true'
-    node.longhorn.io/create-default-disk: 'config'
-  annotations:
-    node.longhorn.io/default-disks-config: |
-      [
-        {
-          "path": "/var/lib/longhorn",
-          "allowScheduling": true,
-          "name": "disk-default",
-          "tags": ["disk-default"]
-        }
-      ]
+# apiVersion: v1
+# kind: Node
+# metadata:
+#   name: server1
+#   labels:
+#     node-role.kubernetes.io/storage: 'true'
+#     node.longhorn.io/create-default-disk: 'config'
+#   annotations:
+#     node.longhorn.io/default-disks-config: |
+#       [
+#         {
+#           "path": "/var/lib/longhorn",
+#           "allowScheduling": true,
+#           "name": "disk-default",
+#           "tags": ["disk-default"]
+#         }
+#       ]
 ---
 apiVersion: helm.cattle.io/v1
 kind: HelmChart

@@ -11,7 +11,7 @@ import (
 )
 
 func (m *ResourceMutator) handleVirtualClusterPolicy(ctx context.Context, req admission.Request) admission.Response {
-	slog.Info("处理 handleVirtualClusterPolicy admission xxxx 请求")
+	// slog.Info("处理 handleVirtualClusterPolicy admission xxxx 请求")
 
 	// if true {
 	// 	return admission.Allowed("VirtualClusterPolicy")

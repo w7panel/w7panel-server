@@ -236,6 +236,26 @@ func (u *k3kUser) IsWeihu() bool {
 	return u.Labels[W7_WH_MODE] == "true"
 }
 
+func (u *k3kUser) HasWeihuJob() bool {
+	return u.Labels[W7_WH_JOB] != ""
+}
+
+func (u *k3kUser) SetWeihuJobName(name string) {
+	u.Labels[W7_WH_JOB] = name
+}
+func (u *k3kUser) GetWeihuJobName() string {
+	return u.Labels[W7_WH_JOB]
+}
+func (u *k3kUser) SetWHJobStatus(status string) {
+	u.Labels[W7_WH_JOB_STATUS] = status
+}
+func (u *k3kUser) GetWHJobStatus() string {
+	return u.Labels[W7_WH_JOB_STATUS]
+}
+func (u *k3kUser) GenerateWeihuJobName() string {
+	return "k3k-" + u.Name + "-" + strings.ToLower(helper.RandomString(10))
+}
+
 func (u *k3kUser) SetWeihu(ok bool) {
 	val := "false"
 	if ok {
@@ -378,9 +398,13 @@ func (u *k3kUser) ToArray() map[string]string {
 		K3K_EXPIRE_TIME:          expiretimeStr,
 		K3K_CLUSTER_STATUS:       u.Labels[K3K_CLUSTER_STATUS],
 		// "w7.cc/diff-day":          strconv.FormatInt(int64(u.GetDiffDays()), //废弃
-		"w7.cc/diff-month": u.GetDiffMonths().String(),
-		W7_ROLE:            u.GetRole(),
-		W7_WH_MODE:         u.Labels[W7_WH_MODE],
+		"w7.cc/diff-month":            u.GetDiffMonths().String(),
+		W7_ROLE:                       u.GetRole(),
+		W7_WH_MODE:                    u.Labels[W7_WH_MODE],
+		W7_WH_JOB:                     u.Labels[W7_WH_JOB],
+		W7_WH_JOB_STATUS:              u.GetWHJobStatus(),
+		"w7.cc/server-pod-name":       u.GetServer0Name(),
+		"w7.cc/server-container-name": u.GetServer0ContainerName(),
 	}
 	if !u.IsClusterUser() {
 		// result[W7_FILE_EDITTOR] = "true"
@@ -503,6 +527,14 @@ func (u *k3kUser) IsShared() bool {
 
 func (u *k3kUser) GetClusterServer0PvcName() string {
 	return "varlibrancherk3s-" + u.GetK3kNamespace() + "-server-0"
+}
+
+func (u *k3kUser) GetServer0Name() string {
+	return u.GetK3kNamespace() + "-server-0"
+}
+
+func (u *k3kUser) GetServer0ContainerName() string {
+	return u.GetK3kNamespace() + "-server"
 }
 
 func (u *k3kUser) GetBandWidth() resource.Quantity {
