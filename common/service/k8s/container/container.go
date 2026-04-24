@@ -44,11 +44,7 @@ func ExportContainerRootfs(containedClient *containerd.Client, containerID strin
 	if err != nil {
 		return fmt.Errorf("failed to load container: %w", err)
 	}
-	task, err := container.Task(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("load container task failed (container may not be running): %w", err)
-	}
-	spec, err := task.Spec(ctx)
+	spec, err := container.Spec(ctx)
 	if err != nil {
 		return fmt.Errorf("load container task spec failed: %w", err)
 	}
