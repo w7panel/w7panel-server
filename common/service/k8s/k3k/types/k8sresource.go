@@ -405,12 +405,14 @@ func ToK3kPod(cvm *cvmv1alpha1.Cvm) *corev1.Pod {
 					// },
 					Ports: []corev1.ContainerPort{
 						{
+							Name:          "http",
 							ContainerPort: 8000,
 							Protocol:      corev1.ProtocolTCP,
 						},
 						{
 							ContainerPort: 9443,
 							Protocol:      corev1.ProtocolTCP,
+							Name:          "webhook",
 						},
 					},
 					// Command:         []string{"sh", "-c", shell},
