@@ -140,9 +140,11 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 		logger.Error(err, "Failed to sync cluster status to cvm")
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
-	if err := r.createAgent(ctx, cvm); err != nil {
-		logger.Error(err, "Failed to create agent")
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	if string(cvm.Status.ClusterPhase) == string(k3kv1.ClusterReady) {
+		if err := r.createAgent(ctx, cvm); err != nil {
+			logger.Error(err, "Failed to create agent1x")
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
 	}
 
 	return ctrl.Result{}, nil
