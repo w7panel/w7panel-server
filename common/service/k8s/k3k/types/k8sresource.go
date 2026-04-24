@@ -625,6 +625,13 @@ func ToClusterRoleBinding(cvm *cvmv1alpha1.Cvm) *rbacv1.ClusterRoleBinding {
 			Kind: "ClusterRole",
 			Name: "cluster-admin",
 		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      cvm.GetK3kName(),
+				Namespace: "default",
+			},
+		},
 	}
 }
 
