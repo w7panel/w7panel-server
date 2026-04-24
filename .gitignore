@@ -46,3 +46,4 @@ k8s-offline-*.tgz
 /publish.sh
 publish.sh
 pub.sh
+/pub.sh
