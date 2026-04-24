@@ -214,6 +214,9 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 		logger.Error(err, "Failed to handle storage")
 		// return ctrl.Result{}, err
 	}
+	if k3kUser.SkipDaemonset() {
+		return ctrl.Result{}, nil
+	}
 
 	err = r.createAgent(ctx, k3kUser)
 	if err != nil {
