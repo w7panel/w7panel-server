@@ -64,9 +64,9 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			// k3kGroup.POST("/storage/resize", middleware.Auth{}.Process, controller2.K3k{}.ResizeSysStorage) // 扩容系统存储
 
-			k3kGroup.GET("/cvm", middleware.Auth{}.Process, controller2.Cvm{}.List)                                       // cvm列表
-			k3kGroup.GET("/cvm/v1/:namespace/info/:name", middleware.Auth{}.Process, controller2.Cvm{}.Info)              // cvm详情
-			k3kGroup.GET("/cvm/:namespace/action/:name/login", middleware.Auth{}.Process, controller2.K3k{}.LoginCvm) // cvm 登录
+			k3kGroup.GET("/cvm", middleware.Auth{}.Process, controller2.Cvm{}.List)                                    // cvm列表
+			k3kGroup.GET("/cvm/v1/:namespace/info/:name", middleware.Auth{}.Process, controller2.Cvm{}.Info)           // cvm详情
+			k3kGroup.POST("/cvm/:namespace/action/:name/login", middleware.Auth{}.Process, controller2.K3k{}.LoginCvm) // cvm 登录
 
 		}
 
