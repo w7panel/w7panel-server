@@ -7,6 +7,9 @@ build-charts:
 build-metrics:
 	helm package ./kodata/charts/k8s-offline-metrics
 
+build-longhorn:
+	helm package ./kodata/charts/w7panel-longhorn
+
 build-image:
 # 	export KO_DOCKER_REPO=docker.cnb.cool/i0358/zpk  
 # 	export KO_DEFAULTBASEIMAGE=ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui 
