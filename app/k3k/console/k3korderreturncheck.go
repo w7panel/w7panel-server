@@ -25,7 +25,7 @@ func (c K3kOrderReturnCheck) Configure(cmd *cobra.Command) {
 }
 
 func (c K3kOrderReturnCheck) GetDescription() string {
-	return "退款记录除了里"
+	return "退款记录"
 }
 
 func (c K3kOrderReturnCheck) Handle(cmd *cobra.Command, args []string) {
