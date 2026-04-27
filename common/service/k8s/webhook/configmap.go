@@ -2,7 +2,6 @@ package webhook
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -16,7 +15,7 @@ import (
 
 // 处理 Ingress 资源
 func (m *ResourceMutator) handleConfigmap(ctx context.Context, req admission.Request) admission.Response {
-	slog.Info("处理 Ingress admission 请求")
+	// slog.Info("处理 Ingress admission 请求")
 	// 解码请求中的 Ingress 资源
 
 	// if req.Operation == "DELETE" {
