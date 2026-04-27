@@ -3,6 +3,7 @@ package v1alpha1
 import (
 	"github.com/samber/lo"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // +genclient
@@ -80,10 +81,16 @@ type Menu struct {
 	Displayorder int    `json:"displayorder,omitempty"`
 	Do           string `json:"do"`
 	Icon         string `json:"icon,omitempty"`
-	IsDefault    int    `json:"is_default,omitempty"`
-	Location     string `json:"location,omitempty"`
-	Title        string `json:"title"`
-	Parent       string `json:"parent,omitempty"`
+	// +k8s:optional
+	// +optional
+	// +nullable
+	// +listType=atomic
+	// +kubebuilder:pruning:PreserveUnknownFields
+	IconSvg   []runtime.RawExtension `json:"icon_svg,omitempty"`
+	IsDefault int                    `json:"is_default,omitempty"`
+	Location  string                 `json:"location,omitempty"`
+	Title     string                 `json:"title"`
+	Parent    string                 `json:"parent,omitempty"`
 }
 
 type Bindings struct {

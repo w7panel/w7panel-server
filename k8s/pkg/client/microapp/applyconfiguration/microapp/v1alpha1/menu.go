@@ -17,16 +17,21 @@ limitations under the License.
 
 package v1alpha1
 
+import (
+	runtime "k8s.io/apimachinery/pkg/runtime"
+)
+
 // MenuApplyConfiguration represents a declarative configuration of the Menu type for use
 // with apply.
 type MenuApplyConfiguration struct {
-	Displayorder *int    `json:"displayorder,omitempty"`
-	Do           *string `json:"do,omitempty"`
-	Icon         *string `json:"icon,omitempty"`
-	IsDefault    *int    `json:"is_default,omitempty"`
-	Location     *string `json:"location,omitempty"`
-	Title        *string `json:"title,omitempty"`
-	Parent       *string `json:"parent,omitempty"`
+	Displayorder *int                   `json:"displayorder,omitempty"`
+	Do           *string                `json:"do,omitempty"`
+	Icon         *string                `json:"icon,omitempty"`
+	IconSvg      []runtime.RawExtension `json:"icon_svg,omitempty"`
+	IsDefault    *int                   `json:"is_default,omitempty"`
+	Location     *string                `json:"location,omitempty"`
+	Title        *string                `json:"title,omitempty"`
+	Parent       *string                `json:"parent,omitempty"`
 }
 
 // MenuApplyConfiguration constructs a declarative configuration of the Menu type for use with
@@ -56,6 +61,16 @@ func (b *MenuApplyConfiguration) WithDo(value string) *MenuApplyConfiguration {
 // If called multiple times, the Icon field is set to the value of the last call.
 func (b *MenuApplyConfiguration) WithIcon(value string) *MenuApplyConfiguration {
 	b.Icon = &value
+	return b
+}
+
+// WithIconSvg adds the given value to the IconSvg field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the IconSvg field.
+func (b *MenuApplyConfiguration) WithIconSvg(values ...runtime.RawExtension) *MenuApplyConfiguration {
+	for i := range values {
+		b.IconSvg = append(b.IconSvg, values[i])
+	}
 	return b
 }
 
