@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/smithy-go/ptr"
 	k3kv1 "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
+	"github.com/shopspring/decimal"
 	"github.com/w7panel/w7panel/common/helper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -135,6 +136,7 @@ type CvmStatus struct {
 	CanBaseBuy        *bool              `json:"canBaseBuy,omitempty"`   //是否可以购买基础套餐
 	CanExpandBuy      *bool              `json:"canExpandBuy,omitempty"` //是否可以扩容
 	CanRenewBuy       *bool              `json:"canRenewBuy,omitempty"`  //是否可以续费
+	DiffMonth         string             `json:"diffMonth,omitempty"`    // 到期时间剩余月数
 }
 
 func (u *Cvm) computeBuy() {
@@ -159,6 +161,8 @@ func (u *Cvm) ComputeStatus() {
 			if u.Spec.RecycleTime == "" {
 				u.Spec.RecycleTime = etime.Add(-time.Hour * 24 * 3).Format(time.RFC3339)
 			}
+			diffMonth := u.getDiffMonths(etime)
+			u.Status.DiffMonth = diffMonth.String()
 		}
 	}
 	if u.Spec.RecycleTime != "" {
@@ -169,6 +173,7 @@ func (u *Cvm) ComputeStatus() {
 			}
 		}
 	}
+
 	// 无资源 有资源 待回收 回收中 创建
 	if u.IsEmpty() {
 		u.Status.Phase = string(PhaseNew)
@@ -193,6 +198,15 @@ func (u *Cvm) ComputeStatus() {
 	u.Status.EffectiveResource.Add(u.Spec.UserResource)
 	u.Status.EffectiveResource.Add(u.Spec.PurchasedResource)
 	u.computeBuy()
+}
+
+func (u *Cvm) getDiffMonths(expireTime time.Time) decimal.Decimal {
+	if expireTime.Before(time.Now()) {
+		return decimal.Zero
+	}
+	hours := expireTime.Sub(time.Now()).Hours()
+	diffMonths := decimal.NewFromFloat(hours).Div(decimal.NewFromFloat(24 * 30))
+	return (diffMonths)
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
