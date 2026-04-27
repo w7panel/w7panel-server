@@ -50,7 +50,6 @@ spec:
                   downloadUrl:
                     type: string
                 required:
-                - dockerContext
                 - dockerfilePath
                 - downloadUrl
                 type: object
