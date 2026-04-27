@@ -4,6 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.1
+    api-approved.kubernetes.io: "https://www.w7.cc"
   name: mcpservers.mcpserver.w7.cc
 spec:
   group: mcpserver.w7.cc
