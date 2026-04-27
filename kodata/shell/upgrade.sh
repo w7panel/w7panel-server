@@ -86,3 +86,12 @@ kubectl apply -f $KO_DATA_PATH/yaml/longhorn/default-data-locality.yaml || echo 
 echo "higress config"
 # higress 可能未启动成功 导致crd未创建 job设置重试3次
 kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
+
+
+kubectl get jobs -n default -o json \
+  | jq -r '.items[]
+    | select(
+        any(.status.conditions[]?; (.type == "Complete" or .type == "Failed") and .status == "True")
+      )
+    | .metadata.name' \
+  | xargs -r kubectl delete job -n default
