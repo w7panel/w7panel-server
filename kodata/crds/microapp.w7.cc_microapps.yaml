@@ -57,6 +57,14 @@ spec:
                             type: string
                           icon:
                             type: string
+                          icon_svg:
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            nullable: true
+                            type: array
+                            x-kubernetes-list-type: atomic
+                            x-kubernetes-preserve-unknown-fields: true
                           is_default:
                             type: integer
                           location:

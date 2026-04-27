@@ -38,6 +38,7 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(consoleShell.MetricsInstall))
 	console.RegisterCommand(new(consoleShell.UninstallStorePanel)) //删除商店安装的面板
 	console.RegisterCommand(new(consoleShell.DomainParseConfig))   //域名解析
+	console.RegisterCommand(new(consoleShell.Build))               //临时测试
 	console.RegisterCommand(new(consoleShell.BeianCheck))          //备案检查
 	console.RegisterCommand(new(consoleShell.TestUploadChunk))     // 测试分片上传功能
 	p.RegisterValidateRule()
@@ -247,7 +248,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		engine.GET("/panel-api/v1/microapp/top", middleware.Auth{}.Process, controller2.MicroApp{}.List)                     //获取microapp列表
 		engine.Any("/panel-api/v1/microapp/:name/proxy/*path", middleware.Auth{}.Process, controller2.Proxy{}.ProxyMicroApp) //microapp proxy
 
-		containerGroup := localApiGroup.Group("/containers", middleware.Auth{}.Process)
+		containerGroup := localApiGroup.Group("/containers", middleware.Auth{}.Process, middleware.Proxy{}.Process)
 		{
 			containerGroup.POST("/image/export-push", controller2.Container{}.ExportAndPushImage)
 		}
