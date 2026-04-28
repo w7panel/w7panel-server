@@ -20,6 +20,7 @@ import (
 )
 
 func LoginByServiceAccount(client *k8s.Sdk, sa *v1.ServiceAccount, seconds int64, updateK3kUser bool) (string, bool, error) {
+	k8s.NewK8sClient().Clear(sa.Name)
 	k3kUser := types.NewK3kUser(sa)
 	isK3kUser := false
 	if k3kUser.IsClusterUser() {
