@@ -2,7 +2,7 @@ apiVersion: cvm.w7.cc/v1alpha1
 kind: Cvm
 metadata:
     name: test
-    namespace: cvm-test
+    namespace: console-164315
 spec:
     baseOrder:
         hour: 720
