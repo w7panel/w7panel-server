@@ -154,19 +154,19 @@ func (u *Cvm) ComputeStatus() {
 	u.Status.IsExpired = &isExpired
 	u.Status.IsRecycling = &isRecycling
 	if u.Spec.ExpireTime != "" {
-		etime, err := time.Parse(time.RFC3339, u.Spec.ExpireTime)
+		etime, err := time.Parse(time.DateTime, u.Spec.ExpireTime)
 		if err == nil {
 			*u.Status.IsExpired = etime.Before(time.Now())
 			u.Labels[CvmExpired] = u.Name
 			if u.Spec.RecycleTime == "" {
-				u.Spec.RecycleTime = etime.Add(-time.Hour * 24 * 3).Format(time.RFC3339)
+				u.Spec.RecycleTime = etime.Add(-time.Hour * 24 * 3).Format(time.DateTime)
 			}
 			diffMonth := u.getDiffMonths(etime)
 			u.Status.DiffMonth = diffMonth.String()
 		}
 	}
 	if u.Spec.RecycleTime != "" {
-		rtime, err := time.Parse(time.RFC3339, u.Spec.RecycleTime)
+		rtime, err := time.Parse(time.DateTime, u.Spec.RecycleTime)
 		if err == nil {
 			if rtime.Before(time.Now()) {
 				*u.Status.IsRecycling = true
