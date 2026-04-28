@@ -231,3 +231,15 @@ func (self Longhorn) CancelExpansion(http *gin.Context) {
 	}
 	self.JsonResponse(http, nil, nil, 200)
 }
+
+func (self Longhorn) TrimFilesystem(http *gin.Context) {
+	//{forceDetach: true, attachmentID: "longhorn-ui", hostId: ""}
+
+	volName := http.Param("volumeName")
+	err := longhorn.LonghornVolumeTrimFilesystem(volName)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponse(http, nil, nil, 200)
+}
