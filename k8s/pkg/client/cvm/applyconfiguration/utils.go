@@ -33,6 +33,10 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 	// Group=cvm.w7.cc, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithKind("Cvm"):
 		return &cvmv1alpha1.CvmApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CvmConsoleOrder"):
+		return &cvmv1alpha1.CvmConsoleOrderApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CvmConsoleOrderSpec"):
+		return &cvmv1alpha1.CvmConsoleOrderSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CvmOrder"):
 		return &cvmv1alpha1.CvmOrderApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CvmResource"):

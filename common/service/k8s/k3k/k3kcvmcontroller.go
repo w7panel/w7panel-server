@@ -20,9 +20,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 func CvmToK3kConfig(cvm *cvmv1alpha1.Cvm) *k8s.K3kConfig {
@@ -53,9 +56,99 @@ func setupCvmController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
 		Sdk:    sdk,
 	}
 
+	cvmPredicate := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Object != nil {
+				slog.Info("K3kCvm enqueue", "source", "cvm", "event", "create", "namespace", e.Object.GetNamespace(), "name", e.Object.GetName())
+			}
+			return true
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Object != nil {
+				slog.Info("K3kCvm enqueue", "source", "cvm", "event", "delete", "namespace", e.Object.GetNamespace(), "name", e.Object.GetName())
+			}
+			return true
+		},
+		GenericFunc: func(e event.GenericEvent) bool {
+			if e.Object != nil {
+				slog.Info("K3kCvm enqueue", "source", "cvm", "event", "generic", "namespace", e.Object.GetNamespace(), "name", e.Object.GetName())
+			}
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldObj, okOld := e.ObjectOld.(*cvmv1alpha1.Cvm)
+			newObj, okNew := e.ObjectNew.(*cvmv1alpha1.Cvm)
+			if !okOld || !okNew {
+				return true
+			}
+			if oldObj.GetGeneration() != newObj.GetGeneration() {
+				slog.Info("K3kCvm enqueue", "source", "cvm", "event", "update", "reason", "generation", "namespace", newObj.Namespace, "name", newObj.Name)
+				return true
+			}
+			if !apiequality.Semantic.DeepEqual(oldObj.GetDeletionTimestamp(), newObj.GetDeletionTimestamp()) {
+				slog.Info("K3kCvm enqueue", "source", "cvm", "event", "update", "reason", "deletionTimestamp", "namespace", newObj.Namespace, "name", newObj.Name)
+				return true
+			}
+			if !apiequality.Semantic.DeepEqual(oldObj.GetFinalizers(), newObj.GetFinalizers()) {
+				slog.Info("K3kCvm enqueue", "source", "cvm", "event", "update", "reason", "finalizers", "namespace", newObj.Namespace, "name", newObj.Name)
+				return true
+			}
+			return false
+		},
+	}
+
+	clusterPredicate := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Object != nil {
+				slog.Info("K3kCvm enqueue", "source", "cluster", "event", "create", "namespace", e.Object.GetNamespace(), "name", e.Object.GetName())
+			}
+			return true
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Object != nil {
+				slog.Info("K3kCvm enqueue", "source", "cluster", "event", "delete", "namespace", e.Object.GetNamespace(), "name", e.Object.GetName())
+			}
+			return true
+		},
+		GenericFunc: func(e event.GenericEvent) bool {
+			if e.Object != nil {
+				slog.Info("K3kCvm enqueue", "source", "cluster", "event", "generic", "namespace", e.Object.GetNamespace(), "name", e.Object.GetName())
+			}
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldObj, okOld := e.ObjectOld.(*k3kv1.Cluster)
+			newObj, okNew := e.ObjectNew.(*k3kv1.Cluster)
+			if !okOld || !okNew {
+				return true
+			}
+			if oldObj.GetGeneration() != newObj.GetGeneration() {
+				slog.Info("K3kCvm enqueue", "source", "cluster", "event", "update", "reason", "generation", "namespace", newObj.Namespace, "name", newObj.Name)
+				return true
+			}
+			if !apiequality.Semantic.DeepEqual(oldObj.GetDeletionTimestamp(), newObj.GetDeletionTimestamp()) {
+				slog.Info("K3kCvm enqueue", "source", "cluster", "event", "update", "reason", "deletionTimestamp", "namespace", newObj.Namespace, "name", newObj.Name)
+				return true
+			}
+			if !apiequality.Semantic.DeepEqual(oldObj.GetFinalizers(), newObj.GetFinalizers()) {
+				slog.Info("K3kCvm enqueue", "source", "cluster", "event", "update", "reason", "finalizers", "namespace", newObj.Namespace, "name", newObj.Name)
+				return true
+			}
+			if oldObj.Status.Phase != newObj.Status.Phase {
+				slog.Info("K3kCvm enqueue", "source", "cluster", "event", "update", "reason", "phase", "namespace", newObj.Namespace, "name", newObj.Name, "old", oldObj.Status.Phase, "new", newObj.Status.Phase)
+				return true
+			}
+			if !apiequality.Semantic.DeepEqual(oldObj.Status.Conditions, newObj.Status.Conditions) {
+				slog.Info("K3kCvm enqueue", "source", "cluster", "event", "update", "reason", "conditions", "namespace", newObj.Namespace, "name", newObj.Name)
+				return true
+			}
+			return false
+		},
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cvmv1alpha1.Cvm{}).
-		Owns(&k3kv1.Cluster{}).
+		For(&cvmv1alpha1.Cvm{}, ctrlbuilder.WithPredicates(cvmPredicate)).
+		Owns(&k3kv1.Cluster{}, ctrlbuilder.WithPredicates(clusterPredicate)).
 		Complete(r)
 }
 
@@ -157,24 +250,70 @@ func (r *K3kCvmController) createOrUpdateCluster(ctx context.Context, cvm *cvmv1
 			Namespace: cvm.Namespace,
 		},
 	}
-	_, err := controllerutil.CreateOrPatch(ctx, r.Client, cluster, func() error {
-		cluster.Labels = map[string]string{
+	result, err := controllerutil.CreateOrPatch(ctx, r.Client, cluster, func() error {
+		desiredLabels := map[string]string{
 			"cvm-uid": string(cvm.UID),
 		}
-		cluster.Spec = r.toClusterSpec(cvm)
+		if !apiequality.Semantic.DeepEqual(cluster.Labels, desiredLabels) {
+			// slog.Info("Cluster labels changed",
+			// 	"name", cluster.Name,
+			// 	"namespace", cluster.Namespace,
+			// 	"current", cluster.Labels,
+			// 	"desired", desiredLabels,
+			// )
+			cluster.Labels = desiredLabels
+		}
+		desiredSpec := r.toClusterSpec(cvm)
+		if !apiequality.Semantic.DeepEqual(cluster.Spec, desiredSpec) {
+			// slog.Info("Cluster spec changed",
+			// 	"name", cluster.Name,
+			// 	"namespace", cluster.Namespace,
+			// 	"current", cluster.Spec,
+			// 	"desired", desiredSpec,
+			// )
+			cluster.Spec = desiredSpec
+		}
 		return controllerutil.SetControllerReference(cvm, cluster, r.Scheme)
 	})
+	slog.Info("Cluster", "result", result, "cluster", cluster)
 	if err != nil {
 		return nil, err
 	}
+
 	return cluster, nil
 }
 
 func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec {
 	servers := int32(1)
+	agents := int32(0)
 	effective := desiredEffectiveResource(cvm)
 	spec := k3kv1.ClusterSpec{
 		Servers: &servers,
+		Agents:  &agents,
+		Persistence: k3kv1.PersistenceConfig{
+			Type:               k3kv1.DynamicPersistenceMode,
+			StorageRequestSize: "1G",
+		},
+		Sync: &k3kv1.SyncConfig{
+			Services: k3kv1.ServiceSyncConfig{
+				Enabled: true,
+			},
+			ConfigMaps: k3kv1.ConfigMapSyncConfig{
+				Enabled: true,
+			},
+			Secrets: k3kv1.SecretSyncConfig{
+				Enabled: true,
+			},
+			Ingresses: k3kv1.IngressSyncConfig{
+				Enabled: false,
+			},
+			PersistentVolumeClaims: k3kv1.PersistentVolumeClaimSyncConfig{
+				Enabled: true,
+			},
+			PriorityClasses: k3kv1.PriorityClassSyncConfig{
+				Enabled: false,
+			},
+		},
 	}
 	spec.Mode = k3kv1.VirtualClusterMode
 	// serverArgs:
@@ -187,6 +326,7 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 		"--disable=traefik",
 		"--embedded-registry",
 		"--disable-network-policy",
+		"--etcd-arg=quota-backend-bytes=5368709120",
 	}
 	spec.ServerEnvs = []v1.EnvVar{
 		{

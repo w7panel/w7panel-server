@@ -33,6 +33,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&Cvm{},
 		&CvmList{},
+		&CvmConsoleOrder{},
+		&CvmConsoleOrderList{},
 	)
 
 	// scheme.AddKnownTypes(SchemeGroupVersion,

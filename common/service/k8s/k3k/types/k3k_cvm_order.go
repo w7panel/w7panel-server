@@ -94,37 +94,48 @@ func (u *K3kCvmOrder) GetExpandOrderSn() string {
 }
 
 func (u *K3kCvmOrder) SetBaseOrderPaid(info *console.OrderInfo) {
+	// if u.Spec.BaseOrder == nil {
+	// 	return
+	// }
+	// if u.Spec.BaseOrder.OrderSn == info.OrderSn && u.Spec.BaseOrder.Status != W7_ORDER_PAID {
+	// u.Labels[K3K_BUY_MODE] = "buy"
+
+	// u.Labels[W7_BASE_ORDER_STATUS] = W7_ORDER_PAID
+	if u.Spec.BaseOrder != nil {
+		if u.Spec.BaseOrder.OrderSn == info.OrderSn && u.Spec.BaseOrder.Status == W7_ORDER_PAID {
+			return
+		}
+	}
 	if u.Spec.BaseOrder == nil {
-		return
+		u.Spec.BaseOrder = &v1alpha1.CvmOrder{
+			OrderSn: info.OrderSn,
+			Status:  W7_ORDER_PAID,
+		}
 	}
-	if u.Spec.BaseOrder.OrderSn == info.OrderSn && u.Spec.BaseOrder.Status != W7_ORDER_PAID {
-		// u.Labels[K3K_BUY_MODE] = "buy"
-
-		// u.Labels[W7_BASE_ORDER_STATUS] = W7_ORDER_PAID
-		u.Spec.BaseOrder.Status = W7_ORDER_PAID
-		u.Spec.BaseOrder.Hour = int(info.GetHour())
-		u.changeExpireTime(int(info.GetHour()))
-		baseResource := BuyResource{
-			Cpu:       info.Cpu,
-			Memory:    info.Memory,
-			Storage:   info.Storage,
-			Bandwidth: info.Bandwidth,
-		}
-		u.Spec.BaseOrder.Resource = &v1alpha1.CvmResource{
-			CPU:       baseResource.Cpu,
-			Memory:    baseResource.Memory,
-			Storage:   baseResource.Storage,
-			Bandwidth: baseResource.Bandwidth,
-		}
-		if u.Spec.PendingPurchasedResource == nil {
-			u.Spec.PendingPurchasedResource = &v1alpha1.CvmResource{}
-		}
-		u.Spec.PendingPurchasedResource.Add(u.Spec.BaseOrder.Resource)
-		// u.Spec.PendingPurchasedResource = addCvmResource(u.Spec.PendingPurchasedResource, info.Cpu, info.Memory, info.Storage, info.Bandwidth)
-
-		u.setCapacityCheckPending()
-
+	u.Spec.BaseOrder.Status = W7_ORDER_PAID
+	u.Spec.BaseOrder.Hour = int(info.GetHour())
+	u.changeExpireTime(int(info.GetHour()))
+	baseResource := BuyResource{
+		Cpu:       info.Cpu,
+		Memory:    info.Memory,
+		Storage:   info.Storage,
+		Bandwidth: info.Bandwidth,
 	}
+	u.Spec.BaseOrder.Resource = &v1alpha1.CvmResource{
+		CPU:       baseResource.Cpu,
+		Memory:    baseResource.Memory,
+		Storage:   baseResource.Storage,
+		Bandwidth: baseResource.Bandwidth,
+	}
+	if u.Spec.PendingPurchasedResource == nil {
+		u.Spec.PendingPurchasedResource = &v1alpha1.CvmResource{}
+	}
+	u.Spec.PendingPurchasedResource.Add(u.Spec.BaseOrder.Resource)
+	// u.Spec.PendingPurchasedResource = addCvmResource(u.Spec.PendingPurchasedResource, info.Cpu, info.Memory, info.Storage, info.Bandwidth)
+
+	u.setCapacityCheckPending()
+
+	// }
 }
 
 func (u *K3kCvmOrder) SetRenewOrderPaid(info *console.OrderInfo) {

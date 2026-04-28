@@ -28,6 +28,7 @@ import (
 type CvmV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	CvmsGetter
+	CvmConsoleOrdersGetter
 }
 
 // CvmV1alpha1Client is used to interact with features provided by the cvm.w7.cc group.
@@ -37,6 +38,10 @@ type CvmV1alpha1Client struct {
 
 func (c *CvmV1alpha1Client) Cvms(namespace string) CvmInterface {
 	return newCvms(c, namespace)
+}
+
+func (c *CvmV1alpha1Client) CvmConsoleOrders(namespace string) CvmConsoleOrderInterface {
+	return newCvmConsoleOrders(c, namespace)
 }
 
 // NewForConfig creates a new CvmV1alpha1Client for the given config.

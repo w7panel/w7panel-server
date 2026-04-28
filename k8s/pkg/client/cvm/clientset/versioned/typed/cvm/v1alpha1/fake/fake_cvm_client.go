@@ -31,6 +31,10 @@ func (c *FakeCvmV1alpha1) Cvms(namespace string) v1alpha1.CvmInterface {
 	return newFakeCvms(c, namespace)
 }
 
+func (c *FakeCvmV1alpha1) CvmConsoleOrders(namespace string) v1alpha1.CvmConsoleOrderInterface {
+	return newFakeCvmConsoleOrders(c, namespace)
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeCvmV1alpha1) RESTClient() rest.Interface {

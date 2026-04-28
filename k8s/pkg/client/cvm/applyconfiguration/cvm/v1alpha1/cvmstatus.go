@@ -40,6 +40,8 @@ type CvmStatusApplyConfiguration struct {
 	// 是否可以扩容
 	CanRenewBuy *bool `json:"canRenewBuy,omitempty"`
 	// 是否可以续费
+	CanDelete *bool `json:"canDelete,omitempty"`
+	// 是否可以续费
 	DiffMonth *string `json:"diffMonth,omitempty"`
 }
 
@@ -123,6 +125,14 @@ func (b *CvmStatusApplyConfiguration) WithCanExpandBuy(value bool) *CvmStatusApp
 // If called multiple times, the CanRenewBuy field is set to the value of the last call.
 func (b *CvmStatusApplyConfiguration) WithCanRenewBuy(value bool) *CvmStatusApplyConfiguration {
 	b.CanRenewBuy = &value
+	return b
+}
+
+// WithCanDelete sets the CanDelete field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the CanDelete field is set to the value of the last call.
+func (b *CvmStatusApplyConfiguration) WithCanDelete(value bool) *CvmStatusApplyConfiguration {
+	b.CanDelete = &value
 	return b
 }
 

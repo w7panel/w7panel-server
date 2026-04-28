@@ -25,6 +25,8 @@ import (
 type Interface interface {
 	// Cvms returns a CvmInformer.
 	Cvms() CvmInformer
+	// CvmConsoleOrders returns a CvmConsoleOrderInformer.
+	CvmConsoleOrders() CvmConsoleOrderInformer
 }
 
 type version struct {
@@ -41,4 +43,9 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // Cvms returns a CvmInformer.
 func (v *version) Cvms() CvmInformer {
 	return &cvmInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// CvmConsoleOrders returns a CvmConsoleOrderInformer.
+func (v *version) CvmConsoleOrders() CvmConsoleOrderInformer {
+	return &cvmConsoleOrderInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

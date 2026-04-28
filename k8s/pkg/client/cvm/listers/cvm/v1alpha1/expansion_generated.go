@@ -24,3 +24,11 @@ type CvmListerExpansion interface{}
 // CvmNamespaceListerExpansion allows custom methods to be added to
 // CvmNamespaceLister.
 type CvmNamespaceListerExpansion interface{}
+
+// CvmConsoleOrderListerExpansion allows custom methods to be added to
+// CvmConsoleOrderLister.
+type CvmConsoleOrderListerExpansion interface{}
+
+// CvmConsoleOrderNamespaceListerExpansion allows custom methods to be added to
+// CvmConsoleOrderNamespaceLister.
+type CvmConsoleOrderNamespaceListerExpansion interface{}

@@ -54,6 +54,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=cvm.w7.cc, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("cvms"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Cvm().V1alpha1().Cvms().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("cvmconsoleorders"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Cvm().V1alpha1().CvmConsoleOrders().Informer()}, nil
 
 	}
 

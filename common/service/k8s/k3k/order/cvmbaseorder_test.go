@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -42,7 +43,7 @@ func TestCreateBaseResourceOrderCvm(t *testing.T) {
 		Storage:   5,
 		Bandwidth: 50,
 	}
-	pay, err := CreateBaseResourceCvmOrder(context.Background(), &types.BuyBaseResource{CvmName: "jshinqhsvd", CouponCode: "", BaseConfigName: "admin", UnitQuantity: types.UnitQuantity{Unit: "month", Quantity: 1}, BuyResource: bs}, k3kUser)
+	pay, err := CreateBaseResourceCvmOrder(context.Background(), &types.BuyBaseResource{CvmName: "test1", CouponCode: "", BaseConfigName: "admin", UnitQuantity: types.UnitQuantity{Unit: "month", Quantity: 1}, BuyResource: bs}, k3kUser)
 	if err != nil {
 		t.Error(err)
 		return
@@ -74,7 +75,7 @@ func TestMockNotifyCvm(t *testing.T) {
 		return
 	}
 	k3kUser := types.NewK3kUser(sa)
-	MockNotifyOrderCvm(k3kUser, "2026042309593032BEZN")
+	MockNotifyOrderCvm(k3kUser, strings.ToUpper("202604281828585vjki5"))
 
 	// t.Log(pay)
 }
