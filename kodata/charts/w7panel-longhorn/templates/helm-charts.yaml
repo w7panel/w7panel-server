@@ -1,8 +1,11 @@
+{{- if not (lookup "helm.cattle.io/v1" "HelmChart" "kube-system" "longhorn") }}
 apiVersion: helm.cattle.io/v1
 kind: HelmChart
 metadata:
   name: longhorn
   namespace: kube-system
+  labels:
+    {{- include "w7panel-longhorn.labels" . | nindent 4 }}
 spec:
   chart: https://cdn.w7.cc/w7panel/charts/longhorn-1.11.1.tgz
   version: v1.11.1
@@ -26,3 +29,4 @@ spec:
     global.tolerations[1].key: node.kubernetes.io/storage
     global.tolerations[1].operator: Exists
     global.tolerations[1].effect: NoSchedule
+{{- end }}

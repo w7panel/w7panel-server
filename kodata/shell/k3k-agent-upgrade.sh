@@ -114,3 +114,12 @@ kubectl apply -f $KO_DATA_PATH/crds --server-side
 # w7panel sitemanager-upgrade --version=1.0.26 --identifie=w7_nodejs --is-agent=true
 # w7panel sitemanager-upgrade --version=1.0.26 --identifie=w7_python --is-agent=true
 # w7panel sitemanager-upgrade --version=1.0.25 --identifie=w7_sitemanager --is-agent=true
+
+
+kubectl get jobs -n default -o json \
+  | jq -r '.items[]
+    | select(
+        any(.status.conditions[]?; (.type == "Complete" or .type == "Failed") and .status == "True")
+      )
+    | .metadata.name' \
+  | xargs -r kubectl delete job -n default
