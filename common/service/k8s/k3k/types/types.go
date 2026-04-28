@@ -80,6 +80,7 @@ const (
 	W7_ACCESS_TOKEN            = "w7.cc/access-token"        //访问令牌
 	W7_DOMAIN_WHITE_LIST       = "w7.cc/domain-white-list"   //域名白名单
 	W7_DEMO_USER               = "w7.cc/demo-user"           //演示用户
+	W7_CVM_USER                = "w7.cc/cvm-user"            //是否支持cvm购买
 	W7_SYS_STORAGE_PVC_NAME    = "w7.cc/sys-pvc-name"        //系统存储PVC名称
 	W7_RETURN_ORDER_INFO       = "w7.cc/return-order-info"   //需要退款处理的订单信息
 	W7_BASE_ORDER_SN           = "w7.cc/base-order-sn"       //基础订单号

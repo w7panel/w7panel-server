@@ -21,7 +21,10 @@ func CreateBaseResourceCvmOrder(ctx context.Context, baseResource *types.BuyBase
 	// 如果没传cvm name 会自动创建一个
 
 	if baseResource.CvmName == "" {
-		baseResource.CvmName = helper.RandomString(10)
+		baseResource.CvmName = user.GetName() + "-" + helper.RandomString(5)
+		if user.IsDemo() {
+			baseResource.CvmName = user.GetName()
+		}
 		_, err := orderApi.getCvm(user, baseResource.CvmName)
 		if err != nil {
 			if !errors.IsNotFound(err) {

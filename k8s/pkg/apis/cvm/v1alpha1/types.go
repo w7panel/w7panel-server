@@ -136,13 +136,15 @@ type CvmStatus struct {
 	CanBaseBuy        *bool              `json:"canBaseBuy,omitempty"`   //是否可以购买基础套餐
 	CanExpandBuy      *bool              `json:"canExpandBuy,omitempty"` //是否可以扩容
 	CanRenewBuy       *bool              `json:"canRenewBuy,omitempty"`  //是否可以续费
+	CanDelete         *bool              `json:"canDelete,omitempty"`    //是否可以续费
 	DiffMonth         string             `json:"diffMonth,omitempty"`    // 到期时间剩余月数
 }
 
 func (u *Cvm) computeBuy() {
-	u.Status.CanBaseBuy = ptr.Bool(u.IsEmpty() && u.Spec.BaseOrder != nil && u.Spec.BaseOrder.Status != "paid") //是否购买基础套餐
-	u.Status.CanExpandBuy = ptr.Bool(!u.IsEmpty() && u.Spec.ExpireTime != "")                                   //是否可以扩容
-	u.Status.CanRenewBuy = ptr.Bool(!u.IsEmpty() && u.Spec.ExpireTime != "")                                    //是否可以续费
+	u.Status.CanBaseBuy = ptr.Bool(u.IsEmpty())                               //是否购买基础套餐
+	u.Status.CanExpandBuy = ptr.Bool(!u.IsEmpty() && u.Spec.ExpireTime != "") //是否可以扩容
+	u.Status.CanRenewBuy = ptr.Bool(!u.IsEmpty() && u.Spec.ExpireTime != "")  //是否可以续费
+	u.Status.CanDelete = ptr.Bool(u.IsEmpty())                                //是否可以删除
 }
 func (u *Cvm) ComputeStatus() {
 	if u.Labels == nil {

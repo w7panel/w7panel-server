@@ -95,10 +95,6 @@ func (u *k3kUser) IsClusterUser() bool {
 	return false
 }
 
-func (u *k3kUser) IsCvmUser() bool {
-	return false
-}
-
 func (u *k3kUser) IsNormalUser() bool {
 	return u.Labels[K3K_USER_MODE] == "normal"
 }
@@ -275,6 +271,11 @@ func (u *k3kUser) SetWeihu(ok bool) {
 
 func (u *k3kUser) GetMenu() string {
 
+	if u.SupportCvm() && !u.IsCvmReqUser() {
+		whMenu := []string{"system-resource", "system-cloud"}
+		json, _ := json.Marshal(whMenu)
+		return string(json)
+	}
 	if u.IsWeihu() { //维护模式菜单
 		whMenu := []string{"cluster", "cluster-panel", "cluster-resource", "app", "app-apps", "app-apps-delete"}
 		json, _ := json.Marshal(whMenu)
@@ -825,4 +826,25 @@ func (u *k3kUser) ProcessReturnK3kOrder() error {
 	}
 	delete(u.Annotations, W7_RETURN_ORDER_INFO)
 	return nil
+}
+
+// 是否是演示用户
+func (u *k3kUser) IsDemo() bool {
+	if u.Labels != nil && u.Labels[W7_DEMO_USER] == "true" {
+		return true
+	}
+	return false
+}
+
+// 当前用户是否支持cvm 购买 续费 扩容
+func (u *k3kUser) SupportCvm() bool {
+	if u.Labels != nil && u.Labels[W7_CVM_USER] == "true" {
+		return true
+	}
+	return false
+}
+
+// 是否是cvm请求用户 子集群请求用户
+func (u *k3kUser) IsCvmReqUser() bool {
+	return false
 }

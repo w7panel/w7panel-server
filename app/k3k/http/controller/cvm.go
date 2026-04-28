@@ -3,6 +3,7 @@ package controller
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,6 +38,7 @@ func (self Cvm) Info(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	cvm.ComputeStatus()
 	self.JsonResponseWithoutError(http, cvm)
 
 }
@@ -50,7 +52,12 @@ func (self Cvm) List(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if k8sToken.IsK3kCluster() {
+	user, err := k3k.TokenToK3kUser(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	if !user.IsFounder() {
 		ns = k8sToken.GetNamespace()
 	}
 	list := &v1alpha1.CvmList{}
