@@ -71,7 +71,7 @@ info "创建Addons"
 
 info "开始创建集群..."
 # k3kcli cluster create --storage-class-name=${STORAGE_CLASS_NAME} --mode ${K3K_MODE} --namespace ${K3K_NAMESPACE} --kubeconfig-server=${KUBECONFIG_SERVER} --policy=${K3K_POLICY} --server-args="--system-default-registry=registry.cn-hangzhou.aliyuncs.com" --server-envs="K3S_SYSTEM_DEFAULT_REGISTRY=registry.cn-hangzhou.aliyuncs.com" --storage-request-size=$K3K_STORAGE_REQUEST_SIZE ${K3K_NAME}
-k3kcli cluster create --storage-class-name=${STORAGE_CLASS_NAME} --mode ${K3K_MODE} --namespace ${K3K_NAMESPACE} --kubeconfig-server=${KUBECONFIG_SERVER} --policy=${K3K_POLICY}  --storage-request-size=$K3K_STORAGE_REQUEST_SIZE --server-args='--kubelet-arg=$cgroup_root' --server-args="--disable=traefik" --server-args="--embedded-registry" --server-args="--disable-network-policy" --server-args="--etcd-arg=quota-backend-bytes=8589934592" ${K3K_NAME} 
+k3kcli cluster create --storage-class-name=${STORAGE_CLASS_NAME} --mode ${K3K_MODE} --namespace ${K3K_NAMESPACE} --kubeconfig-server=${KUBECONFIG_SERVER} --policy=${K3K_POLICY}  --storage-request-size=$K3K_STORAGE_REQUEST_SIZE --server-args='--kubelet-arg=$cgroup_root' --server-args="--disable=traefik" --server-args="--embedded-registry" --server-args="--disable-network-policy" --server-args="--etcd-arg=quota-backend-bytes=5368709120" ${K3K_NAME} 
 # kubectl apply -f - <<EOF
 # apiVersion: k3k.io/v1alpha1
 # kind: Cluster
