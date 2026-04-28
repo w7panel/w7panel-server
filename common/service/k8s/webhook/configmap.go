@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -28,7 +30,7 @@ func (m *ResourceMutator) handleConfigmap(ctx context.Context, req admission.Req
 	}
 	defer checkLonghorn(configmap)
 	defer checkLogo(configmap)
-
+	defer checkPublish(m.client, configmap.DeepCopy())
 	return admission.Allowed("")
 }
 
@@ -44,4 +46,14 @@ func checkLogo(configMap *v1.ConfigMap) {
 	time.AfterFunc(1*time.Second, func() {
 		k8s.WriteLogo(configMap)
 	})
+}
+
+// 发布到s.w7.cc
+func checkPublish(client client.Client, configMap *v1.ConfigMap) {
+	time.AfterFunc(1*time.Second, func() {
+		if configMap.Labels != nil && configMap.Labels["type"] == "cost" {
+			k3k.CheckPublish(context.Background(), client, configMap)
+		}
+	})
+
 }
