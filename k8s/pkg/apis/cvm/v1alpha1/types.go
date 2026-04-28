@@ -140,9 +140,9 @@ type CvmStatus struct {
 }
 
 func (u *Cvm) computeBuy() {
-	u.Status.CanBaseBuy = ptr.Bool(u.IsEmpty() && u.Spec.BaseOrder.Status != "paid") //是否购买基础套餐
-	u.Status.CanExpandBuy = ptr.Bool(!u.IsEmpty() && u.Spec.ExpireTime != "")        //是否可以扩容
-	u.Status.CanRenewBuy = ptr.Bool(!u.IsEmpty() && u.Spec.ExpireTime != "")         //是否可以续费
+	u.Status.CanBaseBuy = ptr.Bool(u.IsEmpty() && u.Spec.BaseOrder != nil && u.Spec.BaseOrder.Status != "paid") //是否购买基础套餐
+	u.Status.CanExpandBuy = ptr.Bool(!u.IsEmpty() && u.Spec.ExpireTime != "")                                   //是否可以扩容
+	u.Status.CanRenewBuy = ptr.Bool(!u.IsEmpty() && u.Spec.ExpireTime != "")                                    //是否可以续费
 }
 func (u *Cvm) ComputeStatus() {
 	if u.Labels == nil {
