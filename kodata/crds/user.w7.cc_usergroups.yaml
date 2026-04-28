@@ -4,14 +4,14 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.1
-  name: gpuclasses.gpuclass.k8s.io
+  name: usergroups.user.w7.cc
 spec:
-  group: gpuclass.k8s.io
+  group: user.w7.cc
   names:
-    kind: GpuClass
-    listKind: GpuClassList
-    plural: gpuclasses
-    singular: gpuclass
+    kind: UserGroup
+    listKind: UserGroupList
+    plural: usergroups
+    singular: usergroup
   scope: Namespaced
   versions:
   - name: v1alpha1
@@ -36,33 +36,21 @@ spec:
           metadata:
             type: object
           spec:
-            description: GpuClasssSpec defines the desired state of GpuClasss
             properties:
-              appName:
-                type: string
-              enabled:
-                type: boolean
-              gpuOperatorMode:
-                description: INSERT ADDITIONAL SPEC FIELDS -- desired state of cluster
-                type: string
-              labels:
-                additionalProperties:
+              namespaces:
+                items:
                   type: string
-                type: object
-              vgpuMode:
+                type: array
+              password:
+                description: Username string `json:"username"` // 用户名就是 metadata.name
                 type: string
-            required:
-            - appName
-            - enabled
-            - gpuOperatorMode
-            - labels
-            - vgpuMode
+              users:
+                items:
+                  type: string
+                type: array
             type: object
-          status:
-            description: |-
-              GpuClasssStatus defines the observed state of GpuClasss.
-              It should always be reconstructable from the state of the cluster and/or outside world.
-            type: object
+        required:
+        - spec
         type: object
     served: true
     storage: true

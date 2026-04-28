@@ -185,6 +185,31 @@ func (in *CvmStatus) DeepCopyInto(out *CvmStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.IsExpired != nil {
+		in, out := &in.IsExpired, &out.IsExpired
+		*out = new(bool)
+		**out = **in
+	}
+	if in.IsRecycling != nil {
+		in, out := &in.IsRecycling, &out.IsRecycling
+		*out = new(bool)
+		**out = **in
+	}
+	if in.CanBaseBuy != nil {
+		in, out := &in.CanBaseBuy, &out.CanBaseBuy
+		*out = new(bool)
+		**out = **in
+	}
+	if in.CanExpandBuy != nil {
+		in, out := &in.CanExpandBuy, &out.CanExpandBuy
+		*out = new(bool)
+		**out = **in
+	}
+	if in.CanRenewBuy != nil {
+		in, out := &in.CanRenewBuy, &out.CanRenewBuy
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 

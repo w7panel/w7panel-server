@@ -31,10 +31,6 @@ func (c *FakeCvmV1alpha1) Cvms(namespace string) v1alpha1.CvmInterface {
 	return newFakeCvms(c, namespace)
 }
 
-func (c *FakeCvmV1alpha1) CvmLists(namespace string) v1alpha1.CvmListInterface {
-	return newFakeCvmLists(c, namespace)
-}
-
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeCvmV1alpha1) RESTClient() rest.Interface {

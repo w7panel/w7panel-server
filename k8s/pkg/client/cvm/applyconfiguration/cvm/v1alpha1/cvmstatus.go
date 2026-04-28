@@ -24,19 +24,23 @@ import (
 
 // CvmStatusApplyConfiguration represents a declarative configuration of the CvmStatus type for use
 // with apply.
-//
-// 【微擎面板&集群云主机：云主机业务分离成独立应用】
-// https://www.tapd.cn/tapd_fe/62789787/story/detail/1162789787001015242
 type CvmStatusApplyConfiguration struct {
-	Phase        *string                     `json:"phase,omitempty"`
-	ClusterPhase *k3kiov1alpha1.ClusterPhase `json:"clusterPhase,omitempty"`
-	// ReadyReplicas     int32              `json:"readyReplicas,omitempty"`
+	Phase             *string                        `json:"phase,omitempty"`
+	ClusterPhase      *k3kiov1alpha1.ClusterPhase    `json:"clusterPhase,omitempty"`
 	EffectiveResource *CvmResourceApplyConfiguration `json:"effectiveResource,omitempty"`
 	// UserResource + PurchasedResource
 	Conditions []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
 	IsExpired  *bool                            `json:"isExpired,omitempty"`
 	// 是否过期
 	IsRecycling *bool `json:"isRecycling,omitempty"`
+	// 是否回收中
+	CanBaseBuy *bool `json:"canBaseBuy,omitempty"`
+	// 是否可以购买基础套餐
+	CanExpandBuy *bool `json:"canExpandBuy,omitempty"`
+	// 是否可以扩容
+	CanRenewBuy *bool `json:"canRenewBuy,omitempty"`
+	// 是否可以续费
+	DiffMonth *string `json:"diffMonth,omitempty"`
 }
 
 // CvmStatusApplyConfiguration constructs a declarative configuration of the CvmStatus type for use with
@@ -95,5 +99,37 @@ func (b *CvmStatusApplyConfiguration) WithIsExpired(value bool) *CvmStatusApplyC
 // If called multiple times, the IsRecycling field is set to the value of the last call.
 func (b *CvmStatusApplyConfiguration) WithIsRecycling(value bool) *CvmStatusApplyConfiguration {
 	b.IsRecycling = &value
+	return b
+}
+
+// WithCanBaseBuy sets the CanBaseBuy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the CanBaseBuy field is set to the value of the last call.
+func (b *CvmStatusApplyConfiguration) WithCanBaseBuy(value bool) *CvmStatusApplyConfiguration {
+	b.CanBaseBuy = &value
+	return b
+}
+
+// WithCanExpandBuy sets the CanExpandBuy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the CanExpandBuy field is set to the value of the last call.
+func (b *CvmStatusApplyConfiguration) WithCanExpandBuy(value bool) *CvmStatusApplyConfiguration {
+	b.CanExpandBuy = &value
+	return b
+}
+
+// WithCanRenewBuy sets the CanRenewBuy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the CanRenewBuy field is set to the value of the last call.
+func (b *CvmStatusApplyConfiguration) WithCanRenewBuy(value bool) *CvmStatusApplyConfiguration {
+	b.CanRenewBuy = &value
+	return b
+}
+
+// WithDiffMonth sets the DiffMonth field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the DiffMonth field is set to the value of the last call.
+func (b *CvmStatusApplyConfiguration) WithDiffMonth(value string) *CvmStatusApplyConfiguration {
+	b.DiffMonth = &value
 	return b
 }

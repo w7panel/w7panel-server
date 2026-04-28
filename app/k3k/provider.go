@@ -50,8 +50,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			// k3kGroup.POST("/loginCvm", middleware.Auth{}.Process, controller2.K3k{}.LoginCurrent) //
 			k3kGroup.POST("/wh", middleware.Auth{}.Process, controller2.K3k{}.WhMoshi) // 维护模式 切换
 
-			k3kGroup.GET("/order/config", middleware.Auth{}.Process, controller2.Order{}.GetConfig) // 获取配置
-			k3kGroup.GET("/order/price", middleware.Auth{}.Process, controller2.Order{}.GetPrice)   // 获取当前价格
+			// k3kGroup.GET("/order/price", middleware.Auth{}.Process, controller2.Order{}.GetPrice)   // 获取当前价格 cvm版本不需要
 
 			k3kGroup.POST("/order/base", middleware.Auth{}.Process, controller2.Order{}.CreateBaseResourceOrder) // 创建基础资源订单
 
