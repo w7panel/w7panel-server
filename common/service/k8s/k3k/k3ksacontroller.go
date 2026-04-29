@@ -10,10 +10,8 @@ import (
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/sa"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -124,95 +122,35 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 		}
 		return ctrl.Result{}, nil
 	}
-	// if !k3kUser.IsClusterUser() {
-	// 	// Not our ServiceAccount, ignore it
-	// 	return ctrl.Result{}, nil
-	// }
-
-	// 处理资源回收阶段
-	if err := r.deleteRc.HandleResourceRecycleStatus(ctx, sa, k3kUser); err != nil {
-		logger.Error(err, "Failed to handle resource recycle status")
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
-	}
-
-	namespace := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: k3kUser.GetK3kNamespace(),
-			Labels: map[string]string{
-				"policy.k3k.io/policy-name": k3kUser.GetClusterPolicy(),
+	if k3kUser.SupportCvm() {
+		namespace := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: k3kUser.GetK3kNamespace(),
+				Labels: map[string]string{
+					"policy.k3k.io/policy-name": k3kUser.GetClusterPolicy(),
+				},
 			},
-		},
-	}
-	_, err := controllerutil.CreateOrPatch(ctx, r.Client, namespace, func() error {
-		namespace.Labels = map[string]string{
-			"policy.k3k.io/policy-name": k3kUser.GetClusterPolicy(),
 		}
-		return nil
-	})
-	if err != nil {
-		logger.Error(err, "Failed to create namespace")
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
+		_, err := controllerutil.CreateOrPatch(ctx, r.Client, namespace, func() error {
+			namespace.Labels = map[string]string{
+				"policy.k3k.io/policy-name": k3kUser.GetClusterPolicy(),
+			}
+			return nil
+		})
+		if err != nil {
+			logger.Error(err, "Failed to create namespace")
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+
+		err = r.rolebinding.CreateRole(ctx, sa, k3kUser.GetK3kNamespace())
+		if err != nil {
+			logger.Error(err, "Failed to create role")
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
 	}
 
-	err = r.rolebinding.CreateRole(ctx, sa, k3kUser.GetK3kNamespace())
-	if err != nil {
-		logger.Error(err, "Failed to create role")
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
-	}
-	// 创建 registries ConfigMap
-	// err = r.createRegistriesConfigMap(ctx, k3kUser)
-	// if err != nil {
-	// 	logger.Error(err, "Failed to create registries ConfigMap")
-	// 	return ctrl.Result{RequeueAfter: time.Second * 10}, err
-	// }\
 	if true {
 		return ctrl.Result{}, nil
-	}
-
-	if !k3kUser.IsClusterReady() {
-		slog.Error("cluster not ready", "uname", k3kUser.GetName())
-		return ctrl.Result{}, nil
-	}
-
-	if k3kUser.IsWeihu() {
-		jobName := k3kUser.GenerateWeihuJobName()
-		if !k3kUser.HasWeihuJob() {
-			_, err = controllerutil.CreateOrPatch(ctx, r.Client, k3kUser.ServiceAccount, func() error {
-				k3kUser.SetWeihuJobName(jobName)
-				return nil
-			})
-			if err != nil {
-				slog.Error("failed to update weihu job2", "err", err)
-				return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
-			}
-		}
-		if k3kUser.HasWeihuJob() {
-			job := types.ToK3kWeihJob(k3kUser)
-			err := r.Client.Create(ctx, job)
-			if err != nil {
-				if k8serrors.IsAlreadyExists(err) {
-					slog.Error("failed to create weihu job", "err", err)
-					return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
-				}
-			}
-		}
-
-	} else {
-		jobName := k3kUser.GetWeihuJobName()
-		if jobName != "" {
-			job := types.ToK3kWeihJob(k3kUser)
-			err := r.Client.Delete(ctx, job)
-			if err != nil {
-				if !k8serrors.IsNotFound(err) {
-					slog.Error("failed to delete weihu job", "err", err)
-					return ctrl.Result{RequeueAfter: time.Minute * 5}, nil
-				}
-			}
-		}
-	}
-
-	if k3kUser.HasExpireTime() {
-		return ctrl.Result{RequeueAfter: time.Minute * 30}, nil
 	}
 
 	return ctrl.Result{}, nil

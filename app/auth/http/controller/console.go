@@ -127,7 +127,7 @@ func (self Console) RegisterToConsole(gin *gin.Context) {
 		return
 	}
 	if helper.IsLocalMock() {
-		params.OfflineUrl = "http://218.23.2.55:9090/"
+		params.OfflineUrl = "http://218.23.2.48:9090/"
 	}
 
 	token := gin.MustGet("k8s_token").(string)

@@ -134,6 +134,7 @@ func (register *Register) doRegister(policyName string, saName string, consoleId
 		"k3k.io/policy":         policyName,
 		// "w7.cc/console-id":      consoleId,
 		"w7.cc/demo-user": policy.Labels["w7.cc/demo-user"],
+		"w7.cc/cvm-user":  policy.Labels["w7.cc/cvm-user"],
 	}
 	if consoleId != "0" && consoleId != "" {
 		labels["w7.cc/console-id"] = consoleId
