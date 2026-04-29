@@ -88,7 +88,7 @@ func (in *CvmConsoleOrderList) DeepCopyInto(out *CvmConsoleOrderList) {
 	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
-		*out = make([]Cvm, len(*in))
+		*out = make([]CvmConsoleOrder, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
