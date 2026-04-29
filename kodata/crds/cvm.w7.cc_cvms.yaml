@@ -287,7 +287,13 @@ spec:
                 type: boolean
               isRecycling:
                 type: boolean
+              k3kStatufulSetName:
+                type: string
               phase:
+                type: string
+              server0ContainerName:
+                type: string
+              server0PodName:
                 type: string
             type: object
         required:

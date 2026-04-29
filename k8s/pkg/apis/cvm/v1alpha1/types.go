@@ -132,22 +132,32 @@ type Workload struct {
 }
 
 type CvmStatus struct {
-	Phase             string             `json:"phase,omitempty"`
-	ClusterPhase      k3kv1.ClusterPhase `json:"clusterPhase,omitempty"`
-	EffectiveResource *CvmResource       `json:"effectiveResource,omitempty"` // UserResource + PurchasedResource
-	Conditions        []metav1.Condition `json:"conditions,omitempty"`
-	IsExpired         *bool              `json:"isExpired,omitempty"`    //是否过期
-	IsRecycling       *bool              `json:"isRecycling,omitempty"`  //是否回收中
-	CanBaseBuy        *bool              `json:"canBaseBuy,omitempty"`   //是否可以购买基础套餐
-	CanExpandBuy      *bool              `json:"canExpandBuy,omitempty"` //是否可以扩容
-	CanRenewBuy       *bool              `json:"canRenewBuy,omitempty"`  //是否可以续费
-	CanDelete         *bool              `json:"canDelete,omitempty"`    //是否可以续费
-	DiffMonth         string             `json:"diffMonth,omitempty"`    // 到期时间剩余月数
+	Phase                string             `json:"phase,omitempty"`
+	ClusterPhase         k3kv1.ClusterPhase `json:"clusterPhase,omitempty"`
+	EffectiveResource    *CvmResource       `json:"effectiveResource,omitempty"` // UserResource + PurchasedResource
+	Conditions           []metav1.Condition `json:"conditions,omitempty"`
+	IsExpired            *bool              `json:"isExpired,omitempty"`    //是否过期
+	IsRecycling          *bool              `json:"isRecycling,omitempty"`  //是否回收中
+	CanBaseBuy           *bool              `json:"canBaseBuy,omitempty"`   //是否可以购买基础套餐
+	CanExpandBuy         *bool              `json:"canExpandBuy,omitempty"` //是否可以扩容
+	CanRenewBuy          *bool              `json:"canRenewBuy,omitempty"`  //是否可以续费
+	CanDelete            *bool              `json:"canDelete,omitempty"`    //是否可以续费
+	DiffMonth            string             `json:"diffMonth,omitempty"`    // 到期时间剩余月数
+	Server0PodName       string             `json:"server0PodName,omitempty"`
+	Server0ContainerName string             `json:"server0ContainerName,omitempty"`
+	K3kStatufulSetName   string             `json:"k3kStatufulSetName,omitempty"`
 }
 
 // 进入退出救援模式
 func (u *Cvm) RescueToggle() {
 	u.Spec.Rescue = !u.Spec.Rescue //进入退出救援模式
+}
+
+func (u *Cvm) computeDefault() {
+	u.Status.Server0PodName = "k3k-" + u.Name + "-server-0"
+	u.Status.Server0ContainerName = "k3k-" + u.Name + "-server"
+	u.Status.K3kStatufulSetName = "k3k-" + u.Name + "-server"
+	//是否可以删除
 }
 func (u *Cvm) computeBuy() {
 	u.Status.CanBaseBuy = ptr.Bool(u.IsEmpty())                               //是否购买基础套餐
@@ -209,6 +219,7 @@ func (u *Cvm) ComputeStatus() {
 	u.Status.EffectiveResource.Add(u.Spec.UserResource)
 	u.Status.EffectiveResource.Add(u.Spec.PurchasedResource)
 	u.computeBuy()
+	u.computeDefault()
 }
 
 func (u *Cvm) getDiffMonths(expireTime time.Time) decimal.Decimal {

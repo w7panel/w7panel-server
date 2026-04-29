@@ -43,6 +43,10 @@ type CvmStatusApplyConfiguration struct {
 	CanDelete *bool `json:"canDelete,omitempty"`
 	// 是否可以续费
 	DiffMonth *string `json:"diffMonth,omitempty"`
+	// 到期时间剩余月数
+	Server0PodName       *string `json:"server0PodName,omitempty"`
+	Server0ContainerName *string `json:"server0ContainerName,omitempty"`
+	K3kStatufulSetName   *string `json:"k3kStatufulSetName,omitempty"`
 }
 
 // CvmStatusApplyConfiguration constructs a declarative configuration of the CvmStatus type for use with
@@ -141,5 +145,29 @@ func (b *CvmStatusApplyConfiguration) WithCanDelete(value bool) *CvmStatusApplyC
 // If called multiple times, the DiffMonth field is set to the value of the last call.
 func (b *CvmStatusApplyConfiguration) WithDiffMonth(value string) *CvmStatusApplyConfiguration {
 	b.DiffMonth = &value
+	return b
+}
+
+// WithServer0PodName sets the Server0PodName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Server0PodName field is set to the value of the last call.
+func (b *CvmStatusApplyConfiguration) WithServer0PodName(value string) *CvmStatusApplyConfiguration {
+	b.Server0PodName = &value
+	return b
+}
+
+// WithServer0ContainerName sets the Server0ContainerName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Server0ContainerName field is set to the value of the last call.
+func (b *CvmStatusApplyConfiguration) WithServer0ContainerName(value string) *CvmStatusApplyConfiguration {
+	b.Server0ContainerName = &value
+	return b
+}
+
+// WithK3kStatufulSetName sets the K3kStatufulSetName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the K3kStatufulSetName field is set to the value of the last call.
+func (b *CvmStatusApplyConfiguration) WithK3kStatufulSetName(value string) *CvmStatusApplyConfiguration {
+	b.K3kStatufulSetName = &value
 	return b
 }

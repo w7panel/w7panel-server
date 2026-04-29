@@ -66,7 +66,7 @@ func (self Auth) Login(http *gin.Context) {
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	self.dologin(client.Sdk, sa, http, true)
+	self.dologin(client.Sdk, sa, http, true, "")
 
 }
 
@@ -129,7 +129,7 @@ func (self Auth) ConsoleLogin(http *gin.Context) {
 			return
 		}
 
-		self.dologin(sdk, sa, http, false)
+		self.dologin(sdk, sa, http, false, "")
 		return
 	}
 	saName := w7config.Name
@@ -143,13 +143,13 @@ func (self Auth) ConsoleLogin(http *gin.Context) {
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	self.dologin(sdk, sa, http, true)
+	self.dologin(sdk, sa, http, true, "")
 
 }
 
-func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Context, updateK3kUser bool) {
+func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Context, updateK3kUser bool, cvmName string) {
 	seconds := facade.Config.GetInt64("app.login_seconds")
-	token, isK3kUser, err := k3k.LoginByServiceAccount(sdk, sa, seconds, updateK3kUser, "")
+	token, isK3kUser, err := k3k.LoginByServiceAccount(sdk, sa, seconds, updateK3kUser, cvmName)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			self.JsonResponseWithError(http, errors.New("用户不存在"), 500)
@@ -158,7 +158,7 @@ func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Cont
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	rs := service.GetRefreshToken(sa.Name)
+	rs := service.GetRefreshToken(sa.Name, cvmName)
 	self.JsonResponseWithoutError(http, gin.H{
 		"token":         token,
 		"expire":        time.Now().Add(time.Duration(seconds) * time.Second).Unix(),
@@ -210,7 +210,7 @@ func (self Auth) RefreshToken2(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
-	userName, err := service.FindUsernameByToken(params.Token)
+	userName, cvmName, err := service.FindUsernameByToken(params.Token)
 	if err != nil {
 		self.JsonResponseWithError(http, err, 500)
 		return
@@ -221,7 +221,7 @@ func (self Auth) RefreshToken2(http *gin.Context) {
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	self.dologin(sdk, sa, http, true)
+	self.dologin(sdk, sa, http, true, cvmName)
 }
 
 func (self Auth) InitUser(http *gin.Context) {
