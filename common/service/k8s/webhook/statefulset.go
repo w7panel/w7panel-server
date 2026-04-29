@@ -185,17 +185,17 @@ mount --make-shared /run
 	if statefulset.Spec.Template.Annotations == nil {
 		statefulset.Spec.Template.Annotations = map[string]string{}
 	}
-	// 追加label 为了统计存储大小
-	if statefulset.Spec.VolumeClaimTemplates != nil {
-		for i := range statefulset.Spec.VolumeClaimTemplates {
-			pvc := &statefulset.Spec.VolumeClaimTemplates[i]
-			if pvc.Labels == nil {
-				pvc.Labels = map[string]string{}
-			}
-			pvc.Labels["w7.cc/cvm-name"] = clusterName
-			modified = true
-		}
-	}
+	// 追加label 为了统计存储大小 k3k 默认会加上
+	// if statefulset.Spec.VolumeClaimTemplates != nil {
+	// 	for i := range statefulset.Spec.VolumeClaimTemplates {
+	// 		pvc := &statefulset.Spec.VolumeClaimTemplates[i]
+	// 		if pvc.Labels == nil {
+	// 			pvc.Labels = map[string]string{}
+	// 		}
+	// 		pvc.Labels["w7.cc/cvm-name"] = clusterName
+	// 		modified = true
+	// 	}
+	// }
 
 	if okCanCreate {
 		statefulset.Spec.Template.Annotations[k3ktypes.W7_CREATE_POD] = canCreate
