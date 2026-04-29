@@ -422,7 +422,8 @@ func (u *k3kUser) ToArray() map[string]string {
 		"w7.cc/server-container-name": u.GetServer0ContainerName(),
 		"w7.cc/support-cvm":           boolToString(u.SupportCvm()),
 		"w7.cc/is-cvm-req":            boolToString(u.IsCvmReqUser()), //是否是CVM请求用户
-		"w7.cc/cvm-name":              u.GetCvmName(),                 //是否是CVM请求用户
+		"w7.cc/cvm-name":              u.GetCvmName(),                 //cvmName
+		"w7.cc/cvm-namespace":         u.GetK3kNamespace(),
 	}
 	// if !u.IsClusterUser() {
 	// result[W7_FILE_EDITTOR] = "true"

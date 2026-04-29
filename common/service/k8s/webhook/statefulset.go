@@ -25,7 +25,7 @@ func (m *ResourceMutator) handleStatefulSet(ctx context.Context, req admission.R
 	}
 	ResetImage(statefulset.Namespace, statefulset.Name, "StatefulSet", statefulset.Annotations)
 
-	clusterName, ok := statefulset.Labels["cluster"]
+	_, ok := statefulset.Labels["cluster"]
 	if !ok {
 		return admission.Allowed("无需修改 statefulset")
 	}
