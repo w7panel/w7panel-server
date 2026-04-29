@@ -28,27 +28,6 @@ func (m *ResourceMutator) handleServiceAccount(ctx context.Context, req admissio
 	if err := (m.decoder).Decode(req, sa); err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
-	k3kUsr := k3ktypes.NewK3kUser(sa)
-	if !k3kUsr.IsVirtual() {
-		return admission.Allowed("无需修改 ServiceAccount")
-	}
-
-	oldSa := &v1.ServiceAccount{}
-	if err := (m.decoder).DecodeRaw(req.OldObject, oldSa); err != nil {
-		return admission.Errored(http.StatusBadRequest, err)
-	}
-
-	oldK3kUser := k3ktypes.NewK3kUser(oldSa)
-	if !oldK3kUser.IsVirtual() {
-		return admission.Allowed("无需修改 ServiceAccount")
-	}
-	defer m.DoPause(ctx, oldK3kUser, k3kUsr)
-	oldL := oldK3kUser.GetLimitRange()
-	newL := k3kUsr.GetLimitRange()
-	if oldL.IsCpuMemoryBandWidthChange(newL) || oldK3kUser.IsWeihu() != k3kUsr.IsWeihu() {
-		defer m.restartClusterServer(ctx, k3kUsr.GetK3kNamespace()+"-server", k3kUsr.GetK3kNamespace(), k3kUsr.GetBandWidth(), k3kUsr.IsWeihu())
-		return admission.Allowed("修改 ServiceAccount 的 CPU 和内存限制")
-	}
 
 	return admission.Allowed("无需修改 ServiceAccount")
 }

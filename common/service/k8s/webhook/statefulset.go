@@ -10,7 +10,6 @@ import (
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -26,7 +25,7 @@ func (m *ResourceMutator) handleStatefulSet(ctx context.Context, req admission.R
 	}
 	ResetImage(statefulset.Namespace, statefulset.Name, "StatefulSet", statefulset.Annotations)
 
-	clusterName, ok := statefulset.Labels["cluster"]
+	_, ok := statefulset.Labels["cluster"]
 	if !ok {
 		return admission.Allowed("无需修改 statefulset")
 	}
@@ -130,19 +129,9 @@ func (m *ResourceMutator) handleStatefulSet(ctx context.Context, req admission.R
 
 	}
 
-	rs, err := getResourceLimit(m.client, m.sdk, clusterName, statefulset.Labels["role"])
-	if err != nil {
-		slog.Error("not found resource limit")
-	}
 	for i := range statefulset.Spec.Template.Spec.Containers {
 		container := &statefulset.Spec.Template.Spec.Containers[i]
-		if rs != nil {
-			container.Resources.Limits = rs
-			container.Resources.Requests = v1.ResourceList{
-				v1.ResourceCPU:    resource.MustParse("0"),
-				v1.ResourceMemory: resource.MustParse("0"),
-			}
-		}
+
 		cmds := container.Command
 		if cmds != nil && len(cmds) == 3 {
 			cmd3 := cmds[2]

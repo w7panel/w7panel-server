@@ -209,7 +209,17 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 		logger.Error(err, "Failed to reconcile effective resource")
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
-
+	wh := NewWeihu(r.Sdk, cvm.Name, cvm.Namespace, cvm.Name)
+	// 救援模式
+	if !*cvm.Status.IsExpired && cvm.Spec.Rescue {
+		wh.TrimFilesystem(ctx) //忽略trimSystem错误
+		err = wh.ClearTicket(ctx)
+		if err != nil {
+			logger.Error(err, "Failed to clear ticket")
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+		wh.ClearNoWeihuPod(ctx)
+	}
 	if cvm.IsEmpty() || *cvm.Status.IsExpired {
 		// 过期后直接删除cluster
 		cluster := &k3kv1.Cluster{
