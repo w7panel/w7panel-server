@@ -275,6 +275,10 @@ func (r *K3kCvmController) createOrUpdateCluster(ctx context.Context, cvm *cvmv1
 			cluster.Labels = desiredLabels
 		}
 		desiredSpec := r.toClusterSpec(cvm)
+		if !cluster.CreationTimestamp.IsZero() && cluster.Spec.Persistence.StorageRequestSize != "" {
+			// K3K does not support resizing the backing persistence request after the cluster exists.
+			desiredSpec.Persistence.StorageRequestSize = cluster.Spec.Persistence.StorageRequestSize
+		}
 		if !apiequality.Semantic.DeepEqual(cluster.Spec, desiredSpec) {
 			// slog.Info("Cluster spec changed",
 			// 	"name", cluster.Name,

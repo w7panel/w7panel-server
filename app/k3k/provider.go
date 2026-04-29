@@ -21,6 +21,7 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(consoleShell.K3kOrderReturnCheck))    //处理有退款记录的用户
 	console.RegisterCommand(new(consoleShell.K3kOrderReturnCheckOne)) //处理有退款记录的用户one
 	console.RegisterCommand(new(consoleShell.Weihu))                  //维护模式下的job
+	console.RegisterCommand(new(consoleShell.SyncCvm))                //同步用户集群到cvm
 	p.RegisterHttpRoutes(httpServer)
 	// if facade.Config.GetBool("k3k.watch") {
 	// 	go k3kapi.Watch()
@@ -65,6 +66,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			k3kGroup.GET("/cvm", middleware.Auth{}.Process, controller2.Cvm{}.List)                                                  // cvm列表
 			k3kGroup.GET("/cvm/v1/:namespace/info/:name", middleware.Auth{}.Process, controller2.Cvm{}.Info)                         // cvm详情
+			k3kGroup.POST("/cvm/sync", middleware.Auth{}.Process, controller2.Cvm{}.Sync)                                            // 用户信息同步到cvm
 			k3kGroup.POST("/cvm/:namespace/action/:name/login", middleware.Auth{}.Process, controller2.K3k{}.LoginCvm)               // cvm 登录
 			k3kGroup.POST("/cvm/:namespace/action/:name/rescue", middleware.Auth{}.Process, controller2.Cvm{}.RescueToggle)          //救援模式
 			k3kGroup.POST("/cvm/:namespace/action/:name/check-resource", middleware.Auth{}.Process, controller2.Cvm{}.CheckResource) //检查资源是否超出集群配置

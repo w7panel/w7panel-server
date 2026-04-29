@@ -95,6 +95,10 @@ func (u *k3kUser) IsClusterUser() bool {
 	return false
 }
 
+func (u *k3kUser) IsOldClusterUser() bool {
+	return u.Labels[K3K_USER_MODE] == "cluster"
+}
+
 func (u *k3kUser) IsNormalUser() bool {
 	return u.Labels[K3K_USER_MODE] == "normal"
 }

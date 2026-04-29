@@ -31,7 +31,12 @@ func (self Cvm) Info(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if k8sToken.IsK3kCluster() {
+	user, err := k3k.TokenToK3kUser(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	if !user.IsFounder() {
 		namespace = k8sToken.GetNamespace()
 	}
 	cvm := &v1alpha1.Cvm{}
@@ -93,7 +98,12 @@ func (self Cvm) RescueToggle(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if k8sToken.IsK3kCluster() {
+	user, err := k3k.TokenToK3kUser(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	if !user.IsFounder() {
 		namespace = k8sToken.GetNamespace()
 	}
 	cvm := &v1alpha1.Cvm{}
@@ -130,7 +140,12 @@ func (self Cvm) CheckResource(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if k8sToken.IsK3kCluster() {
+	user, err := k3k.TokenToK3kUser(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	if !user.IsFounder() {
 		namespace = k8sToken.GetNamespace()
 	}
 	cvm := &v1alpha1.Cvm{}
@@ -148,5 +163,26 @@ func (self Cvm) CheckResource(http *gin.Context) {
 	result.Pass = true // 集群资源充足
 	self.JsonResponseWithoutError(http, result)
 	return
+
+}
+
+// 同步用户的集群
+func (self Cvm) Sync(http *gin.Context) {
+
+	token := http.MustGet("k8s_token").(string)
+	rootSdk := k8s.NewK8sClient()
+
+	user, err := k3k.TokenToK3kUser(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	err = k3k.SyncUserToCvm(http, user, rootSdk.Sdk)
+	if err != nil {
+		slog.Error("同步用户集群失败", "error", err)
+		self.JsonSuccessResponse(http)
+		return
+	}
+	self.JsonSuccessResponse(http)
 
 }

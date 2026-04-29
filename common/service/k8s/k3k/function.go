@@ -288,3 +288,40 @@ func GetCvm(ctx context.Context, sdk *k8s.Sdk, namespace, cvmName string) (*cvmv
 	}
 	return cvm, nil
 }
+
+func SyncUserToCvm(ctx context.Context, user *types.K3kUser, sdk *k8s.Sdk) error {
+	if !user.IsOldClusterUser() {
+		return nil
+	}
+	if user.IsExpired() {
+		return nil
+	}
+	user.SetOverMode(true)
+	lr := user.GetLimitRange()
+	if lr == nil {
+		return nil
+	}
+	_, err := GetCvm(ctx, sdk, user.GetK3kNamespace(), user.GetName())
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			rs := lr.GetHardBuyResource()
+			cvm := &cvmv1alpha1.Cvm{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      user.GetName(),
+					Namespace: user.GetK3kNamespace(),
+				},
+				Spec: cvmv1alpha1.CvmSpec{
+					PurchasedResource: &cvmv1alpha1.CvmResource{
+						CPU:       rs.Cpu,
+						Memory:    rs.Memory,
+						Storage:   rs.Storage,
+						Bandwidth: rs.Bandwidth,
+					},
+					StorageClassName: lr.StorageClass,
+				},
+			}
+			return sdk.Create(ctx, cvm)
+		}
+	}
+	return nil
+}

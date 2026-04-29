@@ -1319,3 +1319,12 @@ func (self Sdk) GetClusterId() (string, error) {
 	}
 	return helper.StringToMD5(string(secret.Data["hash"])), nil
 }
+
+func (self Sdk) Create(ctx context.Context, obj sigclient.Object, opts ...sigclient.CreateOption) error {
+	sigclient, err := self.ToSigClient()
+	if err != nil {
+		slog.Error("创建对象失败", "error", err)
+		return err
+	}
+	return sigclient.Create(ctx, obj, opts...)
+}
