@@ -115,6 +115,26 @@ kubectl apply -f $KO_DATA_PATH/crds --server-side
 # w7panel sitemanager-upgrade --version=1.0.26 --identifie=w7_python --is-agent=true
 # w7panel sitemanager-upgrade --version=1.0.25 --identifie=w7_sitemanager --is-agent=true
 
+kubectl apply -f - <<EOF
+kind: ConfigMap
+apiVersion: v1
+metadata:
+    name: longhorn-volumes-config
+data:
+    customs: default-volume
+    default: default-volume
+EOF
+
+kubectl apply -f - <<EOF
+kind: ConfigMap
+apiVersion: v1
+metadata:
+    name: k3s.config
+    namespace: kube-system
+data:
+    k3s.mode: '4'
+EOF
+
 
 kubectl get jobs -n default -o json \
   | jq -r '.items[]
