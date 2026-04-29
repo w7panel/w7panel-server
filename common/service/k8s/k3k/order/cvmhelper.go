@@ -12,7 +12,7 @@ import (
 )
 
 func currentCvmBuyResource(cvm *cvmv1alpha1.Cvm) types.BuyResource {
-	resource := cvm.Spec.PurchasedResource
+	resource := cvm.Status.EffectiveResource
 	if resource == nil {
 		resource = &cvmv1alpha1.CvmResource{}
 	}

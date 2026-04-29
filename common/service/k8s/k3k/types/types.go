@@ -99,6 +99,7 @@ const (
 	W7_OVER_RESOURCE      = "w7.cc/over-resource"      //
 	W7_OVER_BASE_RESOURCE = "w7.cc/over-base-resource" //首次购买资源
 	W7_LOGIN_TIME         = "w7.cc/login-time"
+	W7_CVM_NAME           = "w7.cc/cvm-name" //当前请求中cvm名称
 )
 
 const Bandwidth v1.ResourceName = "bandwidth"

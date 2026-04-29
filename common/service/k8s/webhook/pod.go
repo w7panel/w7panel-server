@@ -5,11 +5,15 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	"github.com/w7panel/w7panel/common/service/k8s/pid"
 	corev1 "k8s.io/api/core/v1"
+	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -36,10 +40,13 @@ func (m *ResourceMutator) handlePod(ctx context.Context, req admission.Request) 
 	// 纯普通pod
 	modified := false
 	// 新版cluster spec 直接指定limit
-	// namespace := pod.Namespace
-	// if strings.HasPrefix(namespace, "k3k-") && !helper.IsChildAgent() {
-	// 	modified = handlePodLimit(m.client, m.sdk, pod, namespace)
-	// }
+	namespace := pod.Namespace
+	if strings.HasPrefix(namespace, "k3k-") && !helper.IsChildAgent() {
+		err := handlePodLabel(m.client, m.sdk, pod, namespace)
+		if err == nil {
+			modified = true
+		}
+	}
 	if helper.IsLxcfsEnabled() {
 		//https://github.com/ymping/lxcfs-admission-webhook/blob/main/cmd/volume.go
 		pod.Spec.Volumes = append(pod.Spec.Volumes, volumesTemplate...)
@@ -58,6 +65,19 @@ func (m *ResourceMutator) handlePod(ctx context.Context, req admission.Request) 
 
 	// 返回修改后的资源
 	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
+}
+
+// 添加维护标签
+func handlePodLabel(client sigclient.Client, sdk *k8s.Sdk, pod *corev1.Pod, namespace string) error {
+	cvm, err := k3k.GetCvm(context.TODO(), sdk, namespace, strings.ReplaceAll(namespace, "k3k-", ""))
+	if err != nil {
+		slog.Error("webhook pod 获取cvm失败", "err", err)
+		return err
+	}
+	if cvm.Spec.Rescue {
+		pod.Labels["w7.cc/weihu"] = "true"
+	}
+	return nil
 }
 
 var volumeMountsTemplate = []corev1.VolumeMount{

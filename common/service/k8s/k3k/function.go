@@ -102,6 +102,9 @@ func TokenToK3kUser(token string) (*types.K3kUser, error) {
 		return nil, err
 	}
 	user := types.NewK3kUser(sa)
+	if ktoken.IsK3kCluster() {
+		user.SetCvmName(ktoken.GetCvmName())
+	}
 	return RefreshK3kUser(user, rootSdk, false)
 }
 
@@ -305,6 +308,7 @@ func SyncUserToCvm(ctx context.Context, user *types.K3kUser, sdk *k8s.Sdk) error
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			rs := lr.GetHardBuyResource()
+
 			cvm := &cvmv1alpha1.Cvm{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      user.GetName(),
@@ -318,6 +322,7 @@ func SyncUserToCvm(ctx context.Context, user *types.K3kUser, sdk *k8s.Sdk) error
 						Bandwidth: rs.Bandwidth,
 					},
 					StorageClassName: lr.StorageClass,
+					ExpireTime:       user.Annotations[k3ktypes.K3K_EXPIRE_TIME],
 				},
 			}
 			return sdk.Create(ctx, cvm)

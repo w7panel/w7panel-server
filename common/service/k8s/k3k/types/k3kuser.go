@@ -421,6 +421,7 @@ func (u *k3kUser) ToArray() map[string]string {
 		"w7.cc/server-pod-name":       u.GetServer0Name(),
 		"w7.cc/server-container-name": u.GetServer0ContainerName(),
 		"w7.cc/support-cvm":           boolToString(u.SupportCvm()),
+		"w7.cc/is-cvm-req":            boolToString(u.IsCvmReqUser()), //是否是CVM请求用户
 	}
 	// if !u.IsClusterUser() {
 	// result[W7_FILE_EDITTOR] = "true"
@@ -851,5 +852,22 @@ func (u *k3kUser) SupportCvm() bool {
 
 // 是否是cvm请求用户 子集群请求用户
 func (u *k3kUser) IsCvmReqUser() bool {
-	return false
+	if u.Annotations == nil {
+		return false
+	}
+	return u.Annotations[W7_CVM_NAME] != ""
+}
+
+func (u *k3kUser) SetCvmName(name string) {
+	if u.Annotations == nil {
+		u.Annotations = make(map[string]string)
+	}
+	u.Annotations[W7_CVM_NAME] = name
+}
+
+func (u *k3kUser) GetCvmName() string {
+	if u.Annotations == nil {
+		return ""
+	}
+	return u.Annotations[W7_CVM_NAME]
 }
