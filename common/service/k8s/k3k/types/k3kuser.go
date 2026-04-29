@@ -416,6 +416,7 @@ func (u *k3kUser) ToArray() map[string]string {
 		W7_WH_JOB_STATUS:              u.GetWHJobStatus(),
 		"w7.cc/server-pod-name":       u.GetServer0Name(),
 		"w7.cc/server-container-name": u.GetServer0ContainerName(),
+		"w7.cc/support-cvm":           boolToString(u.SupportCvm()),
 	}
 	// if !u.IsClusterUser() {
 	// result[W7_FILE_EDITTOR] = "true"

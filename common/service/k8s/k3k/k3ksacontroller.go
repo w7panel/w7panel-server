@@ -113,15 +113,6 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	}
 	k3ktypes.SetSaVersion(sa.Name, sa.Annotations[k3ktypes.K3K_LOCK_VERSION])
 
-	if k3kUser.IsNormalUser() {
-		// 创建角色 需要job 查看权限
-		err := r.rolebinding.CreateNormalUserRoleBinding(ctx, sa, helper.ServiceAccountName())
-		if err != nil {
-			logger.Error(err, "Failed to create normal user role binding")
-			return ctrl.Result{RequeueAfter: time.Minute}, nil
-		}
-		return ctrl.Result{}, nil
-	}
 	if k3kUser.SupportCvm() {
 		namespace := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
@@ -147,6 +138,16 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 			logger.Error(err, "Failed to create role")
 			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
+	}
+
+	if k3kUser.IsNormalUser() {
+		// 创建角色 需要job 查看权限
+		err := r.rolebinding.CreateNormalUserRoleBinding(ctx, sa, helper.ServiceAccountName())
+		if err != nil {
+			logger.Error(err, "Failed to create normal user role binding")
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+		return ctrl.Result{}, nil
 	}
 
 	if true {
