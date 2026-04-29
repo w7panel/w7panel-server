@@ -81,14 +81,14 @@ func (self K3k) LoginCvm(http *gin.Context) {
 	if k8sToken.IsK3kCluster() {
 		namespace = k8sToken.GetNamespace()
 	}
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
+	// user, err := k3k.TokenToK3kUser(token)
+	// if err != nil {
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
 	client := k8s.NewK8sClient().Sdk
 
-	cvm, err := k3k.GetCvm(http, client, namespace, name)
+	cvm, err := k3k.TokenToCvm(http, token, namespace, name)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
