@@ -63,10 +63,11 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			// k3kGroup.POST("/storage/resize", middleware.Auth{}.Process, controller2.K3k{}.ResizeSysStorage) // 扩容系统存储
 
-			k3kGroup.GET("/cvm", middleware.Auth{}.Process, controller2.Cvm{}.List)                                         // cvm列表
-			k3kGroup.GET("/cvm/v1/:namespace/info/:name", middleware.Auth{}.Process, controller2.Cvm{}.Info)                // cvm详情
-			k3kGroup.POST("/cvm/:namespace/action/:name/login", middleware.Auth{}.Process, controller2.K3k{}.LoginCvm)      // cvm 登录
-			k3kGroup.POST("/cvm/:namespace/action/:name/rescue", middleware.Auth{}.Process, controller2.Cvm{}.RescueToggle) //救援模式
+			k3kGroup.GET("/cvm", middleware.Auth{}.Process, controller2.Cvm{}.List)                                                  // cvm列表
+			k3kGroup.GET("/cvm/v1/:namespace/info/:name", middleware.Auth{}.Process, controller2.Cvm{}.Info)                         // cvm详情
+			k3kGroup.POST("/cvm/:namespace/action/:name/login", middleware.Auth{}.Process, controller2.K3k{}.LoginCvm)               // cvm 登录
+			k3kGroup.POST("/cvm/:namespace/action/:name/rescue", middleware.Auth{}.Process, controller2.Cvm{}.RescueToggle)          //救援模式
+			k3kGroup.POST("/cvm/:namespace/action/:name/check-resource", middleware.Auth{}.Process, controller2.Cvm{}.CheckResource) //检查资源是否超出集群配置
 
 		}
 
@@ -74,7 +75,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		{
 			k3kGroup1.GET("/config", middleware.Auth{}.Process, controller2.OverSelling{}.OverSellingConfig)         // 获取超卖配置
 			k3kGroup1.GET("/current-resource", middleware.Auth{}.Process, controller2.OverSelling{}.CurrentResource) // 获取超卖百分比*当前集群资源
-			// k3kGroup1.POST("/check", middleware.Auth{}.Process, controller2.OverSelling{}.CheckResource)             // 检查是否超出集群配置
 		}
 
 		k8kGroup := engine.Group("/panel-api/v1") //.Use(middleware.Cors{}.Process)

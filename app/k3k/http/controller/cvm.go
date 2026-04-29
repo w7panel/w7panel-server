@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"log/slog"
+
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
@@ -107,4 +109,44 @@ func (self Cvm) RescueToggle(http *gin.Context) {
 		return
 	}
 	self.JsonResponseWithoutError(http, cvm)
+}
+
+func (self Cvm) CheckResource(http *gin.Context) {
+
+	type Result struct {
+		Pass bool `json:"pass"`
+	}
+	result := Result{
+		Pass: false,
+	}
+	token := http.MustGet("k8s_token").(string)
+	k8sToken := k8s.NewK8sToken(token)
+	name := http.Param("name")
+	namespace := http.Param("namespace")
+
+	rootSdk := k8s.NewK8sClient()
+	sigClient, err := rootSdk.ToSigClient()
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	if k8sToken.IsK3kCluster() {
+		namespace = k8sToken.GetNamespace()
+	}
+	cvm := &v1alpha1.Cvm{}
+	err = sigClient.Get(http, types.NamespacedName{Namespace: namespace, Name: name}, cvm)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	err = k3k.TryCheckOverSellingResource(rootSdk.Sdk, cvm)
+	if err != nil {
+		slog.Error("集群资源不足", "error", err)
+		self.JsonResponseWithoutError(http, err)
+		return
+	}
+	result.Pass = true // 集群资源充足
+	self.JsonResponseWithoutError(http, result)
+	return
+
 }

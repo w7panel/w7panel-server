@@ -92,6 +92,11 @@ func (u *Cvm) AddPurchasedResource(rs *CvmResource) {
 	u.Spec.PurchasedResource.Add(rs)
 }
 
+// 是否需要判断资源是否充足
+func (u *Cvm) CanOverSellingCheck() bool {
+	return u.Spec.CapacityCheckState == capacityCheckStateNoResource || u.Spec.CapacityCheckState == capacityCheckStateWait
+}
+
 // 资源检查通过
 func (u *Cvm) CheckSuccess() {
 	u.Spec.CapacityCheckState = capacityCheckStateSuccess

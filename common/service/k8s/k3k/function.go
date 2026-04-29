@@ -248,50 +248,22 @@ func RefreshK3kPolicy(policy *v1alpha1.VirtualClusterPolicy, rootSdk *k8s.Sdk, u
 	return nil
 }
 
-func WhMoshiToggle(sdk *k8s.Sdk, k3kuser *types.K3kUser) error {
-
-	sigClient, err := sdk.ToSigClient()
-	if err != nil {
-		return err
-	}
-
-	_, err = controllerutil.CreateOrPatch(context.TODO(), sigClient, k3kuser.ServiceAccount, func() error {
-		// k3kuser.SetLoginTime()
-		k3kuser.SetWeihu(!k3kuser.IsWeihu())
-		if k3kuser.IsWeihu() {
-			k3kuser.SetWHJobStatus(k3ktypes.K3K_STATUS_RUNNING)
-		} else {
-			k3kuser.SetWHJobStatus("")
-		}
+func TryCheckOverSellingResource(sdk *k8s.Sdk, cvm *cvmv1alpha1.Cvm) error {
+	if !cvm.CanOverSellingCheck() {
+		// 不需要资源检测
 		return nil
-	})
-
-	// TODO: 尝试添加资源
-	return err
-}
-func WhJob(sdk *k8s.Sdk, k3kuser *types.K3kUser) error {
-
-	if !k3kuser.IsWeihu() {
-		return errors.New("当前非维护模式")
 	}
 	sigClient, err := sdk.ToSigClient()
 	if err != nil {
 		return err
 	}
-	// jobName := k3kuser.GetWeihuJobName() //job会自动删除
-	// if jobName != "" {
-	// 	err := sdk.ClientSet.BatchV1().Jobs("default").Delete(sdk.Ctx, jobName, metav1.DeleteOptions{})
-	// 	if err != nil {
-	// 		if !k8serrors.IsNotFound(err) {
-	// 			slog.Error("delete job error", "error", err)
-	// 			return err
-	// 		}
-	// 	}
-	// }
-
-	_, err = controllerutil.CreateOrPatch(context.TODO(), sigClient, k3kuser.ServiceAccount, func() error {
-		k3kuser.SetWeihuJobName(k3kuser.GenerateWeihuJobName())
-		k3kuser.SetWHJobStatus(k3ktypes.K3K_STATUS_RUNNING)
+	//资源验证有问题
+	err = overselling.CanAddResourceCvm(cvmResourceToOverSelling(cvm.Spec.PendingPurchasedResource), getCvmResource)
+	if err != nil {
+		return err
+	}
+	_, err = controllerutil.CreateOrPatch(context.TODO(), sigClient, cvm, func() error {
+		cvm.CheckSuccess()
 		return nil
 	})
 

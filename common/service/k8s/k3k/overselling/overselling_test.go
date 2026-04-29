@@ -12,7 +12,9 @@ func TestCanAdd(t *testing.T) {
 	// 	Storage:   resource.MustParse("100Gi"),
 	// 	BandWidth: resource.MustParse("100M"),
 	// }
-	// err := CanAddResource(rs)
+	// err := CanAddResourceCvm(rs, func(c *v1alpha1.Cvm) *Resource {
+
+	// })
 	// if err != nil {
 	// 	t.Errorf("error: %v", err)
 	// }
