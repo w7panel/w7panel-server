@@ -10,6 +10,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/console"
 	console2 "github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
+
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
@@ -105,6 +106,19 @@ func TokenToK3kUser(token string) (*types.K3kUser, error) {
 		user.SetCvmName(ktoken.GetCvmName())
 	}
 	return RefreshK3kUser(user, rootSdk, false)
+}
+
+func TokenToCvm(ctx context.Context, token, namespace, name string) (*cvmv1alpha1.Cvm, error) {
+	k8sToken := k8s.NewK8sToken(token)
+	rootSdk := k8s.NewK8sClient()
+	user, err := TokenToK3kUser(token)
+	if err != nil {
+		return nil, err
+	}
+	if !user.IsFounder() {
+		namespace = k8sToken.GetNamespace()
+	}
+	return GetCvm(ctx, rootSdk.Sdk, namespace, name)
 }
 
 // 登录时候刷新用户权限

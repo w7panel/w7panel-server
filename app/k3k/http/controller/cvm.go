@@ -8,7 +8,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -21,26 +20,10 @@ type Cvm struct {
  */
 func (self Cvm) Info(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
 	name := http.Param("name")
 	namespace := http.Param("namespace")
 
-	rootSdk := k8s.NewK8sClient()
-	sigClient, err := rootSdk.ToSigClient()
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	if !user.IsFounder() {
-		namespace = k8sToken.GetNamespace()
-	}
-	cvm := &v1alpha1.Cvm{}
-	err = sigClient.Get(http, types.NamespacedName{Namespace: namespace, Name: name}, cvm)
+	cvm, err := k3k.TokenToCvm(http, token, namespace, name)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
@@ -88,7 +71,6 @@ func (self Cvm) List(http *gin.Context) {
 // 救援模式
 func (self Cvm) RescueToggle(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
 	name := http.Param("name")
 	namespace := http.Param("namespace")
 
@@ -98,16 +80,7 @@ func (self Cvm) RescueToggle(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	if user.SupportCvm() {
-		namespace = k8sToken.GetNamespace()
-	}
-	cvm := &v1alpha1.Cvm{}
-	err = sigClient.Get(http, types.NamespacedName{Namespace: namespace, Name: name}, cvm)
+	cvm, err := k3k.TokenToCvm(http, token, namespace, name)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
@@ -130,26 +103,11 @@ func (self Cvm) CheckResource(http *gin.Context) {
 		Pass: false,
 	}
 	token := http.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
+
 	name := http.Param("name")
 	namespace := http.Param("namespace")
-
 	rootSdk := k8s.NewK8sClient()
-	sigClient, err := rootSdk.ToSigClient()
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	if user.SupportCvm() {
-		namespace = k8sToken.GetNamespace()
-	}
-	cvm := &v1alpha1.Cvm{}
-	err = sigClient.Get(http, types.NamespacedName{Namespace: namespace, Name: name}, cvm)
+	cvm, err := k3k.TokenToCvm(http, token, namespace, name)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
