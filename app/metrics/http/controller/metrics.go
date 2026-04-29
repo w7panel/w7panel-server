@@ -606,7 +606,54 @@ func (self Metrics) Usage(http *gin.Context) {
 	self.JsonResponseWithoutError(http, response)
 }
 
+func (self Metrics) UsageCvm(http *gin.Context) {
+	token := http.MustGet("k8s_token").(string)
+	k8sToken := k8s.NewK8sToken(token)
+
+	uage := metrics.NewK3kUsage(k8s.NewK8sClient().Sdk)
+	cpu, memory, cputotal, memorytotal, err := uage.GetResourceUsage(k8sToken)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	response := gin.H{
+		"cpu": gin.H{
+			"usage": cpu.MilliValue(),
+			"total": cputotal.MilliValue(),
+		},
+		"memory": gin.H{
+			"usage": memory.Value(),
+			"total": memorytotal.Value(),
+		},
+	}
+	self.JsonResponseWithoutError(http, response)
+}
+
 func (self Metrics) UsageDisk(http *gin.Context) {
+	token := http.MustGet("k8s_token").(string)
+
+	uage := metrics.NewK3kUsage(k8s.NewK8sClient().Sdk)
+	usage, total, err := uage.GetResourceDiskUsage(k8s.NewK8sToken(token))
+	if err != nil {
+		response := gin.H{
+			"disk": gin.H{
+				"usage": usage,
+				"total": total,
+			},
+		}
+		self.JsonResponseWithoutError(http, response)
+		return
+	}
+	response := gin.H{
+		"disk": gin.H{
+			"usage": usage,
+			"total": total,
+		},
+	}
+	self.JsonResponseWithoutError(http, response)
+}
+
+func (self Metrics) UsageDiskCvm(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
 
 	uage := metrics.NewK3kUsage(k8s.NewK8sClient().Sdk)

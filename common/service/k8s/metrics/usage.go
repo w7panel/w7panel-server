@@ -70,6 +70,37 @@ func (k *K3kUsage) GetResourceUsage(k8stoken *k8s.K8sToken) (cpuUsage, memoryUsa
 
 	return cpuUsage, memoryUsage, allocatedCPU, allocatedMemory, nil
 }
+
+// 救援模式token 不是cvm token 是用户token 需要单独查cvm
+func (k *K3kUsage) GetResourceCvmUsage(cvm *cvmv1alpha1.Cvm) (cpuUsage, memoryUsage resource.Quantity, allocatedCPU, allocatedMemory resource.Quantity, err error) {
+
+	cfg := &k8s.K3kConfig{
+		Name:      cvm.GetK3kName(),
+		Namespace: cvm.GetNamespace(),
+		ApiServer: "",
+		CvmName:   cvm.Name,
+	}
+	client, err := k8s.NewK8sClient().GetK3kClusterSdkByConfig(cfg)
+	if err != nil {
+		return resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, nil
+	}
+	configmap, err := client.ClientSet.CoreV1().ConfigMaps("default").Get(client.Ctx, "metrics", metav1.GetOptions{})
+	if err != nil {
+		return resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, nil
+	}
+	cpuValue, _ := strconv.ParseInt(configmap.Data["cpu"], 10, 64)
+	memoryValue, _ := strconv.ParseInt(configmap.Data["memory"], 10, 64)
+	cpuUsage = *resource.NewMilliQuantity(cpuValue, resource.DecimalSI)
+	memoryUsage = *resource.NewQuantity(memoryValue, resource.BinarySI)
+
+	allocatedCPU = resource.MustParse(fmt.Sprintf("%d", cvm.Status.EffectiveResource.CPU))
+	allocatedMemory = resource.MustParse(fmt.Sprintf("%dGi", cvm.Status.EffectiveResource.Memory))
+	if allocatedCPU.IsZero() || allocatedMemory.IsZero() {
+		allocatedCPU, allocatedMemory, _ = k.nodeAllocate(allocatedCPU, allocatedMemory)
+	}
+
+	return cpuUsage, memoryUsage, allocatedCPU, allocatedMemory, nil
+}
 func (k *K3kUsage) getCvm(cvmName, ns string) (*cvmv1alpha1.Cvm, error) {
 	cvm := &cvmv1alpha1.Cvm{}
 	sigClient, err := k.sdk.ToSigClient()
@@ -119,19 +150,7 @@ func (k *K3kUsage) GetResourceDiskUsage(k8stoken *k8s.K8sToken) (storageUsage in
 		if err != nil {
 			return 0, 0, err
 		}
-		total := resource.MustParse(fmt.Sprintf("%dGi", cvm.Status.EffectiveResource.Storage))
-		pvcs, err := k.sdk.ClientSet.CoreV1().PersistentVolumeClaims(k8stoken.GetNamespace()).List(k.sdk.Ctx, metav1.ListOptions{})
-		if err != nil {
-			return 0, 0, err
-		}
-		usage := int64(0)
-		for _, pvc := range pvcs.Items {
-			size, ok := pvcsizeMap[pvc.GetName()+":"+pvc.GetNamespace()]
-			if ok {
-				usage += size
-			}
-		}
-		return usage, total.Value(), nil
+		return k.GetResourceCvmDiskUsage(cvm)
 	} else {
 		nodes, err := longhornClient.GetNodeList()
 		if err != nil {
@@ -147,4 +166,39 @@ func (k *K3kUsage) GetResourceDiskUsage(k8stoken *k8s.K8sToken) (storageUsage in
 		}
 		return usage, total, nil
 	}
+}
+
+// cvm 获取cvm的磁盘使用情况
+func (k *K3kUsage) GetResourceCvmDiskUsage(cvm *cvmv1alpha1.Cvm) (storageUsage int64, storageTotal int64, err error) {
+	// scName := k3kuser.GetStorageClass()
+
+	longhornClient, err := longhorn.NewLonghornClient(k.sdk)
+	if err != nil {
+		return 0, 0, err
+	}
+	volumes, err := longhornClient.GetVolumeList()
+	if err != nil {
+		return 0, 0, err
+	}
+	pvcsizeMap := make(map[string]int64)
+	for _, volume := range volumes.Items {
+		if volume.Status.KubernetesStatus.PVCName == "" {
+			continue
+		}
+		pvcsizeMap[volume.Status.KubernetesStatus.PVCName+":"+volume.Status.KubernetesStatus.Namespace] = volume.Status.ActualSize
+	}
+
+	total := resource.MustParse(fmt.Sprintf("%dGi", cvm.Status.EffectiveResource.Storage))
+	pvcs, err := k.sdk.ClientSet.CoreV1().PersistentVolumeClaims(cvm.Namespace).List(k.sdk.Ctx, metav1.ListOptions{LabelSelector: "cluster=" + cvm.Name})
+	if err != nil {
+		return 0, 0, err
+	}
+	usage := int64(0)
+	for _, pvc := range pvcs.Items {
+		size, ok := pvcsizeMap[pvc.GetName()+":"+pvc.GetNamespace()]
+		if ok {
+			usage += size
+		}
+	}
+	return usage, total.Value(), nil
 }

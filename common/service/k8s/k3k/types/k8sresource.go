@@ -2,7 +2,6 @@ package types
 
 import (
 	"os"
-	"strings"
 
 	"github.com/w7panel/w7panel/common/helper"
 	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
@@ -13,141 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
-
-func ToK3kJob(k3kUser *K3kUser) *batchv1.Job {
-
-	// 生成随机的Job名称
-	jobName := "k3k-create-" + strings.ToLower(helper.RandomString(10))
-	ingressClass := "higress"
-	mode := "shared"
-	k3smode := "4"
-	// 如果模式为虚拟，则更新IngressClass和k3s模式
-	if mode == "virtual" {
-		ingressClass = "traefik"
-		k3smode = "5"
-	}
-
-	// 设置环境变量
-	//ToK3kJob
-	envs := []corev1.EnvVar{
-		{
-			Name:  "K3K_NAME",
-			Value: k3kUser.GetK3kName(),
-		},
-		{
-			Name:  "K3K_NAMESPACE",
-			Value: k3kUser.GetK3kNamespace(),
-		},
-		{
-			Name:  "KUBECONFIG_PATH", //k3k-k7-k7-kubeconfig.yaml
-			Value: "/tmp/" + k3kUser.GetK3kNamespace() + "-" + k3kUser.GetK3kName() + "-kubeconfig.yaml",
-		},
-		{
-			Name:  "KUBECONFIG_SERVER", // k3k-cccc-service.k3k-cccc
-			Value: k3kUser.GetK3kNamespace() + "-service." + k3kUser.GetK3kNamespace() + "",
-		},
-		{
-			Name:  "STORAGE_CLASS_NAME",
-			Value: k3kUser.GetStorageClass(),
-		},
-		{
-			Name:  "K3K_MODE",
-			Value: k3kUser.GetClusterMode(),
-		},
-		{
-			Name:  "INGRESS_CLASS",
-			Value: ingressClass,
-		},
-		{
-			Name:  "K3S_MODE",
-			Value: k3smode,
-		},
-		{
-			Name:  "K3K_POLICY",
-			Value: k3kUser.GetClusterPolicy(),
-		},
-		{
-			Name:  "K3K_STORAGE_REQUEST_SIZE",
-			Value: k3kUser.GetClusterSysStorageRequestSize(),
-		},
-		{
-			Name:  "K3K_PVC_STORAGE_REQUEST_SIZE",
-			Value: k3kUser.GetClusterDataStorageRequestSize(),
-		},
-		{
-			Name:  "DEFAULT_VOLUME_NAME",
-			Value: k3kUser.GetDefaultVolumeName(),
-		},
-
-		// 设置Job的标题
-	}
-	// 设置Job的注解
-	title := "初始化虚拟集群"
-	annotations := map[string]string{
-		"title":              title,
-		"w7.cc/title":        title,
-		"w7.cc/deploy-title": "初始化虚拟集群",
-
-		// 设置Job的标签
-	}
-	labels := map[string]string{
-		"k3k-job":      "true",
-		"k3k-sa":       k3kUser.Name,
-		"job-name":     jobName,
-		"w7.cc/suffix": k3kUser.Name,
-	}
-	// labels["w7.cc/job-source"] = "appgroup"
-	// labels["searchJob"] = p.GetName() + "-build-" + shellType
-
-	// 设置Job的重试次数和超时时间
-	// labels["w7.cc/shell-type"] = shellType
-	backofflimit := int32(1)
-
-	// 创建Job对象
-	afterSeconds := int32(3600)
-	job := &batchv1.Job{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "batch/v1",
-			Kind:       "Job",
-		},
-		// k3kUser.GetK3kNamespace() serviceAccountName  必须使用k3kUser.Name 不能给他权限 所以用default namespace
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        jobName,
-			Labels:      labels,
-			Annotations: annotations,
-			Namespace:   "default", //k3kUser.GetK3kNamespace(), 面板serviceaccount 在default 命名空间下
-		},
-		Spec: batchv1.JobSpec{
-			TTLSecondsAfterFinished: &afterSeconds,
-			BackoffLimit:            &backofflimit,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-				Spec: corev1.PodSpec{
-					ServiceAccountName: helper.ServiceAccountName(),
-					//挂载hostPath
-					RestartPolicy: corev1.RestartPolicyNever,
-
-					Containers: []corev1.Container{
-						{
-							Name:            "create-cluster",
-							Image:           helper.SelfImage(),
-							Env:             envs,
-							WorkingDir:      "/tmp",
-							ImagePullPolicy: corev1.PullAlways,
-							Command:         []string{"sh", "-c", "${KO_DATA_PATH}/shell/k3k-create.sh"},
-
-							// SecurityContext: &corev1.SecurityContext{,
-							// Args:            []string{shellkubectl.kubernetes.io/restartedAt
-						},
-					},
-				},
-			},
-		},
-	}
-	return job
-}
 
 func ToK3kDaemonSet(cvm *cvmv1alpha1.Cvm) *appsv1.DaemonSet {
 	labels := map[string]string{
@@ -310,6 +174,10 @@ func ToK3kPod(cvm *cvmv1alpha1.Cvm) *corev1.Pod {
 		{
 			Name:  "BUILDIMGAGE_ENABLED",
 			Value: "true",
+		},
+		{
+			Name:  "CVM_NAME",
+			Value: cvm.Name,
 		},
 		{
 			Name: "POD_IP",

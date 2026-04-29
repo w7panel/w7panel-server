@@ -35,9 +35,11 @@ type CertVerify struct {
 }
 
 type PayResult struct {
-	NeedPay bool   `json:"needPay"`
-	Ticket  string `json:"ticket"`
-	OrderSn string `json:"ipOrderSn"`
+	NeedPay      bool   `json:"needPay"`
+	Ticket       string `json:"ticket"`
+	OrderSn      string `json:"ipOrderSn"`
+	CvmName      string `json:"cvmName"`
+	CvmNamespace string `json:"cvmNamespace"`
 }
 
 // declared 使用K3kOrder

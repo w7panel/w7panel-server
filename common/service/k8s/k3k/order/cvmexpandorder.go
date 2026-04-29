@@ -74,5 +74,7 @@ func (k *K3kOrderApi) CreateExpandCvmOrder(baseResource *types.BuyExpandResource
 			_ = k.NotifyCvmOrder(user, cvm.Name, result.OrderSn)
 		})
 	}
+	result.CvmName = cvm.Name
+	result.CvmNamespace = cvm.Namespace
 	return result, nil
 }

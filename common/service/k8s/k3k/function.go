@@ -2,7 +2,6 @@ package k3k
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -200,36 +199,6 @@ func cvmResourceToOverSelling(resourceSpec *cvmv1alpha1.CvmResource) *oversellin
 		Storage:   resource.MustParse(fmt.Sprintf("%dGi", resourceSpec.Storage)),
 		BandWidth: resource.MustParse(fmt.Sprintf("%dM", resourceSpec.Bandwidth)),
 	}
-}
-
-func InitCluster(sdk *k8s.Sdk, user *types.K3kUser) error {
-
-	sigClient, err := sdk.ToSigClient()
-	if err != nil {
-		return err
-	}
-	k3kClient := k3ktypes.NewK3kClient(sigClient)
-
-	// if !user.IsClusterUser() {
-	// 	return errors.New("非集群用户,无法操作")
-	// }
-	if user.NeedCreateOrder() {
-		return errors.New("未购买集群资源,无法操作")
-	}
-	if user.IsExpired() {
-		return errors.New("用户已过期,请续费")
-	}
-	if user.GetStorageClass() == "" {
-		return errors.New("未设置存储类")
-	}
-	if user.GetNamespace() == "" {
-		return errors.New("未设置命名空间")
-	}
-	if user.NeedOverSellingCheck() {
-		return errors.New("集群资源已售罄,请联系管理员")
-	}
-	err = k3kClient.Create(user)
-	return err
 }
 
 func RefreshK3kPolicy(policy *v1alpha1.VirtualClusterPolicy, rootSdk *k8s.Sdk, update bool) error {

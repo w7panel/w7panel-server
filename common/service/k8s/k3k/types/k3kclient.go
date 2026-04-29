@@ -24,22 +24,6 @@ func NewK3kClient(client client.Client) *K3kClient {
 	}
 }
 
-func (k *K3kClient) Create(k3kUser *K3kUser) error {
-
-	job := ToK3kJob(k3kUser)
-	err := k.k3kClient.Create(context.Background(), job)
-	if err != nil {
-		return err
-	}
-	k3kUser.Running(job.Name)
-	err = k.k3kClient.Update(context.Background(), k3kUser.ServiceAccount)
-	if err != nil {
-		return err
-	}
-	return nil
-
-}
-
 func (k *K3kClient) Delete(user *K3kUser) error {
 	namespace := user.GetK3kNamespace()
 	clusterName := user.GetK3kName()

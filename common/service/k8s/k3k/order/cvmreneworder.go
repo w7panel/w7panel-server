@@ -60,5 +60,7 @@ func (k *K3kOrderApi) CreateRenewCvmOrder(baseResource *types.BuyRenewResource, 
 			_ = k.NotifyCvmOrder(user, cvm.Name, result.OrderSn)
 		})
 	}
+	result.CvmName = cvm.Name
+	result.CvmNamespace = cvm.Namespace
 	return result, nil
 }

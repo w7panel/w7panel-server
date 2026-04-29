@@ -117,5 +117,7 @@ func (k *K3kOrderApi) CreateBaseResourceCvmOrder(baseResource *types.BuyBaseReso
 			_ = k.NotifyCvmOrder(user, cvmName, result.OrderSn)
 		})
 	}
+	result.CvmName = cvmName
+	result.CvmNamespace = consoleOrder.Namespace
 	return result, nil
 }

@@ -25,7 +25,7 @@ func (m *ResourceMutator) handleStatefulSet(ctx context.Context, req admission.R
 	}
 	ResetImage(statefulset.Namespace, statefulset.Name, "StatefulSet", statefulset.Annotations)
 
-	_, ok := statefulset.Labels["cluster"]
+	clusterName, ok := statefulset.Labels["cluster"]
 	if !ok {
 		return admission.Allowed("无需修改 statefulset")
 	}
@@ -185,6 +185,18 @@ mount --make-shared /run
 	if statefulset.Spec.Template.Annotations == nil {
 		statefulset.Spec.Template.Annotations = map[string]string{}
 	}
+	// 追加label 为了统计存储大小
+	if statefulset.Spec.VolumeClaimTemplates != nil {
+		for i := range statefulset.Spec.VolumeClaimTemplates {
+			pvc := &statefulset.Spec.VolumeClaimTemplates[i]
+			if pvc.Labels == nil {
+				pvc.Labels = map[string]string{}
+			}
+			pvc.Labels["w7.cc/cvm-name"] = clusterName
+			modified = true
+		}
+	}
+
 	if okCanCreate {
 		statefulset.Spec.Template.Annotations[k3ktypes.W7_CREATE_POD] = canCreate
 		if canCreate == "false" {

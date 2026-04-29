@@ -103,7 +103,7 @@ func (self Cvm) RescueToggle(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if !user.IsFounder() {
+	if user.SupportCvm() {
 		namespace = k8sToken.GetNamespace()
 	}
 	cvm := &v1alpha1.Cvm{}
@@ -145,7 +145,7 @@ func (self Cvm) CheckResource(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if !user.IsFounder() {
+	if user.SupportCvm() {
 		namespace = k8sToken.GetNamespace()
 	}
 	cvm := &v1alpha1.Cvm{}

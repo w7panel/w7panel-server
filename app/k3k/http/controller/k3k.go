@@ -17,7 +17,6 @@ import (
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type K3k struct {
@@ -44,57 +43,20 @@ func (self K3k) Info(http *gin.Context) {
 }
 
 func (self K3k) ReInitCluster(http *gin.Context) {
-	token := http.MustGet("k8s_token").(string)
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	err = k3k.InitCluster(k8s.NewK8sClient().Sdk, user)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonSuccessResponse(http)
-	return
-}
-
-func (self K3k) ReInitClusterSuper(http *gin.Context) {
-	type ParamsValidate struct {
-		K3kUserName string `form:"k3kUserName" validate:"required"`
-	}
-	params := ParamsValidate{}
-	if !self.Validate(http, &params) {
-		return
-	}
-
-	token := http.MustGet("k8s_token").(string)
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	if !user.IsFounder() {
-		self.JsonResponseWithServerError(http, errors.New("非创始人用户无法操作"))
-		return
-	}
-
-	sdk := k8s.NewK8sClient()
-	sdk.Clear(params.K3kUserName) //清理缓存中的sdk信息
-
-	sa, err := sdk.ClientSet.CoreV1().ServiceAccounts("default").Get(sdk.Ctx, params.K3kUserName, metav1.GetOptions{})
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	k3kUser := types.NewK3kUser(sa)
-	err = k3k.InitCluster(sdk.Sdk, k3kUser)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonSuccessResponse(http)
-	return
+	// token := http.MustGet("k8s_token").(string)
+	// user, err := k3k.TokenToK3kUser(token)
+	// if err != nil {
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
+	// err = k3k.InitCluster(k8s.NewK8sClient().Sdk, user)
+	// if err != nil {
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
+	// self.JsonSuccessResponse(http)
+	// return
+	self.JsonSuccessResponse(http) //不需要初始化集群
 }
 
 func (self K3k) DomainWhiteList(http *gin.Context) {
@@ -391,5 +353,3 @@ func (self K3k) IdcResource(http *gin.Context) {
 	self.JsonResponseWithoutError(http, result)
 
 }
-
-
