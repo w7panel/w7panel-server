@@ -140,6 +140,10 @@ type CvmStatus struct {
 	DiffMonth         string             `json:"diffMonth,omitempty"`    // 到期时间剩余月数
 }
 
+// 进入退出救援模式
+func (u *Cvm) RescueToggle() {
+	u.Spec.Rescue = !u.Spec.Rescue //进入退出救援模式
+}
 func (u *Cvm) computeBuy() {
 	u.Status.CanBaseBuy = ptr.Bool(u.IsEmpty())                               //是否购买基础套餐
 	u.Status.CanExpandBuy = ptr.Bool(!u.IsEmpty() && u.Spec.ExpireTime != "") //是否可以扩容

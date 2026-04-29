@@ -62,11 +62,7 @@ func LoginByServiceAccount(client *k8s.Sdk, sa *v1.ServiceAccount, seconds int64
 		}()
 	}
 
-	if k3kUser.CanOverSellingCheck() {
-		go TryCheckOverSellingResource(client, k3kUser)
-	} else {
-		go SignLastLoginTime(client, k3kUser)
-	}
+	go SignLastLoginTime(client, k3kUser)
 	//刷新控制台token
 	go func() {
 		err := console.RefreshCDTokenUseOpenid(sa.Name)
@@ -190,36 +186,17 @@ func getCvmResource(cvm *cvmv1alpha1.Cvm) *overselling.Resource {
 		resourceSpec = &cvmv1alpha1.CvmResource{}
 	}
 
+	return cvmResourceToOverSelling(resourceSpec)
+}
+
+func cvmResourceToOverSelling(resourceSpec *cvmv1alpha1.CvmResource) *overselling.Resource {
+
 	return &overselling.Resource{
 		CPU:       resource.MustParse(fmt.Sprintf("%dm", resourceSpec.CPU)),
 		Memory:    resource.MustParse(fmt.Sprintf("%dGi", resourceSpec.Memory)),
 		Storage:   resource.MustParse(fmt.Sprintf("%dGi", resourceSpec.Storage)),
 		BandWidth: resource.MustParse(fmt.Sprintf("%dM", resourceSpec.Bandwidth)),
 	}
-}
-
-func TryCheckOverSellingResource(sdk *k8s.Sdk, k3kuser *types.K3kUser) error {
-	if !k3kuser.CanOverSellingCheck() {
-		// 不需要资源检测
-		return nil
-	}
-	sigClient, err := sdk.ToSigClient()
-	if err != nil {
-		return err
-	}
-	//资源验证有问题
-	err = overselling.CanAddResource(k3kuser.GetOverResource(), getServiceAccountResource)
-	if err != nil {
-		return err
-	}
-	_, err = controllerutil.CreateOrPatch(context.TODO(), sigClient, k3kuser.ServiceAccount, func() error {
-		k3kuser.SetLoginTime()
-		k3kuser.SetOverMode(true)
-		return nil
-	})
-
-	// TODO: 尝试添加资源
-	return err
 }
 
 func InitCluster(sdk *k8s.Sdk, user *types.K3kUser) error {

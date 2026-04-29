@@ -77,3 +77,34 @@ func (self Cvm) List(http *gin.Context) {
 	}
 	self.JsonResponseWithoutError(http, list)
 }
+
+// 救援模式
+func (self Cvm) RescueToggle(http *gin.Context) {
+	token := http.MustGet("k8s_token").(string)
+	k8sToken := k8s.NewK8sToken(token)
+	name := http.Param("name")
+	namespace := http.Param("namespace")
+
+	rootSdk := k8s.NewK8sClient()
+	sigClient, err := rootSdk.ToSigClient()
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	if k8sToken.IsK3kCluster() {
+		namespace = k8sToken.GetNamespace()
+	}
+	cvm := &v1alpha1.Cvm{}
+	err = sigClient.Get(http, types.NamespacedName{Namespace: namespace, Name: name}, cvm)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	cvm.RescueToggle()
+	err = sigClient.Update(http, cvm)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponseWithoutError(http, cvm)
+}

@@ -11,6 +11,7 @@ import (
 
 	k3kv1 "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	v1 "k8s.io/api/core/v1"
@@ -412,12 +413,18 @@ func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.
 
 // no-resource 无可用资源 wait 待处理 success 资源检查通过
 func (r *K3kCvmController) checkResource(ctx context.Context, cvm *cvmv1alpha1.Cvm) error {
-	if cvm.Spec.CapacityCheckState == capacityCheckStateWait {
-		_, err := controllerutil.CreateOrPatch(ctx, r.Client, cvm, func() error {
-			cvm.CheckSuccess()
-			return nil
+	if cvm.Spec.CapacityCheckState == capacityCheckStateWait || cvm.Spec.CapacityCheckState == capacityCheckStateNoResource {
+		// 检查资源是否充足
+		err := overselling.CanAddResourceCvm(cvmResourceToOverSelling(cvm.Spec.PendingPurchasedResource), func(c *cvmv1alpha1.Cvm) *overselling.Resource {
+			return getCvmResource(c)
 		})
-		return err
+		if err == nil {
+			_, err := controllerutil.CreateOrPatch(ctx, r.Client, cvm, func() error {
+				cvm.CheckNoResource()
+				return nil
+			})
+			return err
+		}
 	}
 	return nil
 }
