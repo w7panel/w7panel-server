@@ -94,7 +94,7 @@ func (self K3k) LoginCvm(http *gin.Context) {
 		return
 	}
 	seconds := facade.Config.GetInt64("app.login_seconds")
-	sa, err := client.Login2(user.Name, "", false)
+	sa, err := client.Login2(cvm.GetK3kName(), "", false)
 	if err != nil {
 		err2 := fmt.Errorf("用户名密码不正确")
 		self.JsonResponseWithError(http, err2, 500)
