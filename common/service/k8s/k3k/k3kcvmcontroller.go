@@ -462,10 +462,6 @@ func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 
-	controllerutil.RemoveFinalizer(cvm, K3kCvmFinalizerName)
-	if err := r.Update(ctx, cvm); err != nil {
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
-	}
 	pvcName := cvm.GetClusterServer0PvcName()
 	if pvcName != "" {
 		pvc := &corev1.PersistentVolumeClaim{
@@ -475,9 +471,13 @@ func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.
 			},
 		}
 		if err := r.Delete(ctx, pvc); err != nil && !apierrors.IsNotFound(err) {
-			return ctrl.Result{RequeueAfter: time.Minute}, nil //TODO 重试
+			return ctrl.Result{}, nil //TODO 重试
 		}
 
+	}
+	controllerutil.RemoveFinalizer(cvm, K3kCvmFinalizerName)
+	if err := r.Update(ctx, cvm); err != nil {
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 	return ctrl.Result{}, nil
 }
