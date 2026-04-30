@@ -64,7 +64,7 @@ func (t *K3kConfig) ToAgentSvc() string {
 }
 
 func (u *K3kConfig) GetVirtualIngressServiceName() string {
-	return helper.GetVirtualIngressServiceName(u.Namespace, u.Name)
+	return helper.GetVirtualIngressServiceName(u.Namespace, u.CvmName)
 }
 
 func NewK8sToken(token string) *K8sToken {
