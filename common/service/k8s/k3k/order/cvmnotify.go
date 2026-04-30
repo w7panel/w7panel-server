@@ -66,10 +66,18 @@ func doNotify(orderInfo *console.OrderInfo, k *K3kOrderApi, user *types.K3kUser)
 	cvm, err := k.getCvm(user, cvmName)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			lqr := user.GetLimitRange()
+			sc := ""
+			if lqr != nil {
+				sc = lqr.StorageClass
+			}
 			cvm = &cvmv1alpha1.Cvm{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      crdOrder.Spec.CvmName,
 					Namespace: user.GetK3kNamespace(),
+				},
+				Spec: cvmv1alpha1.CvmSpec{
+					StorageClassName: sc,
 				},
 			}
 		} else {
