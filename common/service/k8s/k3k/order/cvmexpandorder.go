@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -74,6 +75,11 @@ func (k *K3kOrderApi) CreateExpandCvmOrder(baseResource *types.BuyExpandResource
 	})
 	if err != nil {
 		return nil, err
+	}
+	if helper.IsMockPay() {
+		time.AfterFunc(time.Second*5, func() {
+			_ = k.NotifyCvmOrder(user, cvm.Name, result.OrderSn)
+		})
 	}
 	if !result.NeedPay {
 		time.AfterFunc(time.Second*2, func() {

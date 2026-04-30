@@ -13,7 +13,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -90,31 +89,20 @@ func (k *K3kOrderApi) CreateBaseResourceCvmOrder(baseResource *types.BuyBaseReso
 	if err != nil {
 		return nil, err
 	}
-	consoleOrder := &cvmv1alpha1.CvmConsoleOrder{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      strings.ToLower(result.OrderSn),
-			Namespace: user.GetK3kNamespace(),
-			Labels: map[string]string{
-				"w7.cc/cvm-name": cvmName,
-			},
-		},
-		Spec: cvmv1alpha1.CvmConsoleOrderSpec{
-			Order: &cvmv1alpha1.CvmOrder{
-				OrderSn: result.OrderSn,
-			},
-			CvmName: cvmName,
-		},
-	}
-	err = k.client.Create(k.sdk.Ctx, consoleOrder)
+	consoleOrder, err := createCrdOrder(k.sdk.Ctx, k.client, result.OrderSn, user.GetK3kNamespace(), cvmName)
 	if err != nil {
+		slog.Error("create crd order error", "err", err)
 		return nil, err
 	}
+
 	if err := k.UsedCoupon(conponCode, used, result.OrderSn); err != nil {
 		slog.Error("used coupon code error", "code", conponCode, "err", err)
 		return nil, errors.New("used coupon code error")
 	}
 	if helper.IsMockPay() {
-		result.NeedPay = false
+		time.AfterFunc(time.Second*5, func() {
+			_ = k.NotifyCvmOrder(user, cvmName, result.OrderSn)
+		})
 	}
 	if !result.NeedPay {
 		time.AfterFunc(time.Second*2, func() {
