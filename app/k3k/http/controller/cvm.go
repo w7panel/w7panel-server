@@ -136,6 +136,7 @@ func (self Cvm) CheckResource(http *gin.Context) {
 		}
 		result.Pass = true // 集群资源充足
 		self.JsonResponseWithoutError(http, result)
+		return
 	}
 	err = k3k.TryCheckOverSellingResource(rootSdk.Sdk, cvm)
 	if err != nil {
