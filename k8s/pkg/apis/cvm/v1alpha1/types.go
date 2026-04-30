@@ -129,6 +129,10 @@ func (u *Cvm) ReturnOrder(order *CvmConsoleOrder) error {
 	return nil
 }
 
+func (u *Cvm) GetClusterServer0PvcName() string {
+	return "varlibrancherk3s-k3k-" + u.Name + "-server-0"
+}
+
 // 购买信息
 type CvmOrder struct {
 	OrderSn      string       `json:"orderSn"`

@@ -14,6 +14,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -229,6 +230,19 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 		}
 		if err := r.Delete(ctx, cluster); err != nil && !apierrors.IsNotFound(err) {
 			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+		pvcName := cvm.GetClusterServer0PvcName()
+		if pvcName != "" {
+			pvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      pvcName,
+					Namespace: cvm.Namespace,
+				},
+			}
+			if err := r.Delete(ctx, pvc); err != nil && !apierrors.IsNotFound(err) {
+				return ctrl.Result{}, nil //TODO 重试
+			}
+
 		}
 		//TODO : cluster 删除需要一并删除pvc
 		return ctrl.Result{}, nil
