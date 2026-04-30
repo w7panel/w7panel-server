@@ -11,6 +11,7 @@ import (
 	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type Cvm struct {
@@ -114,13 +115,25 @@ func (self Cvm) CheckResource(http *gin.Context) {
 	name := http.Param("name")
 	namespace := http.Param("namespace")
 	rootSdk := k8s.NewK8sClient()
+	sigclient, err := rootSdk.ToSigClient()
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
 	cvm, err := k3k.TokenToCvm(http, token, namespace, name)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
 	if os.Getenv("MOCK_CHECK_RES") == "true" { //测试直接通过
-		cvm.CheckSuccess()
+		_, err := controllerutil.CreateOrPatch(http, sigclient, cvm, func() error {
+			cvm.CheckSuccess()
+			return nil
+		})
+		if err != nil {
+			self.JsonResponseWithServerError(http, err)
+			return
+		}
 		result.Pass = true // 集群资源充足
 		self.JsonResponseWithoutError(http, result)
 	}

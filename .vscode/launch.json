@@ -35,7 +35,8 @@
                 "K3S_REGISTRY_ENABLED": "true",
                 "BUILDIMGAGE_ENABLED": "true",
                 "CVM_ENABLED": "true",
-                "MOCK_PAY": "true"
+                "MOCK_PAY": "true",
+                "MOCK_CHECK_RES": "true",
                 // "KUBECONFIG": "/home/workspace/k8s-offline/k3k-k8-k8-kubeconfig.yaml"
             },
             "type": "go",
