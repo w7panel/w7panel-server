@@ -429,11 +429,13 @@ func ToK3kWeihJob(cvm *cvmv1alpha1.Cvm) *batchv1.Job {
 		// 设置Job的标签
 	}
 	labels := map[string]string{
-		"job-name":     cvm.GetRescueJobName(),
-		"k3k-sa":       cvm.GetK3kName(),
-		"k3k-cvm-name": cvm.Name,
-		"k3k-job":      "true",
-		"w7.cc/weihu":  "true",
+		"job-name":      cvm.GetRescueJobName(),
+		"k3k-sa":        cvm.GetK3kName(),
+		"k3k-namespace": cvm.GetK3kNamespace(),
+		"k3k-cvm-name":  cvm.Name,
+		"k3k-job":       "true",
+		"w7.cc/weihu":   "true",
+		"w7.cc/rescue":  "true",
 	}
 	// labels["w7.cc/job-source"] = "appgroup"
 	// labels["searchJob"] = p.GetName() + "-build-" + shellType
@@ -453,7 +455,7 @@ func ToK3kWeihJob(cvm *cvmv1alpha1.Cvm) *batchv1.Job {
 			Name:        cvm.GetRescueJobName(),
 			Labels:      labels,
 			Annotations: annotations,
-			Namespace:   "default", //k3kUser.GetK3kNamespace(), 面板serviceaccount 在default 命名空间下
+			Namespace:   "default", //面板serviceaccount 在default 命名空间下
 		},
 		Spec: batchv1.JobSpec{
 			TTLSecondsAfterFinished: &afterSeconds,

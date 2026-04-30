@@ -14,7 +14,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
-	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -151,7 +150,7 @@ func setupCvmController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cvmv1alpha1.Cvm{}, ctrlbuilder.WithPredicates(cvmPredicate)).
 		Owns(&k3kv1.Cluster{}, ctrlbuilder.WithPredicates(clusterPredicate)).
-		Owns(&batchv1.Job{}).
+		// Owns(&batchv1.Job{}). //job 在其他命名空间 没有service-account 只能在default 所有不能owns
 		Complete(r)
 }
 
@@ -256,41 +255,42 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 // 执行救援
 func (r *K3kCvmController) doRescue(ctx context.Context, cvm *cvmv1alpha1.Cvm) error {
 	job := k3ktypes.ToK3kWeihJob(cvm)
-	err := controllerutil.SetControllerReference(cvm, job, r.Scheme)
-	if err != nil {
-		return err
-	}
-	err = r.Client.Create(ctx, job)
+	// err := controllerutil.SetControllerReference(cvm, job, r.Scheme)
+	// if err != nil {
+	// 	return err
+	// }
+	err := r.Client.Create(ctx, job)
 	if err != nil {
 		if !apierrors.IsAlreadyExists(err) {
 			return err
 		}
 	}
-	dbJob := &batchv1.Job{}
-	err = r.Client.Get(ctx, client.ObjectKeyFromObject(job), dbJob)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return err
-		}
-	}
-	if err == nil {
-		base := cvm.DeepCopy()
-		cvm.ComputeStatus()
-		phasa := "running"
-		if job.Status.Succeeded > 1 {
-			phasa = "success"
-		}
-		if job.Status.Failed > 1 {
-			phasa = "failed"
-		}
-		cvm.Status.RescuePhase = phasa
-		if !apiequality.Semantic.DeepEqual(cvm.Status, base.Status) {
-			err = r.Status().Patch(ctx, cvm, client.MergeFrom(base))
-			if err != nil {
-				return err
-			}
-		}
-	}
+	// job 只能default namespace 所以cvm 不能实时触发
+	// dbJob := &batchv1.Job{}
+	// err = r.Client.Get(ctx, client.ObjectKeyFromObject(job), dbJob)
+	// if err != nil {
+	// 	if !apierrors.IsNotFound(err) {
+	// 		return err
+	// 	}
+	// }
+	// if err == nil {
+	// 	base := cvm.DeepCopy()
+	// 	cvm.ComputeStatus()
+	// 	phasa := "running"
+	// 	if job.Status.Succeeded > 1 {
+	// 		phasa = "success"
+	// 	}
+	// 	if job.Status.Failed > 1 {
+	// 		phasa = "failed"
+	// 	}
+	// 	cvm.Status.RescuePhase = phasa
+	// 	if !apiequality.Semantic.DeepEqual(cvm.Status, base.Status) {
+	// 		err = r.Status().Patch(ctx, cvm, client.MergeFrom(base))
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	}
+	// }
 	return nil
 }
 
