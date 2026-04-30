@@ -71,39 +71,41 @@ func loadReturnCvmOrder(cvm *cvmv1alpha1.Cvm, orderApi *order.K3kOrderApi, clien
 		slog.Error("last return order find err", "err", err)
 		return err
 	}
-	if returnOrder.HasOrder {
-		consoleOrder := &cvmv1alpha1.CvmConsoleOrder{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "CvmConsoleOrder",
-				APIVersion: "cvm.w7.cc/v1alpha1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name: strings.ToLower(returnOrder.K3kOrder.OrderSn),
-			},
-		}
-		_, err = controllerutil.CreateOrPatch(context.Background(), client, consoleOrder, func() error {
-			consoleOrder.Spec = cvmv1alpha1.CvmConsoleOrderSpec{
-				CvmName: cvm.Name,
-				Order: &cvmv1alpha1.CvmOrder{
-					OrderSn: returnOrder.K3kOrder.OrderSn,
-					Status:  returnOrder.K3kOrder.OrderStatus,
-					Resource: &cvmv1alpha1.CvmResource{
-						CPU:       returnOrder.K3kOrder.Cpu,
-						Memory:    returnOrder.K3kOrder.Memory,
-						Storage:   returnOrder.K3kOrder.Storage,
-						Bandwidth: returnOrder.K3kOrder.Bandwidth,
-					},
-					BuyMode:      returnOrder.K3kOrder.BuyMode,
-					Hour:         int(returnOrder.K3kOrder.GetHour()),
-					ReturnFinish: false,
+	if !returnOrder.HasOrder {
+		slog.Error("cvm has no return order", "name", cvm.Name)
+		return nil
+	}
+	consoleOrder := &cvmv1alpha1.CvmConsoleOrder{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "CvmConsoleOrder",
+			APIVersion: "cvm.w7.cc/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: strings.ToLower(returnOrder.K3kOrder.OrderSn),
+		},
+	}
+	_, err = controllerutil.CreateOrPatch(context.Background(), client, consoleOrder, func() error {
+		consoleOrder.Spec = cvmv1alpha1.CvmConsoleOrderSpec{
+			CvmName: cvm.Name,
+			Order: &cvmv1alpha1.CvmOrder{
+				OrderSn: returnOrder.K3kOrder.OrderSn,
+				Status:  returnOrder.K3kOrder.OrderStatus,
+				Resource: &cvmv1alpha1.CvmResource{
+					CPU:       returnOrder.K3kOrder.Cpu,
+					Memory:    returnOrder.K3kOrder.Memory,
+					Storage:   returnOrder.K3kOrder.Storage,
+					Bandwidth: returnOrder.K3kOrder.Bandwidth,
 				},
-			}
-			return nil
-		})
-		if err != nil {
-			slog.Error("create or patch console order err", "err", err)
-			return err
+				BuyMode:      returnOrder.K3kOrder.BuyMode,
+				Hour:         int(returnOrder.K3kOrder.GetHour()),
+				ReturnFinish: false,
+			},
 		}
+		return nil
+	})
+	if err != nil {
+		slog.Error("create or patch console order err", "err", err)
+		return err
 	}
 	return nil
 
