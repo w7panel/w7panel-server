@@ -1,14 +1,18 @@
 package order
 
 import (
+	"context"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func currentCvmBuyResource(cvm *cvmv1alpha1.Cvm) types.BuyResource {
@@ -50,4 +54,27 @@ func MockNotifyOrderCvm(user *types.K3kUser, sn string) error {
 		return err
 	}
 	return orderApi.MockNotifyPaidOrderCvm(user, sn)
+}
+
+func createCrdOrder(ctx context.Context, client client.Client, orderSn, namespace, cvmName string) (*cvmv1alpha1.CvmConsoleOrder, error) {
+	consoleOrder := &cvmv1alpha1.CvmConsoleOrder{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      strings.ToLower(orderSn),
+			Namespace: namespace,
+			Labels: map[string]string{
+				"w7.cc/cvm-name": cvmName,
+			},
+		},
+		Spec: cvmv1alpha1.CvmConsoleOrderSpec{
+			Order: &cvmv1alpha1.CvmOrder{
+				OrderSn: orderSn,
+			},
+			CvmName: cvmName,
+		},
+	}
+	err := client.Create(ctx, consoleOrder)
+	if err != nil {
+		return nil, err
+	}
+	return consoleOrder, nil
 }

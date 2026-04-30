@@ -35,13 +35,10 @@ func (k *K3kOrderApi) NotifyCvmOrder(user *types.K3kUser, cvmName string, sn str
 
 func doNotify(orderInfo *console.OrderInfo, k *K3kOrderApi, user *types.K3kUser) error {
 	cvmName := orderInfo.CvmName
-	var crdOrder *cvmv1alpha1.CvmConsoleOrder
-	if orderInfo.BuyMode == BASE_BUY { //只有基础购买会创建crd订单
-		consoleOrder, err := k.getCvmConsoleOrder(user, orderInfo.OrderSn)
-		if err != nil {
-			return err
-		}
-		crdOrder = consoleOrder
+	crdOrder, err := k.getCvmConsoleOrder(user, orderInfo.OrderSn)
+	if err != nil {
+		slog.Warn("获取cvm订单信息失败", "orderSn", orderInfo.OrderSn, "error", err)
+		return err
 	}
 	if crdOrder != nil {
 		_, err := controllerutil.CreateOrPatch(context.TODO(), k.client, crdOrder, func() error {

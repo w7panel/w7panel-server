@@ -44,6 +44,11 @@ func (k *K3kOrderApi) CreateRenewCvmOrder(baseResource *types.BuyRenewResource, 
 	if err != nil {
 		return nil, err
 	}
+	_, err = createCrdOrder(k.sdk.Ctx, k.client, result.OrderSn, cvm.Namespace, cvm.Name)
+	if err != nil {
+		slog.Error("create crd order error", "err", err)
+		return nil, err
+	}
 	_, err = controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, cvm, func() error {
 		cvmOrder.SetRenewOrder(result.OrderSn)
 		return nil

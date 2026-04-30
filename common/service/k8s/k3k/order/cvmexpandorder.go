@@ -3,6 +3,7 @@ package order
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -60,6 +61,11 @@ func (k *K3kOrderApi) CreateExpandCvmOrder(baseResource *types.BuyExpandResource
 	params["cvm_name"] = cvm.Name
 	result, err := k.createOrder(baseResource.BaseConfigName, user, params, EXPAND_BUY)
 	if err != nil {
+		return nil, err
+	}
+	_, err = createCrdOrder(k.sdk.Ctx, k.client, result.OrderSn, cvm.Namespace, cvm.Name)
+	if err != nil {
+		slog.Error("create crd order error", "err", err)
 		return nil, err
 	}
 	_, err = controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, cvm, func() error {
