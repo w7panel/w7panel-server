@@ -419,16 +419,20 @@ func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.
 func (r *K3kCvmController) checkResource(ctx context.Context, cvm *cvmv1alpha1.Cvm) error {
 	if cvm.Spec.CapacityCheckState == capacityCheckStateWait || cvm.Spec.CapacityCheckState == capacityCheckStateNoResource {
 		// 检查资源是否充足
-		err := overselling.CanAddResourceCvm(cvmResourceToOverSelling(cvm.Spec.PendingPurchasedResource), func(c *cvmv1alpha1.Cvm) *overselling.Resource {
-			return getCvmResource(c)
-		})
+		err := overselling.CanAddResourceCvm(cvmResourceToOverSelling(cvm.Spec.PendingPurchasedResource), getCvmResource)
+		hasRs := false
 		if err == nil {
-			_, err := controllerutil.CreateOrPatch(ctx, r.Client, cvm, func() error {
-				cvm.CheckNoResource()
-				return nil
-			})
-			return err
+			hasRs = true
 		}
+		_, err = controllerutil.CreateOrPatch(ctx, r.Client, cvm, func() error {
+			if hasRs {
+				cvm.CheckSuccess()
+				return nil
+			}
+			cvm.CheckNoResource()
+			return nil
+		})
+		return err
 	}
 	return nil
 }

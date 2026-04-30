@@ -2,9 +2,10 @@
 package k3k
 
 import (
+	"context"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/resource"
+	"github.com/w7panel/w7panel/common/service/k8s"
 )
 
 func TestTokenToK3kUser(t *testing.T) {
@@ -24,11 +25,14 @@ func TestRefreshK3kUser(t *testing.T) {
 }
 
 func TestResourceVal(t *testing.T) {
-	storage := resource.MustParse("100Mi")
-	scaledValue := storage.Value()
-	t.Log(scaledValue)
-
-	// scaledValue2 := storage.CanonicalizeBytes()()
-	// t.Log(scaledValue2)
-
+	sdk := k8s.NewK8sClient().Sdk
+	cvm, err := GetCvm(context.Background(), sdk, "k3k-console-164315", "console-164315-uvatm")
+	if err != nil {
+		t.Log(err)
+		return
+	}
+	err = TryCheckOverSellingResource(sdk, cvm)
+	if err != nil {
+		t.Log(err)
+	}
 }

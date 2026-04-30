@@ -88,7 +88,6 @@ func (u *Cvm) AddPurchasedResource(rs *CvmResource) {
 	}
 	if u.Spec.PurchasedResource == nil {
 		u.Spec.PurchasedResource = &CvmResource{}
-		return
 	}
 	u.Spec.PurchasedResource.Add(rs)
 }
