@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
@@ -111,6 +112,9 @@ func (k *K3kOrderApi) CreateBaseResourceCvmOrder(baseResource *types.BuyBaseReso
 	if err := k.UsedCoupon(conponCode, used, result.OrderSn); err != nil {
 		slog.Error("used coupon code error", "code", conponCode, "err", err)
 		return nil, errors.New("used coupon code error")
+	}
+	if helper.IsMockPay() {
+		result.NeedPay = false
 	}
 	if !result.NeedPay {
 		time.AfterFunc(time.Second*2, func() {

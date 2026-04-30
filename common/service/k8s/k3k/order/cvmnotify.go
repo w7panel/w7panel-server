@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
@@ -22,6 +23,12 @@ func (k *K3kOrderApi) NotifyCvmOrder(user *types.K3kUser, cvmName string, sn str
 	orderInfo, err := getOrderSnByName(user.GetK3kName(), w7config, sn)
 	if err != nil {
 		slog.Warn("获取cvm订单信息失败", "orderSn", sn, "error", err)
+	}
+	if helper.IsMockPay() { //模拟支付成功
+		orderInfo.OrderStatus = "paid"
+	}
+	if orderInfo.OrderStatus != "paid" {
+		return nil
 	}
 	return doNotify(orderInfo, k, user)
 }

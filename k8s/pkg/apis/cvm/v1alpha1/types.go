@@ -118,6 +118,14 @@ func (u *Cvm) IsEmpty() bool {
 	return u.Spec.UserResource.IsEmpty() && u.Spec.PurchasedResource.IsEmpty()
 }
 
+func (u *Cvm) IsPendingEmpty() bool {
+	if u.Spec.PendingPurchasedResource == nil {
+		u.Spec.PendingPurchasedResource = &CvmResource{}
+	}
+
+	return u.Spec.PendingPurchasedResource.IsEmpty()
+}
+
 // 购买信息
 type CvmOrder struct {
 	OrderSn  string       `json:"orderSn"`
@@ -160,7 +168,7 @@ func (u *Cvm) computeDefault() {
 	//是否可以删除
 }
 func (u *Cvm) computeBuy() {
-	u.Status.CanBaseBuy = ptr.Bool(u.IsEmpty())                               //是否购买基础套餐
+	u.Status.CanBaseBuy = ptr.Bool(u.IsEmpty() && u.IsPendingEmpty())         //是否购买基础套餐
 	u.Status.CanExpandBuy = ptr.Bool(!u.IsEmpty() && u.Spec.ExpireTime != "") //是否可以扩容
 	u.Status.CanRenewBuy = ptr.Bool(!u.IsEmpty() && u.Spec.ExpireTime != "")  //是否可以续费
 	u.Status.CanDelete = ptr.Bool(u.IsEmpty())                                //是否可以删除

@@ -1228,3 +1228,7 @@ func RetryFullSuccess(fn func() error, retry int, sleep time.Duration) error {
 	}
 	return lasterr
 }
+
+func IsMockPay() bool {
+	return os.Getenv("MOCK_PAY") == "true"
+}
