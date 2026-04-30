@@ -48,6 +48,8 @@ type CvmStatusApplyConfiguration struct {
 	Server0ContainerName *string `json:"server0ContainerName,omitempty"`
 	K3kStatufulSetName   *string `json:"k3kStatufulSetName,omitempty"`
 	RescueJobName        *string `json:"rescueJobName,omitempty"`
+	// 救援job名称
+	RescuePhase *string `json:"rescuePhase,omitempty"`
 }
 
 // CvmStatusApplyConfiguration constructs a declarative configuration of the CvmStatus type for use with
@@ -178,5 +180,13 @@ func (b *CvmStatusApplyConfiguration) WithK3kStatufulSetName(value string) *CvmS
 // If called multiple times, the RescueJobName field is set to the value of the last call.
 func (b *CvmStatusApplyConfiguration) WithRescueJobName(value string) *CvmStatusApplyConfiguration {
 	b.RescueJobName = &value
+	return b
+}
+
+// WithRescuePhase sets the RescuePhase field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the RescuePhase field is set to the value of the last call.
+func (b *CvmStatusApplyConfiguration) WithRescuePhase(value string) *CvmStatusApplyConfiguration {
+	b.RescuePhase = &value
 	return b
 }

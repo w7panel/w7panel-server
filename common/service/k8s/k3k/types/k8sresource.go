@@ -401,18 +401,22 @@ func ToVirtualIngressService(cvm *cvmv1alpha1.Cvm) *corev1.Service {
 	}
 }
 
-func ToK3kWeihJob(k3kUser *K3kUser) *batchv1.Job {
+func ToK3kWeihJob(cvm *cvmv1alpha1.Cvm) *batchv1.Job {
 
 	// 设置环境变量
 	//ToK3kJob
 	envs := []corev1.EnvVar{
 		{
 			Name:  "K3K_NAME",
-			Value: k3kUser.GetK3kName(),
+			Value: cvm.GetK3kName(),
 		},
 		{
 			Name:  "K3K_NAMESPACE",
-			Value: k3kUser.GetK3kNamespace(),
+			Value: cvm.GetK3kNamespace(),
+		},
+		{
+			Name:  "CVM_NAME",
+			Value: cvm.Name,
 		},
 	}
 	// 设置Job的注解
@@ -425,10 +429,11 @@ func ToK3kWeihJob(k3kUser *K3kUser) *batchv1.Job {
 		// 设置Job的标签
 	}
 	labels := map[string]string{
-		"job-name":    k3kUser.GetWeihuJobName(),
-		"k3k-sa":      k3kUser.Name,
-		"k3k-job":     "true",
-		"w7.cc/weihu": "true",
+		"job-name":     cvm.GetRescueJobName(),
+		"k3k-sa":       cvm.GetK3kName(),
+		"k3k-cvm-name": cvm.Name,
+		"k3k-job":      "true",
+		"w7.cc/weihu":  "true",
 	}
 	// labels["w7.cc/job-source"] = "appgroup"
 	// labels["searchJob"] = p.GetName() + "-build-" + shellType
@@ -445,7 +450,7 @@ func ToK3kWeihJob(k3kUser *K3kUser) *batchv1.Job {
 			Kind:       "Job",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        k3kUser.GetWeihuJobName(),
+			Name:        cvm.GetRescueJobName(),
 			Labels:      labels,
 			Annotations: annotations,
 			Namespace:   "default", //k3kUser.GetK3kNamespace(), 面板serviceaccount 在default 命名空间下
@@ -469,7 +474,7 @@ func ToK3kWeihJob(k3kUser *K3kUser) *batchv1.Job {
 							Env:             envs,
 							WorkingDir:      "/tmp",
 							ImagePullPolicy: corev1.PullAlways,
-							Command:         []string{"sh", "-c", "w7panel weihu --clusterName ${K3K_NAME} --k3knamespace ${K3K_NAMESPACE}"},
+							Command:         []string{"sh", "-c", "w7panel weihu --clusterName ${CVM_NAME} --k3knamespace ${K3K_NAMESPACE} --cvmName=${CVM_NAME}"},
 
 							// SecurityContext: &corev1.SecurityContext{,
 							// Args:            []string{shellkubectl.kubernetes.io/restartedAt

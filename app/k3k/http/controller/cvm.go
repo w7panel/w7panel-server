@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
+	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -84,6 +85,11 @@ func (self Cvm) RescueToggle(http *gin.Context) {
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
+	}
+	job := types.ToK3kWeihJob(cvm)
+	err = sigClient.Delete(http, job)
+	if err != nil {
+		slog.Warn("delete job err", "err", err)
 	}
 	cvm.RescueToggle()
 	err = sigClient.Update(http, cvm)

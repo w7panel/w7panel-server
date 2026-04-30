@@ -293,6 +293,8 @@ spec:
                 type: string
               rescueJobName:
                 type: string
+              rescuePhase:
+                type: string
               server0ContainerName:
                 type: string
               server0PodName:
