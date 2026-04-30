@@ -144,3 +144,23 @@ func (self Cvm) Sync(http *gin.Context) {
 	self.JsonSuccessResponse(http)
 
 }
+
+func (self Cvm) Health(http *gin.Context) {
+
+	token := http.MustGet("k8s_token").(string)
+	rootSdk := k8s.NewK8sClient()
+
+	user, err := k3k.TokenToK3kUser(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	err = k3k.SyncUserToCvm(http, user, rootSdk.Sdk)
+	if err != nil {
+		slog.Error("同步用户集群失败", "error", err)
+		self.JsonSuccessResponse(http)
+		return
+	}
+	self.JsonSuccessResponse(http)
+
+}

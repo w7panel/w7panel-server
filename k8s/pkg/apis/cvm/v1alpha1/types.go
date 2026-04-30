@@ -71,6 +71,7 @@ type CvmSpec struct {
 func (u *Cvm) GetAgentName() string {
 	return helper.GetK3kAgentName(u.GetK3kName())
 }
+
 func (u *Cvm) GetK3kName() string {
 	return strings.ReplaceAll(u.Namespace, "k3k-", "")
 }
