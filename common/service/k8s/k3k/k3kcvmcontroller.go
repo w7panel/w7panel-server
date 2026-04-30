@@ -219,7 +219,7 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
 	}
-	if cvm.IsEmpty() || *cvm.Status.IsExpired {
+	if cvm.IsEmpty() || *cvm.Status.IsExpired { //TODO 演示用户过期立即删除 否则回收才删除cluster
 		// 过期后直接删除cluster
 		cluster := &k3kv1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -230,6 +230,7 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 		if err := r.Delete(ctx, cluster); err != nil && !apierrors.IsNotFound(err) {
 			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
+		//TODO : cluster 删除需要一并删除pvc
 		return ctrl.Result{}, nil
 	}
 
@@ -499,6 +500,7 @@ func (r *K3kCvmController) syncClusterStatus(ctx context.Context, cvm *cvmv1alph
 	err := refreshCluster()
 	if err != nil {
 		if apierrors.IsNotFound(err) {
+
 			return nil
 		}
 		return err
