@@ -2,6 +2,7 @@ package controller
 
 import (
 	"log/slog"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -117,6 +118,11 @@ func (self Cvm) CheckResource(http *gin.Context) {
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
+	}
+	if os.Getenv("MOCK_CHECK_RES") == "true" { //测试直接通过
+		cvm.CheckSuccess()
+		result.Pass = true // 集群资源充足
+		self.JsonResponseWithoutError(http, result)
 	}
 	err = k3k.TryCheckOverSellingResource(rootSdk.Sdk, cvm)
 	if err != nil {
