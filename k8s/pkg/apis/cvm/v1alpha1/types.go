@@ -154,6 +154,7 @@ type CvmStatus struct {
 	Server0PodName       string             `json:"server0PodName,omitempty"`
 	Server0ContainerName string             `json:"server0ContainerName,omitempty"`
 	K3kStatufulSetName   string             `json:"k3kStatufulSetName,omitempty"`
+	RescueJobName        string             `json:"rescueJobName,omitempty"` //救援job名称
 }
 
 // 进入退出救援模式
@@ -165,6 +166,7 @@ func (u *Cvm) computeDefault() {
 	u.Status.Server0PodName = "k3k-" + u.Name + "-server-0"
 	u.Status.Server0ContainerName = "k3k-" + u.Name + "-server"
 	u.Status.K3kStatufulSetName = "k3k-" + u.Name + "-server"
+	u.Status.RescueJobName = "k3k-" + u.Name + "-rescue"
 	//是否可以删除
 }
 func (u *Cvm) computeBuy() {

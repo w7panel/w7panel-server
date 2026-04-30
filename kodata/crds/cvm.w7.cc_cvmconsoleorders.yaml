@@ -164,6 +164,8 @@ spec:
                 type: string
               phase:
                 type: string
+              rescueJobName:
+                type: string
               server0ContainerName:
                 type: string
               server0PodName:

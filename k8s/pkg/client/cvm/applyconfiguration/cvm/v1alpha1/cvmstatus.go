@@ -47,6 +47,7 @@ type CvmStatusApplyConfiguration struct {
 	Server0PodName       *string `json:"server0PodName,omitempty"`
 	Server0ContainerName *string `json:"server0ContainerName,omitempty"`
 	K3kStatufulSetName   *string `json:"k3kStatufulSetName,omitempty"`
+	RescueJobName        *string `json:"rescueJobName,omitempty"`
 }
 
 // CvmStatusApplyConfiguration constructs a declarative configuration of the CvmStatus type for use with
@@ -169,5 +170,13 @@ func (b *CvmStatusApplyConfiguration) WithServer0ContainerName(value string) *Cv
 // If called multiple times, the K3kStatufulSetName field is set to the value of the last call.
 func (b *CvmStatusApplyConfiguration) WithK3kStatufulSetName(value string) *CvmStatusApplyConfiguration {
 	b.K3kStatufulSetName = &value
+	return b
+}
+
+// WithRescueJobName sets the RescueJobName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the RescueJobName field is set to the value of the last call.
+func (b *CvmStatusApplyConfiguration) WithRescueJobName(value string) *CvmStatusApplyConfiguration {
+	b.RescueJobName = &value
 	return b
 }
