@@ -466,7 +466,19 @@ func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.
 	if err := r.Update(ctx, cvm); err != nil {
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
+	pvcName := cvm.GetClusterServer0PvcName()
+	if pvcName != "" {
+		pvc := &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      pvcName,
+				Namespace: cvm.Namespace,
+			},
+		}
+		if err := r.Delete(ctx, pvc); err != nil && !apierrors.IsNotFound(err) {
+			return ctrl.Result{RequeueAfter: time.Minute}, nil //TODO 重试
+		}
 
+	}
 	return ctrl.Result{}, nil
 }
 
