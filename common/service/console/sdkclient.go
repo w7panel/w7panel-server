@@ -499,6 +499,17 @@ func (c *SdkClient) FindLastReturnOrder(clusterId string, k3kName string) (*Last
 	return order, err
 }
 
+func (c *SdkClient) FindLastReturnCvmOrder(clusterId string, k3kName string, cvmName string) (*LastReturnOrder, error) {
+	order := &LastReturnOrder{}
+	params := map[string]string{
+		"clusterId": clusterId,
+		"k3kName":   k3kName,
+		"cvmName":   cvmName,
+	}
+	_, err := c.Post(order, "api/thirdparty-cd/k8s-offline/sdk/panel/lastreturncvmorder", params)
+	return order, err
+}
+
 func (c *SdkClient) FindK3kOrder(k3kName string, orderSn string) (*K3kOrder, error) {
 	order := &K3kOrder{}
 	params := map[string]string{

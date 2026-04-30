@@ -14,6 +14,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -378,6 +379,20 @@ func (k *K3kOrderApi) FindLastReturnOrder(user *types.K3kUser) (*console.LastRet
 		return nil, err
 	}
 	return k.consoleSdkClient.FindLastReturnOrder(w7config.ClusterId, user.Name)
+}
+
+func (k *K3kOrderApi) FindLastReturnCvmOrder(cvm *cvmv1alpha1.Cvm) (*console.LastReturnOrder, error) {
+	license := console.GetCurrentLicense()
+	if license == nil {
+		return nil, fmt.Errorf("免费版不支持购买")
+	}
+	baseConfigName := license.FounderSaName
+	// w7respo := k.w7respo
+	w7config, err := k.w7respo.Get(baseConfigName)
+	if err != nil {
+		return nil, err
+	}
+	return k.consoleSdkClient.FindLastReturnCvmOrder(w7config.ClusterId, cvm.GetK3kName(), cvm.Name)
 }
 
 // 软事务 先记录下要更改的记录，然后标记处理完成

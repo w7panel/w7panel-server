@@ -51,7 +51,8 @@ func doNotify(orderInfo *console.OrderInfo, k *K3kOrderApi, user *types.K3kUser)
 					Memory:    orderInfo.Memory,
 					Storage:   orderInfo.Storage,
 				},
-				Hour: int(orderInfo.GetHour()),
+				BuyMode: orderInfo.BuyMode,
+				Hour:    int(orderInfo.GetHour()),
 			}
 			crdOrder.Spec.CvmName = cvmName
 			return nil

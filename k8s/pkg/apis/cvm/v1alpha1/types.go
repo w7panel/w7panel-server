@@ -128,10 +128,12 @@ func (u *Cvm) IsPendingEmpty() bool {
 
 // 购买信息
 type CvmOrder struct {
-	OrderSn  string       `json:"orderSn"`
-	Status   string       `json:"status,omitempty"`
-	Resource *CvmResource `json:"resource,omitempty"`
-	Hour     int          `json:"hour,omitempty"`
+	OrderSn      string       `json:"orderSn"`
+	Status       string       `json:"status,omitempty"`
+	Resource     *CvmResource `json:"resource,omitempty"`
+	Hour         int          `json:"hour,omitempty"`
+	BuyMode      string       `json:"buyMode,omitempty"`
+	ReturnFinish bool         `json:"returnFinish,omitempty"` //退款是否处理结束
 }
 
 type Workload struct {
