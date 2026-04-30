@@ -29,6 +29,10 @@ func (m *ResourceMutator) handleStatefulSet(ctx context.Context, req admission.R
 	if !ok {
 		return admission.Allowed("无需修改 statefulset")
 	}
+
+	if req.Operation != "CREATE" {
+		return admission.Allowed("无需修改 ServiceAccount")
+	}
 	if statefulset.Annotations == nil {
 		statefulset.Annotations = map[string]string{}
 	}
