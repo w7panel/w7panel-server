@@ -97,10 +97,14 @@ func (s *singleton) GetK3kClusterSdkByConfig0(k3kconfig *K3kConfig, createToken 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	cacheKey := k3kconfig.Name
+	if k3kconfig.CvmName != "" {
+		cacheKey = k3kconfig.Name + "-" + k3kconfig.CvmName
+	}
 	// 检查缓存是否存在且未过期
 	// cacheCheckStart := time.Now()
-	if sdk, ok := s.sdks[k3kconfig.Name]; ok {
-		if expireTime, ok := s.expires[k3kconfig.Name]; ok && expireTime > time.Now().Unix() {
+	if sdk, ok := s.sdks[cacheKey]; ok {
+		if expireTime, ok := s.expires[cacheKey]; ok && expireTime > time.Now().Unix() {
 
 			return sdk, nil
 		}
@@ -150,8 +154,8 @@ func (s *singleton) GetK3kClusterSdkByConfig0(k3kconfig *K3kConfig, createToken 
 	result, err := sdk.Channel(token)
 
 	if err == nil {
-		s.sdks[k3kconfig.Name] = result
-		s.expires[k3kconfig.Name] = time.Now().Add(time.Hour).Unix()
+		s.sdks[cacheKey] = result
+		s.expires[cacheKey] = time.Now().Add(time.Hour).Unix()
 	}
 
 	return result, err
