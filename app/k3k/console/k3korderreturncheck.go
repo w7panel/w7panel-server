@@ -63,7 +63,26 @@ func (K3kOrderReturnCheck) handleCvm(cvmList *cvmv1alpha1.CvmList, sdk *k8s.Sdk,
 	}
 	return nil
 }
+func processReturnCvmOrder(cvm *cvmv1alpha1.Cvm, order *cvmv1alpha1.CvmConsoleOrder, orderApi *order.K3kOrderApi, client sigclient.Client) error {
+	returnOrder, err := orderApi.FindK3kOrder(cvm.GetK3kName(), order.Spec.Order.OrderSn)
+	if err != nil {
+		return err
+	}
+	if returnOrder.ReturnAt == "" {
+		_, err := orderApi.ReturnOrderFinish(cvm.GetK3kName(), returnOrder.OrderSn)
+		if err != nil {
+			return err
+		}
+	}
+	baseCvm := cvm.DeepCopy()
+	cvm.ReturnOrder(order)
+	err = client.Patch(context.Background(), baseCvm, sigclient.MergeFrom(baseCvm))
+	if err != nil {
+		return err
+	}
+	return nil
 
+}
 func loadReturnCvmOrder(cvm *cvmv1alpha1.Cvm, orderApi *order.K3kOrderApi, client sigclient.Client) error {
 
 	returnOrder, err := orderApi.FindLastReturnCvmOrder(cvm)

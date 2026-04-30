@@ -125,6 +125,9 @@ func (u *Cvm) IsPendingEmpty() bool {
 
 	return u.Spec.PendingPurchasedResource.IsEmpty()
 }
+func (u *Cvm) ReturnOrder(order *CvmConsoleOrder) error {
+	return nil
+}
 
 // 购买信息
 type CvmOrder struct {
