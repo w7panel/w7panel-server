@@ -259,7 +259,7 @@ func (c *Weihu) ClearTicket(ctx context.Context) error {
 func (c *Weihu) CheckOk(ctx context.Context) error {
 	k3kconfig := k8s.NewK3kConfig(c.clusterName, c.namespace, "", c.cvmName)
 	sdk := k8s.NewK8sClient()
-	sdk.Clear(c.clusterName)
+	sdk.Clear(c.clusterName, c.cvmName)
 	client, err := sdk.GetK3kClusterSdkByConfig(k3kconfig)
 	if err != nil {
 		slog.Error("获取k3k集群失败", "err", err)

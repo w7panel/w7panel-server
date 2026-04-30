@@ -40,7 +40,7 @@ func LoginByServiceAccount(client *k8s.Sdk, sa *v1.ServiceAccount, seconds int64
 	// if refreshCdToken {
 
 	// }
-
+	k8s.NewK8sClient().Clear(sa.Name, cvmName)
 	_, err := RefreshK3kUser(k3kUser, client, updateK3kUser)
 	if err != nil {
 		return "", false, err

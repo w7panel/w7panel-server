@@ -106,7 +106,7 @@ func (self K3k) LoginCvm(http *gin.Context) {
 		self.JsonResponseWithError(http, err2, 500)
 		return
 	}
-	rs := service.GetRefreshToken(sa.Name, "")
+	rs := service.GetRefreshToken(sa.Name, cvm.Name)
 	self.JsonResponseWithoutError(http, gin.H{
 		"token":        token,
 		"expire":       time.Now().Add(time.Duration(seconds) * time.Second).Unix(),

@@ -171,11 +171,16 @@ func (s *singleton) GetK3kClusterSdk(k8stoken *K8sToken) (*Sdk, error) {
 	return result, err
 }
 
-func (s *singleton) Clear(k3kName string) {
+func (s *singleton) Clear(k3kName string, cvmName string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.sdks, k3kName)
 	delete(s.expires, k3kName)
+	if cvmName != "" {
+		cacheKey := k3kName + "-" + cvmName
+		delete(s.sdks, cacheKey)
+		delete(s.expires, cacheKey)
+	}
 }
 
 // GetK3kKubeConfig 从Kubernetes集群中获取k3k的kubeconfig配置
