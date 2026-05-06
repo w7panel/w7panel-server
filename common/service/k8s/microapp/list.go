@@ -7,6 +7,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
+	"k8s.io/apimachinery/pkg/types"
 	sig "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -18,7 +19,7 @@ func ListTop(t string) (*microapp.MicroAppList, error) {
 	if role == "" {
 		return nil, errors.New("role is empty")
 	}
-
+	rootSdk := k8s.NewK8sClient().Sdk
 	clientSdk, err := k8s.NewK8sClient().Channel(t)
 	if err != nil {
 		return nil, err
@@ -28,18 +29,71 @@ func ListTop(t string) (*microapp.MicroAppList, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	lo.ForEach(currentList.Items, func(item microapp.MicroApp, index int) {
-		if item.Labels != nil {
-			if item.RoleCount() > 1 || item.Labels["microapp.w7.cc/from"] == "root" {
-				newList.Items = append(newList.Items, item)
-			}
+	rList := &microapp.MicroAppList{}
+	if token.IsK3kCluster() {
+		rootList, err := loadMicroAppList(rootSdk)
+		if err != nil {
+			return nil, err
 		}
+		rList = rootList
+	}
+	rList.Items = lo.Map(rList.Items, func(item microapp.MicroApp, index int) microapp.MicroApp {
+		filterMicroapp(&item, role)
+		return item
 	})
-
+	newList.Items = append(rList.Items, currentList.Items...)
 	return newList, nil
 }
 
+func ListInfo(t string, name string) (*microapp.MicroApp, error) {
+	token := k8s.NewK8sToken(t)
+	role := token.GetRole()
+	if role == "" {
+		return nil, errors.New("role is empty")
+	}
+	rootSdk := k8s.NewK8sClient().Sdk
+	currentRole := token.GetRole()
+	clientSdk, err := k8s.NewK8sClient().Channel(t)
+	if err != nil {
+		return nil, err
+	}
+	microapp, err := loadMicroApp(clientSdk, name)
+	if err != nil {
+		rootMicroapp, err := loadMicroApp(rootSdk, name)
+		if err != nil {
+			return nil, err
+		}
+		filterMicroapp(rootMicroapp, currentRole)
+		return rootMicroapp, nil
+	}
+	return microapp, nil
+}
+func filterMicroapp(item *microapp.MicroApp, role string) {
+	if item.Labels == nil {
+		item.Labels = map[string]string{}
+	}
+	item.Labels["microapp.w7.cc/from"] = "root"
+	item.Spec.Bindings = lo.Filter(item.Spec.Bindings, func(bindings microapp.Bindings, index int) bool {
+		return bindings.Name == role
+	})
+	newRole := item.Spec.ConfigV2.Props.RoleConfig[role]
+	item.Spec.ConfigV2.Props.RoleConfig = map[string]microapp.Role{}
+	item.Spec.ConfigV2.Props.RoleConfig[role] = newRole
+}
+func loadMicroApp(sdk *k8s.Sdk, name string) (*microapp.MicroApp, error) {
+	microapp := &microapp.MicroApp{}
+	sigClient, err := sdk.ToSigClient()
+	if err != nil {
+
+		return nil, err
+	}
+	err = sigClient.Get(sdk.Ctx, types.NamespacedName{Name: name, Namespace: "default"}, microapp)
+	if err != nil {
+		slog.Error("loadMicroApp", "err", err)
+		return nil, err
+	}
+	return microapp, nil
+}
 func loadMicroAppList(sdk *k8s.Sdk) (*microapp.MicroAppList, error) {
 	list := &microapp.MicroAppList{}
 	sigClient, err := sdk.ToSigClient()
