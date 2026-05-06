@@ -220,32 +220,13 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
 	}
-	if cvm.IsEmpty() || *cvm.Status.IsExpired { //TODO 演示用户过期立即删除 否则回收才删除cluster
-		// 过期后直接删除cluster
-		cluster := &k3kv1.Cluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      cvm.Name,
-				Namespace: cvm.Namespace,
-			},
-		}
-		if err := r.Delete(ctx, cluster); err != nil && !apierrors.IsNotFound(err) {
-			return ctrl.Result{RequeueAfter: time.Minute}, nil
-		}
-		pvcName := cvm.GetClusterServer0PvcName()
-		if pvcName != "" {
-			pvc := &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      pvcName,
-					Namespace: cvm.Namespace,
-				},
-			}
-			if err := r.Delete(ctx, pvc); err != nil && !apierrors.IsNotFound(err) {
-				return ctrl.Result{}, nil //TODO 重试
-			}
+	// 过期后直接删除cluster
+	if *cvm.Status.IsRecycling {
+		return r.handleDeletion(ctx, cvm)
+	}
 
-		}
-		//TODO : cluster 删除需要一并删除pvc
-		return ctrl.Result{}, nil
+	if cvm.IsEmpty() || *cvm.Status.IsExpired { //TODO 演示用户过期立即删除 否则回收才删除cluster
+		return r.handleExpired(ctx, cvm)
 	}
 
 	cluster, err := r.createOrUpdateCluster(ctx, cvm)
@@ -431,10 +412,18 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 	// 	},
 	// }
 	// 测试暂时去掉 limit
-	// spec.ServerLimit = v1.ResourceList{
-	// 	v1.ResourceCPU:    resource.MustParse(fmt.Sprintf("%d", effective.CPU)),
-	// 	v1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dGi", effective.Memory)),
-	// }
+	if effective != nil {
+		spec.ServerLimit = v1.ResourceList{
+			v1.ResourceCPU:    resource.MustParse(fmt.Sprintf("%d", effective.CPU)),
+			v1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dGi", effective.Memory)),
+		}
+	}
+	if cvm.Spec.Workload.Token != "" {
+		// spec.ServerLimit = v1.ResourceList{
+		// 	v1.ResourceCPU:    resource.MustParse(fmt.Sprintf("%d", effective.CPU)),
+		// 	v1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dGi", effective.Memory)),
+		// }
+	}
 
 	if cvm.Spec.StorageClassName != "" && effective != nil && effective.Storage > 0 {
 		spec.Persistence = k3kv1.PersistenceConfig{
@@ -445,7 +434,44 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 	}
 	return spec
 }
+func (r *K3kCvmController) handleExpired(ctx context.Context, cvm *cvmv1alpha1.Cvm) (ctrl.Result, error) {
+	if cvm.Spec.Workload.Token == "" {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "k3k-" + cvm.Name + "-token",
+				Namespace: cvm.Namespace,
+			},
+			StringData: map[string]string{
+				"token": cvm.Spec.Workload.Token,
+			},
+		}
+		err := r.Client.Get(ctx, client.ObjectKeyFromObject(secret), secret)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+		if err == nil {
+			if val, ok := secret.Data["token"]; ok {
+				cvm.Spec.Workload.Token = string(val)
+				err := r.Update(ctx, cvm)
+				if err != nil {
+					return ctrl.Result{RequeueAfter: time.Minute}, nil
+				}
+			}
+		}
+	}
+	// 删除cluster
+	cluster := &k3kv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cvm.Name,
+			Namespace: cvm.Namespace,
+		},
+	}
+	if err := r.Delete(ctx, cluster); err != nil && !apierrors.IsNotFound(err) {
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
 
+	return ctrl.Result{}, nil
+}
 func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.Cvm) (ctrl.Result, error) {
 	slog.Info("Handling Cvm deletion", "name", cvm.Name, "namespace", cvm.Namespace)
 
@@ -471,7 +497,7 @@ func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.
 			},
 		}
 		if err := r.Delete(ctx, pvc); err != nil && !apierrors.IsNotFound(err) {
-			return ctrl.Result{}, nil //TODO 重试
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
 
 	}

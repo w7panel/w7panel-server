@@ -146,6 +146,7 @@ type CvmOrder struct {
 type Workload struct {
 	metav1.TypeMeta `json:",inline"`
 	TemplateName    string `json:"templateName"`
+	Token           string `json:"token"`
 }
 
 type CvmStatus struct {

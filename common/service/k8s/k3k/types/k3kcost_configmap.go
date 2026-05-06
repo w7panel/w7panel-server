@@ -43,19 +43,6 @@ func (v *K3kCostConfigMap) getCost() *K3kCost {
 	return cost
 }
 
-func (v *K3kCostConfigMap) getLimitRange() *LimitRangeQuota {
-	jstr, ok := v.Annotations[W7_QUOTA_LIMIT]
-	if ok {
-		lqr2, err := NewLimitRangeQuata(jstr)
-		if err != nil {
-			slog.Error("parse quota limit error", "error", err)
-			return nil
-		}
-		return lqr2
-	}
-	return nil
-}
-
 func (v *K3kCostConfigMap) CanPublish() bool {
 	return v.cost != nil
 }
