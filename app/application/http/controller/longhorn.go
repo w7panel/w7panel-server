@@ -176,7 +176,7 @@ func (self Longhorn) Attach(http *gin.Context) {
 	// {"hostId":"server1","disableFrontend":true,"AttachedBy":"","attacherType":"","AttachmentID":"longhorn-ui"}
 	type VolumeAttach struct {
 		HostId          string `json:"hostId" binding:"required"`
-		DisableFrontend bool   `json:"disableFrontend"`
+		DisableFrontend string `json:"disableFrontend"`
 		AttachedBy      string `json:"AttachedBy"`
 		AttachmentID    string `json:"AttachmentID"`
 		AttacherType    string `json:"attacherType"`
@@ -189,7 +189,7 @@ func (self Longhorn) Attach(http *gin.Context) {
 		params.AttachmentID = "longhorn-ui"
 	}
 	volName := http.Param("volumeName")
-	err := longhorn.LonghornVolumeAttach(volName, params.HostId, params.AttachmentID, params.AttachedBy, params.AttacherType)
+	err := longhorn.LonghornVolumeAttach(volName, params.HostId, params.AttachmentID, params.AttachedBy, params.AttacherType, params.DisableFrontend)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
