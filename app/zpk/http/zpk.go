@@ -151,6 +151,10 @@ func (self Zpk) Install(http *gin.Context) {
 		return
 	}
 	params.IngressHost = strings.ToLower(params.IngressHost)
+	params.IngressHost = strings.ReplaceAll(params.IngressHost, "https://", "")
+	params.IngressHost = strings.ReplaceAll(params.IngressHost, "http://", "")
+	params.IngressHost = strings.ReplaceAll(params.IngressHost, "/", "")
+
 	repoUrl := params.RepoUrl
 	if repoUrl == "" {
 		self.JsonResponseWithServerError(http, errors.New("repo url is empty"))
