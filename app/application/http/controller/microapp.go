@@ -26,11 +26,12 @@ func (self MicroApp) List(http *gin.Context) {
 
 func (self MicroApp) Info(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
-	list, err := microapp.ListTop(token)
+	name := http.Param("name")
+	microapp, err := microapp.ListInfo(token, name)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	self.JsonResponseWithoutError(http, list)
+	self.JsonResponseWithoutError(http, microapp)
 
 }
