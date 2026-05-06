@@ -36,8 +36,13 @@ func ListTop(t string) (*microapp.MicroAppList, error) {
 		if err != nil {
 			return nil, err
 		}
+		rootList.Items = lo.Filter(rootList.Items, func(item microapp.MicroApp, index int) bool {
+			_, hasRole := item.Spec.ConfigV2.Props.RoleConfig[role]
+			return item.RoleCount() > 1 && hasRole
+		})
 		rList = rootList
 	}
+
 	rList.Items = lo.Map(rList.Items, func(item microapp.MicroApp, index int) microapp.MicroApp {
 		filterMicroapp(&item, role)
 		return item

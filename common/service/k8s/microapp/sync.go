@@ -12,6 +12,9 @@ import (
 
 func Sync(k3kName, k3kNs string) error {
 
+	if true {
+		return nil // 直接查询 不同步
+	}
 	rootSdk := k8s.NewK8sClient().Sdk
 	rootList, err := loadMicroAppList(rootSdk)
 	sa, err := rootSdk.GetServiceAccount("default", k3kName)
