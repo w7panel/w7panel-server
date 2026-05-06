@@ -24,6 +24,7 @@ func ListTop(t string) (*microapp.MicroAppList, error) {
 	if err != nil {
 		return nil, err
 	}
+	allList := &microapp.MicroAppList{}
 	newList := &microapp.MicroAppList{}
 	currentList, err := loadMicroAppList(clientSdk)
 	if err != nil {
@@ -41,7 +42,15 @@ func ListTop(t string) (*microapp.MicroAppList, error) {
 		filterMicroapp(&item, role)
 		return item
 	})
-	newList.Items = append(rList.Items, currentList.Items...)
+	allList.Items = append(rList.Items, currentList.Items...)
+	lo.ForEach(allList.Items, func(item microapp.MicroApp, index int) {
+		if item.Labels != nil {
+			if item.RoleCount() > 1 || item.Labels["microapp.w7.cc/from"] == "root" {
+				newList.Items = append(newList.Items, item)
+			}
+		}
+	})
+
 	return newList, nil
 }
 
