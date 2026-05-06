@@ -82,6 +82,8 @@ kubectl apply -f $KO_DATA_PATH/crds --server-side
 # w7panel sitemanager-upgrade --version=1.0.26 --identifie=w7_python --is-agent=true
 # w7panel sitemanager-upgrade --version=1.0.25 --identifie=w7_sitemanager --is-agent=true
 
+echo "删除旧的microapp"
+kubectl -n default delete microapp -l microapp.w7.cc/from=root | echo "clear root microapp"
 
 kubectl get jobs -n default -o json \
   | jq -r '.items[]
