@@ -816,7 +816,7 @@ func ToShellJob2(manifest K8sResourceInterface, ingress K8sResourceIngressInterf
 		},
 	}
 
-	appendPodAffinity(&job.Spec.Template, manifest.GetReleaseName())
+	appendPodAffinity(&job.Spec.Template, manifest.GetName())
 	return job
 }
 
@@ -1227,7 +1227,7 @@ helm upgrade kubeblocks $KO_DATA_PATH/charts/kubeblocks-1.0.1.tgz -n kb-system -
 	return job
 }
 
-func appendPodAffinity(pod *corev1.PodTemplateSpec, releaseName string) {
+func appendPodAffinity(pod *corev1.PodTemplateSpec, name string) {
 	if pod.Spec.Affinity == nil {
 		pod.Spec.Affinity = &corev1.Affinity{}
 	}
@@ -1240,7 +1240,7 @@ func appendPodAffinity(pod *corev1.PodTemplateSpec, releaseName string) {
 							{
 								Key:      "app",
 								Operator: metav1.LabelSelectorOpIn,
-								Values:   []string{releaseName},
+								Values:   []string{name},
 							},
 						},
 					},
