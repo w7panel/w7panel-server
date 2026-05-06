@@ -107,7 +107,7 @@ func WebHookLonghornReplica() {
 
 func WebHookNode(node *v1.Node) bool {
 	labels := node.GetLabels()
-	isMasterRole, ok := labels["node-role.kubernetes.io/master"]
+	isMasterRole, ok := labels["node-role.kubernetes.io/control-plane"]
 	if !ok || isMasterRole != "true" {
 		return false
 	}
