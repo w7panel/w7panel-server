@@ -189,7 +189,8 @@ func (self Longhorn) Attach(http *gin.Context) {
 		params.AttachmentID = "longhorn-ui"
 	}
 	volName := http.Param("volumeName")
-	err := longhorn.LonghornVolumeAttach(volName, params.HostId, params.AttachmentID, params.AttachedBy, params.AttacherType)
+	df := strconv.FormatBool(params.DisableFrontend)
+	err := longhorn.LonghornVolumeAttach(volName, params.HostId, params.AttachmentID, params.AttachedBy, params.AttacherType, df)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
@@ -225,6 +226,18 @@ func (self Longhorn) CancelExpansion(http *gin.Context) {
 
 	volName := http.Param("volumeName")
 	err := longhorn.LonghornVolumeCancelExpansion(volName)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponse(http, nil, nil, 200)
+}
+
+func (self Longhorn) TrimFilesystem(http *gin.Context) {
+	//{forceDetach: true, attachmentID: "longhorn-ui", hostId: ""}
+
+	volName := http.Param("volumeName")
+	err := longhorn.LonghornVolumeTrimFilesystem(volName)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return

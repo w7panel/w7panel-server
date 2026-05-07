@@ -268,8 +268,8 @@ func longhornVolumeApiAction(volumeName string, action string, json string) erro
 {"hostId":"server1","disableFrontend":true,"AttachedBy":"","attacherType":"","AttachmentID":"longhorn-ui"}
 */
 
-func LonghornVolumeAttach(volumeName string, nodeName string, attachmentID string, attachBy string, attacherType string) error {
-	return longhornVolumeApiAction(volumeName, "attach", `{"hostId":"`+nodeName+`","disableFrontend":false,"AttachedBy":"`+attachBy+`","attacherType":"`+attacherType+`","AttachmentID":"`+attachmentID+`"}`)
+func LonghornVolumeAttach(volumeName string, nodeName string, attachmentID string, attachBy string, attacherType string, disableFrontend string) error {
+	return longhornVolumeApiAction(volumeName, "attach", `{"hostId":"`+nodeName+`","disableFrontend":"`+disableFrontend+`","AttachedBy":"`+attachBy+`","attacherType":"`+attacherType+`","AttachmentID":"`+attachmentID+`"}`)
 }
 
 /*

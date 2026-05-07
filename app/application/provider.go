@@ -185,6 +185,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/longhorn/volumes/:volumeName/attach", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.Attach)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/detach", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.Detach)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/cancel-expansion", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.CancelExpansion)
+			localApiGroup.POST("/longhorn/volumes/:volumeName/trim-filesystem", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.TrimFilesystem)
 
 			// localApiGroup.GET("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGc)
 			// localApiGroup.POST("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGcToggle)
@@ -246,6 +247,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		engine.GET("/panel-api/v1/noauth/site/lianxi", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.Lianxi)
 
 		engine.GET("/panel-api/v1/microapp/top", middleware.Auth{}.Process, controller2.MicroApp{}.List)                     //获取microapp列表
+		engine.GET("/panel-api/v1/microapp/:name/info", middleware.Auth{}.Process, controller2.MicroApp{}.Info)              //获取microapp详情
 		engine.Any("/panel-api/v1/microapp/:name/proxy/*path", middleware.Auth{}.Process, controller2.Proxy{}.ProxyMicroApp) //microapp proxy
 
 		containerGroup := localApiGroup.Group("/containers", middleware.Auth{}.Process, middleware.Proxy{}.Process)
