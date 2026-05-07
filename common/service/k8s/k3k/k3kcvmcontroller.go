@@ -288,7 +288,11 @@ func (r *K3kCvmController) createOrUpdateCluster(ctx context.Context, cvm *cvmv1
 			"token": []byte(helper.RandomString(16)),
 		}
 		slog.Info("Create secret", "name", secret.Name, "namespace", secret.Namespace)
-		err := r.Client.Create(ctx, secret)
+		err := controllerutil.SetControllerReference(cvm, secret, r.Scheme)
+		if err != nil {
+			return nil, err
+		}
+		err = r.Client.Create(ctx, secret)
 		if err != nil {
 			return nil, err
 		}
