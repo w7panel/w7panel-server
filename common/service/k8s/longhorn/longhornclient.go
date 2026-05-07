@@ -286,6 +286,13 @@ func LonghornVolumeCancelExpansion(volumeName string) error {
 func LonghornVolumeTrimFilesystem(volumeName string) error {
 	return longhornVolumeApiAction(volumeName, "trimFilesystem", `{"name":"`+volumeName+`"}`)
 }
+func LonghornVolumeSnapshotDelete(volumeName string, name string) error {
+	return longhornVolumeApiAction(volumeName, "snapshotDelete", `{"name":"`+name+`"}`)
+}
+
+func LonghornVolumeSnapshotPurge(volumeName string) error {
+	return longhornVolumeApiAction(volumeName, "snapshotPurge", `{"name":"`+volumeName+`"}`)
+}
 
 func LonghorStoragePercentage(value string) error {
 	postUrl := baseUrl + "/v1/settings/storage-over-provisioning-percentage"
