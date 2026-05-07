@@ -175,6 +175,9 @@ func (u *Cvm) RescueToggle() {
 func (u *Cvm) GetRescueJobName() string {
 	return "k3k-" + u.Name + "-rescue"
 }
+func (u *Cvm) GetSecretTokenName() string {
+	return u.Name + "-w7token"
+}
 func (u *Cvm) computeDefault() {
 	u.Status.Server0PodName = "k3k-" + u.Name + "-server-0"
 	u.Status.Server0ContainerName = "k3k-" + u.Name + "-server"

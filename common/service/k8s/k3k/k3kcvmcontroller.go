@@ -10,6 +10,7 @@ import (
 	"time"
 
 	k3kv1 "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
@@ -291,6 +292,27 @@ func (r *K3kCvmController) doRescue(ctx context.Context, cvm *cvmv1alpha1.Cvm) e
 }
 
 func (r *K3kCvmController) createOrUpdateCluster(ctx context.Context, cvm *cvmv1alpha1.Cvm) (*k3kv1.Cluster, error) {
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cvm.GetSecretTokenName(),
+			Namespace: cvm.Namespace,
+		},
+	}
+	err := r.Client.Get(ctx, client.ObjectKeyFromObject(secret), secret)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+		secret.Data = map[string][]byte{
+			"token": []byte(helper.RandomString(16)),
+		}
+		slog.Info("Create secret", "name", secret.Name, "namespace", secret.Namespace)
+		err := r.Client.Create(ctx, secret)
+		if err != nil {
+			return nil, err
+		}
+	}
 	cluster := &k3kv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cvm.Name,
@@ -367,6 +389,10 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 		},
 	}
 	spec.Mode = k3kv1.VirtualClusterMode
+	spec.TokenSecretRef = &corev1.SecretReference{
+		Name:      cvm.GetSecretTokenName(),
+		Namespace: cvm.GetNamespace(),
+	}
 	// serverArgs:
 	// - '--kubelet-arg=$cgroup_root'
 	// - '--disable=traefik'
