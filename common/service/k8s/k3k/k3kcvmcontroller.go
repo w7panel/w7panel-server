@@ -461,30 +461,30 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 	return spec
 }
 func (r *K3kCvmController) handleExpired(ctx context.Context, cvm *cvmv1alpha1.Cvm) (ctrl.Result, error) {
-	if cvm.Spec.Workload.Token == "" {
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "k3k-" + cvm.Name + "-token",
-				Namespace: cvm.Namespace,
-			},
-			StringData: map[string]string{
-				"token": cvm.Spec.Workload.Token,
-			},
-		}
-		err := r.Client.Get(ctx, client.ObjectKeyFromObject(secret), secret)
-		if err != nil && !apierrors.IsNotFound(err) {
-			return ctrl.Result{RequeueAfter: time.Minute}, nil
-		}
-		if err == nil {
-			if val, ok := secret.Data["token"]; ok {
-				cvm.Spec.Workload.Token = string(val)
-				err := r.Update(ctx, cvm)
-				if err != nil {
-					return ctrl.Result{RequeueAfter: time.Minute}, nil
-				}
-			}
-		}
-	}
+	// if cvm.Spec.Workload.Token == "" {
+	// 	secret := &corev1.Secret{
+	// 		ObjectMeta: metav1.ObjectMeta{
+	// 			Name:      "k3k-" + cvm.Name + "-token",
+	// 			Namespace: cvm.Namespace,
+	// 		},
+	// 		StringData: map[string]string{
+	// 			"token": cvm.Spec.Workload.Token,
+	// 		},
+	// 	}
+	// 	err := r.Client.Get(ctx, client.ObjectKeyFromObject(secret), secret)
+	// 	if err != nil && !apierrors.IsNotFound(err) {
+	// 		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	// 	}
+	// 	if err == nil {
+	// 		if val, ok := secret.Data["token"]; ok {
+	// 			cvm.Spec.Workload.Token = string(val)
+	// 			err := r.Update(ctx, cvm)
+	// 			if err != nil {
+	// 				return ctrl.Result{RequeueAfter: time.Minute}, nil
+	// 			}
+	// 		}
+	// 	}
+	// }
 	// 删除cluster
 	cluster := &k3kv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
