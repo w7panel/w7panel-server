@@ -262,40 +262,15 @@ func (r *K3kCvmController) doRescue(ctx context.Context, cvm *cvmv1alpha1.Cvm) e
 			return err
 		}
 	}
-	// job 只能default namespace 所以cvm 不能实时触发
-	// dbJob := &batchv1.Job{}
-	// err = r.Client.Get(ctx, client.ObjectKeyFromObject(job), dbJob)
-	// if err != nil {
-	// 	if !apierrors.IsNotFound(err) {
-	// 		return err
-	// 	}
-	// }
-	// if err == nil {
-	// 	base := cvm.DeepCopy()
-	// 	cvm.ComputeStatus()
-	// 	phasa := "running"
-	// 	if job.Status.Succeeded > 1 {
-	// 		phasa = "success"
-	// 	}
-	// 	if job.Status.Failed > 1 {
-	// 		phasa = "failed"
-	// 	}
-	// 	cvm.Status.RescuePhase = phasa
-	// 	if !apiequality.Semantic.DeepEqual(cvm.Status, base.Status) {
-	// 		err = r.Status().Patch(ctx, cvm, client.MergeFrom(base))
-	// 		if err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// }
+
 	return nil
 }
 
 func (r *K3kCvmController) createOrUpdateCluster(ctx context.Context, cvm *cvmv1alpha1.Cvm) (*k3kv1.Cluster, error) {
-
+	// 创建secret token if not exists
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cvm.GetSecretTokenName(),
+			Name:      cvm.GetK3kSecretTokenName(),
 			Namespace: cvm.Namespace,
 		},
 	}
@@ -390,7 +365,7 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 	}
 	spec.Mode = k3kv1.VirtualClusterMode
 	spec.TokenSecretRef = &corev1.SecretReference{
-		Name:      cvm.GetSecretTokenName(),
+		Name:      cvm.GetK3kSecretTokenName(),
 		Namespace: cvm.GetNamespace(),
 	}
 	// serverArgs:
@@ -444,12 +419,6 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 			v1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dGi", effective.Memory)),
 		}
 	}
-	if cvm.Spec.Workload.Token != "" {
-		// spec.ServerLimit = v1.ResourceList{
-		// 	v1.ResourceCPU:    resource.MustParse(fmt.Sprintf("%d", effective.CPU)),
-		// 	v1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dGi", effective.Memory)),
-		// }
-	}
 
 	if cvm.Spec.StorageClassName != "" && effective != nil && effective.Storage > 0 {
 		spec.Persistence = k3kv1.PersistenceConfig{
@@ -461,41 +430,29 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 	return spec
 }
 func (r *K3kCvmController) handleExpired(ctx context.Context, cvm *cvmv1alpha1.Cvm) (ctrl.Result, error) {
-	// if cvm.Spec.Workload.Token == "" {
-	// 	secret := &corev1.Secret{
-	// 		ObjectMeta: metav1.ObjectMeta{
-	// 			Name:      "k3k-" + cvm.Name + "-token",
-	// 			Namespace: cvm.Namespace,
-	// 		},
-	// 		StringData: map[string]string{
-	// 			"token": cvm.Spec.Workload.Token,
-	// 		},
-	// 	}
-	// 	err := r.Client.Get(ctx, client.ObjectKeyFromObject(secret), secret)
-	// 	if err != nil && !apierrors.IsNotFound(err) {
-	// 		return ctrl.Result{RequeueAfter: time.Minute}, nil
-	// 	}
-	// 	if err == nil {
-	// 		if val, ok := secret.Data["token"]; ok {
-	// 			cvm.Spec.Workload.Token = string(val)
-	// 			err := r.Update(ctx, cvm)
-	// 			if err != nil {
-	// 				return ctrl.Result{RequeueAfter: time.Minute}, nil
-	// 			}
-	// 		}
-	// 	}
-	// }
-	// 删除cluster
+	if err := r.reconcileResourceStatus(ctx, cvm); err != nil {
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
+
 	cluster := &k3kv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cvm.Name,
 			Namespace: cvm.Namespace,
 		},
 	}
+	err := r.Get(ctx, client.ObjectKeyFromObject(cluster), cluster)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
+
 	if err := r.Delete(ctx, cluster); err != nil && !apierrors.IsNotFound(err) {
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 
+	err = r.ensureClusterDeleted(ctx, cvm)
+	if err != nil {
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
 	return ctrl.Result{}, nil
 }
 func (r *K3kCvmController) handleDeletion(ctx context.Context, cvm *cvmv1alpha1.Cvm) (ctrl.Result, error) {
@@ -578,7 +535,6 @@ func (r *K3kCvmController) syncClusterStatus(ctx context.Context, cvm *cvmv1alph
 	err := refreshCluster()
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-
 			return nil
 		}
 		return err

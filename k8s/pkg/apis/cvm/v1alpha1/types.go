@@ -40,6 +40,8 @@ const (
 	PhaseRecycle    = Phase("recycle")    //待回收
 	PhaseRecycleing = Phase("recycleing") //回收中
 	PhaseCreating   = Phase("creating")   //创建中
+
+	ClusterStopped = k3kv1.ClusterPhase("stopped")
 )
 
 // +genclient
@@ -146,7 +148,6 @@ type CvmOrder struct {
 type Workload struct {
 	metav1.TypeMeta `json:",inline"`
 	TemplateName    string `json:"templateName"`
-	Token           string `json:"token"`
 }
 
 type CvmStatus struct {
@@ -175,8 +176,9 @@ func (u *Cvm) RescueToggle() {
 func (u *Cvm) GetRescueJobName() string {
 	return "k3k-" + u.Name + "-rescue"
 }
-func (u *Cvm) GetSecretTokenName() string {
-	return u.Name + "-w7token"
+
+func (u *Cvm) GetK3kSecretTokenName() string {
+	return "k3k-" + u.Name + "-token"
 }
 func (u *Cvm) computeDefault() {
 	u.Status.Server0PodName = "k3k-" + u.Name + "-server-0"
@@ -227,13 +229,14 @@ func (u *Cvm) ComputeStatus() {
 	} else {
 		if u.Status.IsExpired != nil && *u.Status.IsExpired {
 			u.Status.Phase = string(PhaseRecycle)
+			u.Status.ClusterPhase = k3kv1.ClusterTerminating
 			if u.Status.IsRecycling != nil && *u.Status.IsRecycling {
 				u.Status.Phase = string(PhaseNew) //超过回收时间 则清理成无资源
 			}
 		} else {
 			u.Status.Phase = string(PhaseCreating)
 			if u.Status.ClusterPhase == k3kv1.ClusterTerminating {
-				u.Status.Phase = string(PhaseRecycleing) //有资源
+				u.Status.Phase = string(PhaseRecycleing) //回收中
 			}
 			if u.Status.ClusterPhase == k3kv1.ClusterReady {
 				u.Status.Phase = string(PhaseReady) //有资源
