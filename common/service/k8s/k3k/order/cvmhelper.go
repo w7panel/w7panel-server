@@ -56,7 +56,7 @@ func MockNotifyOrderCvm(user *types.K3kUser, sn string) error {
 	return orderApi.MockNotifyPaidOrderCvm(user, sn)
 }
 
-func createCrdOrder(ctx context.Context, client client.Client, orderSn, namespace, cvmName string) (*cvmv1alpha1.CvmConsoleOrder, error) {
+func createCrdOrder(ctx context.Context, client client.Client, orderSn, namespace, cvmName string, isDemo bool) (*cvmv1alpha1.CvmConsoleOrder, error) {
 	consoleOrder := &cvmv1alpha1.CvmConsoleOrder{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      strings.ToLower(orderSn),
@@ -72,12 +72,12 @@ func createCrdOrder(ctx context.Context, client client.Client, orderSn, namespac
 			CvmName: cvmName,
 		},
 	}
+	if isDemo {
+		consoleOrder.Labels["w7.cc/demo"] = "true" //演示资源
+	}
 	err := client.Create(ctx, consoleOrder)
 	if err != nil {
 		return nil, err
 	}
 	return consoleOrder, nil
 }
-
-
-

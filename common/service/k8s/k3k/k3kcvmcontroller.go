@@ -231,7 +231,7 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	if cvm.IsEmpty() || *cvm.Status.IsExpired { //TODO 演示用户过期立即删除 否则回收才删除cluster
+	if cvm.IsEmpty() || *cvm.Status.IsExpired || cvm.Spec.Pause { //TODO 演示用户过期立即删除 否则回收才删除cluster
 		return r.handleExpired(ctx, cvm)
 	}
 
@@ -443,6 +443,13 @@ func (r *K3kCvmController) toClusterSpec(cvm *cvmv1alpha1.Cvm) k3kv1.ClusterSpec
 	return spec
 }
 func (r *K3kCvmController) handleExpired(ctx context.Context, cvm *cvmv1alpha1.Cvm) (ctrl.Result, error) {
+	if cvm.Labels != nil && cvm.Labels["w7.cc/demo"] == "true" { // 如果演示用户cvm到期直接删除
+		err := r.Delete(ctx, cvm)
+		if err != nil {
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+		return ctrl.Result{}, nil
+	}
 	if err := r.reconcileResourceStatus(ctx, cvm); err != nil {
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}

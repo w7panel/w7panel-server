@@ -89,7 +89,7 @@ func (k *K3kOrderApi) CreateBaseResourceCvmOrder(baseResource *types.BuyBaseReso
 	if err != nil {
 		return nil, err
 	}
-	consoleOrder, err := createCrdOrder(k.sdk.Ctx, k.client, result.OrderSn, user.GetK3kNamespace(), cvmName)
+	consoleOrder, err := createCrdOrder(k.sdk.Ctx, k.client, result.OrderSn, user.GetK3kNamespace(), cvmName, user.IsDemo())
 	if err != nil {
 		slog.Error("create crd order error", "err", err)
 		return nil, err

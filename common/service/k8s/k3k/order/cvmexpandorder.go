@@ -64,7 +64,7 @@ func (k *K3kOrderApi) CreateExpandCvmOrder(baseResource *types.BuyExpandResource
 	if err != nil {
 		return nil, err
 	}
-	_, err = createCrdOrder(k.sdk.Ctx, k.client, result.OrderSn, cvm.Namespace, cvm.Name)
+	_, err = createCrdOrder(k.sdk.Ctx, k.client, result.OrderSn, cvm.Namespace, cvm.Name, user.IsDemo())
 	if err != nil {
 		slog.Error("create crd order error", "err", err)
 		return nil, err
