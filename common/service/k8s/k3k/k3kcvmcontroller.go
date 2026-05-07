@@ -221,9 +221,14 @@ func (r *K3kCvmController) reconcile0(ctx context.Context, req ctrl.Request) (ct
 			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
 	}
-	// 过期后直接删除cluster
+	// 回收中直接删除cvm
 	if *cvm.Status.IsRecycling {
-		return r.handleDeletion(ctx, cvm)
+		err := r.Delete(ctx, cvm)
+		if err != nil {
+			slog.Error("delete cvm err", "err", err)
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+		return ctrl.Result{}, nil
 	}
 
 	if cvm.IsEmpty() || *cvm.Status.IsExpired { //TODO 演示用户过期立即删除 否则回收才删除cluster
