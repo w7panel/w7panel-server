@@ -3,6 +3,7 @@ package microapp
 import (
 	"errors"
 	"log/slog"
+	"strings"
 
 	"github.com/samber/lo"
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -71,14 +72,20 @@ func ListInfo(t string, name string) (*microapp.MicroApp, error) {
 	if err != nil {
 		return nil, err
 	}
-	microapp, err := loadMicroApp(clientSdk, name)
-	if err != nil {
+	if strings.HasSuffix(name, "-root") {
+		name = strings.ReplaceAll(name, "-root", "")
+	}
+	if token.IsK3kCluster() {
 		rootMicroapp, err := loadMicroApp(rootSdk, name)
 		if err != nil {
 			return nil, err
 		}
 		filterMicroapp(rootMicroapp, currentRole)
 		return rootMicroapp, nil
+	}
+	microapp, err := loadMicroApp(clientSdk, name)
+	if err != nil {
+		return nil, err
 	}
 	return microapp, nil
 }
@@ -87,6 +94,7 @@ func filterMicroapp(item *microapp.MicroApp, role string) {
 		item.Labels = map[string]string{}
 	}
 	item.Labels["microapp.w7.cc/from"] = "root"
+	item.Name = item.Name + "-root"
 	item.Spec.Bindings = lo.Filter(item.Spec.Bindings, func(bindings microapp.Bindings, index int) bool {
 		return bindings.Name == role
 	})
