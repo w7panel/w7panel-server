@@ -287,12 +287,26 @@ func SyncUserToCvm(ctx context.Context, user *types.K3kUser, sdk *k8s.Sdk) error
 	if lr == nil {
 		return nil
 	}
-	_, err := GetCvm(ctx, sdk, user.GetK3kNamespace(), user.GetName())
+	secret := &corev1.Secret{}
+	sigClient, err := sdk.ToSigClient()
+	if err != nil {
+		return err
+	}
+	sigClient.Get(ctx, client.ObjectKey{Name: "k3k-" + user.GetName() + "token", Namespace: user.GetK3kNamespace()}, secret)
+	if err != nil {
+		slog.Error("get k3k cluster secret error", "error", err)
+	}
+	token := ""
+	if err == nil {
+		token = string(secret.Data[corev1.ServiceAccountTokenKey]) //保存用户集群的token
+	}
+
+	cvm, err := GetCvm(ctx, sdk, user.GetK3kNamespace(), user.GetName())
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			rs := lr.GetHardBuyResource()
 
-			cvm := &cvmv1alpha1.Cvm{
+			cvm = &cvmv1alpha1.Cvm{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      user.GetName(),
 					Namespace: user.GetK3kNamespace(),
@@ -306,10 +320,17 @@ func SyncUserToCvm(ctx context.Context, user *types.K3kUser, sdk *k8s.Sdk) error
 					},
 					StorageClassName: lr.StorageClass,
 					ExpireTime:       user.Annotations[k3ktypes.K3K_EXPIRE_TIME],
+					Workload: cvmv1alpha1.Workload{
+						Token: token,
+					},
 				},
 			}
-			return sdk.Create(ctx, cvm)
+			err := sdk.Create(ctx, cvm)
+			if err != nil {
+				return err
+			}
 		}
 	}
+
 	return nil
 }

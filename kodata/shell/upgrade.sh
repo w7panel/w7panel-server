@@ -84,11 +84,11 @@ kubectl apply -f $KO_DATA_PATH/yaml/k3k/virtualclusterpolicy.yaml
 echo "卸载异常面板"
 w7panel uninstall-store-panel
 
-echo "新版metrics  "
+echo "新版metrics"
 w7panel metrics:upgrade
 
-echo "升级权限菜单"
-w7panel qx-upgrade
+# echo "升级权限菜单" # cvm版本 去掉
+# w7panel qx-upgrade
 
 echo "域名解析配置"
 w7panel domain-config

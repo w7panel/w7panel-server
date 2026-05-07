@@ -67,6 +67,7 @@ type CvmSpec struct {
 	ExpireTime               string       `json:"expireTime,omitempty"`               // 到期时间
 	RecycleTime              string       `json:"recycleTime,omitempty"`              // 回收时间RECYCLE
 	Rescue                   bool         `json:"rescue,omitempty"`                   // 是否救援模式
+	Pause                    bool         `json:"pause,omitempty"`                    // 暂停 (到期或暂停 会删除k3k cluster)
 
 }
 
@@ -148,6 +149,7 @@ type CvmOrder struct {
 type Workload struct {
 	metav1.TypeMeta `json:",inline"`
 	TemplateName    string `json:"templateName"`
+	Token           string `json:"token"` //用于创建k3s集群的token
 }
 
 type CvmStatus struct {
@@ -229,7 +231,7 @@ func (u *Cvm) ComputeStatus() {
 	} else {
 		if u.Status.IsExpired != nil && *u.Status.IsExpired {
 			u.Status.Phase = string(PhaseRecycle)
-			u.Status.ClusterPhase = k3kv1.ClusterTerminating
+			u.Status.ClusterPhase = ClusterStopped
 			if u.Status.IsRecycling != nil && *u.Status.IsRecycling {
 				u.Status.Phase = string(PhaseNew) //超过回收时间 则清理成无资源
 			}

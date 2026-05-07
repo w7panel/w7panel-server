@@ -280,12 +280,16 @@ func (r *K3kCvmController) createOrUpdateCluster(ctx context.Context, cvm *cvmv1
 		},
 	}
 	err := r.Client.Get(ctx, client.ObjectKeyFromObject(secret), secret)
+	token := cvm.Spec.Workload.Token //同步旧版子集群token兼容处理，新版集群token为空则生成随机字符串
+	if token == "" {
+		token = helper.RandomString(16)
+	}
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return nil, err
 		}
 		secret.Data = map[string][]byte{
-			"token": []byte(helper.RandomString(16)),
+			"token": []byte(token),
 		}
 		slog.Info("Create secret", "name", secret.Name, "namespace", secret.Namespace)
 		err := controllerutil.SetControllerReference(cvm, secret, r.Scheme)
