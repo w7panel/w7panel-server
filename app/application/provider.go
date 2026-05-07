@@ -147,6 +147,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			localApiGroup.GET("/exec", middleware.Auth{}.Process, controller2.PodExec{}.Exec)
 			localApiGroup.POST("/exec2", middleware.Auth{}.Process, controller2.PodExec{}.Exec)
+			localApiGroup.POST("/exec-all", middleware.Auth{}.Process, controller2.PodExec{}.ExecAll)
 			localApiGroup.GET("/pid", middleware.Auth{}.Process, middleware.CacheResponseWithExpire(time.Minute*1), controller2.Pid{}.GetPid) //获取所在pod和pid
 			// localApiGroup.GET("/pwd", middleware.Auth{}.Process, controller2.PodExec{}.GetPid)             //获取所在pod和pid
 			localApiGroup.GET("/nodepid", middleware.Auth{}.Process, controller2.PodExec{}.GetNodePid) //获取所在pod和pid
