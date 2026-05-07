@@ -39,7 +39,11 @@ func (self Static) Download(http *gin.Context) {
 		return
 	}
 	useSdk := sdk
-
+	hasRoot := strings.Contains(name, "-root")
+	if hasRoot {
+		name = strings.ReplaceAll(name, "-root", "")
+		useSdk = rootSdk
+	}
 	appgroupObj, err := appgroup.GetAppgroupUseSdk(name, namespace, useSdk)
 	if err != nil {
 		// 尝试从root集群获取
