@@ -208,7 +208,7 @@ func (u *Cvm) ComputeStatus() {
 			*u.Status.IsExpired = etime.Before(time.Now())
 			u.Labels[CvmExpired] = u.Name
 			if u.Spec.RecycleTime == "" {
-				u.Spec.RecycleTime = etime.Add(-time.Hour * 24 * 3).Format(time.DateTime)
+				u.Spec.RecycleTime = etime.Add(time.Hour * 24 * 3).Format(time.DateTime)
 			}
 			diffMonth := u.getDiffMonths(etime)
 			u.Status.DiffMonth = diffMonth.String()
