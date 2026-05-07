@@ -17,6 +17,10 @@ limitations under the License.
 
 package v1alpha1
 
+import (
+	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
+)
+
 // CvmSpecApplyConfiguration represents a declarative configuration of the CvmSpec type for use
 // with apply.
 type CvmSpecApplyConfiguration struct {
@@ -36,6 +40,8 @@ type CvmSpecApplyConfiguration struct {
 	// 扩容订单
 	RenewOrder *CvmOrderApplyConfiguration `json:"renewOrder,omitempty"`
 	// 续费订单 延长到期时间
+	ReturnOrders map[string]*cvmv1alpha1.CvmOrder `json:"returnOrders,omitempty"`
+	// 退款订单
 	ExpireTime *string `json:"expireTime,omitempty"`
 	// 到期时间
 	RecycleTime *string `json:"recycleTime,omitempty"`
@@ -120,6 +126,20 @@ func (b *CvmSpecApplyConfiguration) WithExpandOrder(value *CvmOrderApplyConfigur
 // If called multiple times, the RenewOrder field is set to the value of the last call.
 func (b *CvmSpecApplyConfiguration) WithRenewOrder(value *CvmOrderApplyConfiguration) *CvmSpecApplyConfiguration {
 	b.RenewOrder = value
+	return b
+}
+
+// WithReturnOrders puts the entries into the ReturnOrders field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, the entries provided by each call will be put on the ReturnOrders field,
+// overwriting an existing map entries in ReturnOrders field with the same key.
+func (b *CvmSpecApplyConfiguration) WithReturnOrders(entries map[string]*cvmv1alpha1.CvmOrder) *CvmSpecApplyConfiguration {
+	if b.ReturnOrders == nil && len(entries) > 0 {
+		b.ReturnOrders = make(map[string]*cvmv1alpha1.CvmOrder, len(entries))
+	}
+	for k, v := range entries {
+		b.ReturnOrders[k] = v
+	}
 	return b
 }
 

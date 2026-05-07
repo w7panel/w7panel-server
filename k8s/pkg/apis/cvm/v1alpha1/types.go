@@ -24,6 +24,10 @@ const (
 	capacityCheckStateWait       = "wait"
 	capacityCheckStateSuccess    = "success"
 	capacityCheckStateNoResource = "no-resource"
+
+	BASE_BUY   = "base"   // 基础购买
+	RENEW_BUY  = "renew"  // 续费购买
+	EXPAND_BUY = "expand" // 扩容购买
 )
 
 type Phase string
@@ -55,19 +59,20 @@ type Cvm struct {
 }
 
 type CvmSpec struct {
-	StorageClassName         string       `json:"storageClassName,omitempty"`
-	Workload                 Workload     `json:"workload,omitempty"`
-	UserResource             *CvmResource `json:"userResource,omitempty"`             // 强制指定资源，直接生效
-	PurchasedResource        *CvmResource `json:"purchasedResource,omitempty"`        // 累计已购买资源，待容量检测后生效
-	PendingPurchasedResource *CvmResource `json:"pendingPurchasedResource,omitempty"` // 购买待生效的资源
-	CapacityCheckState       string       `json:"capacityCheckState,omitempty"`       // wait/no-resource/success
-	BaseOrder                *CvmOrder    `json:"baseOrder,omitempty"`                // 首次购买 基础订单
-	ExpandOrder              *CvmOrder    `json:"expandOrder,omitempty"`              // 扩容订单
-	RenewOrder               *CvmOrder    `json:"renewOrder,omitempty"`               // 续费订单 延长到期时间
-	ExpireTime               string       `json:"expireTime,omitempty"`               // 到期时间
-	RecycleTime              string       `json:"recycleTime,omitempty"`              // 回收时间RECYCLE
-	Rescue                   bool         `json:"rescue,omitempty"`                   // 是否救援模式
-	Pause                    bool         `json:"pause,omitempty"`                    // 暂停 (到期或暂停 会删除k3k cluster)
+	StorageClassName         string               `json:"storageClassName,omitempty"`
+	Workload                 Workload             `json:"workload,omitempty"`
+	UserResource             *CvmResource         `json:"userResource,omitempty"`             // 强制指定资源，直接生效
+	PurchasedResource        *CvmResource         `json:"purchasedResource,omitempty"`        // 累计已购买资源，待容量检测后生效
+	PendingPurchasedResource *CvmResource         `json:"pendingPurchasedResource,omitempty"` // 购买待生效的资源
+	CapacityCheckState       string               `json:"capacityCheckState,omitempty"`       // wait/no-resource/success
+	BaseOrder                *CvmOrder            `json:"baseOrder,omitempty"`                // 首次购买 基础订单
+	ExpandOrder              *CvmOrder            `json:"expandOrder,omitempty"`              // 扩容订单
+	RenewOrder               *CvmOrder            `json:"renewOrder,omitempty"`               // 续费订单 延长到期时间
+	ReturnOrders             map[string]*CvmOrder `json:"returnOrders,omitempty"`             // 退款订单
+	ExpireTime               string               `json:"expireTime,omitempty"`               // 到期时间
+	RecycleTime              string               `json:"recycleTime,omitempty"`              // 回收时间RECYCLE
+	Rescue                   bool                 `json:"rescue,omitempty"`                   // 是否救援模式
+	Pause                    bool                 `json:"pause,omitempty"`                    // 暂停 (到期或暂停 会删除k3k cluster)
 
 }
 
@@ -127,9 +132,6 @@ func (u *Cvm) IsPendingEmpty() bool {
 	}
 
 	return u.Spec.PendingPurchasedResource.IsEmpty()
-}
-func (u *Cvm) ReturnOrder(order *CvmConsoleOrder) error {
-	return nil
 }
 
 func (u *Cvm) GetClusterServer0PvcName() string {
@@ -260,6 +262,69 @@ func (u *Cvm) getDiffMonths(expireTime time.Time) decimal.Decimal {
 	hours := expireTime.Sub(time.Now()).Hours()
 	diffMonths := decimal.NewFromFloat(hours).Div(decimal.NewFromFloat(24 * 30))
 	return (diffMonths)
+}
+
+func (u *Cvm) HasReturnNoProcessOrder() bool {
+
+	if u.Spec.ReturnOrders == nil {
+		return false
+	}
+	for _, order := range u.Spec.ReturnOrders {
+		if !order.ReturnFinish {
+			return true
+		}
+	}
+	return false
+}
+
+func (u *Cvm) GetReturnNoProcessOrder() *CvmOrder {
+
+	if u.Spec.ReturnOrders == nil {
+		return nil
+	}
+	for _, order := range u.Spec.ReturnOrders {
+		if !order.ReturnFinish {
+			return order
+		}
+	}
+	return nil
+}
+
+func (u *Cvm) ProcessReturnOrder(orderSn string) error {
+	if u.Spec.ReturnOrders == nil {
+		return nil
+	}
+	for _, order := range u.Spec.ReturnOrders {
+		if !order.ReturnFinish && order.OrderSn == orderSn {
+			err := u.doReturn(order)
+			if err != nil {
+				return err
+			}
+			order.ReturnFinish = true
+			return nil
+		}
+	}
+	return nil
+}
+
+func (u *Cvm) doReturn(order *CvmOrder) error {
+	if order.BuyMode == BASE_BUY {
+		u.Spec.PurchasedResource.Sub(order.Resource)
+		u.Spec.ExpireTime = time.Now().Format(time.DateTime)
+	}
+	if order.BuyMode == EXPAND_BUY {
+		u.Spec.PurchasedResource.Sub(order.Resource)
+	}
+	if order.BuyMode == RENEW_BUY {
+		hour := decimal.NewFromInt(int64(order.Hour))
+		expireTime, err := time.Parse(time.DateTime, u.Spec.ExpireTime)
+		if err != nil {
+			return err
+		}
+		sec := hour.Mul(decimal.NewFromInt(3600))
+		u.Spec.ExpireTime = expireTime.Add(time.Hour * time.Duration(-sec.IntPart())).Format(time.DateTime)
+	}
+	return nil
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

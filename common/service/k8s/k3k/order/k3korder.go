@@ -395,68 +395,7 @@ func (k *K3kOrderApi) FindLastReturnCvmOrder(cvm *cvmv1alpha1.Cvm) (*console.Las
 	return k.consoleSdkClient.FindLastReturnCvmOrder(w7config.ClusterId, cvm.GetK3kName(), cvm.Name)
 }
 
-// 软事务 先记录下要更改的记录，然后标记处理完成
-func (k *K3kOrderApi) ProcessReturnOrder(user *types.K3kUser) error {
-	if !user.IsClusterUser() {
-		return nil
-	}
 
-	if user.HasProcessReturnOrder() {
-		returnOrder, err := user.GetLockReturnK3kOrder()
-		if err != nil {
-			return err
-		}
-		order, err := k.consoleSdkClient.FindK3kOrder(user.Name, returnOrder.OrderSn)
-		if err != nil {
-			return err
-		}
-		if order.ReturnAt == "" {
-			_, err := k.consoleSdkClient.ReturnOrderFinish(user.Name, returnOrder.OrderSn)
-			if err != nil {
-				return err
-			}
-		}
-		_, err = controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, user.ServiceAccount, func() error {
-			k.mu.Lock()
-			defer k.mu.Unlock()
-			user.ProcessReturnK3kOrder()
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	return nil
-}
-
-// 软事务 先记录下要更改的记录，然后标记处理完成
-func (k *K3kOrderApi) ProcessReturnLastOrder(user *types.K3kUser, process bool) error {
-	if !user.IsClusterUser() {
-		return nil
-	}
-	returnOrder, err := k.FindLastReturnOrder(user)
-	if err != nil {
-		return err
-	}
-	slog.Error("处理return订单", "orderSn", returnOrder.K3kOrder.OrderSn)
-	//先锁定数据
-	if returnOrder.HasOrder {
-		_, err := controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, user.ServiceAccount, func() error {
-			k.mu.Lock()
-			defer k.mu.Unlock()
-			user.LockReturnK3kOrder(returnOrder.K3kOrder) //锁定要处理的资源
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	}
-	if process {
-		return k.ProcessReturnOrder(user)
-	}
-	return nil
-}
 
 func (k *K3kOrderApi) CheckCanBuy(user *types.K3kUser) error {
 	order, err := k.FindLastPaidOrder(user)

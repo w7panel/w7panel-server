@@ -239,6 +239,21 @@ func (in *CvmSpec) DeepCopyInto(out *CvmSpec) {
 		*out = new(CvmOrder)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ReturnOrders != nil {
+		in, out := &in.ReturnOrders, &out.ReturnOrders
+		*out = make(map[string]*CvmOrder, len(*in))
+		for key, val := range *in {
+			var outVal *CvmOrder
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				in, out := &val, &outVal
+				*out = new(CvmOrder)
+				(*in).DeepCopyInto(*out)
+			}
+			(*out)[key] = outVal
+		}
+	}
 	return
 }
 
