@@ -4,6 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.1
+    api-approved.kubernetes.io: "https://www.w7.cc"
   name: cvms.cvm.w7.cc
 spec:
   group: cvm.w7.cc
@@ -40,6 +41,8 @@ spec:
               baseOrder:
                 description: 购买信息
                 properties:
+                  buyMode:
+                    type: string
                   hour:
                     type: integer
                   orderSn:
@@ -59,6 +62,8 @@ spec:
                         format: int64
                         type: integer
                     type: object
+                  returnFinish:
+                    type: boolean
                   status:
                     type: string
                 required:
@@ -69,6 +74,8 @@ spec:
               expandOrder:
                 description: 购买信息
                 properties:
+                  buyMode:
+                    type: string
                   hour:
                     type: integer
                   orderSn:
@@ -88,6 +95,8 @@ spec:
                         format: int64
                         type: integer
                     type: object
+                  returnFinish:
+                    type: boolean
                   status:
                     type: string
                 required:
@@ -95,6 +104,8 @@ spec:
                 type: object
               expireTime:
                 type: string
+              pause:
+                type: boolean
               pendingPurchasedResource:
                 properties:
                   bandwidth:
@@ -130,6 +141,8 @@ spec:
               renewOrder:
                 description: 购买信息
                 properties:
+                  buyMode:
+                    type: string
                   hour:
                     type: integer
                   orderSn:
@@ -149,6 +162,8 @@ spec:
                         format: int64
                         type: integer
                     type: object
+                  returnFinish:
+                    type: boolean
                   status:
                     type: string
                 required:
@@ -192,8 +207,11 @@ spec:
                     type: string
                   templateName:
                     type: string
+                  token:
+                    type: string
                 required:
                 - templateName
+                - token
                 type: object
             type: object
           status:

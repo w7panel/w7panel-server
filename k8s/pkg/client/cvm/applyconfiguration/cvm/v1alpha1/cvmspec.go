@@ -41,6 +41,8 @@ type CvmSpecApplyConfiguration struct {
 	RecycleTime *string `json:"recycleTime,omitempty"`
 	// 回收时间RECYCLE
 	Rescue *bool `json:"rescue,omitempty"`
+	// 是否救援模式
+	Pause *bool `json:"pause,omitempty"`
 }
 
 // CvmSpecApplyConfiguration constructs a declarative configuration of the CvmSpec type for use with
@@ -142,5 +144,13 @@ func (b *CvmSpecApplyConfiguration) WithRecycleTime(value string) *CvmSpecApplyC
 // If called multiple times, the Rescue field is set to the value of the last call.
 func (b *CvmSpecApplyConfiguration) WithRescue(value bool) *CvmSpecApplyConfiguration {
 	b.Rescue = &value
+	return b
+}
+
+// WithPause sets the Pause field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Pause field is set to the value of the last call.
+func (b *CvmSpecApplyConfiguration) WithPause(value bool) *CvmSpecApplyConfiguration {
+	b.Pause = &value
 	return b
 }

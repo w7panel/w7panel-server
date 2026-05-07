@@ -22,10 +22,12 @@ package v1alpha1
 //
 // 购买信息
 type CvmOrderApplyConfiguration struct {
-	OrderSn  *string                        `json:"orderSn,omitempty"`
-	Status   *string                        `json:"status,omitempty"`
-	Resource *CvmResourceApplyConfiguration `json:"resource,omitempty"`
-	Hour     *int                           `json:"hour,omitempty"`
+	OrderSn      *string                        `json:"orderSn,omitempty"`
+	Status       *string                        `json:"status,omitempty"`
+	Resource     *CvmResourceApplyConfiguration `json:"resource,omitempty"`
+	Hour         *int                           `json:"hour,omitempty"`
+	BuyMode      *string                        `json:"buyMode,omitempty"`
+	ReturnFinish *bool                          `json:"returnFinish,omitempty"`
 }
 
 // CvmOrderApplyConfiguration constructs a declarative configuration of the CvmOrder type for use with
@@ -63,5 +65,21 @@ func (b *CvmOrderApplyConfiguration) WithResource(value *CvmResourceApplyConfigu
 // If called multiple times, the Hour field is set to the value of the last call.
 func (b *CvmOrderApplyConfiguration) WithHour(value int) *CvmOrderApplyConfiguration {
 	b.Hour = &value
+	return b
+}
+
+// WithBuyMode sets the BuyMode field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the BuyMode field is set to the value of the last call.
+func (b *CvmOrderApplyConfiguration) WithBuyMode(value string) *CvmOrderApplyConfiguration {
+	b.BuyMode = &value
+	return b
+}
+
+// WithReturnFinish sets the ReturnFinish field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ReturnFinish field is set to the value of the last call.
+func (b *CvmOrderApplyConfiguration) WithReturnFinish(value bool) *CvmOrderApplyConfiguration {
+	b.ReturnFinish = &value
 	return b
 }

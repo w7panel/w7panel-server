@@ -26,6 +26,7 @@ import (
 type WorkloadApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration `json:",inline"`
 	TemplateName                  *string `json:"templateName,omitempty"`
+	Token                         *string `json:"token,omitempty"`
 }
 
 // WorkloadApplyConfiguration constructs a declarative configuration of the Workload type for use with
@@ -60,6 +61,14 @@ func (b *WorkloadApplyConfiguration) WithAPIVersion(value string) *WorkloadApply
 // If called multiple times, the TemplateName field is set to the value of the last call.
 func (b *WorkloadApplyConfiguration) WithTemplateName(value string) *WorkloadApplyConfiguration {
 	b.TemplateName = &value
+	return b
+}
+
+// WithToken sets the Token field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Token field is set to the value of the last call.
+func (b *WorkloadApplyConfiguration) WithToken(value string) *WorkloadApplyConfiguration {
+	b.Token = &value
 	return b
 }
 

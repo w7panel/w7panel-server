@@ -292,7 +292,7 @@ func SyncUserToCvm(ctx context.Context, user *types.K3kUser, sdk *k8s.Sdk) error
 	if err != nil {
 		return err
 	}
-	sigClient.Get(ctx, client.ObjectKey{Name: "k3k-" + user.GetName() + "token", Namespace: user.GetK3kNamespace()}, secret)
+	sigClient.Get(ctx, client.ObjectKey{Name: "k3k-" + user.GetName() + "-token", Namespace: user.GetK3kNamespace()}, secret)
 	if err != nil {
 		slog.Error("get k3k cluster secret error", "error", err)
 	}
@@ -300,6 +300,7 @@ func SyncUserToCvm(ctx context.Context, user *types.K3kUser, sdk *k8s.Sdk) error
 	if err == nil {
 		token = string(secret.Data[corev1.ServiceAccountTokenKey]) //保存用户集群的token
 	}
+	slog.Info("cvm token", "token", token)
 
 	cvm, err := GetCvm(ctx, sdk, user.GetK3kNamespace(), user.GetName())
 	if err != nil {
