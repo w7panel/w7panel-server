@@ -316,13 +316,14 @@ func (u *Cvm) doReturn(order *CvmOrder) error {
 		u.Spec.PurchasedResource.Sub(order.Resource)
 	}
 	if order.BuyMode == RENEW_BUY {
-		hour := decimal.NewFromInt(int64(order.Hour))
+
 		expireTime, err := time.Parse(time.DateTime, u.Spec.ExpireTime)
 		if err != nil {
 			return err
 		}
-		sec := hour.Mul(decimal.NewFromInt(3600))
-		u.Spec.ExpireTime = expireTime.Add(time.Hour * time.Duration(-sec.IntPart())).Format(time.DateTime)
+		// 当前时间减去hour 小时
+		expireTime = expireTime.Add(-time.Hour * time.Duration(int64(order.Hour)))
+		u.Spec.ExpireTime = expireTime.Format(time.DateTime)
 	}
 	return nil
 }
