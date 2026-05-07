@@ -72,10 +72,13 @@ func ListInfo(t string, name string) (*microapp.MicroApp, error) {
 	if err != nil {
 		return nil, err
 	}
+	useRoot := false
 	if strings.HasSuffix(name, "-root") {
 		name = strings.ReplaceAll(name, "-root", "")
+		useRoot = true
 	}
-	if token.IsK3kCluster() {
+	if useRoot {
+
 		rootMicroapp, err := loadMicroApp(rootSdk, name)
 		if err != nil {
 			return nil, err
