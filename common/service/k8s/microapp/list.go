@@ -8,6 +8,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	sig "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -88,7 +89,16 @@ func ListInfo(t string, name string) (*microapp.MicroApp, error) {
 	}
 	microapp, err := loadMicroApp(clientSdk, name)
 	if err != nil {
-		return nil, err
+		if k8serrors.IsNotFound(err) {
+			rootMicroapp, err := loadMicroApp(rootSdk, name)
+			if err != nil {
+				return nil, err
+			}
+			filterMicroapp(rootMicroapp, currentRole)
+			return rootMicroapp, nil
+		} else {
+			return nil, err
+		}
 	}
 	return microapp, nil
 }
