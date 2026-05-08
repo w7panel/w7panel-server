@@ -813,7 +813,7 @@ func (self Sdk) Login2(username string, password string, checkPassword bool) (*c
 	if !ok {
 		return nil, fmt.Errorf("用户名密码错误")
 	}
-	pwd, err := base64.StdEncoding.DecodeString(passwd)
+	pwd, err := base64.URLEncoding.DecodeString(passwd)
 	if err == nil {
 		passwd = string(pwd)
 	}
@@ -891,7 +891,8 @@ func (self Sdk) ResetPassword(username string, password string, usermode string)
 		if sa.Annotations == nil {
 			sa.Annotations = make(map[string]string)
 		}
-		sa.Annotations["password"] = string(bpassword)
+		base64passwd := base64.URLEncoding.EncodeToString(bpassword)
+		sa.Annotations["password"] = (base64passwd)
 		if sa.Labels == nil {
 			sa.Labels = make(map[string]string)
 		}
