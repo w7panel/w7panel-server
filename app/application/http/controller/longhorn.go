@@ -244,3 +244,33 @@ func (self Longhorn) TrimFilesystem(http *gin.Context) {
 	}
 	self.JsonResponse(http, nil, nil, 200)
 }
+
+func (self Longhorn) SnapshotDelete(http *gin.Context) {
+	//{forceDetach: true, attachmentID: "longhorn-ui", hostId: ""}
+	type Param struct {
+		Name string `json:"name"`
+	}
+	params := Param{}
+	if !self.Validate(http, &params) {
+		return
+	}
+
+	volName := http.Param("volumeName")
+	err := longhorn.LonghornVolumeSnapshotDelete(volName, params.Name)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponse(http, nil, nil, 200)
+}
+func (self Longhorn) SnapshotPurge(http *gin.Context) {
+	//{forceDetach: true, attachmentID: "longhorn-ui", hostId: ""}
+
+	volName := http.Param("volumeName")
+	err := longhorn.LonghornVolumeSnapshotPurge(volName)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponse(http, nil, nil, 200)
+}

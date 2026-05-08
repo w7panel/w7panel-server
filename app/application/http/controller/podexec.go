@@ -69,6 +69,17 @@ type PodExec struct {
 	controller.Abstract
 }
 
+func (self PodExec) getExecClient(token string, podName string) (*k8s.Sdk, error) {
+	client, err := k8s.NewK8sClient().Channel(token)
+	if err != nil {
+		return nil, err
+	}
+	if strings.Contains(podName, "w7panel-agent") {
+		return k8s.NewK8sClient().Sdk, nil
+	}
+	return client, nil
+}
+
 func (self PodExec) Exec(http *gin.Context) {
 	type ParamsValidate struct {
 		Namespace     string   `form:"namespace" binding:"required"`
@@ -117,10 +128,6 @@ func (self PodExec) Exec(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	rootsdk := k8s.NewK8sClient().Sdk
-	if strings.Contains(params.PodName, "w7panel-agent") {
-		client = rootsdk
-	}
 	cmd := params.Command
 	// if params.Pid != "" && len(cmd) > 0 && cmd[0] == "ls" {
 	// 	cmd = []string{"/bin/sh", "-c", lsProxy(params.Pid)}
@@ -139,6 +146,74 @@ func (self PodExec) Exec(http *gin.Context) {
 	if conn == nil {
 		http.Writer.Write(session.GetWriterBytes())
 	}
+}
+
+func (self PodExec) ExecAll(http *gin.Context) {
+	type ParamsValidate struct {
+		Namespace     string   `form:"namespace" json:"namespace" binding:"required"`
+		PodNames      []string `form:"podNames" json:"podNames"`
+		PodName       string   `form:"podName" json:"podName"`
+		ContainerName string   `form:"containerName" json:"containerName" binding:"required"`
+		Command       []string `form:"command" json:"command" binding:"required"`
+		Tty           bool     `form:"tty" json:"tty"`
+	}
+	type ExecAllItem struct {
+		PodName string `json:"podName"`
+		Output  string `json:"output"`
+		Success bool   `json:"success"`
+		Error   string `json:"error,omitempty"`
+	}
+
+	params := ParamsValidate{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	if len(params.PodNames) == 0 && params.PodName != "" {
+		params.PodNames = []string{params.PodName}
+	}
+	if len(params.PodNames) == 0 {
+		self.JsonResponseWithServerError(http, errors.New("podNames is required"))
+		return
+	}
+	if websocket.IsWebSocketUpgrade(http.Request) {
+		self.JsonResponseWithServerError(http, errors.New("exec all does not support websocket"))
+		return
+	}
+
+	token := http.MustGet("k8s_token").(string)
+	execTimeout := facade.GetConfig().GetInt("k8s.exec_timeout_seconds")
+	if execTimeout <= 0 {
+		execTimeout = 1800
+	}
+	ctx, cancel := context.WithTimeout(http.Request.Context(), time.Duration(execTimeout)*time.Second)
+	defer cancel()
+
+	results := make([]ExecAllItem, 0, len(params.PodNames))
+	for _, podName := range params.PodNames {
+		item := ExecAllItem{
+			PodName: podName,
+		}
+
+		client, err := self.getExecClient(token, podName)
+		if err != nil {
+			item.Error = err.Error()
+			results = append(results, item)
+			continue
+		}
+
+		session := terminal.NewTerminalSession(nil)
+		session.SetContext(ctx)
+		err = client.RunExec(session, params.Namespace, podName, params.ContainerName, params.Command, params.Tty)
+		item.Output = string(session.GetWriterBytes())
+		if err != nil {
+			item.Error = err.Error()
+		} else {
+			item.Success = true
+		}
+		results = append(results, item)
+	}
+
+	self.JsonResponseWithoutError(http, results)
 }
 
 func (p PodExec) NodeTty(http *gin.Context) {

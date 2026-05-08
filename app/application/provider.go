@@ -148,6 +148,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			localApiGroup.GET("/exec", middleware.Auth{}.Process, controller2.PodExec{}.Exec)
 			localApiGroup.POST("/exec2", middleware.Auth{}.Process, controller2.PodExec{}.Exec)
+			localApiGroup.POST("/exec-all", middleware.Auth{}.Process, controller2.PodExec{}.ExecAll)
 			localApiGroup.GET("/pid", middleware.Auth{}.Process, middleware.CacheResponseWithExpire(time.Minute*1), controller2.Pid{}.GetPid) //获取所在pod和pid
 			// localApiGroup.GET("/pwd", middleware.Auth{}.Process, controller2.PodExec{}.GetPid)             //获取所在pod和pid
 			localApiGroup.GET("/nodepid", middleware.Auth{}.Process, controller2.PodExec{}.GetNodePid) //获取所在pod和pid
@@ -186,7 +187,8 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/longhorn/volumes/:volumeName/detach", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.Detach)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/cancel-expansion", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.CancelExpansion)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/trim-filesystem", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.TrimFilesystem)
-
+			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-delete", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotDelete)
+			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-purge", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotPurge)
 			// localApiGroup.GET("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGc)
 			// localApiGroup.POST("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGcToggle)
 			// localApiGroup.GET("/kubeblocks/installjobyaml", middleware.Auth{}.Process, controller2.KubeBlocks{}.InstallJobYaml)
