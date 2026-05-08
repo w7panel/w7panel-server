@@ -3,6 +3,7 @@ package k8s
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -812,6 +813,13 @@ func (self Sdk) Login2(username string, password string, checkPassword bool) (*c
 	if !ok {
 		return nil, fmt.Errorf("用户名密码错误")
 	}
+	pwd, err := base64.StdEncoding.DecodeString(passwd)
+	if err == nil {
+		passwd = string(pwd)
+	}
+	if err != nil {
+		slog.Warn("not base64 password", "username", username)
+	}
 	if ok {
 		err = bcrypt.CompareHashAndPassword([]byte(passwd), []byte(password))
 		if err != nil {
@@ -838,23 +846,11 @@ func (self Sdk) Login2(username string, password string, checkPassword bool) (*c
 
 	return sa, nil
 }
-func (self Sdk) Login(username string, password string, createToken bool, seconds int64) (string, error) {
+func (self Sdk) LoginCreateToken(username string, password string, createToken bool, seconds int64) (string, error) {
 
-	sa, err := self.ClientSet.CoreV1().ServiceAccounts(self.namespace).Get(self.Ctx, username, metav1.GetOptions{})
+	_, err := self.Login2(username, password, true)
 	if err != nil {
 		return "", err
-	}
-
-	annotations := sa.GetAnnotations()
-	passwd, ok := annotations["password"]
-	if !ok {
-		return "", fmt.Errorf("用户名密码错误")
-	}
-	if ok {
-		err = bcrypt.CompareHashAndPassword([]byte(passwd), []byte(password))
-		if err != nil {
-			return "", err
-		}
 	}
 	if !createToken {
 		return "", nil
