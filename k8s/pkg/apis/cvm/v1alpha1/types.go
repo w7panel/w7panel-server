@@ -45,7 +45,7 @@ const (
 	PhaseRecycleing = Phase("recycleing") //回收中
 	PhaseCreating   = Phase("creating")   //创建中
 
-	ClusterStopped = k3kv1.ClusterPhase("stopped")
+	ClusterStopped = k3kv1.ClusterPhase("stopped")//暂停中
 )
 
 // +genclient
