@@ -302,7 +302,7 @@ func (self Auth) ResetPassword(http *gin.Context) {
 
 	// username := client.GetServiceAccountName()
 
-	_, err := sdk.Login(params.Username, params.Password, false, facade.Config.GetInt64("app.login_seconds"))
+	_, err := sdk.LoginCreateToken(params.Username, params.Password, false, facade.Config.GetInt64("app.login_seconds"))
 	if err != nil {
 		self.JsonResponseWithError(http, fmt.Errorf("原始用户密码错误"), 500)
 		return
@@ -349,7 +349,7 @@ func (self Auth) ResetPasswordCurrent(http *gin.Context) {
 		sa.Annotations = map[string]string{}
 	}
 	if sa.Annotations["password"] != "" {
-		_, err := sdk.Login(userName, params.Password, false, facade.Config.GetInt64("app.login_seconds"))
+		_, err := sdk.LoginCreateToken(userName, params.Password, false, facade.Config.GetInt64("app.login_seconds"))
 		if err != nil {
 			self.JsonResponseWithError(http, fmt.Errorf("原始用户密码错误"), 500)
 			return
