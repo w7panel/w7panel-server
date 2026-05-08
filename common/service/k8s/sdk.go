@@ -3,7 +3,6 @@ package k8s
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -813,13 +812,13 @@ func (self Sdk) Login2(username string, password string, checkPassword bool) (*c
 	if !ok {
 		return nil, fmt.Errorf("用户名密码错误")
 	}
-	pwd, err := base64.URLEncoding.DecodeString(passwd)
-	if err == nil {
-		passwd = string(pwd)
-	}
-	if err != nil {
-		slog.Warn("not base64 password", "username", username)
-	}
+	// pwd, err := base64.URLEncoding.DecodeString(passwd)
+	// if err == nil {
+	// 	passwd = string(pwd)
+	// }
+	// if err != nil {
+	// 	slog.Warn("not base64 password", "username", username)
+	// }
 	if ok {
 		err = bcrypt.CompareHashAndPassword([]byte(passwd), []byte(password))
 		if err != nil {
@@ -891,8 +890,8 @@ func (self Sdk) ResetPassword(username string, password string, usermode string)
 		if sa.Annotations == nil {
 			sa.Annotations = make(map[string]string)
 		}
-		base64passwd := base64.URLEncoding.EncodeToString(bpassword)
-		sa.Annotations["password"] = (base64passwd)
+		// base64passwd := base64.URLEncoding.EncodeToString(bpassword)
+		sa.Annotations["password"] = string(bpassword)
 		if sa.Labels == nil {
 			sa.Labels = make(map[string]string)
 		}
