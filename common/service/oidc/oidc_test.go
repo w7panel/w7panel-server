@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,8 +13,11 @@ import (
 
 type fakeDynamicClientStore struct {
 	loadClients []Client
+	createResp  Client
 	saveCalls   []saveCall
+	createCalls []DynamicClientRequest
 	deleteCalls []string
+	createErr   error
 	saveErr     error
 	deleteErr   error
 	loadErr     error
@@ -29,6 +33,38 @@ func (f *fakeDynamicClientStore) Load() ([]Client, error) {
 		return nil, f.loadErr
 	}
 	return append([]Client{}, f.loadClients...), nil
+}
+
+func (f *fakeDynamicClientStore) Create(req DynamicClientRequest) (Client, error) {
+	if f.createErr != nil {
+		return Client{}, f.createErr
+	}
+	f.createCalls = append(f.createCalls, req)
+	if f.createResp.ClientID != "" {
+		return f.createResp, nil
+	}
+	mode := normalizeAuthMethod(req.TokenEndpointAuthMode, "x")
+	client := Client{
+		Name:                  req.ClientName,
+		ClientID:              "oidc-test-client",
+		RedirectURIs:          append([]string{}, req.RedirectURIs...),
+		Scopes:                normalizeScopes(strings.Fields(req.Scope)),
+		TokenEndpointAuthMode: mode,
+		IsDynamic:             true,
+		CreatedAt:             time.Unix(123, 0),
+	}
+	if len(client.Scopes) == 0 {
+		client.Scopes = []string{"openid", "profile", "offline_access"}
+	}
+	client.RequirePKCE = mode == "none"
+	if req.RequirePKCE != nil {
+		client.RequirePKCE = *req.RequirePKCE
+	}
+	if mode != "none" {
+		client.ClientSecret = "generated-secret"
+	}
+	f.saveCalls = append(f.saveCalls, saveCall{client: client, isUpdate: false})
+	return client, nil
 }
 
 func (f *fakeDynamicClientStore) Save(client Client, isUpdate bool) error {
@@ -92,22 +128,22 @@ func TestRegisterDynamicClientStoresAndDefaults(t *testing.T) {
 		t.Fatalf("RegisterDynamicClient returned error: %v", err)
 	}
 	if len(store.saveCalls) != 1 {
-		t.Fatalf("expected 1 save call, got %d", len(store.saveCalls))
+		t.Fatalf("expected create path to persist once, got %d save calls", len(store.saveCalls))
 	}
-	saved := store.saveCalls[0]
-	if saved.isUpdate {
-		t.Fatalf("expected create save call")
+	if len(store.createCalls) != 1 {
+		t.Fatalf("expected 1 create call, got %d", len(store.createCalls))
 	}
-	if saved.client.ClientSecret != "" {
+	saved := server.clients[resp.ClientID]
+	if saved.ClientSecret != "" {
 		t.Fatalf("expected public client secret to be empty")
 	}
-	if !saved.client.RequirePKCE {
+	if !saved.RequirePKCE {
 		t.Fatalf("expected PKCE to default to true for public client")
 	}
-	if saved.client.TokenEndpointAuthMode != "none" {
-		t.Fatalf("unexpected auth mode: %s", saved.client.TokenEndpointAuthMode)
+	if saved.TokenEndpointAuthMode != "none" {
+		t.Fatalf("unexpected auth mode: %s", saved.TokenEndpointAuthMode)
 	}
-	if got, want := saved.client.Scopes, []string{"openid", "profile", "offline_access"}; len(got) != len(want) || got[0] != want[0] || got[1] != want[1] || got[2] != want[2] {
+	if got, want := saved.Scopes, []string{"openid", "profile", "offline_access"}; len(got) != len(want) || got[0] != want[0] || got[1] != want[1] || got[2] != want[2] {
 		t.Fatalf("unexpected scopes: %#v", got)
 	}
 	if _, ok := server.clients[resp.ClientID]; !ok {

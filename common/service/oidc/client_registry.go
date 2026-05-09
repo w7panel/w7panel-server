@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 )
 
 func (s *Server) RegisterEnabled() bool {
@@ -42,31 +41,8 @@ func (s *Server) RegisterDynamicClient(req DynamicClientRequest) (*DynamicClient
 		return nil, errors.New("unsupported token_endpoint_auth_method")
 	}
 
-	clientID := normalizeClientID("oidc_" + randomToken(16))
-	clientSecret := ""
-	requirePKCE := mode == "none"
-	if req.RequirePKCE != nil {
-		requirePKCE = *req.RequirePKCE
-	}
-	if mode != "none" {
-		clientSecret = randomToken(24)
-	}
-	scopes := normalizeScopes(strings.Fields(req.Scope))
-	if len(scopes) == 0 {
-		scopes = []string{"openid", "profile", "offline_access"}
-	}
-	client := Client{
-		Name:                  req.ClientName,
-		ClientID:              clientID,
-		ClientSecret:          clientSecret,
-		RedirectURIs:          req.RedirectURIs,
-		Scopes:                scopes,
-		RequirePKCE:           requirePKCE,
-		TokenEndpointAuthMode: mode,
-		IsDynamic:             true,
-		CreatedAt:             time.Now(),
-	}
-	if err := s.store.Save(client, false); err != nil {
+	client, err := s.store.Create(req)
+	if err != nil {
 		return nil, err
 	}
 	s.clientsMu.Lock()
