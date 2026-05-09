@@ -101,8 +101,9 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		ExpandErr         string `json:"expandErr"`   //扩容失败消息
 		State             string `json:"state"`       //volume状态
 		VolumeName        string `json:"volumeName"`
-		IsLock            string `json:"isLock"`     //是否锁定
-		LockNodeId        string `json:"lockNodeId"` //锁定nodeId
+		IsLock            string `json:"isLock"`         //是否锁定
+		LockNodeId        string `json:"lockNodeId"`     //锁定nodeId
+		AttachedNodeId    string `json:"attachedNodeId"` //挂载nodeId
 	}
 
 	sdk := k8s.NewK8sClient().Sdk
@@ -141,6 +142,7 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		size := volume.Status.ActualSize //已使用空间 /1024/1024/ MB
 		isExpanding, expandErrstr := longhorn.IsVolumeExpanding(&volume, engineList)
 		isLock, nodeId := longhorn.IsVolumeLock(&volume, vtList)
+		attchNodeId := longhorn.VolumeAttachNodeId(&volume, vtList)
 		// isLock = true //test
 		// isExpanding = true
 		vs := VolumesStatus{
@@ -157,6 +159,7 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 			VolumeName:        volume.Name,
 			IsLock:            strconv.FormatBool(isLock),
 			LockNodeId:        nodeId,
+			AttachedNodeId:    attchNodeId,
 
 			// CreatedAt:        volume.Status.KubernetesStatus.PVCName,
 			// CreatedAt:        volume.Status.CreatedAt,
