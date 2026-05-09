@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -11,15 +12,16 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
+	zitadeloidc "github.com/zitadel/oidc/v3/pkg/oidc"
+	"github.com/zitadel/oidc/v3/pkg/op"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,6 +33,7 @@ const (
 	defaultCodeTTL         = 5 * time.Minute
 	defaultSessionTTL      = 12 * time.Hour
 	sessionCookieName      = "w7panel_oidc_session"
+	authRequestIDQuery     = "authRequestID"
 )
 
 type Config struct {
@@ -69,55 +72,10 @@ type Client struct {
 	CreatedAt             time.Time
 }
 
-type AuthorizationCode struct {
-	Code              string
-	ClientID          string
-	RedirectURI       string
-	Username          string
-	Scopes            []string
-	Nonce             string
-	CodeChallenge     string
-	CodeChallengeMode string
-	ExpiresAt         time.Time
-}
-
 type Session struct {
 	ID        string
 	Username  string
 	ExpiresAt time.Time
-}
-
-type UserClaims struct {
-	Subject           string   `json:"sub"`
-	PreferredUsername string   `json:"preferred_username,omitempty"`
-	Name              string   `json:"name,omitempty"`
-	Groups            []string `json:"groups,omitempty"`
-	Namespace         string   `json:"namespace,omitempty"`
-}
-
-type AccessTokenClaims struct {
-	Username string   `json:"username"`
-	Scopes   []string `json:"scopes,omitempty"`
-	TokenUse string   `json:"token_use"`
-	ClientID string   `json:"client_id"`
-	jwt.RegisteredClaims
-}
-
-type IDTokenClaims struct {
-	PreferredUsername string   `json:"preferred_username,omitempty"`
-	Name              string   `json:"name,omitempty"`
-	Groups            []string `json:"groups,omitempty"`
-	Namespace         string   `json:"namespace,omitempty"`
-	Nonce             string   `json:"nonce,omitempty"`
-	jwt.RegisteredClaims
-}
-
-type RefreshTokenClaims struct {
-	Username string   `json:"username"`
-	Scopes   []string `json:"scopes,omitempty"`
-	TokenUse string   `json:"token_use"`
-	ClientID string   `json:"client_id"`
-	jwt.RegisteredClaims
 }
 
 type DynamicClientRequest struct {
@@ -146,17 +104,87 @@ type DynamicClientResponse struct {
 }
 
 type Server struct {
-	config    Config
-	private   *rsa.PrivateKey
-	publicJWK jose.JSONWebKey
-	kid       string
+	config Config
+
+	private *rsa.PrivateKey
+	kid     string
+
 	clientsMu sync.RWMutex
 	clients   map[string]Client
-	codesMu   sync.Mutex
-	codes     map[string]AuthorizationCode
+
+	authReqMu    sync.Mutex
+	authRequests map[string]*authRequest
+	authCodes    map[string]string
+
+	tokenMu       sync.Mutex
+	accessTokens  map[string]*accessToken
+	refreshTokens map[string]*refreshToken
+
 	sessionMu sync.Mutex
 	sessions  map[string]Session
+
+	provider op.OpenIDProvider
+	legacy   *op.LegacyServer
+	handler  http.Handler
 }
+
+type accessToken struct {
+	ID            string
+	ApplicationID string
+	RefreshToken  string
+	Subject       string
+	Audience      []string
+	Scopes        []string
+	Expiration    time.Time
+}
+
+type refreshToken struct {
+	Token         string
+	ApplicationID string
+	Subject       string
+	Audience      []string
+	Scopes        []string
+	AuthTime      time.Time
+	AMR           []string
+	Expiration    time.Time
+	AccessTokenID string
+}
+
+type authRequest struct {
+	ID            string
+	CreationDate  time.Time
+	ApplicationID string
+	CallbackURI   string
+	TransferState string
+	Prompt        []string
+	UserID        string
+	Scopes        []string
+	ResponseType  zitadeloidc.ResponseType
+	ResponseMode  zitadeloidc.ResponseMode
+	Nonce         string
+	CodeChallenge *zitadeloidc.CodeChallenge
+
+	done     bool
+	authTime time.Time
+}
+
+type refreshTokenRequest struct {
+	token *refreshToken
+}
+
+type signingKey struct {
+	id        string
+	algorithm jose.SignatureAlgorithm
+	key       *rsa.PrivateKey
+}
+
+type publicKey struct {
+	signingKey
+}
+
+type contextKey string
+
+const userContextKey contextKey = "oidc-user"
 
 var (
 	defaultServer *Server
@@ -194,22 +222,22 @@ func NewServer(cfg Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	pub := jose.JSONWebKey{Key: &privateKey.PublicKey, Algorithm: string(jose.RS256), Use: "sig"}
 	kid, err := pub.Thumbprint(crypto.SHA256)
 	if err != nil {
 		return nil, err
 	}
-	pub.KeyID = base64.RawURLEncoding.EncodeToString(kid)
 
-	server := &Server{
-		config:    cfg,
-		private:   privateKey,
-		publicJWK: pub,
-		kid:       pub.KeyID,
-		clients:   make(map[string]Client),
-		codes:     make(map[string]AuthorizationCode),
-		sessions:  make(map[string]Session),
+	s := &Server{
+		config:        cfg,
+		private:       privateKey,
+		kid:           base64.RawURLEncoding.EncodeToString(kid),
+		clients:       make(map[string]Client),
+		authRequests:  make(map[string]*authRequest),
+		authCodes:     make(map[string]string),
+		accessTokens:  make(map[string]*accessToken),
+		refreshTokens: make(map[string]*refreshToken),
+		sessions:      make(map[string]Session),
 	}
 
 	for _, client := range cfg.Clients {
@@ -219,34 +247,29 @@ func NewServer(cfg Config) (*Server, error) {
 		if len(client.RedirectURIs) == 0 {
 			return nil, fmt.Errorf("oidc client %s redirect_uris is required", client.ClientID)
 		}
-		mode := client.TokenEndpointAuthMode
-		if mode == "" {
-			if client.ClientSecret == "" {
-				mode = "none"
-			} else {
-				mode = "client_secret_post"
-			}
+		mode := normalizeAuthMethod(client.TokenEndpointAuthMode, client.ClientSecret)
+		scopes := normalizeScopes(client.Scopes)
+		if len(scopes) == 0 {
+			scopes = []string{"openid", "profile"}
 		}
-		if client.Scopes == nil {
-			client.Scopes = []string{"openid", "profile"}
-		}
-		server.clients[client.ClientID] = Client{
+		s.clients[client.ClientID] = Client{
 			Name:                  client.ClientID,
 			ClientID:              client.ClientID,
 			ClientSecret:          client.ClientSecret,
 			RedirectURIs:          client.RedirectURIs,
-			Scopes:                normalizeScopes(client.Scopes),
+			Scopes:                scopes,
 			RequirePKCE:           client.RequirePKCE || client.ClientSecret == "",
 			TokenEndpointAuthMode: mode,
-			IsDynamic:             false,
+			CreatedAt:             time.Now(),
 		}
 	}
-
-	if err := server.loadDynamicClients(); err != nil {
+	if err := s.loadDynamicClients(); err != nil {
 		return nil, err
 	}
-
-	return server, nil
+	if err := s.initProvider(); err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 func parseOrGenerateKey(pemValue string) (*rsa.PrivateKey, error) {
@@ -271,82 +294,136 @@ func parseOrGenerateKey(pemValue string) (*rsa.PrivateKey, error) {
 	return key, nil
 }
 
+func (s *Server) initProvider() error {
+	cryptoKey := sha256.Sum256(x509.MarshalPKCS1PrivateKey(s.private))
+	opConfig := &op.Config{
+		CryptoKey:             cryptoKey,
+		CryptoKeyId:           s.kid,
+		CodeMethodS256:        true,
+		AuthMethodPost:        true,
+		GrantTypeRefreshToken: true,
+	}
+	issuerBuilder := op.IssuerFromForwardedOrHost("/panel-api/v1/oidc")
+	if s.config.Issuer != "" {
+		issuerBuilder = op.StaticIssuer(strings.TrimRight(s.config.Issuer, "/"))
+	}
+	provider, err := op.NewProvider(
+		opConfig,
+		s,
+		issuerBuilder,
+		op.WithAllowInsecure(),
+		op.WithCustomAuthEndpoint(op.NewEndpoint("authorize")),
+		op.WithCustomTokenEndpoint(op.NewEndpoint("token")),
+		op.WithCustomUserinfoEndpoint(op.NewEndpoint("userinfo")),
+		op.WithCustomKeysEndpoint(op.NewEndpoint("jwks")),
+	)
+	if err != nil {
+		return err
+	}
+	endpoints := op.Endpoints{
+		Authorization: op.NewEndpoint("authorize"),
+		Token:         op.NewEndpoint("token"),
+		Userinfo:      op.NewEndpoint("userinfo"),
+		JwksURI:       op.NewEndpoint("jwks"),
+	}
+	s.provider = provider
+	s.legacy = op.NewLegacyServer(provider, endpoints)
+	s.handler = op.RegisterLegacyServer(s.legacy, op.AuthorizeCallbackHandler(provider))
+	return nil
+}
+
 func (s *Server) Enabled() bool {
 	return s != nil && s.config.Enabled
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if s == nil || s.handler == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if username := s.currentUsername(r); username != "" {
+		r = r.WithContext(context.WithValue(r.Context(), userContextKey, username))
+	}
+	s.handler.ServeHTTP(w, r)
 }
 
 func (s *Server) Issuer(r *http.Request) string {
 	if s.config.Issuer != "" {
 		return strings.TrimRight(s.config.Issuer, "/")
 	}
-	scheme := "http"
-	if r.TLS != nil {
-		scheme = "https"
-	}
-	if proto := r.Header.Get("X-Forwarded-Proto"); proto != "" {
-		scheme = strings.TrimSpace(strings.Split(proto, ",")[0])
-	}
-	host := r.Host
-	if forwardedHost := r.Header.Get("X-Forwarded-Host"); forwardedHost != "" {
-		host = strings.TrimSpace(strings.Split(forwardedHost, ",")[0])
-	}
-	return fmt.Sprintf("%s://%s/panel-api/v1/oidc", scheme, host)
+	return s.provider.IssuerFromRequest(r)
 }
 
 func (s *Server) Discovery(r *http.Request) map[string]any {
-	issuer := s.Issuer(r)
 	result := map[string]any{
-		"issuer":                                issuer,
-		"authorization_endpoint":                issuer + "/authorize",
-		"token_endpoint":                        issuer + "/token",
-		"userinfo_endpoint":                     issuer + "/userinfo",
-		"jwks_uri":                              issuer + "/jwks",
+		"issuer":                                s.Issuer(r),
+		"authorization_endpoint":                s.Issuer(r) + "/authorize",
+		"token_endpoint":                        s.Issuer(r) + "/token",
+		"userinfo_endpoint":                     s.Issuer(r) + "/userinfo",
+		"jwks_uri":                              s.Issuer(r) + "/jwks",
 		"response_types_supported":              []string{"code"},
 		"subject_types_supported":               []string{"public"},
 		"id_token_signing_alg_values_supported": []string{"RS256"},
 		"scopes_supported":                      []string{"openid", "profile", "offline_access"},
-		"claims_supported":                      []string{"sub", "preferred_username", "name", "groups", "namespace"},
+		"claims_supported":                      []string{"sub", "preferred_username", "name"},
 		"token_endpoint_auth_methods_supported": []string{"client_secret_post", "client_secret_basic", "none"},
 		"code_challenge_methods_supported":      []string{"S256"},
 		"grant_types_supported":                 []string{"authorization_code", "refresh_token"},
 	}
 	if s.config.RegistrationEnabled {
-		result["registration_endpoint"] = issuer + "/register"
+		result["registration_endpoint"] = s.Issuer(r) + "/register"
 	}
 	return result
 }
 
 func (s *Server) JWKS() map[string]any {
 	return map[string]any{
-		"keys": []jose.JSONWebKey{s.publicJWK.Public()},
+		"keys": []jose.JSONWebKey{{
+			Key:       &s.private.PublicKey,
+			KeyID:     s.kid,
+			Algorithm: string(jose.RS256),
+			Use:       "sig",
+		}},
 	}
 }
 
-func (s *Server) FindClient(clientID string) (Client, bool) {
-	s.clientsMu.RLock()
-	defer s.clientsMu.RUnlock()
-	client, ok := s.clients[clientID]
-	return client, ok
+func (s *Server) Login(ctx context.Context, id, username, password string) error {
+	if strings.TrimSpace(username) == "" || password == "" {
+		return errors.New("用户名和密码不能为空")
+	}
+	clientSDK := k8s.NewK8sClient()
+	if _, err := clientSDK.Login2(username, password, true); err != nil {
+		return errors.New("用户名或密码错误")
+	}
+	s.authReqMu.Lock()
+	defer s.authReqMu.Unlock()
+	req, ok := s.authRequests[id]
+	if !ok {
+		return errors.New("授权请求不存在或已过期")
+	}
+	req.UserID = username
+	req.done = true
+	req.authTime = time.Now()
+	return nil
 }
 
-func (s *Server) ValidateRedirectURI(client Client, redirectURI string) bool {
-	return slices.Contains(client.RedirectURIs, redirectURI)
+func (s *Server) CompleteAuthRequest(id, username string) error {
+	s.authReqMu.Lock()
+	defer s.authReqMu.Unlock()
+	req, ok := s.authRequests[id]
+	if !ok {
+		return errors.New("授权请求不存在或已过期")
+	}
+	req.UserID = username
+	req.done = true
+	if req.authTime.IsZero() {
+		req.authTime = time.Now()
+	}
+	return nil
 }
 
-func (s *Server) FilterScopes(client Client, requested []string) []string {
-	allowed := make([]string, 0, len(requested))
-	for _, scope := range requested {
-		if scope == "" {
-			continue
-		}
-		if slices.Contains(client.Scopes, scope) && !slices.Contains(allowed, scope) {
-			allowed = append(allowed, scope)
-		}
-	}
-	if !slices.Contains(allowed, "openid") && slices.Contains(client.Scopes, "openid") {
-		allowed = append([]string{"openid"}, allowed...)
-	}
-	return allowed
+func (s *Server) CallbackURL(ctx context.Context, id string) string {
+	return s.legacy.AuthCallbackURL()(ctx, id)
 }
 
 func (s *Server) CreateSession(username string) Session {
@@ -400,178 +477,16 @@ func (s *Server) GetSessionID(r *http.Request) string {
 	return cookie.Value
 }
 
-func (s *Server) CreateAuthorizationCode(code AuthorizationCode) AuthorizationCode {
-	s.codesMu.Lock()
-	defer s.codesMu.Unlock()
-	s.pruneCodesLocked()
-	code.Code = randomToken(32)
-	code.ExpiresAt = time.Now().Add(s.config.CodeTTL)
-	s.codes[code.Code] = code
-	return code
-}
-
-func (s *Server) ConsumeAuthorizationCode(value string) (AuthorizationCode, bool) {
-	s.codesMu.Lock()
-	defer s.codesMu.Unlock()
-	code, ok := s.codes[value]
+func (s *Server) currentUsername(r *http.Request) string {
+	sessionID := s.GetSessionID(r)
+	if sessionID == "" {
+		return ""
+	}
+	session, ok := s.FindSession(sessionID)
 	if !ok {
-		return AuthorizationCode{}, false
+		return ""
 	}
-	delete(s.codes, value)
-	if time.Now().After(code.ExpiresAt) {
-		return AuthorizationCode{}, false
-	}
-	return code, true
-}
-
-func (s *Server) CreateTokenPair(issuer string, client Client, username string, scopes []string, nonce string) (map[string]any, error) {
-	now := time.Now()
-	userClaims := s.BuildUserClaims(username)
-	accessClaims := AccessTokenClaims{
-		Username: username,
-		Scopes:   scopes,
-		TokenUse: "access_token",
-		ClientID: client.ClientID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    issuer,
-			Subject:   userClaims.Subject,
-			Audience:  jwt.ClaimStrings{client.ClientID},
-			ExpiresAt: jwt.NewNumericDate(now.Add(s.config.AccessTokenTTL)),
-			NotBefore: jwt.NewNumericDate(now),
-			IssuedAt:  jwt.NewNumericDate(now),
-			ID:        randomToken(24),
-		},
-	}
-	idClaims := IDTokenClaims{
-		PreferredUsername: userClaims.PreferredUsername,
-		Name:              userClaims.Name,
-		Groups:            userClaims.Groups,
-		Namespace:         userClaims.Namespace,
-		Nonce:             nonce,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    issuer,
-			Subject:   userClaims.Subject,
-			Audience:  jwt.ClaimStrings{client.ClientID},
-			ExpiresAt: jwt.NewNumericDate(now.Add(s.config.AccessTokenTTL)),
-			NotBefore: jwt.NewNumericDate(now),
-			IssuedAt:  jwt.NewNumericDate(now),
-			ID:        randomToken(24),
-		},
-	}
-
-	accessToken, err := s.signJWT(accessClaims)
-	if err != nil {
-		return nil, err
-	}
-	idToken, err := s.signJWT(idClaims)
-	if err != nil {
-		return nil, err
-	}
-
-	result := map[string]any{
-		"access_token": accessToken,
-		"id_token":     idToken,
-		"token_type":   "Bearer",
-		"expires_in":   int(s.config.AccessTokenTTL.Seconds()),
-		"scope":        strings.Join(scopes, " "),
-	}
-	if slices.Contains(scopes, "offline_access") {
-		refreshToken, err := s.CreateRefreshToken(issuer, client, username, scopes)
-		if err != nil {
-			return nil, err
-		}
-		result["refresh_token"] = refreshToken
-	}
-	return result, nil
-}
-
-func (s *Server) ParseAccessToken(token string, issuer string) (*AccessTokenClaims, error) {
-	claims := &AccessTokenClaims{}
-	parsed, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
-		if t.Method.Alg() != jwt.SigningMethodRS256.Alg() {
-			return nil, errors.New("unexpected signing method")
-		}
-		return &s.private.PublicKey, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	if !parsed.Valid {
-		return nil, errors.New("invalid access token")
-	}
-	if claims.Issuer != issuer {
-		return nil, errors.New("invalid issuer")
-	}
-	if claims.TokenUse != "access_token" {
-		return nil, errors.New("invalid token_use")
-	}
-	return claims, nil
-}
-
-func (s *Server) ParseRefreshToken(token string, issuer string) (*RefreshTokenClaims, error) {
-	claims := &RefreshTokenClaims{}
-	parsed, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
-		if t.Method.Alg() != jwt.SigningMethodRS256.Alg() {
-			return nil, errors.New("unexpected signing method")
-		}
-		return &s.private.PublicKey, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	if !parsed.Valid {
-		return nil, errors.New("invalid refresh token")
-	}
-	if claims.Issuer != issuer {
-		return nil, errors.New("invalid issuer")
-	}
-	if claims.TokenUse != "refresh_token" {
-		return nil, errors.New("invalid token_use")
-	}
-	return claims, nil
-}
-
-func (s *Server) BuildUserClaims(username string) UserClaims {
-	claims := UserClaims{
-		Subject:           username,
-		PreferredUsername: username,
-		Name:              username,
-	}
-	return claims
-}
-
-func (s *Server) VerifyPKCE(codeVerifier string, codeChallenge string) bool {
-	if codeChallenge == "" {
-		return true
-	}
-	sum := sha256.Sum256([]byte(codeVerifier))
-	return base64.RawURLEncoding.EncodeToString(sum[:]) == codeChallenge
-}
-
-func (s *Server) AuthenticateClient(r *http.Request) (Client, error) {
-	_ = r.ParseForm()
-	clientID, clientSecret, ok := r.BasicAuth()
-	if !ok {
-		clientID = r.PostForm.Get("client_id")
-		clientSecret = r.PostForm.Get("client_secret")
-	}
-	client, exists := s.FindClient(clientID)
-	if !exists {
-		return Client{}, errors.New("invalid_client")
-	}
-	switch client.TokenEndpointAuthMode {
-	case "none":
-		if clientSecret != "" {
-			return Client{}, errors.New("invalid_client")
-		}
-	case "client_secret_basic", "client_secret_post":
-		if client.ClientSecret == "" || clientSecret != client.ClientSecret {
-			return Client{}, errors.New("invalid_client")
-		}
-	default:
-		return Client{}, errors.New("invalid_client")
-	}
-	return client, nil
+	return session.Username
 }
 
 func (s *Server) RegisterEnabled() bool {
@@ -597,23 +512,19 @@ func (s *Server) RegisterDynamicClient(req DynamicClientRequest) (*DynamicClient
 			return nil, fmt.Errorf("invalid redirect uri: %s", redirectURI)
 		}
 	}
-	if len(req.GrantTypes) > 0 && !slices.Equal(req.GrantTypes, []string{"authorization_code"}) &&
-		!slices.Equal(req.GrantTypes, []string{"authorization_code", "refresh_token"}) &&
-		!slices.Equal(req.GrantTypes, []string{"refresh_token", "authorization_code"}) {
+	if len(req.GrantTypes) > 0 && !sameStrings(req.GrantTypes, []string{"authorization_code"}) &&
+		!sameStrings(req.GrantTypes, []string{"authorization_code", "refresh_token"}) {
 		return nil, errors.New("only authorization_code and refresh_token grant_types are supported")
 	}
-	if len(req.ResponseTypes) > 0 && !slices.Equal(req.ResponseTypes, []string{"code"}) {
+	if len(req.ResponseTypes) > 0 && !sameStrings(req.ResponseTypes, []string{"code"}) {
 		return nil, errors.New("only code response_type is supported")
 	}
-	mode := req.TokenEndpointAuthMode
-	if mode == "" {
-		mode = "client_secret_basic"
-	}
+	mode := normalizeAuthMethod(req.TokenEndpointAuthMode, "x")
 	if mode != "client_secret_basic" && mode != "client_secret_post" && mode != "none" {
 		return nil, errors.New("unsupported token_endpoint_auth_method")
 	}
 
-	clientID := "oidc_" + randomToken(16)
+	clientID := normalizeClientID("oidc_" + randomToken(16))
 	clientSecret := ""
 	requirePKCE := mode == "none"
 	if req.RequirePKCE != nil {
@@ -626,10 +537,9 @@ func (s *Server) RegisterDynamicClient(req DynamicClientRequest) (*DynamicClient
 	if len(scopes) == 0 {
 		scopes = []string{"openid", "profile", "offline_access"}
 	}
-
 	client := Client{
 		Name:                  req.ClientName,
-		ClientID:              normalizeClientID(clientID),
+		ClientID:              clientID,
 		ClientSecret:          clientSecret,
 		RedirectURIs:          req.RedirectURIs,
 		Scopes:                scopes,
@@ -641,16 +551,14 @@ func (s *Server) RegisterDynamicClient(req DynamicClientRequest) (*DynamicClient
 	if err := s.saveDynamicClient(client, false); err != nil {
 		return nil, err
 	}
-
 	s.clientsMu.Lock()
 	s.clients[client.ClientID] = client
 	s.clientsMu.Unlock()
-
 	return s.clientToResponse(client), nil
 }
 
 func (s *Server) GetDynamicClient(clientID string) (*DynamicClientResponse, error) {
-	client, ok := s.FindClient(clientID)
+	client, ok := s.findClient(clientID)
 	if !ok || !client.IsDynamic {
 		return nil, errors.New("client not found")
 	}
@@ -658,7 +566,7 @@ func (s *Server) GetDynamicClient(clientID string) (*DynamicClientResponse, erro
 }
 
 func (s *Server) UpdateDynamicClient(clientID string, req DynamicClientRequest) (*DynamicClientResponse, error) {
-	client, ok := s.FindClient(clientID)
+	client, ok := s.findClient(clientID)
 	if !ok || !client.IsDynamic {
 		return nil, errors.New("client not found")
 	}
@@ -687,7 +595,7 @@ func (s *Server) UpdateDynamicClient(clientID string, req DynamicClientRequest) 
 }
 
 func (s *Server) DeleteDynamicClient(clientID string) error {
-	client, ok := s.FindClient(clientID)
+	client, ok := s.findClient(clientID)
 	if !ok || !client.IsDynamic {
 		return errors.New("client not found")
 	}
@@ -702,39 +610,437 @@ func (s *Server) DeleteDynamicClient(clientID string) error {
 	return nil
 }
 
-func (s *Server) signJWT(claims jwt.Claims) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	token.Header["kid"] = s.kid
-	return token.SignedString(s.private)
+func (s *Server) findClient(clientID string) (Client, bool) {
+	s.clientsMu.RLock()
+	defer s.clientsMu.RUnlock()
+	client, ok := s.clients[clientID]
+	return client, ok
 }
 
-func (s *Server) CreateRefreshToken(issuer string, client Client, username string, scopes []string) (string, error) {
-	now := time.Now()
-	claims := RefreshTokenClaims{
-		Username: username,
-		Scopes:   scopes,
-		TokenUse: "refresh_token",
-		ClientID: client.ClientID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    issuer,
-			Subject:   username,
-			Audience:  jwt.ClaimStrings{client.ClientID},
-			ExpiresAt: jwt.NewNumericDate(now.Add(s.config.RefreshTokenTTL)),
-			NotBefore: jwt.NewNumericDate(now),
-			IssuedAt:  jwt.NewNumericDate(now),
-			ID:        randomToken(24),
-		},
-	}
-	return s.signJWT(claims)
+func (s *Server) CheckUsernamePassword(_ context.Context, username, password, id string) error {
+	return s.Login(context.Background(), id, username, password)
 }
 
-func (s *Server) NewTokenPairFromRefreshToken(issuer string, client Client, claims *RefreshTokenClaims) (map[string]any, error) {
-	result, err := s.CreateTokenPair(issuer, client, claims.Username, claims.Scopes, "")
-	if err != nil {
-		return nil, err
+func (s *Server) CreateAuthRequest(_ context.Context, authReq *zitadeloidc.AuthRequest, userID string) (op.AuthRequest, error) {
+	if len(authReq.Prompt) == 1 && authReq.Prompt[0] == zitadeloidc.PromptNone && userID == "" {
+		return nil, zitadeloidc.ErrLoginRequired()
 	}
-	return result, nil
+	req := &authRequest{
+		ID:            uuid.NewString(),
+		CreationDate:  time.Now(),
+		ApplicationID: authReq.ClientID,
+		CallbackURI:   authReq.RedirectURI,
+		TransferState: authReq.State,
+		Prompt:        append([]string{}, authReq.Prompt...),
+		UserID:        userID,
+		Scopes:        append([]string{}, authReq.Scopes...),
+		ResponseType:  authReq.ResponseType,
+		ResponseMode:  authReq.ResponseMode,
+		Nonce:         authReq.Nonce,
+		done:          userID != "",
+	}
+	if authReq.CodeChallenge != "" {
+		req.CodeChallenge = &zitadeloidc.CodeChallenge{
+			Challenge: authReq.CodeChallenge,
+			Method:    authReq.CodeChallengeMethod,
+		}
+	}
+	if req.done {
+		req.authTime = time.Now()
+	}
+	s.authReqMu.Lock()
+	defer s.authReqMu.Unlock()
+	s.pruneAuthRequestsLocked()
+	s.authRequests[req.ID] = req
+	return req, nil
 }
+
+func (s *Server) AuthRequestByID(_ context.Context, id string) (op.AuthRequest, error) {
+	s.authReqMu.Lock()
+	defer s.authReqMu.Unlock()
+	req, ok := s.authRequests[id]
+	if !ok {
+		return nil, errors.New("request not found")
+	}
+	if req.CreationDate.Add(s.config.CodeTTL).Before(time.Now()) {
+		delete(s.authRequests, id)
+		return nil, errors.New("request expired")
+	}
+	return req, nil
+}
+
+func (s *Server) AuthRequestByCode(ctx context.Context, code string) (op.AuthRequest, error) {
+	s.authReqMu.Lock()
+	id, ok := s.authCodes[code]
+	s.authReqMu.Unlock()
+	if !ok {
+		return nil, errors.New("code invalid or expired")
+	}
+	return s.AuthRequestByID(ctx, id)
+}
+
+func (s *Server) SaveAuthCode(_ context.Context, id string, code string) error {
+	s.authReqMu.Lock()
+	defer s.authReqMu.Unlock()
+	s.authCodes[code] = id
+	return nil
+}
+
+func (s *Server) DeleteAuthRequest(_ context.Context, id string) error {
+	s.authReqMu.Lock()
+	defer s.authReqMu.Unlock()
+	delete(s.authRequests, id)
+	for code, reqID := range s.authCodes {
+		if reqID == id {
+			delete(s.authCodes, code)
+		}
+	}
+	return nil
+}
+
+func (s *Server) CreateAccessToken(_ context.Context, request op.TokenRequest) (string, time.Time, error) {
+	clientID := ""
+	if req, ok := request.(interface{ GetClientID() string }); ok {
+		clientID = req.GetClientID()
+	}
+	token := &accessToken{
+		ID:            uuid.NewString(),
+		ApplicationID: clientID,
+		Subject:       request.GetSubject(),
+		Audience:      append([]string{}, request.GetAudience()...),
+		Scopes:        append([]string{}, request.GetScopes()...),
+		Expiration:    time.Now().Add(s.config.AccessTokenTTL),
+	}
+	s.tokenMu.Lock()
+	defer s.tokenMu.Unlock()
+	s.pruneTokensLocked()
+	s.accessTokens[token.ID] = token
+	return token.ID, token.Expiration, nil
+}
+
+func (s *Server) CreateAccessAndRefreshTokens(_ context.Context, request op.TokenRequest, currentRefreshToken string) (string, string, time.Time, error) {
+	clientID := ""
+	authTime := time.Now()
+	amr := []string{"pwd"}
+	if req, ok := request.(interface{ GetClientID() string }); ok {
+		clientID = req.GetClientID()
+	}
+	if req, ok := request.(interface{ GetAuthTime() time.Time }); ok && !req.GetAuthTime().IsZero() {
+		authTime = req.GetAuthTime()
+	}
+	if req, ok := request.(interface{ GetAMR() []string }); ok && len(req.GetAMR()) > 0 {
+		amr = append([]string{}, req.GetAMR()...)
+	}
+
+	newRefreshToken := currentRefreshToken
+	if newRefreshToken == "" {
+		newRefreshToken = randomToken(32)
+	} else {
+		newRefreshToken = randomToken(32)
+	}
+	token := &accessToken{
+		ID:            uuid.NewString(),
+		ApplicationID: clientID,
+		RefreshToken:  newRefreshToken,
+		Subject:       request.GetSubject(),
+		Audience:      append([]string{}, request.GetAudience()...),
+		Scopes:        append([]string{}, request.GetScopes()...),
+		Expiration:    time.Now().Add(s.config.AccessTokenTTL),
+	}
+	rt := &refreshToken{
+		Token:         newRefreshToken,
+		ApplicationID: clientID,
+		Subject:       request.GetSubject(),
+		Audience:      append([]string{}, request.GetAudience()...),
+		Scopes:        append([]string{}, request.GetScopes()...),
+		AuthTime:      authTime,
+		AMR:           amr,
+		Expiration:    time.Now().Add(s.config.RefreshTokenTTL),
+		AccessTokenID: token.ID,
+	}
+
+	s.tokenMu.Lock()
+	defer s.tokenMu.Unlock()
+	s.pruneTokensLocked()
+	if currentRefreshToken != "" {
+		if current, ok := s.refreshTokens[currentRefreshToken]; !ok || current.Expiration.Before(time.Now()) {
+			return "", "", time.Time{}, errors.New("invalid refresh token")
+		} else {
+			delete(s.refreshTokens, currentRefreshToken)
+			delete(s.accessTokens, current.AccessTokenID)
+		}
+	}
+	s.accessTokens[token.ID] = token
+	s.refreshTokens[newRefreshToken] = rt
+	return token.ID, newRefreshToken, token.Expiration, nil
+}
+
+func (s *Server) TokenRequestByRefreshToken(_ context.Context, refreshTokenValue string) (op.RefreshTokenRequest, error) {
+	s.tokenMu.Lock()
+	defer s.tokenMu.Unlock()
+	token, ok := s.refreshTokens[refreshTokenValue]
+	if !ok || token.Expiration.Before(time.Now()) {
+		return nil, errors.New("invalid refresh_token")
+	}
+	return &refreshTokenRequest{token: token}, nil
+}
+
+func (s *Server) TerminateSession(_ context.Context, userID string, clientID string) error {
+	s.tokenMu.Lock()
+	defer s.tokenMu.Unlock()
+	for tokenID, token := range s.accessTokens {
+		if token.ApplicationID == clientID && token.Subject == userID {
+			delete(s.accessTokens, tokenID)
+		}
+	}
+	for tokenValue, token := range s.refreshTokens {
+		if token.ApplicationID == clientID && token.Subject == userID {
+			delete(s.refreshTokens, tokenValue)
+		}
+	}
+	return nil
+}
+
+func (s *Server) RevokeToken(_ context.Context, tokenIDOrToken string, _ string, clientID string) *zitadeloidc.Error {
+	s.tokenMu.Lock()
+	defer s.tokenMu.Unlock()
+	if token, ok := s.accessTokens[tokenIDOrToken]; ok {
+		if token.ApplicationID != clientID {
+			return zitadeloidc.ErrInvalidClient().WithDescription("token was not issued for this client")
+		}
+		delete(s.accessTokens, tokenIDOrToken)
+		return nil
+	}
+	if token, ok := s.refreshTokens[tokenIDOrToken]; ok {
+		if token.ApplicationID != clientID {
+			return zitadeloidc.ErrInvalidClient().WithDescription("token was not issued for this client")
+		}
+		delete(s.refreshTokens, tokenIDOrToken)
+		delete(s.accessTokens, token.AccessTokenID)
+	}
+	return nil
+}
+
+func (s *Server) GetRefreshTokenInfo(_ context.Context, clientID string, token string) (string, string, error) {
+	s.tokenMu.Lock()
+	defer s.tokenMu.Unlock()
+	refreshToken, ok := s.refreshTokens[token]
+	if !ok || refreshToken.ApplicationID != clientID {
+		return "", "", op.ErrInvalidRefreshToken
+	}
+	return refreshToken.Subject, refreshToken.Token, nil
+}
+
+func (s *Server) SigningKey(context.Context) (op.SigningKey, error) {
+	return &signingKey{id: s.kid, algorithm: jose.RS256, key: s.private}, nil
+}
+
+func (s *Server) SignatureAlgorithms(context.Context) ([]jose.SignatureAlgorithm, error) {
+	return []jose.SignatureAlgorithm{jose.RS256}, nil
+}
+
+func (s *Server) KeySet(context.Context) ([]op.Key, error) {
+	return []op.Key{&publicKey{signingKey{id: s.kid, algorithm: jose.RS256, key: s.private}}}, nil
+}
+
+func (s *Server) GetClientByClientID(_ context.Context, clientID string) (op.Client, error) {
+	client, ok := s.findClient(clientID)
+	if !ok {
+		return nil, errors.New("client not found")
+	}
+	return oidcClient{client: client}, nil
+}
+
+func (s *Server) AuthorizeClientIDSecret(_ context.Context, clientID, clientSecret string) error {
+	client, ok := s.findClient(clientID)
+	if !ok {
+		return errors.New("client not found")
+	}
+	switch client.TokenEndpointAuthMode {
+	case "none":
+		if clientSecret != "" {
+			return errors.New("invalid secret")
+		}
+	case "client_secret_basic", "client_secret_post":
+		if client.ClientSecret == "" || client.ClientSecret != clientSecret {
+			return errors.New("invalid secret")
+		}
+	default:
+		return errors.New("invalid auth method")
+	}
+	return nil
+}
+
+func (s *Server) SetUserinfoFromScopes(context.Context, *zitadeloidc.UserInfo, string, string, []string) error {
+	return nil
+}
+
+func (s *Server) SetUserinfoFromRequest(_ context.Context, userinfo *zitadeloidc.UserInfo, token op.IDTokenRequest, scopes []string) error {
+	return s.setUserinfo(userinfo, token.GetSubject(), scopes)
+}
+
+func (s *Server) SetUserinfoFromToken(_ context.Context, userinfo *zitadeloidc.UserInfo, tokenID, subject, _ string) error {
+	s.tokenMu.Lock()
+	token, ok := s.accessTokens[tokenID]
+	s.tokenMu.Unlock()
+	if !ok || token.Expiration.Before(time.Now()) {
+		return errors.New("token is invalid or has expired")
+	}
+	return s.setUserinfo(userinfo, subject, token.Scopes)
+}
+
+func (s *Server) SetIntrospectionFromToken(_ context.Context, introspection *zitadeloidc.IntrospectionResponse, tokenID, subject, clientID string) error {
+	s.tokenMu.Lock()
+	token, ok := s.accessTokens[tokenID]
+	s.tokenMu.Unlock()
+	if !ok || token.Expiration.Before(time.Now()) {
+		return errors.New("token is invalid or expired")
+	}
+	validAudience := false
+	for _, aud := range token.Audience {
+		if aud == clientID {
+			validAudience = true
+			break
+		}
+	}
+	if !validAudience {
+		return errors.New("token is not valid for this client")
+	}
+	introspection.Expiration = zitadeloidc.FromTime(token.Expiration)
+	introspection.Scope = token.Scopes
+	introspection.ClientID = token.ApplicationID
+	userInfo := new(zitadeloidc.UserInfo)
+	if err := s.setUserinfo(userInfo, subject, token.Scopes); err != nil {
+		return err
+	}
+	introspection.SetUserInfo(userInfo)
+	return nil
+}
+
+func (s *Server) GetPrivateClaimsFromScopes(_ context.Context, userID, clientID string, scopes []string) (map[string]any, error) {
+	claims := map[string]any{
+		"username":  userID,
+		"client_id": clientID,
+		"scopes":    scopes,
+	}
+	return claims, nil
+}
+
+func (s *Server) GetKeyByIDAndClientID(_ context.Context, _ string, _ string) (*jose.JSONWebKey, error) {
+	return nil, errors.New("private_key_jwt not supported")
+}
+
+func (s *Server) ValidateJWTProfileScopes(_ context.Context, _ string, scopes []string) ([]string, error) {
+	return scopes, nil
+}
+
+func (s *Server) Health(context.Context) error {
+	return nil
+}
+
+func (s *Server) setUserinfo(userinfo *zitadeloidc.UserInfo, subject string, scopes []string) error {
+	for _, scope := range scopes {
+		switch scope {
+		case zitadeloidc.ScopeOpenID:
+			userinfo.Subject = subject
+		case zitadeloidc.ScopeProfile:
+			userinfo.PreferredUsername = subject
+			userinfo.Name = subject
+		}
+	}
+	if userinfo.Subject == "" {
+		userinfo.Subject = subject
+	}
+	return nil
+}
+
+func (r *authRequest) GetID() string  { return r.ID }
+func (r *authRequest) GetACR() string { return "" }
+func (r *authRequest) GetAMR() []string {
+	if r.done {
+		return []string{"pwd"}
+	}
+	return nil
+}
+func (r *authRequest) GetAudience() []string                        { return []string{r.ApplicationID} }
+func (r *authRequest) GetAuthTime() time.Time                       { return r.authTime }
+func (r *authRequest) GetClientID() string                          { return r.ApplicationID }
+func (r *authRequest) GetCodeChallenge() *zitadeloidc.CodeChallenge { return r.CodeChallenge }
+func (r *authRequest) GetNonce() string                             { return r.Nonce }
+func (r *authRequest) GetRedirectURI() string                       { return r.CallbackURI }
+func (r *authRequest) GetResponseType() zitadeloidc.ResponseType    { return r.ResponseType }
+func (r *authRequest) GetResponseMode() zitadeloidc.ResponseMode    { return r.ResponseMode }
+func (r *authRequest) GetScopes() []string                          { return r.Scopes }
+func (r *authRequest) GetState() string                             { return r.TransferState }
+func (r *authRequest) GetSubject() string                           { return r.UserID }
+func (r *authRequest) Done() bool                                   { return r.done }
+func (r *refreshTokenRequest) GetAMR() []string                     { return r.token.AMR }
+func (r *refreshTokenRequest) GetAudience() []string                { return r.token.Audience }
+func (r *refreshTokenRequest) GetAuthTime() time.Time               { return r.token.AuthTime }
+func (r *refreshTokenRequest) GetClientID() string                  { return r.token.ApplicationID }
+func (r *refreshTokenRequest) GetScopes() []string                  { return r.token.Scopes }
+func (r *refreshTokenRequest) GetSubject() string                   { return r.token.Subject }
+func (r *refreshTokenRequest) SetCurrentScopes(scopes []string)     { r.token.Scopes = scopes }
+func (s *signingKey) SignatureAlgorithm() jose.SignatureAlgorithm   { return s.algorithm }
+func (s *signingKey) Key() any                                      { return s.key }
+func (s *signingKey) ID() string                                    { return s.id }
+func (p *publicKey) ID() string                                     { return p.id }
+func (p *publicKey) Algorithm() jose.SignatureAlgorithm             { return p.algorithm }
+func (p *publicKey) Use() string                                    { return "sig" }
+func (p *publicKey) Key() any                                       { return &p.key.PublicKey }
+
+type oidcClient struct {
+	client Client
+}
+
+func (c oidcClient) GetID() string { return c.client.ClientID }
+func (c oidcClient) RedirectURIs() []string {
+	return c.client.RedirectURIs
+}
+func (c oidcClient) PostLogoutRedirectURIs() []string { return nil }
+func (c oidcClient) ApplicationType() op.ApplicationType {
+	if c.client.ClientSecret == "" {
+		return op.ApplicationTypeNative
+	}
+	return op.ApplicationTypeWeb
+}
+func (c oidcClient) AuthMethod() zitadeloidc.AuthMethod {
+	switch c.client.TokenEndpointAuthMode {
+	case "client_secret_post":
+		return zitadeloidc.AuthMethodPost
+	case "none":
+		return zitadeloidc.AuthMethodNone
+	default:
+		return zitadeloidc.AuthMethodBasic
+	}
+}
+func (c oidcClient) ResponseTypes() []zitadeloidc.ResponseType {
+	return []zitadeloidc.ResponseType{zitadeloidc.ResponseTypeCode}
+}
+func (c oidcClient) GrantTypes() []zitadeloidc.GrantType {
+	grants := []zitadeloidc.GrantType{zitadeloidc.GrantTypeCode}
+	if containsString(c.client.Scopes, zitadeloidc.ScopeOfflineAccess) {
+		grants = append(grants, zitadeloidc.GrantTypeRefreshToken)
+	}
+	return grants
+}
+func (c oidcClient) LoginURL(id string) string {
+	return "/panel-api/v1/oidc/authorize/login?" + authRequestIDQuery + "=" + id
+}
+func (c oidcClient) AccessTokenType() op.AccessTokenType { return op.AccessTokenTypeJWT }
+func (c oidcClient) IDTokenLifetime() time.Duration      { return time.Hour }
+func (c oidcClient) DevMode() bool                       { return true }
+func (c oidcClient) RestrictAdditionalIdTokenScopes() func(scopes []string) []string {
+	return func(scopes []string) []string { return scopes }
+}
+func (c oidcClient) RestrictAdditionalAccessTokenScopes() func(scopes []string) []string {
+	return func(scopes []string) []string { return scopes }
+}
+func (c oidcClient) IsScopeAllowed(scope string) bool {
+	return containsString(c.client.Scopes, scope)
+}
+func (c oidcClient) IDTokenUserinfoClaimsAssertion() bool { return true }
+func (c oidcClient) ClockSkew() time.Duration             { return 0 }
 
 func (s *Server) loadDynamicClients() error {
 	sdk := k8s.NewK8sClient().Sdk
@@ -744,8 +1050,6 @@ func (s *Server) loadDynamicClients() error {
 	if err != nil {
 		return err
 	}
-	s.clientsMu.Lock()
-	defer s.clientsMu.Unlock()
 	for _, secret := range secrets.Items {
 		client := clientFromSecret(&secret)
 		if client.ClientID != "" {
@@ -772,7 +1076,6 @@ func (s *Server) saveDynamicClient(client Client, isUpdate bool) error {
 }
 
 func clientFromSecret(secret *corev1.Secret) Client {
-	createdAt := secret.CreationTimestamp.Time
 	return Client{
 		Name:                  string(secret.Data["client_name"]),
 		ClientID:              secret.Name,
@@ -782,7 +1085,7 @@ func clientFromSecret(secret *corev1.Secret) Client {
 		RequirePKCE:           string(secret.Data["require_pkce"]) == "true",
 		TokenEndpointAuthMode: string(secret.Data["token_endpoint_auth_method"]),
 		IsDynamic:             secret.Labels["w7.cc/oidc-client"] == "true",
-		CreatedAt:             createdAt,
+		CreatedAt:             secret.CreationTimestamp.Time,
 	}
 }
 
@@ -824,22 +1127,59 @@ func (s *Server) clientToResponse(client Client) *DynamicClientResponse {
 	}
 }
 
+func (s *Server) pruneSessionsLocked() {
+	now := time.Now()
+	for key, session := range s.sessions {
+		if now.After(session.ExpiresAt) {
+			delete(s.sessions, key)
+		}
+	}
+}
+
+func (s *Server) pruneAuthRequestsLocked() {
+	now := time.Now()
+	for id, req := range s.authRequests {
+		if req.CreationDate.Add(s.config.CodeTTL).Before(now) {
+			delete(s.authRequests, id)
+		}
+	}
+}
+
+func (s *Server) pruneTokensLocked() {
+	now := time.Now()
+	for id, token := range s.accessTokens {
+		if now.After(token.Expiration) {
+			delete(s.accessTokens, id)
+		}
+	}
+	for tokenValue, token := range s.refreshTokens {
+		if now.After(token.Expiration) {
+			delete(s.refreshTokens, tokenValue)
+		}
+	}
+}
+
 func splitLines(value string) []string {
 	lines := strings.Split(value, "\n")
 	result := make([]string, 0, len(lines))
 	for _, line := range lines {
-		if strings.TrimSpace(line) != "" {
-			result = append(result, strings.TrimSpace(line))
+		line = strings.TrimSpace(line)
+		if line != "" {
+			result = append(result, line)
 		}
 	}
 	return result
 }
 
 func normalizeScopes(scopes []string) []string {
-	allowed := []string{"openid", "profile", "offline_access"}
+	allowed := map[string]struct{}{
+		"openid":         {},
+		"profile":        {},
+		"offline_access": {},
+	}
 	result := make([]string, 0, len(scopes))
 	for _, scope := range scopes {
-		if slices.Contains(allowed, scope) && !slices.Contains(result, scope) {
+		if _, ok := allowed[scope]; ok && !containsString(result, scope) {
 			result = append(result, scope)
 		}
 	}
@@ -855,28 +1195,52 @@ func normalizeClientID(value string) string {
 	return value
 }
 
-func (s *Server) pruneCodesLocked() {
-	now := time.Now()
-	for code, data := range s.codes {
-		if now.After(data.ExpiresAt) {
-			delete(s.codes, code)
-		}
+func normalizeAuthMethod(mode, secret string) string {
+	if mode != "" {
+		return mode
 	}
+	if secret == "" {
+		return "none"
+	}
+	return "client_secret_basic"
 }
 
-func (s *Server) pruneSessionsLocked() {
-	now := time.Now()
-	for key, session := range s.sessions {
-		if now.After(session.ExpiresAt) {
-			delete(s.sessions, key)
-		}
+func randomToken(length int) string {
+	size := length
+	if size < 16 {
+		size = 16
 	}
-}
-
-func randomToken(byteLen int) string {
-	raw := make([]byte, byteLen)
-	if _, err := rand.Read(raw); err != nil {
+	buf := make([]byte, size)
+	if _, err := rand.Read(buf); err != nil {
 		panic(err)
 	}
-	return base64.RawURLEncoding.EncodeToString(raw)
+	return base64.RawURLEncoding.EncodeToString(buf)[:length]
+}
+
+func containsString(items []string, target string) bool {
+	for _, item := range items {
+		if item == target {
+			return true
+		}
+	}
+	return false
+}
+
+func sameStrings(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	seen := make(map[string]int, len(left))
+	for _, item := range left {
+		seen[item]++
+	}
+	for _, item := range right {
+		seen[item]--
+	}
+	for _, count := range seen {
+		if count != 0 {
+			return false
+		}
+	}
+	return true
 }
