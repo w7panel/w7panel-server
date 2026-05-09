@@ -73,6 +73,8 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			oidcGroup.GET("/.well-known/openid-configuration", controller2.Oidc{}.Discovery)
 			oidcGroup.GET("/jwks", controller2.Oidc{}.JWKS)
 			oidcGroup.GET("/authorize", controller2.Oidc{}.Authorize)
+			oidcGroup.GET("/authorize/callback", controller2.Oidc{}.AuthorizeCallback)
+			oidcGroup.GET("/authorize/login", controller2.Oidc{}.AuthorizeLogin)
 			oidcGroup.POST("/authorize/login", controller2.Oidc{}.AuthorizeLogin)
 			oidcGroup.POST("/register", controller2.Oidc{}.RegisterClient)
 			oidcGroup.GET("/register/:clientId", controller2.Oidc{}.GetClient)
@@ -80,6 +82,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			oidcGroup.DELETE("/register/:clientId", controller2.Oidc{}.DeleteClient)
 			oidcGroup.POST("/token", controller2.Oidc{}.Token)
 			oidcGroup.GET("/userinfo", controller2.Oidc{}.UserInfo)
+			oidcGroup.POST("/userinfo", controller2.Oidc{}.UserInfo)
 		}
 	})
 }
