@@ -142,6 +142,6 @@ func clientToResponse(client Client) *DynamicClientResponse {
 		Scope:                 strings.Join(client.Scopes, " "),
 		ClientName:            client.Name,
 		RequirePKCE:           client.RequirePKCE,
-		RegistrationClientURI: "/panel-api/v1/oidc/register/" + client.ClientID,
+		RegistrationClientURI: "/register/" + client.ClientID,
 	}
 }

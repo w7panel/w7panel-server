@@ -207,7 +207,7 @@ func (s *Server) initProvider() error {
 		AuthMethodPost:        true,
 		GrantTypeRefreshToken: true,
 	}
-	issuerBuilder := op.IssuerFromForwardedOrHost("/panel-api/v1/oidc")
+	issuerBuilder := op.IssuerFromForwardedOrHost("/")
 	if s.config.Issuer != "" {
 		issuerBuilder = op.StaticIssuer(strings.TrimRight(s.config.Issuer, "/"))
 	}
@@ -232,6 +232,7 @@ func (s *Server) initProvider() error {
 	}
 	s.provider = provider
 	s.legacy = op.NewLegacyServer(provider, endpoints)
+
 	s.handler = op.RegisterLegacyServer(s.legacy, op.AuthorizeCallbackHandler(provider))
 	return nil
 }
@@ -253,28 +254,6 @@ func (s *Server) Issuer(r *http.Request) string {
 		return strings.TrimRight(s.config.Issuer, "/")
 	}
 	return s.provider.IssuerFromRequest(r)
-}
-
-func (s *Server) Discovery(r *http.Request) map[string]any {
-	result := map[string]any{
-		"issuer":                                s.Issuer(r),
-		"authorization_endpoint":                s.Issuer(r) + "/authorize",
-		"token_endpoint":                        s.Issuer(r) + "/token",
-		"userinfo_endpoint":                     s.Issuer(r) + "/userinfo",
-		"jwks_uri":                              s.Issuer(r) + "/jwks",
-		"response_types_supported":              []string{"code"},
-		"subject_types_supported":               []string{"public"},
-		"id_token_signing_alg_values_supported": []string{"RS256"},
-		"scopes_supported":                      []string{"openid", "profile", "offline_access"},
-		"claims_supported":                      []string{"sub", "preferred_username", "name"},
-		"token_endpoint_auth_methods_supported": []string{"client_secret_post", "client_secret_basic", "none"},
-		"code_challenge_methods_supported":      []string{"S256"},
-		"grant_types_supported":                 []string{"authorization_code", "refresh_token"},
-	}
-	if s.config.RegistrationEnabled {
-		result["registration_endpoint"] = s.Issuer(r) + "/register"
-	}
-	return result
 }
 
 func (s *Server) JWKS() map[string]any {
