@@ -16,37 +16,10 @@ type Oidc struct {
 	controller.Abstract
 }
 
-func (o Oidc) Discovery(ctx *gin.Context) {
+func (o Oidc) Handle(ctx *gin.Context) {
 	server, err := oidcservice.GetServer()
 	if err != nil || server == nil || !server.Enabled() {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "oidc disabled"})
-		return
-	}
-	ctx.JSON(http.StatusOK, server.Discovery(ctx.Request))
-}
-
-func (o Oidc) JWKS(ctx *gin.Context) {
-	server, err := oidcservice.GetServer()
-	if err != nil || server == nil || !server.Enabled() {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "oidc disabled"})
-		return
-	}
-	server.ServeHTTP(ctx.Writer, ctx.Request)
-}
-
-func (o Oidc) Authorize(ctx *gin.Context) {
-	server, err := oidcservice.GetServer()
-	if err != nil || server == nil || !server.Enabled() {
-		o.JsonResponseWithError(ctx, errors.New("oidc disabled"), http.StatusNotFound)
-		return
-	}
-	server.ServeHTTP(ctx.Writer, ctx.Request)
-}
-
-func (o Oidc) AuthorizeCallback(ctx *gin.Context) {
-	server, err := oidcservice.GetServer()
-	if err != nil || server == nil || !server.Enabled() {
-		o.JsonResponseWithError(ctx, errors.New("oidc disabled"), http.StatusNotFound)
 		return
 	}
 	server.ServeHTTP(ctx.Writer, ctx.Request)
@@ -58,7 +31,6 @@ func (o Oidc) AuthorizeLogin(ctx *gin.Context) {
 		o.JsonResponseWithError(ctx, errors.New("oidc disabled"), http.StatusNotFound)
 		return
 	}
-
 	requestID := strings.TrimSpace(ctx.Query("authRequestID"))
 	if requestID == "" {
 		requestID = strings.TrimSpace(ctx.PostForm("id"))
@@ -90,15 +62,6 @@ func (o Oidc) AuthorizeLogin(ctx *gin.Context) {
 	session := server.CreateSession(username)
 	server.SetSessionCookie(ctx.Writer, ctx.Request, session)
 	ctx.Redirect(http.StatusFound, server.CallbackURL(ctx.Request.Context(), requestID))
-}
-
-func (o Oidc) Token(ctx *gin.Context) {
-	server, err := oidcservice.GetServer()
-	if err != nil || server == nil || !server.Enabled() {
-		o.oauthError(ctx, http.StatusNotFound, "server_error", "oidc disabled")
-		return
-	}
-	server.ServeHTTP(ctx.Writer, ctx.Request)
 }
 
 func (o Oidc) RegisterClient(ctx *gin.Context) {
@@ -200,15 +163,6 @@ func (o Oidc) DeleteClient(ctx *gin.Context) {
 		return
 	}
 	ctx.Status(http.StatusNoContent)
-}
-
-func (o Oidc) UserInfo(ctx *gin.Context) {
-	server, err := oidcservice.GetServer()
-	if err != nil || server == nil || !server.Enabled() {
-		o.oauthError(ctx, http.StatusNotFound, "server_error", "oidc disabled")
-		return
-	}
-	server.ServeHTTP(ctx.Writer, ctx.Request)
 }
 
 func (o Oidc) oauthError(ctx *gin.Context, status int, code string, description string) {
