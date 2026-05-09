@@ -12,6 +12,21 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
+type DirectAuthorizeRequest struct {
+	Username            string `json:"username" form:"username"`
+	Password            string `json:"password" form:"password"`
+	ResponseType        string `json:"response_type" form:"response_type"`
+	ClientID            string `json:"client_id" form:"client_id"`
+	RedirectURI         string `json:"redirect_uri" form:"redirect_uri"`
+	Scope               string `json:"scope" form:"scope"`
+	State               string `json:"state" form:"state"`
+	Nonce               string `json:"nonce" form:"nonce"`
+	ResponseMode        string `json:"response_mode" form:"response_mode"`
+	CodeChallenge       string `json:"code_challenge" form:"code_challenge"`
+	CodeChallengeMethod string `json:"code_challenge_method" form:"code_challenge_method"`
+	Prompt              string `json:"prompt" form:"prompt"`
+}
+
 type authRequest struct {
 	ID            string
 	CreationDate  time.Time
@@ -31,12 +46,9 @@ type authRequest struct {
 }
 
 func (s *Server) Login(ctx context.Context, id, username, password string) error {
-	if strings.TrimSpace(username) == "" || password == "" {
-		return errors.New("用户名和密码不能为空")
-	}
-	clientSDK := k8s.NewK8sClient()
-	if _, err := clientSDK.Login2(username, password, true); err != nil {
-		return errors.New("用户名或密码错误")
+	userID, err := s.authenticate(ctx, username, password)
+	if err != nil {
+		return err
 	}
 	s.authReqMu.Lock()
 	defer s.authReqMu.Unlock()
@@ -44,10 +56,50 @@ func (s *Server) Login(ctx context.Context, id, username, password string) error
 	if !ok {
 		return errors.New("授权请求不存在或已过期")
 	}
-	req.UserID = username
+	req.UserID = userID
 	req.done = true
 	req.authTime = time.Now()
 	return nil
+}
+
+func (s *Server) CreateDirectAuthorizationCode(ctx context.Context, req DirectAuthorizeRequest) (*op.CodeResponseType, error) {
+	userID := req.Username
+
+	responseType := zitadeloidc.ResponseTypeCode
+	if strings.TrimSpace(req.ResponseType) != "" {
+		responseType = zitadeloidc.ResponseType(req.ResponseType)
+	}
+	responseMode := zitadeloidc.ResponseModeQuery
+	if strings.TrimSpace(req.ResponseMode) != "" {
+		responseMode = zitadeloidc.ResponseMode(req.ResponseMode)
+	}
+
+	authReq := &zitadeloidc.AuthRequest{
+		ClientID:            strings.TrimSpace(req.ClientID),
+		RedirectURI:         strings.TrimSpace(req.RedirectURI),
+		Scopes:              strings.Fields(req.Scope),
+		State:               req.State,
+		Nonce:               req.Nonce,
+		ResponseType:        responseType,
+		ResponseMode:        responseMode,
+		Prompt:              strings.Fields(req.Prompt),
+		CodeChallenge:       strings.TrimSpace(req.CodeChallenge),
+		CodeChallengeMethod: zitadeloidc.CodeChallengeMethod(strings.TrimSpace(req.CodeChallengeMethod)),
+	}
+
+	client, ok := s.findClient(authReq.ClientID)
+	if !ok {
+		return nil, errors.New("client not found")
+	}
+	if _, err := op.ValidateAuthRequestClient(ctx, authReq, oidcClient{client: client}, s.provider.IDTokenHintVerifier(ctx)); err != nil {
+		return nil, err
+	}
+
+	storedReq, err := s.CreateAuthRequest(ctx, authReq, userID)
+	if err != nil {
+		return nil, err
+	}
+	return op.BuildAuthResponseCodeResponsePayload(ctx, storedReq, s.provider)
 }
 
 func (s *Server) CompleteAuthRequest(id, username string) error {
@@ -71,6 +123,20 @@ func (s *Server) CallbackURL(ctx context.Context, id string) string {
 
 func (s *Server) CheckUsernamePassword(_ context.Context, username, password, id string) error {
 	return s.Login(context.Background(), id, username, password)
+}
+
+func (s *Server) authenticate(ctx context.Context, username, password string) (string, error) {
+	if s.authenticateUser != nil {
+		return s.authenticateUser(ctx, username, password)
+	}
+	if strings.TrimSpace(username) == "" || password == "" {
+		return "", errors.New("用户名和密码不能为空")
+	}
+	clientSDK := k8s.NewK8sClient()
+	if _, err := clientSDK.Login2(username, password, true); err != nil {
+		return "", errors.New("用户名或密码错误")
+	}
+	return username, nil
 }
 
 func (s *Server) CreateAuthRequest(_ context.Context, authReq *zitadeloidc.AuthRequest, userID string) (op.AuthRequest, error) {

@@ -61,7 +61,7 @@ site:
   enabled: ${SITE_ENABLED-false}
   token_refresh_resolution: ${TOKEN_REFRESH_RESOLUTION-600s} # token刷新间隔
 oidc:
-  enabled: ${OIDC_ENABLED-false}
+  enabled: ${OIDC_ENABLED-true}
   issuer: ${OIDC_ISSUER-}
   cookie_domain: ${OIDC_COOKIE_DOMAIN-}
   cookie_secure: ${OIDC_COOKIE_SECURE-false}
@@ -73,7 +73,7 @@ oidc:
   registration_enabled: ${OIDC_REGISTRATION_ENABLED-false}
   registration_access_token: ${OIDC_REGISTRATION_ACCESS_TOKEN-}
   clients:
-    - client_id: ${OIDC_CLIENT_ID-demo-client}
+    - client_id: ${OIDC_CLIENT_ID-default}
       client_secret: ${OIDC_CLIENT_SECRET-}
       token_endpoint_auth_method: ${OIDC_TOKEN_AUTH_METHOD-none}
       require_pkce: true
