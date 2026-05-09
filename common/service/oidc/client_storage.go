@@ -3,6 +3,7 @@ package oidc
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -12,6 +13,7 @@ import (
 
 type dynamicClientStore interface {
 	Load() ([]Client, error)
+	Create(req DynamicClientRequest) (Client, error)
 	Save(client Client, isUpdate bool) error
 	Delete(clientID string) error
 }
@@ -38,6 +40,33 @@ func (kubeDynamicClientStore) Load() ([]Client, error) {
 		}
 	}
 	return clients, nil
+}
+
+func (kubeDynamicClientStore) Create(req DynamicClientRequest) (Client, error) {
+	mode := normalizeAuthMethod(req.TokenEndpointAuthMode, "x")
+	client := Client{
+		Name:                  req.ClientName,
+		ClientID:              normalizeClientID("oidc_" + randomToken(16)),
+		RedirectURIs:          req.RedirectURIs,
+		Scopes:                normalizeScopes(strings.Fields(req.Scope)),
+		TokenEndpointAuthMode: mode,
+		IsDynamic:             true,
+		CreatedAt:             time.Now(),
+	}
+	if len(client.Scopes) == 0 {
+		client.Scopes = []string{"openid", "profile", "offline_access"}
+	}
+	client.RequirePKCE = mode == "none"
+	if req.RequirePKCE != nil {
+		client.RequirePKCE = *req.RequirePKCE
+	}
+	if mode != "none" {
+		client.ClientSecret = randomToken(24)
+	}
+	if err := (kubeDynamicClientStore{}).Save(client, false); err != nil {
+		return Client{}, err
+	}
+	return client, nil
 }
 
 func (kubeDynamicClientStore) Save(client Client, isUpdate bool) error {
