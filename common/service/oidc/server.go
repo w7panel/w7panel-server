@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"context"
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -91,6 +92,8 @@ type Server struct {
 	private *rsa.PrivateKey
 	kid     string
 	store   dynamicClientStore
+
+	authenticateUser func(context.Context, string, string) (string, error)
 
 	clientsMu sync.RWMutex
 	clients   map[string]Client

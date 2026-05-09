@@ -67,15 +67,14 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/console/import-cert-console", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.ImportCertConsole)
 			localApiGroup.POST("/console/register-zpk-site", controller2.Site{}.RegisterZpkSite)
 		}
-
+		engine.Any(".well-known/openid-configuration", controller2.Oidc{}.Handle)
+		engine.Any("/jwks", controller2.Oidc{}.Handle)
+		code := engine.Group("/panel-api/v1/oidc-direct").Use(middleware.Auth{}.Process)
+		{
+			code.POST("/authorize/code", controller2.Oidc{}.AuthorizeCode)
+		}
 		oidcGroup := engine.Group("/panel-api/v1/oidc")
 		{
-			// oidcGroup.GET("/authorize/login", controller2.Oidc{}.AuthorizeLogin)
-			// oidcGroup.POST("/authorize/login", controller2.Oidc{}.AuthorizeLogin)
-			// oidcGroup.POST("/register", controller2.Oidc{}.RegisterClient)
-			// oidcGroup.GET("/register/:clientId", controller2.Oidc{}.GetClient)
-			// oidcGroup.PUT("/register/:clientId", controller2.Oidc{}.UpdateClient)
-			// oidcGroup.DELETE("/register/:clientId", controller2.Oidc{}.DeleteClient)
 			oidcGroup.Any("/*path", controller2.Oidc{}.Handle)
 		}
 	})

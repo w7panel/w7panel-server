@@ -112,6 +112,12 @@ func newTestServer(store dynamicClientStore) *Server {
 		authCodes:     map[string]string{},
 		accessTokens:  map[string]*accessToken{},
 		refreshTokens: map[string]*refreshToken{},
+		authenticateUser: func(_ context.Context, username, password string) (string, error) {
+			if username == "" || password == "" {
+				return "", context.Canceled
+			}
+			return username, nil
+		},
 	}
 }
 
@@ -257,6 +263,83 @@ func TestCreateAuthRequestLifecycle(t *testing.T) {
 	}
 	if _, err := server.AuthRequestByCode(context.Background(), "code-1"); err == nil {
 		t.Fatalf("expected deleted auth code lookup to fail")
+	}
+}
+
+func TestCreateDirectAuthorizationCode(t *testing.T) {
+	server := newTestServer(&fakeDynamicClientStore{})
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("GenerateKey returned error: %v", err)
+	}
+	server.private = privateKey
+	server.kid = "test-kid"
+	server.clients["client-1"] = Client{
+		ClientID:              "client-1",
+		RedirectURIs:          []string{"https://client.example/callback"},
+		Scopes:                []string{"openid", "profile"},
+		TokenEndpointAuthMode: "none",
+		RequirePKCE:           true,
+		CreatedAt:             time.Now(),
+	}
+	if err := server.initProvider(); err != nil {
+		t.Fatalf("initProvider returned error: %v", err)
+	}
+
+	resp, err := server.CreateDirectAuthorizationCode(context.Background(), DirectAuthorizeRequest{
+		Username:            "alice",
+		ClientID:            "client-1",
+		RedirectURI:         "https://client.example/callback",
+		Scope:               "openid profile",
+		State:               "state-1",
+		ResponseType:        "code",
+		CodeChallenge:       "challenge",
+		CodeChallengeMethod: "S256",
+	})
+	if err != nil {
+		t.Fatalf("CreateDirectAuthorizationCode returned error: %v", err)
+	}
+	if resp.Code == "" {
+		t.Fatalf("expected code in response")
+	}
+	if resp.State != "state-1" {
+		t.Fatalf("expected state to round trip, got %q", resp.State)
+	}
+	byCode, err := server.AuthRequestByCode(context.Background(), resp.Code)
+	if err != nil {
+		t.Fatalf("AuthRequestByCode returned error: %v", err)
+	}
+	if byCode.GetSubject() != "alice" {
+		t.Fatalf("expected subject alice, got %q", byCode.GetSubject())
+	}
+}
+
+func TestCreateDirectAuthorizationCodeRejectsInvalidRedirect(t *testing.T) {
+	server := newTestServer(&fakeDynamicClientStore{})
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("GenerateKey returned error: %v", err)
+	}
+	server.private = privateKey
+	server.kid = "test-kid"
+	server.clients["client-1"] = Client{
+		ClientID:              "client-1",
+		RedirectURIs:          []string{"https://client.example/callback"},
+		Scopes:                []string{"openid"},
+		TokenEndpointAuthMode: "none",
+		CreatedAt:             time.Now(),
+	}
+	if err := server.initProvider(); err != nil {
+		t.Fatalf("initProvider returned error: %v", err)
+	}
+
+	if _, err := server.CreateDirectAuthorizationCode(context.Background(), DirectAuthorizeRequest{
+
+		ClientID:    "client-1",
+		RedirectURI: "https://evil.example/callback",
+		Scope:       "openid",
+	}); err == nil {
+		t.Fatalf("expected invalid redirect_uri to fail")
 	}
 }
 
