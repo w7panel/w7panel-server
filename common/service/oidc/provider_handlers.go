@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	zitadeloidc "github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
 )
@@ -118,5 +120,15 @@ func (s *Server) setUserinfo(userinfo *zitadeloidc.UserInfo, subject string, sco
 	if userinfo.Subject == "" {
 		userinfo.Subject = subject
 	}
+	sdk := k8s.NewK8sClient().Sdk
+	sa, err := sdk.Login2(userinfo.Subject, "", false)
+	if err != nil {
+		return err
+	}
+	k3kuser := k3ktypes.NewK3kUser(sa)
+	userinfo.PreferredUsername = sa.Name
+	userinfo.AppendClaims("role", k3kuser.GetRole())
+	userinfo.AppendClaims("is_founder", k3kuser.IsFounder())
+
 	return nil
 }
