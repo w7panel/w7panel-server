@@ -15,6 +15,12 @@ type Oidc struct {
 	controller.Abstract
 }
 
+type authorizeCodeResponse struct {
+	Code         string `json:"code"`
+	State        string `json:"state,omitempty"`
+	SessionState string `json:"session_state,omitempty"`
+}
+
 func (o Oidc) Handle(ctx *gin.Context) {
 	server, err := oidcservice.GetServer()
 	if err != nil || server == nil || !server.Enabled() {
@@ -55,5 +61,9 @@ func (o Oidc) AuthorizeCode(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, resp)
+	ctx.JSON(http.StatusOK, authorizeCodeResponse{
+		Code:         resp.Code,
+		State:        resp.State,
+		SessionState: resp.SessionState,
+	})
 }
