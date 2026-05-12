@@ -1,0 +1,20 @@
+apiVersion: k3k.w7.cc/v1alpha1
+kind: CostConfig
+metadata:
+  name: k3k-acuygbwn
+  namespace: default
+spec:
+  pricing:
+    bandwidth: 21
+    cpu: 12.32928
+    memory: 6.21864
+    storage: 0.37656
+  packageConfig: >-
+    [{"time":1,"timeUnit":"year","discount_new":100,"discount_renew":100,"config":[{"c":2,"m":4,"s":50,"bw":5,"dc_new":7,"dc_renew":100,"give":false,"online":true,"label":"秒杀价","description":["专为中小型业务定制经济型实例","兼容多种CPU处理器","与公有云实例一样的使用体验"]}]},{"time":"3","timeUnit":"year","discount_new":100,"discount_renew":100,"config":[{"c":2,"m":4,"s":50,"bw":3,"dc_new":25,"dc_renew":100,"give":false,"online":true},{"c":4,"m":8,"s":50,"bw":5,"dc_new":25,"dc_renew":100,"online":true}]},{"time":"5","timeUnit":"year","discount_new":100,"discount_renew":100,"config":[{"c":2,"m":4,"s":50,"bw":3,"dc_new":20,"dc_renew":100,"give":false,"online":true},{"c":4,"m":8,"s":50,"bw":5,"dc_new":20,"dc_renew":100,"give":false,"online":true}]}]
+  quota:
+    storageClassName: union1
+    hard:
+      cpu: "2"
+      memory: "4"
+      bandwidth: "1"
+      requests.storage: "10"

@@ -8,3 +8,5 @@
 #cd ../ && controller-gen crd paths=./... output:crd:dir=kodata/crds
 
 /home/workspace/go/bin/controller-gen crd paths=./k8s/pkg/apis/cvm/v1alpha1 output:crd:dir=kodata/crds
+/home/workspace/go/bin/controller-gen crd:allowDangerousTypes=true paths=./k8s/pkg/apis/costconfig/v1alpha1 output:crd:dir=kodata/crds
+/home/workspace/go/bin/controller-gen crd:allowDangerousTypes=true paths=./k8s/pkg/apis/costconfig/v1alpha1 output:crd:dir=config/crd/bases
