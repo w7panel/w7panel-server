@@ -1,0 +1,684 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "w7panel OIDC API",
+    "version": "1.0.0",
+    "description": "OIDC and OpenID Provider endpoints exposed by w7panel."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "tags": [
+    {
+      "name": "OIDC",
+      "description": "OpenID Connect endpoints"
+    }
+  ],
+  "paths": {
+    "/.well-known/openid-configuration": {
+      "get": {
+        "tags": [
+          "OIDC"
+        ],
+        "summary": "Get OpenID Provider configuration",
+        "operationId": "getOpenIDConfiguration",
+        "responses": {
+          "200": {
+            "description": "Provider metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenIDConfiguration"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/OIDCDisabled"
+          }
+        }
+      }
+    },
+    "/jwks": {
+      "get": {
+        "tags": [
+          "OIDC"
+        ],
+        "summary": "Get JSON Web Key Set",
+        "operationId": "getJWKS",
+        "responses": {
+          "200": {
+            "description": "JWKS document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JWKSResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/OIDCDisabled"
+          }
+        }
+      }
+    },
+    "/authorize": {
+      "get": {
+        "tags": [
+          "OIDC"
+        ],
+        "summary": "OIDC authorization endpoint",
+        "description": "Starts the OpenID Connect authorization code flow.",
+        "operationId": "authorize",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/response_type"
+          },
+          {
+            "$ref": "#/components/parameters/client_id"
+          },
+          {
+            "$ref": "#/components/parameters/redirect_uri"
+          },
+          {
+            "$ref": "#/components/parameters/scope"
+          },
+          {
+            "$ref": "#/components/parameters/state"
+          },
+          {
+            "$ref": "#/components/parameters/nonce"
+          },
+          {
+            "$ref": "#/components/parameters/code_challenge"
+          },
+          {
+            "$ref": "#/components/parameters/code_challenge_method"
+          },
+          {
+            "$ref": "#/components/parameters/prompt"
+          },
+          {
+            "$ref": "#/components/parameters/response_mode"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorization page or successful response"
+          },
+          "302": {
+            "description": "Redirects to client callback URI"
+          },
+          "400": {
+            "description": "Invalid authorization request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OIDCError"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/OIDCDisabled"
+          }
+        }
+      }
+    },
+    "/token": {
+      "post": {
+        "tags": [
+          "OIDC"
+        ],
+        "summary": "OIDC token endpoint",
+        "description": "Exchanges an authorization code for tokens, or refreshes an access token.",
+        "operationId": "token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid token request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OIDCError"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/OIDCDisabled"
+          }
+        }
+      }
+    },
+    "/userinfo": {
+      "get": {
+        "tags": [
+          "OIDC"
+        ],
+        "summary": "Get userinfo",
+        "operationId": "getUserinfo",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated user info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserinfoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OIDCError"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/OIDCDisabled"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "OIDC"
+        ],
+        "summary": "Get userinfo",
+        "operationId": "postUserinfo",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated user info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserinfoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OIDCError"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/OIDCDisabled"
+          }
+        }
+      }
+    },
+    "/panel-api/v1/code": {
+      "post": {
+        "tags": [
+          "OIDC"
+        ],
+        "summary": "Create authorization code directly",
+        "description": "Uses the current panel login token to create an OIDC authorization code without rendering the interactive authorize page.",
+        "operationId": "createDirectAuthorizationCode",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DirectAuthorizeRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/DirectAuthorizeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorization code created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeCodeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OIDCError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "$ref": "#/components/responses/OIDCDisabled"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "parameters": {
+      "response_type": {
+        "name": "response_type",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "code"
+          ]
+        }
+      },
+      "client_id": {
+        "name": "client_id",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "redirect_uri": {
+        "name": "redirect_uri",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "scope": {
+        "name": "scope",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "example": "openid profile offline_access"
+        }
+      },
+      "state": {
+        "name": "state",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "nonce": {
+        "name": "nonce",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "code_challenge": {
+        "name": "code_challenge",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "code_challenge_method": {
+        "name": "code_challenge_method",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "S256",
+            "plain"
+          ]
+        }
+      },
+      "prompt": {
+        "name": "prompt",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "response_mode": {
+        "name": "response_mode",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "query",
+            "fragment",
+            "form_post"
+          ]
+        }
+      }
+    },
+    "responses": {
+      "OIDCDisabled": {
+        "description": "OIDC is disabled",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/OIDCDisabledResponse"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "OpenIDConfiguration": {
+        "type": "object",
+        "properties": {
+          "issuer": {
+            "type": "string"
+          },
+          "authorization_endpoint": {
+            "type": "string"
+          },
+          "token_endpoint": {
+            "type": "string"
+          },
+          "userinfo_endpoint": {
+            "type": "string"
+          },
+          "jwks_uri": {
+            "type": "string"
+          },
+          "scopes_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "response_types_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "grant_types_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subject_types_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id_token_signing_alg_values_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "JWK": {
+        "type": "object",
+        "properties": {
+          "kty": {
+            "type": "string"
+          },
+          "kid": {
+            "type": "string"
+          },
+          "use": {
+            "type": "string"
+          },
+          "alg": {
+            "type": "string"
+          },
+          "n": {
+            "type": "string"
+          },
+          "e": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "JWKSResponse": {
+        "type": "object",
+        "required": [
+          "keys"
+        ],
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JWK"
+            }
+          }
+        }
+      },
+      "OIDCError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "error_description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "OIDCDisabledResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "oidc disabled"
+          }
+        }
+      },
+      "TokenRequest": {
+        "type": "object",
+        "required": [
+          "grant_type",
+          "client_id"
+        ],
+        "properties": {
+          "grant_type": {
+            "type": "string",
+            "enum": [
+              "authorization_code",
+              "refresh_token"
+            ]
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "client_secret": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "redirect_uri": {
+            "type": "string",
+            "format": "uri"
+          },
+          "code_verifier": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "type": "string"
+          }
+        }
+      },
+      "TokenResponse": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "token_type": {
+            "type": "string",
+            "example": "Bearer"
+          },
+          "expires_in": {
+            "type": "integer"
+          },
+          "refresh_token": {
+            "type": "string"
+          },
+          "id_token": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "UserinfoResponse": {
+        "type": "object",
+        "properties": {
+          "sub": {
+            "type": "string"
+          },
+          "preferred_username": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "is_founder": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": true
+      },
+      "DirectAuthorizeRequest": {
+        "type": "object",
+        "required": [
+          "client_id",
+          "redirect_uri"
+        ],
+        "properties": {
+          "response_type": {
+            "type": "string",
+            "default": "code"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "redirect_uri": {
+            "type": "string",
+            "format": "uri"
+          },
+          "scope": {
+            "type": "string",
+            "example": "openid profile offline_access"
+          },
+          "state": {
+            "type": "string"
+          },
+          "nonce": {
+            "type": "string"
+          },
+          "response_mode": {
+            "type": "string"
+          },
+          "code_challenge": {
+            "type": "string"
+          },
+          "code_challenge_method": {
+            "type": "string",
+            "enum": [
+              "S256",
+              "plain"
+            ]
+          },
+          "prompt": {
+            "type": "string"
+          }
+        }
+      },
+      "AuthorizeCodeResponse": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "session_state": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
