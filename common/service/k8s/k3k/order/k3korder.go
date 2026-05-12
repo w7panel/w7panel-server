@@ -9,12 +9,12 @@ import (
 	"sync"
 	"time"
 
+	cvmv1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
 	"github.com/shopspring/decimal"
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
-	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -394,8 +394,6 @@ func (k *K3kOrderApi) FindLastReturnCvmOrder(cvm *cvmv1alpha1.Cvm) (*console.Las
 	}
 	return k.consoleSdkClient.FindLastReturnCvmOrder(w7config.ClusterId, cvm.GetK3kName(), cvm.Name)
 }
-
-
 
 func (k *K3kOrderApi) CheckCanBuy(user *types.K3kUser) error {
 	order, err := k.FindLastPaidOrder(user)
