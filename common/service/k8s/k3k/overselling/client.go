@@ -1,8 +1,11 @@
 package overselling
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
+	"time"
 
 	cvmv1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -11,12 +14,18 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type ResourceClient struct {
 	sdk    *k8s.Sdk
 	client sigclient.Client
 }
+
+const (
+	overResourceConfigMapNamespace = "kube-system"
+	overResourceConfigMapName      = "over-resource"
+)
 
 func NewResourceClient(sdk *k8s.Sdk) (*ResourceClient, error) {
 	sigClient, err := sdk.ToSigClient()
@@ -139,6 +148,48 @@ func (c *ResourceClient) GetOverlingResource() (*Resource, error) {
 	rs := &OverSellingResource{Allocated: *current, OverSelling: sellingConfig}
 	result := rs.OverSellingResource()
 	return &result, nil
+}
+
+func (c *ResourceClient) upsertOverResourceConfigMap(rs *Resource) error {
+	configmap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      overResourceConfigMapName,
+			Namespace: overResourceConfigMapNamespace,
+		},
+	}
+
+	_, err := controllerutil.CreateOrPatch(context.Background(), c.client, configmap, func() error {
+		if configmap.Data == nil {
+			configmap.Data = make(map[string]string)
+		}
+		configmap.Data["resource"] = rs.JsonString()
+		configmap.Data["cpu"] = rs.CPU.String()
+		configmap.Data["memory"] = rs.Memory.String()
+		configmap.Data["storage"] = rs.Storage.String()
+		configmap.Data["bandwidth"] = rs.BandWidth.String()
+		configmap.Data["updatedAt"] = time.Now().UTC().Format(time.RFC3339)
+		return nil
+	})
+	return err
+}
+
+func RecordOverResource() error {
+	sdk := k8s.NewK8sClient().Sdk
+	client, err := NewResourceClient(sdk)
+	if err != nil {
+		return err
+	}
+
+	rs, err := client.GetOverlingResource()
+	if err != nil {
+		return err
+	}
+
+	if err := client.upsertOverResourceConfigMap(rs); err != nil {
+		slog.Warn("sync over-resource configmap failed", "namespace", overResourceConfigMapNamespace, "name", overResourceConfigMapName, "err", err)
+		return err
+	}
+	return nil
 }
 
 func (c *ResourceClient) getResource() (*Resource, error) {
