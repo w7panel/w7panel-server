@@ -24,7 +24,9 @@
 ._.DS_Store
 .idea
 /kodata/assets
+!/kodata/assets
 /kodata/assets/*
+!/kodata/assets/openapi.json
 /kodata/index.yaml
 /kodata/microapp/**
 /kodata/plugins/webdav/*
