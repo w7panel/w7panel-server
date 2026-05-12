@@ -174,3 +174,13 @@ curl -sS \
 ```bash
 scripts/oidc_test.sh
 ```
+
+## 9. 导入 Postman
+
+OpenAPI 文档位于：
+
+```text
+docs/oidc-openapi.yaml
+```
+
+可直接在 Postman 中使用 `Import` 导入这份 YAML。

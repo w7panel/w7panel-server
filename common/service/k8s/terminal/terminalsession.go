@@ -105,6 +105,8 @@ func (t *TerminalSession) Read(p []byte) (n int, err error) {
 }
 
 func (t *TerminalSession) Write(p []byte) (n int, err error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	if t.conn != nil && utf8.Valid(p) {
 		err := t.conn.WriteMessage(websocket.TextMessage, p)
 		if err != nil {
