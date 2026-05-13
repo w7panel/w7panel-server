@@ -27,15 +27,16 @@ const (
 )
 
 type Config struct {
-	Enabled                 bool           `mapstructure:"enabled"`
-	Issuer                  string         `mapstructure:"issuer"`
-	SigningKeyPEM           string         `mapstructure:"signing_key_pem"`
-	AccessTokenTTL          time.Duration  `mapstructure:"access_token_ttl"`
-	RefreshTokenTTL         time.Duration  `mapstructure:"refresh_token_ttl"`
-	CodeTTL                 time.Duration  `mapstructure:"code_ttl"`
-	RegistrationEnabled     bool           `mapstructure:"registration_enabled"`
-	RegistrationAccessToken string         `mapstructure:"registration_access_token"`
-	Clients                 []ClientConfig `mapstructure:"clients"`
+	Enabled                     bool           `mapstructure:"enabled"`
+	Issuer                      string         `mapstructure:"issuer"`
+	SigningKeyPEM               string         `mapstructure:"signing_key_pem"`
+	AccessTokenTTL              time.Duration  `mapstructure:"access_token_ttl"`
+	RefreshTokenTTL             time.Duration  `mapstructure:"refresh_token_ttl"`
+	CodeTTL                     time.Duration  `mapstructure:"code_ttl"`
+	InsecureAllowAnyRedirectURI bool           `mapstructure:"insecure_allow_any_redirect_uri"`
+	RegistrationEnabled         bool           `mapstructure:"registration_enabled"`
+	RegistrationAccessToken     string         `mapstructure:"registration_access_token"`
+	Clients                     []ClientConfig `mapstructure:"clients"`
 }
 
 type ClientConfig struct {

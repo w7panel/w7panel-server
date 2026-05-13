@@ -91,7 +91,7 @@ func (s *Server) CreateDirectAuthorizationCode(ctx context.Context, req DirectAu
 	if !ok {
 		return nil, errors.New("client not found")
 	}
-	if _, err := op.ValidateAuthRequestClient(ctx, authReq, oidcClient{client: client}, s.provider.IDTokenHintVerifier(ctx)); err != nil {
+	if _, err := op.ValidateAuthRequestClient(ctx, authReq, s.newOIDCClient(client), s.provider.IDTokenHintVerifier(ctx)); err != nil {
 		return nil, err
 	}
 
