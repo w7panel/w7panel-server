@@ -1,7 +1,6 @@
 package oidc
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 
 type dynamicClientStore interface {
 	Load() ([]Client, error)
+	Get(clientID string) (Client, error)
 	Create(req DynamicClientRequest) (Client, error)
 	Save(client Client, isUpdate bool) error
 	Delete(clientID string) error
@@ -42,6 +42,15 @@ func (kubeDynamicClientStore) Load() ([]Client, error) {
 	return clients, nil
 }
 
+func (kubeDynamicClientStore) Get(clientID string) (Client, error) {
+	sdk := k8s.NewK8sClient().Sdk
+	secret, err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Get(sdk.Ctx, secretNameForClientID(clientID), metav1.GetOptions{})
+	if err != nil {
+		return Client{}, err
+	}
+	return clientFromSecret(secret), nil
+}
+
 func (kubeDynamicClientStore) Create(req DynamicClientRequest) (Client, error) {
 	mode := normalizeAuthMethod(req.TokenEndpointAuthMode, "x")
 	client := Client{
@@ -56,10 +65,6 @@ func (kubeDynamicClientStore) Create(req DynamicClientRequest) (Client, error) {
 	if len(client.Scopes) == 0 {
 		client.Scopes = []string{"openid", "profile", "offline_access"}
 	}
-	client.RequirePKCE = mode == "none"
-	if req.RequirePKCE != nil {
-		client.RequirePKCE = *req.RequirePKCE
-	}
 	if mode != "none" {
 		client.ClientSecret = randomToken(24)
 	}
@@ -73,7 +78,7 @@ func (kubeDynamicClientStore) Save(client Client, isUpdate bool) error {
 	sdk := k8s.NewK8sClient().Sdk
 	secret := secretFromClient(sdk.GetNamespace(), client)
 	if isUpdate {
-		current, err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Get(sdk.Ctx, client.ClientID, metav1.GetOptions{})
+		current, err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Get(sdk.Ctx, secretNameForClientID(client.ClientID), metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -87,7 +92,7 @@ func (kubeDynamicClientStore) Save(client Client, isUpdate bool) error {
 
 func (kubeDynamicClientStore) Delete(clientID string) error {
 	sdk := k8s.NewK8sClient().Sdk
-	err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Delete(sdk.Ctx, clientID, metav1.DeleteOptions{})
+	err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Delete(sdk.Ctx, secretNameForClientID(clientID), metav1.DeleteOptions{})
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
@@ -95,13 +100,16 @@ func (kubeDynamicClientStore) Delete(clientID string) error {
 }
 
 func clientFromSecret(secret *corev1.Secret) Client {
+	clientID := string(secret.Data["client_id"])
+	if clientID == "" {
+		clientID = strings.TrimSuffix(secret.Name, "-oidc")
+	}
 	return Client{
 		Name:                  string(secret.Data["client_name"]),
-		ClientID:              secret.Name,
+		ClientID:              clientID,
 		ClientSecret:          string(secret.Data["client_secret"]),
 		RedirectURIs:          splitLines(string(secret.Data["redirect_uris"])),
 		Scopes:                normalizeScopes(strings.Fields(string(secret.Data["scopes"]))),
-		RequirePKCE:           string(secret.Data["require_pkce"]) == "true",
 		TokenEndpointAuthMode: string(secret.Data["token_endpoint_auth_method"]),
 		IsDynamic:             secret.Labels["w7.cc/oidc-client"] == "true",
 		CreatedAt:             secret.CreationTimestamp.Time,
@@ -111,7 +119,7 @@ func clientFromSecret(secret *corev1.Secret) Client {
 func secretFromClient(namespace string, client Client) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      client.ClientID,
+			Name:      secretNameForClientID(client.ClientID),
 			Namespace: namespace,
 			Labels: map[string]string{
 				"w7.cc/oidc-client": "true",
@@ -119,14 +127,18 @@ func secretFromClient(namespace string, client Client) *corev1.Secret {
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
+			"client_id":                  []byte(client.ClientID),
 			"client_name":                []byte(client.Name),
 			"client_secret":              []byte(client.ClientSecret),
 			"redirect_uris":              []byte(strings.Join(client.RedirectURIs, "\n")),
 			"scopes":                     []byte(strings.Join(client.Scopes, " ")),
-			"require_pkce":               []byte(fmt.Sprintf("%t", client.RequirePKCE)),
 			"token_endpoint_auth_method": []byte(client.TokenEndpointAuthMode),
 		},
 	}
+}
+
+func secretNameForClientID(clientID string) string {
+	return clientID + "-oidc"
 }
 
 func clientToResponse(client Client) *DynamicClientResponse {
@@ -138,10 +150,7 @@ func clientToResponse(client Client) *DynamicClientResponse {
 		RedirectURIs:          client.RedirectURIs,
 		TokenEndpointAuthMode: client.TokenEndpointAuthMode,
 		GrantTypes:            []string{"authorization_code", "refresh_token"},
-		ResponseTypes:         []string{"code"},
 		Scope:                 strings.Join(client.Scopes, " "),
 		ClientName:            client.Name,
-		RequirePKCE:           client.RequirePKCE,
-		RegistrationClientURI: "/register/" + client.ClientID,
 	}
 }

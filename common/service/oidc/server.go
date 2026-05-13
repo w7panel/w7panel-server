@@ -29,8 +29,6 @@ const (
 type Config struct {
 	Enabled                 bool           `mapstructure:"enabled"`
 	Issuer                  string         `mapstructure:"issuer"`
-	CookieDomain            string         `mapstructure:"cookie_domain"`
-	CookieSecure            bool           `mapstructure:"cookie_secure"`
 	SigningKeyPEM           string         `mapstructure:"signing_key_pem"`
 	AccessTokenTTL          time.Duration  `mapstructure:"access_token_ttl"`
 	RefreshTokenTTL         time.Duration  `mapstructure:"refresh_token_ttl"`
@@ -45,7 +43,6 @@ type ClientConfig struct {
 	ClientSecret          string   `mapstructure:"client_secret"`
 	RedirectURIs          []string `mapstructure:"redirect_uris"`
 	Scopes                []string `mapstructure:"scopes"`
-	RequirePKCE           bool     `mapstructure:"require_pkce"`
 	TokenEndpointAuthMode string   `mapstructure:"token_endpoint_auth_method"`
 }
 
@@ -55,7 +52,6 @@ type Client struct {
 	ClientSecret          string
 	RedirectURIs          []string
 	Scopes                []string
-	RequirePKCE           bool
 	TokenEndpointAuthMode string
 	IsDynamic             bool
 	CreatedAt             time.Time
@@ -65,10 +61,8 @@ type DynamicClientRequest struct {
 	RedirectURIs          []string `json:"redirect_uris"`
 	TokenEndpointAuthMode string   `json:"token_endpoint_auth_method"`
 	GrantTypes            []string `json:"grant_types"`
-	ResponseTypes         []string `json:"response_types"`
 	Scope                 string   `json:"scope"`
 	ClientName            string   `json:"client_name"`
-	RequirePKCE           *bool    `json:"require_pkce"`
 }
 
 type DynamicClientResponse struct {
@@ -79,11 +73,8 @@ type DynamicClientResponse struct {
 	RedirectURIs          []string `json:"redirect_uris"`
 	TokenEndpointAuthMode string   `json:"token_endpoint_auth_method"`
 	GrantTypes            []string `json:"grant_types"`
-	ResponseTypes         []string `json:"response_types"`
 	Scope                 string   `json:"scope"`
 	ClientName            string   `json:"client_name,omitempty"`
-	RequirePKCE           bool     `json:"require_pkce"`
-	RegistrationClientURI string   `json:"registration_client_uri,omitempty"`
 }
 
 type Server struct {
@@ -180,7 +171,6 @@ func NewServer(cfg Config) (*Server, error) {
 			ClientSecret:          client.ClientSecret,
 			RedirectURIs:          client.RedirectURIs,
 			Scopes:                scopes,
-			RequirePKCE:           client.RequirePKCE || client.ClientSecret == "",
 			TokenEndpointAuthMode: mode,
 			CreatedAt:             time.Now(),
 		}

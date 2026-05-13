@@ -102,6 +102,35 @@ func (s *Server) CreateDirectAuthorizationCode(ctx context.Context, req DirectAu
 	return op.BuildAuthResponseCodeResponsePayload(ctx, storedReq, s.provider)
 }
 
+func (s *Server) BuildAuthorizationCallbackURL(ctx context.Context, id string) (string, error) {
+	authReq, err := s.AuthRequestByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	if !authReq.Done() {
+		return "", errors.New("auth request not completed")
+	}
+	return op.BuildAuthResponseCallbackURL(ctx, authReq, s.provider)
+}
+
+func (s *Server) BuildAuthorizationCallbackURLWithRedirect(ctx context.Context, id, redirectURI string) (string, error) {
+	authReq, err := s.AuthRequestByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	if !authReq.Done() {
+		return "", errors.New("auth request not completed")
+	}
+	if strings.TrimSpace(redirectURI) == "" {
+		return op.BuildAuthResponseCallbackURL(ctx, authReq, s.provider)
+	}
+	codeResponse, err := op.BuildAuthResponseCodeResponsePayload(ctx, authReq, s.provider)
+	if err != nil {
+		return "", err
+	}
+	return op.AuthResponseURL(strings.TrimSpace(redirectURI), authReq.GetResponseType(), authReq.GetResponseMode(), codeResponse, s.provider.Encoder())
+}
+
 func (s *Server) CompleteAuthRequest(id, username string) error {
 	s.authReqMu.Lock()
 	defer s.authReqMu.Unlock()

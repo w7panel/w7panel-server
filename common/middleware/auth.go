@@ -94,6 +94,10 @@ func (self Auth) Process(ctx *gin.Context) {
 	if k3k.NeedRelogin(k8sToken) {
 
 	}
+	saName, err := k8sToken.GetSaName()
+	if err == nil {
+		ctx.Set("username", saName)
+	}
 	ctx.Set("k8s_token", bearertoken)
 	// if facade.Config.GetBool("app.refresh_token_enable") {
 	// 	if ctx.Writer.Status() >= http.StatusOK && ctx.Writer.Status() < 300 {

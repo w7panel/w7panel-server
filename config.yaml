@@ -13,7 +13,7 @@ app:
   deployment_name: ${DEPLOYMENT_NAME-w7panel}
   upgrade_enable: ${UPGRADE_ENABLE-true} # 是否开启自动升级功能
   refresh_token_enable: ${REFRESH_TOKEN_ENABLE-false} # 是否开启刷新token
-  login_seconds: ${LOGIN_SECONDS-3600} # 登陆有效时间 单位秒
+  login_seconds: ${LOGIN_SECONDS-36000} # 登陆有效时间 单位秒 改为10小时
   watch: ${APP_WATCH-false} # 是否开启监控功能
   local_mock: ${LOCAL_MOCK-false} # 开发模式：使用当前服务模拟agent（生产环境必须设为false）
   static_path: ${KO_DATA_PATH-./kodata} # 静态文件目录

@@ -17,7 +17,9 @@ type fakeDynamicClientStore struct {
 	saveCalls   []saveCall
 	createCalls []DynamicClientRequest
 	deleteCalls []string
+	getCalls    []string
 	createErr   error
+	getErr      error
 	saveErr     error
 	deleteErr   error
 	loadErr     error
@@ -33,6 +35,19 @@ func (f *fakeDynamicClientStore) Load() ([]Client, error) {
 		return nil, f.loadErr
 	}
 	return append([]Client{}, f.loadClients...), nil
+}
+
+func (f *fakeDynamicClientStore) Get(clientID string) (Client, error) {
+	if f.getErr != nil {
+		return Client{}, f.getErr
+	}
+	f.getCalls = append(f.getCalls, clientID)
+	for _, client := range f.loadClients {
+		if client.ClientID == clientID {
+			return client, nil
+		}
+	}
+	return Client{}, context.Canceled
 }
 
 func (f *fakeDynamicClientStore) Create(req DynamicClientRequest) (Client, error) {
@@ -55,10 +70,6 @@ func (f *fakeDynamicClientStore) Create(req DynamicClientRequest) (Client, error
 	}
 	if len(client.Scopes) == 0 {
 		client.Scopes = []string{"openid", "profile", "offline_access"}
-	}
-	client.RequirePKCE = mode == "none"
-	if req.RequirePKCE != nil {
-		client.RequirePKCE = *req.RequirePKCE
 	}
 	if mode != "none" {
 		client.ClientSecret = "generated-secret"
@@ -143,9 +154,6 @@ func TestRegisterDynamicClientStoresAndDefaults(t *testing.T) {
 	if saved.ClientSecret != "" {
 		t.Fatalf("expected public client secret to be empty")
 	}
-	if !saved.RequirePKCE {
-		t.Fatalf("expected PKCE to default to true for public client")
-	}
 	if saved.TokenEndpointAuthMode != "none" {
 		t.Fatalf("unexpected auth mode: %s", saved.TokenEndpointAuthMode)
 	}
@@ -154,12 +162,6 @@ func TestRegisterDynamicClientStoresAndDefaults(t *testing.T) {
 	}
 	if _, ok := server.clients[resp.ClientID]; !ok {
 		t.Fatalf("expected client to be cached in server")
-	}
-	if resp.RequirePKCE != true {
-		t.Fatalf("expected response RequirePKCE=true")
-	}
-	if resp.RegistrationClientURI == "" {
-		t.Fatalf("expected registration client URI")
 	}
 }
 
@@ -176,12 +178,10 @@ func TestUpdateAndDeleteDynamicClient(t *testing.T) {
 		CreatedAt:             time.Unix(100, 0),
 	}
 
-	pkce := true
 	resp, err := server.UpdateDynamicClient("oidc-demo", DynamicClientRequest{
 		RedirectURIs: []string{"https://new.example/callback"},
 		Scope:        "openid profile offline_access invalid",
 		ClientName:   "renamed",
-		RequirePKCE:  &pkce,
 	})
 	if err != nil {
 		t.Fatalf("UpdateDynamicClient returned error: %v", err)
@@ -208,6 +208,35 @@ func TestUpdateAndDeleteDynamicClient(t *testing.T) {
 	}
 	if _, ok := server.clients["oidc-demo"]; ok {
 		t.Fatalf("expected client removed from cache")
+	}
+}
+
+func TestFindClientFallsBackToStore(t *testing.T) {
+	store := &fakeDynamicClientStore{
+		loadClients: []Client{
+			{
+				ClientID:  "oidc-fallback",
+				IsDynamic: true,
+			},
+		},
+	}
+	server := newTestServer(store)
+
+	client, ok := server.findClient("oidc-fallback")
+	if !ok {
+		t.Fatalf("expected fallback store lookup to succeed")
+	}
+	if client.ClientID != "oidc-fallback" {
+		t.Fatalf("unexpected client id %q", client.ClientID)
+	}
+	if len(store.getCalls) != 1 || store.getCalls[0] != "oidc-fallback" {
+		t.Fatalf("expected store.Get to be called once, got %#v", store.getCalls)
+	}
+}
+
+func TestSecretNameForClientIDUsesOIDCSuffix(t *testing.T) {
+	if got, want := secretNameForClientID("oidc-demo"), "oidc-demo-oidc"; got != want {
+		t.Fatalf("unexpected secret name: got %q want %q", got, want)
 	}
 }
 
@@ -266,6 +295,88 @@ func TestCreateAuthRequestLifecycle(t *testing.T) {
 	}
 }
 
+func TestLoginCompletesAuthRequestAfterPasswordValidation(t *testing.T) {
+	server := newTestServer(&fakeDynamicClientStore{})
+	req, err := server.CreateAuthRequest(context.Background(), &zitadeloidc.AuthRequest{
+		ClientID:     "client-1",
+		RedirectURI:  "https://client.example/callback",
+		ResponseType: zitadeloidc.ResponseTypeCode,
+	}, "")
+	if err != nil {
+		t.Fatalf("CreateAuthRequest returned error: %v", err)
+	}
+
+	if err := server.Login(context.Background(), req.GetID(), "alice", "secret"); err != nil {
+		t.Fatalf("Login returned error: %v", err)
+	}
+
+	stored, err := server.AuthRequestByID(context.Background(), req.GetID())
+	if err != nil {
+		t.Fatalf("AuthRequestByID returned error: %v", err)
+	}
+	if !stored.Done() || stored.GetSubject() != "alice" {
+		t.Fatalf("expected login to complete auth request for alice, got done=%v subject=%q", stored.Done(), stored.GetSubject())
+	}
+	if stored.GetAuthTime().IsZero() {
+		t.Fatalf("expected auth time to be set")
+	}
+}
+
+func TestLoginURLUsesAuthorizeLoginPath(t *testing.T) {
+	client := oidcClient{client: Client{ClientID: "client-1"}}
+	if got, want := client.LoginURL("request-1"), "/authorize/login?authRequestID=request-1"; got != want {
+		t.Fatalf("unexpected login url: got %q want %q", got, want)
+	}
+}
+
+func TestBuildAuthorizationCallbackURLReturnsFinalRedirectWithCode(t *testing.T) {
+	server := newTestServer(&fakeDynamicClientStore{})
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("GenerateKey returned error: %v", err)
+	}
+	server.private = privateKey
+	server.kid = "test-kid"
+	server.clients["client-1"] = Client{
+		ClientID:              "client-1",
+		RedirectURIs:          []string{"https://client.example/callback"},
+		Scopes:                []string{"openid", "profile"},
+		TokenEndpointAuthMode: "none",
+		CreatedAt:             time.Now(),
+	}
+	if err := server.initProvider(); err != nil {
+		t.Fatalf("initProvider returned error: %v", err)
+	}
+
+	req, err := server.CreateAuthRequest(context.Background(), &zitadeloidc.AuthRequest{
+		ClientID:            "client-1",
+		RedirectURI:         "https://client.example/callback",
+		Scopes:              []string{"openid", "profile"},
+		State:               "state-1",
+		ResponseType:        zitadeloidc.ResponseTypeCode,
+		ResponseMode:        zitadeloidc.ResponseModeQuery,
+		CodeChallenge:       "challenge",
+		CodeChallengeMethod: zitadeloidc.CodeChallengeMethodS256,
+	}, "alice")
+	if err != nil {
+		t.Fatalf("CreateAuthRequest returned error: %v", err)
+	}
+
+	callbackURL, err := server.BuildAuthorizationCallbackURL(context.Background(), req.GetID())
+	if err != nil {
+		t.Fatalf("BuildAuthorizationCallbackURL returned error: %v", err)
+	}
+	if !strings.HasPrefix(callbackURL, "https://client.example/callback?") {
+		t.Fatalf("expected final redirect uri, got %q", callbackURL)
+	}
+	if !strings.Contains(callbackURL, "code=") {
+		t.Fatalf("expected callback URL to contain code, got %q", callbackURL)
+	}
+	if !strings.Contains(callbackURL, "state=state-1") {
+		t.Fatalf("expected callback URL to contain state, got %q", callbackURL)
+	}
+}
+
 func TestCreateDirectAuthorizationCode(t *testing.T) {
 	server := newTestServer(&fakeDynamicClientStore{})
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -279,7 +390,6 @@ func TestCreateDirectAuthorizationCode(t *testing.T) {
 		RedirectURIs:          []string{"https://client.example/callback"},
 		Scopes:                []string{"openid", "profile"},
 		TokenEndpointAuthMode: "none",
-		RequirePKCE:           true,
 		CreatedAt:             time.Now(),
 	}
 	if err := server.initProvider(); err != nil {

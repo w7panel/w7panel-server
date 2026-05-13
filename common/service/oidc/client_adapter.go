@@ -33,7 +33,7 @@ func (c oidcClient) AuthMethod() zitadeloidc.AuthMethod {
 	}
 }
 func (c oidcClient) ResponseTypes() []zitadeloidc.ResponseType {
-	return []zitadeloidc.ResponseType{zitadeloidc.ResponseTypeCode}
+	return []zitadeloidc.ResponseType{zitadeloidc.ResponseTypeCode, zitadeloidc.ResponseTypeIDToken, zitadeloidc.ResponseTypeIDTokenOnly}
 }
 func (c oidcClient) GrantTypes() []zitadeloidc.GrantType {
 	grants := []zitadeloidc.GrantType{zitadeloidc.GrantTypeCode}
@@ -43,7 +43,7 @@ func (c oidcClient) GrantTypes() []zitadeloidc.GrantType {
 	return grants
 }
 func (c oidcClient) LoginURL(id string) string {
-	return "/authorize/login?" + authRequestIDQuery + "=" + id
+	return "/login?" + authRequestIDQuery + "=" + id
 }
 func (c oidcClient) AccessTokenType() op.AccessTokenType { return op.AccessTokenTypeJWT }
 func (c oidcClient) IDTokenLifetime() time.Duration      { return time.Hour }

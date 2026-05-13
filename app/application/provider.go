@@ -126,6 +126,10 @@ func (p Provider) RegisterValidateRule() {
 func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	webdavMethods := []string{"PROPFIND", "PROPPATCH", "MKCOL", "COPY", "MOVE", "LOCK", "UNLOCK", "LINK", "UNLINK", "GET", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH", "POST"}
 	server.RegisterRouters(func(engine *gin.Engine) {
+		engine.GET("/docs/openapi", controller2.OpenAPI{}.Page)
+		engine.GET("/docs/openapi/spec", controller2.OpenAPI{}.Spec)
+		engine.GET("/openapi.json", controller2.OpenAPI{}.RedirectJSON)
+
 		apiGroup := engine.Group("/panel-api/v1") //.Use(middleware.Cors{}.Process)
 		{
 			apiGroup.GET("/namespaces", middleware.Auth{}.Process, controller2.Namespaces{}.GetList)

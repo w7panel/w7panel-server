@@ -70,9 +70,12 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		//直接获取code 用于OIDC
 		engine.POST("/panel-api/v1/code", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCode)
+		engine.POST("/panel-api/v1/callback-url", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCallbackURL)
 
 		engine.Any("/.well-known/openid-configuration", controller2.Oidc{}.Handle)
 		engine.Any("/jwks", controller2.Oidc{}.Handle)
+		engine.POST("/register", controller2.Oidc{}.RegisterClient)
+		//http://127.0.0.1:9007/authorize?client_id=default&redirect_uri=http://127.0.0.1:3000/callback&scope=openid&response_type=code
 		engine.Any("/authorize", controller2.Oidc{}.Handle)
 		engine.Any("/authorize/*path", controller2.Oidc{}.Handle)
 		engine.Any("/token", controller2.Oidc{}.Handle)
