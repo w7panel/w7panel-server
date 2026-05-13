@@ -70,10 +70,14 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		//直接获取code 用于OIDC
 		engine.POST("/panel-api/v1/code", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCode)
+		engine.POST("/panel-api/v1/callback-url", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCallbackURL)
 
 		engine.Any("/.well-known/openid-configuration", controller2.Oidc{}.Handle)
 		engine.Any("/jwks", controller2.Oidc{}.Handle)
+		engine.POST("/register", controller2.Oidc{}.RegisterClient)
 		engine.Any("/authorize", controller2.Oidc{}.Handle)
+		engine.GET("/authorize/login", controller2.Oidc{}.LoginPage)
+		engine.POST("/authorize/login", controller2.Oidc{}.Login)
 		engine.Any("/authorize/*path", controller2.Oidc{}.Handle)
 		engine.Any("/token", controller2.Oidc{}.Handle)
 		engine.Any("/userinfo", controller2.Oidc{}.Handle)
