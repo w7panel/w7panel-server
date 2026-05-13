@@ -17,7 +17,7 @@ func (s *Server) GetClientByClientID(_ context.Context, clientID string) (op.Cli
 	if !ok {
 		return nil, errors.New("client not found")
 	}
-	return oidcClient{client: client}, nil
+	return s.newOIDCClient(client), nil
 }
 
 func (s *Server) AuthorizeClientIDSecret(_ context.Context, clientID, clientSecret string) error {
