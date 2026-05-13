@@ -7,6 +7,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
+	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 type Static struct {
@@ -38,14 +39,25 @@ func (self Static) Download(http *gin.Context) {
 		return
 	}
 	useSdk := sdk
-	if strings.Contains(name, "-root") {
+	hasRoot := strings.Contains(name, "-root")
+	if hasRoot {
 		name = strings.ReplaceAll(name, "-root", "")
-		useSdk = rootSdk //使用root sdk
+		useSdk = rootSdk
 	}
 	appgroupObj, err := appgroup.GetAppgroupUseSdk(name, namespace, useSdk)
 	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
+		// 尝试从root集群获取
+		if errors.IsNotFound(err) {
+			group, err := appgroup.GetAppgroupUseSdk(name, namespace, rootSdk)
+			if err != nil {
+				self.JsonResponseWithServerError(http, err)
+				return
+			}
+			appgroupObj = group
+		} else {
+			self.JsonResponseWithServerError(http, err)
+			return
+		}
 	}
 	appgroup.DownStatic(appgroupObj)
 

@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -15,7 +16,7 @@ import (
 func TestCreateBaseResourceOrderCvm(t *testing.T) {
 
 	// os.Setenv("LOCAL_MOCK", "true")
-	// os.Setenv("USER_AGENT", "we7test-beta")
+	os.Setenv("USER_AGENT", "we7test-beta")
 	// os.Setenv("LOCAL_MOCK", "1")
 	os.Setenv("DEBUG", "true")
 	// console.SetConsoleApi("http://172.16.1.116:9004")
@@ -37,12 +38,12 @@ func TestCreateBaseResourceOrderCvm(t *testing.T) {
 	k3kUser := types.NewK3kUser(sa)
 	k3k.RefreshK3kUser(k3kUser, sdk, true)
 	bs := types.BuyResource{
-		Cpu:       2,
+		Cpu:       3,
 		Memory:    4,
 		Storage:   5,
 		Bandwidth: 50,
 	}
-	pay, err := CreateBaseResourceCvmOrder(context.Background(), &types.BuyBaseResource{CouponCode: "", BaseConfigName: "admin", UnitQuantity: types.UnitQuantity{Unit: "month", Quantity: 1}, BuyResource: bs}, k3kUser)
+	pay, err := CreateBaseResourceCvmOrder(context.Background(), &types.BuyBaseResource{CvmName: "test1", CouponCode: "", BaseConfigName: "admin", UnitQuantity: types.UnitQuantity{Unit: "month", Quantity: 1}, BuyResource: bs}, k3kUser)
 	if err != nil {
 		t.Error(err)
 		return
@@ -50,4 +51,31 @@ func TestCreateBaseResourceOrderCvm(t *testing.T) {
 
 	// Refresh(k3kUser)
 	t.Log(pay)
+}
+
+func TestMockNotifyCvm(t *testing.T) {
+
+	os.Setenv("LOCAL_MOCK", "true")
+	os.Setenv("USER_AGENT", "we7test-beta")
+	os.Setenv("DEBUG", "true")
+
+	// console.SetConsoleApi("http://172.16.1.116:9004")
+	// Setup mock
+	sdk := k8s.NewK8sClient().Sdk
+	client, err := sdk.ToSigClient()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	sa := &v1.ServiceAccount{}
+	err = client.Get(sdk.Ctx, ktypes.NamespacedName{Namespace: "default", Name: "console-164315"}, sa)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	k3kUser := types.NewK3kUser(sa)
+	MockNotifyOrderCvm(k3kUser, strings.ToUpper("20260430135722EHOSJY"))
+
+	// t.Log(pay)
 }

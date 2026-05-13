@@ -10,7 +10,7 @@
                 "LOCAL_MOCK": "false",
                 "REGISTRY_WATCH": "true",
                 "NODE_NAME": "server1",
-                // "USER_AGENT": "we7test-beta",
+                "USER_AGENT": "we7test-beta",
                 "GPU_MOCK": "true",
                 "HELM_VERSION": "1.1.39",
                 "APP_WATCH": "true",
@@ -34,6 +34,9 @@
                 "NODE_IP": "10.0.0.206",
                 "K3S_REGISTRY_ENABLED": "true",
                 "BUILDIMGAGE_ENABLED": "true",
+                "CVM_ENABLED": "true",
+                "MOCK_PAY": "true",
+                "MOCK_CHECK_RES": "true",
                 // "KUBECONFIG": "/home/workspace/k8s-offline/k3k-k8-k8-kubeconfig.yaml"
             },
             "type": "go",

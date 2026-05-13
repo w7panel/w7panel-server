@@ -38,33 +38,64 @@ spec:
           spec:
             properties:
               baseOrder:
+                description: 购买信息
                 properties:
+                  buyMode:
+                    type: string
+                  hour:
+                    type: integer
                   orderSn:
                     type: string
+                  resource:
+                    properties:
+                      bandwidth:
+                        format: int64
+                        type: integer
+                      cpu:
+                        format: int64
+                        type: integer
+                      memory:
+                        format: int64
+                        type: integer
+                      storage:
+                        format: int64
+                        type: integer
+                    type: object
+                  returnFinish:
+                    type: boolean
                   status:
                     type: string
                 required:
                 - orderSn
                 type: object
-              baseResource:
-                properties:
-                  bandwidth:
-                    format: int64
-                    type: integer
-                  cpu:
-                    format: int64
-                    type: integer
-                  memory:
-                    format: int64
-                    type: integer
-                  storage:
-                    format: int64
-                    type: integer
-                type: object
+              capacityCheckState:
+                type: string
               expandOrder:
+                description: 购买信息
                 properties:
+                  buyMode:
+                    type: string
+                  hour:
+                    type: integer
                   orderSn:
                     type: string
+                  resource:
+                    properties:
+                      bandwidth:
+                        format: int64
+                        type: integer
+                      cpu:
+                        format: int64
+                        type: integer
+                      memory:
+                        format: int64
+                        type: integer
+                      storage:
+                        format: int64
+                        type: integer
+                    type: object
+                  returnFinish:
+                    type: boolean
                   status:
                     type: string
                 required:
@@ -72,22 +103,9 @@ spec:
                 type: object
               expireTime:
                 type: string
-              overMode:
-                type: string
-              recycleTime:
-                type: string
-              renewOrder:
-                properties:
-                  orderSn:
-                    type: string
-                  status:
-                    type: string
-                required:
-                - orderSn
-                type: object
-              rescue:
+              pause:
                 type: boolean
-              resource:
+              pendingPurchasedResource:
                 properties:
                   bandwidth:
                     format: int64
@@ -102,8 +120,106 @@ spec:
                     format: int64
                     type: integer
                 type: object
+              purchasedResource:
+                properties:
+                  bandwidth:
+                    format: int64
+                    type: integer
+                  cpu:
+                    format: int64
+                    type: integer
+                  memory:
+                    format: int64
+                    type: integer
+                  storage:
+                    format: int64
+                    type: integer
+                type: object
+              recycleTime:
+                type: string
+              renewOrder:
+                description: 购买信息
+                properties:
+                  buyMode:
+                    type: string
+                  hour:
+                    type: integer
+                  orderSn:
+                    type: string
+                  resource:
+                    properties:
+                      bandwidth:
+                        format: int64
+                        type: integer
+                      cpu:
+                        format: int64
+                        type: integer
+                      memory:
+                        format: int64
+                        type: integer
+                      storage:
+                        format: int64
+                        type: integer
+                    type: object
+                  returnFinish:
+                    type: boolean
+                  status:
+                    type: string
+                required:
+                - orderSn
+                type: object
+              rescue:
+                type: boolean
+              returnOrders:
+                additionalProperties:
+                  description: 购买信息
+                  properties:
+                    buyMode:
+                      type: string
+                    hour:
+                      type: integer
+                    orderSn:
+                      type: string
+                    resource:
+                      properties:
+                        bandwidth:
+                          format: int64
+                          type: integer
+                        cpu:
+                          format: int64
+                          type: integer
+                        memory:
+                          format: int64
+                          type: integer
+                        storage:
+                          format: int64
+                          type: integer
+                      type: object
+                    returnFinish:
+                      type: boolean
+                    status:
+                      type: string
+                  required:
+                  - orderSn
+                  type: object
+                type: object
               storageClassName:
                 type: string
+              userResource:
+                properties:
+                  bandwidth:
+                    format: int64
+                    type: integer
+                  cpu:
+                    format: int64
+                    type: integer
+                  memory:
+                    format: int64
+                    type: integer
+                  storage:
+                    format: int64
+                    type: integer
+                type: object
               workload:
                 properties:
                   apiVersion:
@@ -123,15 +239,27 @@ spec:
                     type: string
                   templateName:
                     type: string
+                  token:
+                    type: string
                 required:
                 - templateName
+                - token
                 type: object
             type: object
           status:
-            description: |-
-              【微擎面板&集群云主机：云主机业务分离成独立应用】
-              https://www.tapd.cn/tapd_fe/62789787/story/detail/1162789787001015242
             properties:
+              canBaseBuy:
+                type: boolean
+              canDelete:
+                type: boolean
+              canExpandBuy:
+                type: boolean
+              canRenewBuy:
+                type: boolean
+              clusterPhase:
+                description: ClusterPhase is a high-level summary of the cluster's
+                  current lifecycle state.
+                type: string
               conditions:
                 items:
                   description: Condition contains details for one aspect of the current
@@ -188,11 +316,39 @@ spec:
                   - type
                   type: object
                 type: array
+              diffMonth:
+                type: string
+              effectiveResource:
+                properties:
+                  bandwidth:
+                    format: int64
+                    type: integer
+                  cpu:
+                    format: int64
+                    type: integer
+                  memory:
+                    format: int64
+                    type: integer
+                  storage:
+                    format: int64
+                    type: integer
+                type: object
+              isExpired:
+                type: boolean
+              isRecycling:
+                type: boolean
+              k3kStatufulSetName:
+                type: string
               phase:
                 type: string
-              readyReplicas:
-                format: int32
-                type: integer
+              rescueJobName:
+                type: string
+              rescuePhase:
+                type: string
+              server0ContainerName:
+                type: string
+              server0PodName:
+                type: string
             type: object
         required:
         - spec

@@ -3,13 +3,14 @@ package console
 import (
 	"context"
 	"log/slog"
+	"os"
 
+	cvmv1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
 	"github.com/spf13/cobra"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/order"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type K3kOrderReturnCheck struct {
@@ -25,40 +26,45 @@ func (c K3kOrderReturnCheck) Configure(cmd *cobra.Command) {
 }
 
 func (c K3kOrderReturnCheck) GetDescription() string {
-	return "退款记录除了里"
+	return "退款记录"
 }
 
 func (c K3kOrderReturnCheck) Handle(cmd *cobra.Command, args []string) {
 
 	sdk := k8s.NewK8sClient()
-	// sigClient, err := sdk.ToSigClient()
-	// if err != nil {
-	// 	slog.Error("Failed to create sigclient", "error", err)
-	// 	return
-	// }
-
-	serviceAccounts, err := sdk.ClientSet.CoreV1().ServiceAccounts("default").List(context.Background(), v1.ListOptions{})
+	sigClient, err := sdk.ToSigClient()
 	if err != nil {
-		slog.Error("Failed to list configmaps", "error", err)
+		slog.Error("Failed to create sigclient", "error", err)
 		return
 	}
-	err = c.handleSa(serviceAccounts, sdk.Sdk)
+	cvmList := &cvmv1alpha1.CvmList{}
+	err = sigClient.List(context.TODO(), cvmList)
 	if err != nil {
-		slog.Warn("handle sa err", "err", err)
+		slog.Error("return check list find err", "err", err)
+		os.Exit(1)
 	}
+	c.handleCvm(cvmList, sdk.Sdk, sigClient)
 }
 
-func (K3kOrderReturnCheck) handleSa(serviceAccounts *corev1.ServiceAccountList, sdk *k8s.Sdk) error {
+func (K3kOrderReturnCheck) handleCvm(cvmList *cvmv1alpha1.CvmList, sdk *k8s.Sdk, client sigclient.Client) error {
 	orderApi, err := order.NewK3kOrderApi(sdk)
 	if err != nil {
 		return err
 	}
-	for _, sa := range serviceAccounts.Items {
-		err = fixReturn(&sa, orderApi)
+	for _, cvm := range cvmList.Items {
+		err := fixReturnCvmOrder(&cvm, orderApi, client)
 		if err != nil {
-			slog.Warn("处理退款记录失败", "name", sa.Name, "err", err)
+			slog.Error("load return cvm order err", "err", err)
 			continue
 		}
+	}
+	return nil
+}
+func fixReturnCvmOrder(cvm *cvmv1alpha1.Cvm, orderApi *order.K3kOrderApi, client sigclient.Client) error {
+
+	err := orderApi.LockReturnLastOrder(context.Background(), cvm, true)
+	if err != nil {
+		return err
 	}
 	return nil
 }

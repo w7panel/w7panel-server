@@ -2,11 +2,7 @@ package webhook
 
 import (
 	"context"
-	"log/slog"
-	"net/http"
 
-	"github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -17,16 +13,10 @@ func (m *ResourceMutator) handleVirtualClusterPolicy(ctx context.Context, req ad
 	// 	return admission.Allowed("VirtualClusterPolicy")
 	// }
 	// return admission.Denied("VirtualClusterPolicy")
-	k3kpolicy := &v1alpha1.VirtualClusterPolicy{}
-	if err := (m.decoder).Decode(req, k3kpolicy); err != nil {
-		return admission.Errored(http.StatusBadRequest, err)
-	}
-	defer func() {
-		slog.Info("发布到商店", "name", k3kpolicy.Name)
-		if err := k3k.CheckPublish(ctx, m.client, k3kpolicy); err != nil {
-			slog.Error("发布到商店失败", "error", err)
-		}
-	}()
+	// k3kpolicy := &v1alpha1.VirtualClusterPolicy{}
+	// if err := (m.decoder).Decode(req, k3kpolicy); err != nil {
+	// 	return admission.Errored(http.StatusBadRequest, err)
+	// }
 
 	return admission.Allowed("VirtualClusterPolicy")
 

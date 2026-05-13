@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/w7panel/w7panel/common/service"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
@@ -16,8 +15,8 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type K3k struct {
@@ -38,102 +37,26 @@ func (self K3k) Info(http *gin.Context) {
 	// rootSdk := k8s.NewK8sClient().Sdk
 	if user != nil {
 		result := user.ToArray()
-		if user.IsClusterUser() {
-			// clusterMode := user.GetClusterMode()
-			// configMapName := "k3k." + clusterMode + ".config"
-			// ns := rootSdk.GetNamespace()
-			// if ns == "" {
-			// 	ns = "default"
-			// }
-			// sigclient, err := rootSdk.ToSigClient()
-			// if err != nil {
-			// 	slog.Error("获取集群配置失败", "error", err)
-			// }
-			// if err == nil {
-			// 	obj := &metav1.PartialObjectMetadata{
-			// 		ObjectMeta: metav1.ObjectMeta{
-			// 			Name:      user.GetClusterPolicy(),
-			// 			Namespace: user.Namespace,
-			// 		},
-			// 		TypeMeta: metav1.TypeMeta{
-			// 			APIVersion: "k3k.io/v1alpha1",
-			// 			Kind:       "VirtualClusterPolicy",
-			// 		},
-			// 	}
-			// 	okey := types.NamespacedName{Name: user.GetClusterPolicy(), Namespace: user.Namespace}
-			// 	err := sigclient.Get(context.TODO(), okey, obj)
-			// 	if err != nil {
-			// 		slog.Error("获取集群策略失败", "error", err)
-			// 	}
-			// 	if err == nil {
-			// 		result["w7.cc/menu"] = obj.Annotations["permission"]
-			// 	}
-			// }
-			// configmap, err := rootSdk.ClientSet.CoreV1().ConfigMaps(ns).Get(rootSdk.Ctx, configMapName, metav1.GetOptions{})
-			// if err != nil {
-			// 	slog.Error("获取集群配置失败", "error", err)
-			// }
-			// if configmap != nil {
-			// 	result["w7.cc/menu"] = configmap.Data["menu"]
-			// }
-		}
 		self.JsonResponseWithoutError(http, result)
 		return
 	}
 }
 
 func (self K3k) ReInitCluster(http *gin.Context) {
-	token := http.MustGet("k8s_token").(string)
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	err = k3k.InitCluster(k8s.NewK8sClient().Sdk, user)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonSuccessResponse(http)
-	return
-}
-
-func (self K3k) ReInitClusterSuper(http *gin.Context) {
-	type ParamsValidate struct {
-		K3kUserName string `form:"k3kUserName" validate:"required"`
-	}
-	params := ParamsValidate{}
-	if !self.Validate(http, &params) {
-		return
-	}
-
-	token := http.MustGet("k8s_token").(string)
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	if !user.IsFounder() {
-		self.JsonResponseWithServerError(http, errors.New("非创始人用户无法操作"))
-		return
-	}
-
-	sdk := k8s.NewK8sClient()
-	sdk.Clear(params.K3kUserName) //清理缓存中的sdk信息
-
-	sa, err := sdk.ClientSet.CoreV1().ServiceAccounts("default").Get(sdk.Ctx, params.K3kUserName, metav1.GetOptions{})
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	k3kUser := types.NewK3kUser(sa)
-	err = k3k.InitCluster(sdk.Sdk, k3kUser)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonSuccessResponse(http)
-	return
+	// token := http.MustGet("k8s_token").(string)
+	// user, err := k3k.TokenToK3kUser(token)
+	// if err != nil {
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
+	// err = k3k.InitCluster(k8s.NewK8sClient().Sdk, user)
+	// if err != nil {
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
+	// self.JsonSuccessResponse(http)
+	// return
+	self.JsonSuccessResponse(http) //不需要初始化集群
 }
 
 func (self K3k) DomainWhiteList(http *gin.Context) {
@@ -148,10 +71,55 @@ func (self K3k) DomainWhiteList(http *gin.Context) {
 
 	云端注册需要 转化token
 */
+func (self K3k) LoginCvm(http *gin.Context) {
+
+	token := http.MustGet("k8s_token").(string)
+	k8sToken := k8s.NewK8sToken(token)
+	name := http.Param("name")
+	namespace := http.Param("namespace")
+
+	if k8sToken.IsK3kCluster() {
+		namespace = k8sToken.GetNamespace()
+	}
+	// user, err := k3k.TokenToK3kUser(token)
+	// if err != nil {
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
+	client := k8s.NewK8sClient().Sdk
+
+	cvm, err := k3k.TokenToCvm(http, token, namespace, name)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	seconds := facade.Config.GetInt64("app.login_seconds")
+	sa, err := client.Login2(cvm.GetK3kName(), "", false)
+	if err != nil {
+		err2 := fmt.Errorf("用户名密码不正确")
+		self.JsonResponseWithError(http, err2, 500)
+		return
+	}
+	token, isK3kUser, err := k3k.LoginByServiceAccount(client, sa, seconds, true, cvm.Name)
+	if err != nil {
+		err2 := fmt.Errorf("用户名密码不正确")
+		self.JsonResponseWithError(http, err2, 500)
+		return
+	}
+	rs := service.GetRefreshToken(sa.Name, cvm.Name)
+	self.JsonResponseWithoutError(http, gin.H{
+		"token":        token,
+		"expire":       time.Now().Add(time.Duration(seconds) * time.Second).Unix(),
+		"isK3kUser":    isK3kUser,
+		"refreshToken": rs.Token,
+	})
+}
+
 func (self K3k) Login(http *gin.Context) {
 
 	type ParamsValidate struct {
 		K3kUserName string `form:"k3kUserName" validate:"required"`
+		CvmName     string `form:"cvmName" validate:"required"`
 	}
 	params := ParamsValidate{}
 	if !self.Validate(http, &params) {
@@ -179,13 +147,13 @@ func (self K3k) Login(http *gin.Context) {
 		self.JsonResponseWithError(http, err2, 500)
 		return
 	}
-	token, isK3kUser, err := k3k.LoginByServiceAccount(client, sa, seconds, true)
+	token, isK3kUser, err := k3k.LoginByServiceAccount(client, sa, seconds, true, params.CvmName)
 	if err != nil {
 		err2 := fmt.Errorf("用户名密码不正确")
 		self.JsonResponseWithError(http, err2, 500)
 		return
 	}
-	rs := service.GetRefreshToken(sa.Name)
+	rs := service.GetRefreshToken(sa.Name, "")
 	self.JsonResponseWithoutError(http, gin.H{
 		"token":        token,
 		"expire":       time.Now().Add(time.Duration(seconds) * time.Second).Unix(),
@@ -324,7 +292,7 @@ func (self K3k) SyncMicroApp(http *gin.Context) {
 		return
 	}
 	// slog.Error("同步SyncMicroApp")
-	microapp.Sync(params.K3kName, params.K3kNamespace)
+	microapp.Sync(params.K3kName, params.K3kNamespace, params.CvmName)
 	self.JsonSuccessResponse(http)
 	return
 }
@@ -361,19 +329,19 @@ func (self K3k) IdcResource(http *gin.Context) {
 		self.JsonSuccessResponse(http)
 		return
 	}
-	list := &v1alpha1.VirtualClusterPolicyList{}
+	list := &v1.ConfigMapList{}
 	err = client.List(http, list)
 	if err != nil {
 		self.JsonResponseWithoutError(http, list)
 		return
 	}
 	result := types.Params{}
-	for i, v := range list.Items {
+	for _, v := range list.Items {
 		if (v.Labels != nil) && (v.Labels["w7.cc/showInShop"] != "true") {
 			continue
 		}
-		k3k.RefreshK3kPolicy(&list.Items[i], sdk.Sdk, false)
-		policy := types.NewK3kClusterPolicy(&v)
+
+		policy := types.NewK3kCostConfigMap(&v)
 		params, err := policy.ToPackageItemsParams(true)
 		if err != nil {
 			slog.Warn("idc resource err", "error", err)
@@ -384,37 +352,4 @@ func (self K3k) IdcResource(http *gin.Context) {
 
 	self.JsonResponseWithoutError(http, result)
 
-}
-
-func (self K3k) WhMoshi(http *gin.Context) {
-	token := http.MustGet("k8s_token").(string)
-	client := k8s.NewK8sClient()
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	if !user.IsClusterUser() {
-		self.JsonSuccessResponse(http)
-		return
-	}
-	k3k.WhMoshiToggle(client.Sdk, user)
-	self.JsonSuccessResponse(http)
-}
-
-// 维护救援模式job 重新新建job
-func (self K3k) WhJob(http *gin.Context) {
-	token := http.MustGet("k8s_token").(string)
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	err = k3k.WhJob(k8s.NewK8sClient().Sdk, user)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonSuccessResponse(http)
-	return
 }

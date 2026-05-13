@@ -1,43 +1,31 @@
 #!/bin/bash
-echo "不再执行升级"
-if [ "${K3K_MODE}" == "virtual" ]; then
-kubectl delete ing/ing-k3k-agent -n default --ignore-not-found
-fi 
 
 
-# if [ "${K3K_MODE}" == "virtual" ]; then
-# kubectl --kubeconfig=${KUBECONFIG_PATH} apply -f - <<EOF
-# kind: Ingress
-# apiVersion: networking.k8s.io/v1
-# metadata:
-#     name: ing-k3k-agent
-#     namespace: default
-#     labels:
-#         app: w7panel-k3k-agent-${K3K_NAME}
-#         group: w7panel-k3k-agent-${K3K_NAME}
-#         higress.io/resource-definer: higress
-#     annotations:
-#         higress.io/resource-definer: higress
-#         kubernetes.io/ingress.class: higress
-# spec:
-#     rules:
-#         -
-#             host: w7panel-k3k-agent-${K3K_NAME}.w7panel.xyz
-#             http:
-#                 paths:
-#                     -
-#                         path: /
-#                         pathType: Prefix
-#                         backend:
-#                             service:
-#                                 name: w7panel-k3k-agent-${K3K_NAME}
-#                                 port:
-#                                     number: 8000
-# EOF
-# fi
+echo "更新higress"
+helm upgrade higress https://cdn.w7.cc/w7panel/charts/higress-2.1.6.tgz \
+     --kubeconfig=${KUBECONFIG_PATH} \
+     --namespace higress-system \
+     --create-namespace \
+     --version v2.1.6 \
+     --set global.ingressClass=higress \
+     --set higress-core.gateway.replicas=1 \
+     --set higress-core.gateway.resources.limits.cpu=0 \
+     --set higress-core.gateway.resources.limits.memory=0 \
+     --set higress-core.gateway.resources.requests.cpu=0 \
+     --set higress-core.gateway.resources.requests.memory=0 \
+     --set higress-core.controller.replicas=1 \
+     --set higress-core.controller.resources.requests.cpu=0 \
+     --set higress-core.controller.resources.requests.memory=0 \
+     --set higress-core.controller.resources.limits.cpu=0 \
+     --set higress-core.controller.resources.limits.memory=0 \
+     --set higress-core.pilot.replicaCount=1 \
+     --set higress-core.pilot.resources.requests.cpu=0 \
+     --set higress-core.pilot.resources.requests.memory=0 \
+     --set higress-console.replicaCount=0 \
+     --set higress-console.resources.requests.cpu=0 \
+     --set higress-console.resources.requests.memory=0 --install
 
-# 低版本agent 没有cert-manager
-if [ "${K3K_MODE}" == "virtual" ]; then
+echo "更新cert-manager"
 helm get notes cert-manager -n cert-manager || helm upgrade cert-manager $KO_DATA_PATH/charts/cert-manager-v1.19.2.tgz \
      --kubeconfig=${KUBECONFIG_PATH} \
      --namespace cert-manager \
@@ -47,9 +35,9 @@ helm get notes cert-manager -n cert-manager || helm upgrade cert-manager $KO_DAT
      --set prometheus.enabled=false \
      --set webhook.timeoutSeconds=4 \
      --install
-fi
 
-if [ "${K3K_MODE}" == "virtual" ]; then
+echo "更新cert-manager w7-letsencrypt-prod"
+
 kubectl get ClusterIssuer/w7-letsencrypt-prod || kubectl --kubeconfig=${KUBECONFIG_PATH} apply -f - <<EOF
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -71,7 +59,52 @@ spec:
             class: higress
 EOF
            
-fi
+
+echo "更新EnvoyFilter"
+kubectl --kubeconfig=${KUBECONFIG_PATH} apply -f - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+    name: higress-gateway-global-route-config
+    namespace: higress-system
+spec:
+    configPatches:
+        -
+            applyTo: NETWORK_FILTER
+            match:
+                context: GATEWAY
+                listener:
+                    filterChain:
+                        filter:
+                            name: envoy.filters.network.http_connection_manager
+            patch:
+                operation: MERGE
+                value:
+                    typed_config:
+                        '@type': >-
+                            type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                        skip_xff_append: true
+                        xff_num_trusted_hops: 2
+        -
+            applyTo: ROUTE_CONFIGURATION
+            match:
+                context: GATEWAY
+            patch:
+                operation: MERGE
+                value:
+                    request_headers_to_add:
+                        -
+                            append: false
+                            header:
+                                key: x-real-ip
+                                value: '%REQ(X-Forwarded-For)%'
+                        -
+                            append: false
+                            header:
+                                key: X-Forwarded-Proto
+                                value: '%REQ(X-Forwarded-Proto)%'
+EOF
+
 # "microapp升级过需要更新crd"
 kubectl apply -f $KO_DATA_PATH/crds --server-side
 
@@ -81,3 +114,14 @@ kubectl apply -f $KO_DATA_PATH/crds --server-side
 # w7panel sitemanager-upgrade --version=1.0.26 --identifie=w7_nodejs --is-agent=true
 # w7panel sitemanager-upgrade --version=1.0.26 --identifie=w7_python --is-agent=true
 # w7panel sitemanager-upgrade --version=1.0.25 --identifie=w7_sitemanager --is-agent=true
+
+echo "删除旧的microapp"
+kubectl -n default delete microapp -l microapp.w7.cc/from=root | echo "clear root microapp"
+
+kubectl get jobs -n default -o json \
+  | jq -r '.items[]
+    | select(
+        any(.status.conditions[]?; (.type == "Complete" or .type == "Failed") and .status == "True")
+      )
+    | .metadata.name' \
+  | xargs -r kubectl delete job -n default

@@ -227,3 +227,15 @@ func IsVolumeLock(volume *longhornV1beta2.Volume, eList *longhornV1beta2.VolumeA
 	}
 	return false, ""
 }
+func VolumeAttachNodeId(volume *longhornV1beta2.Volume, eList *longhornV1beta2.VolumeAttachmentList) string {
+	vtList := lo.Filter(eList.Items, func(eg longhornV1beta2.VolumeAttachment, index int) bool {
+		return eg.Spec.Volume == volume.Name
+	})
+	if len(vtList) > 0 {
+		first := vtList[0]
+		for _, ticket := range first.Spec.AttachmentTickets {
+			return ticket.NodeID
+		}
+	}
+	return ""
+}

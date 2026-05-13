@@ -4,8 +4,8 @@ import (
 	"errors"
 	"log/slog"
 
+	cvmv1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -43,6 +43,7 @@ func CanAddResource(rs *Resource, callback func(*corev1.ServiceAccount) *Resourc
 }
 
 func CanAddResourceCvm(rs *Resource, callback func(*cvmv1alpha1.Cvm) *Resource) error {
+
 	client, err := NewResourceClient(k8s.NewK8sClient().Sdk)
 	if err != nil {
 		return err

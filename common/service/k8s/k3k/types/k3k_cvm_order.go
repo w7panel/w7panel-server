@@ -1,11 +1,10 @@
 package types
 
 import (
-	"errors"
 	"time"
 
+	v1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/console"
-	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 )
 
 type K3kCvmOrder struct {
@@ -95,37 +94,48 @@ func (u *K3kCvmOrder) GetExpandOrderSn() string {
 }
 
 func (u *K3kCvmOrder) SetBaseOrderPaid(info *console.OrderInfo) {
+	// if u.Spec.BaseOrder == nil {
+	// 	return
+	// }
+	// if u.Spec.BaseOrder.OrderSn == info.OrderSn && u.Spec.BaseOrder.Status != W7_ORDER_PAID {
+	// u.Labels[K3K_BUY_MODE] = "buy"
+
+	// u.Labels[W7_BASE_ORDER_STATUS] = W7_ORDER_PAID
+	if u.Spec.BaseOrder != nil {
+		if u.Spec.BaseOrder.OrderSn == info.OrderSn && u.Spec.BaseOrder.Status == W7_ORDER_PAID {
+			return
+		}
+	}
 	if u.Spec.BaseOrder == nil {
-		return
+		u.Spec.BaseOrder = &v1alpha1.CvmOrder{
+			OrderSn: info.OrderSn,
+			Status:  W7_ORDER_PAID,
+		}
 	}
-	if u.Spec.BaseOrder.OrderSn == info.OrderSn && u.Spec.BaseOrder.Status != W7_ORDER_PAID {
-		// u.Labels[K3K_BUY_MODE] = "buy"
-
-		// u.Labels[W7_BASE_ORDER_STATUS] = W7_ORDER_PAID
-		u.Spec.BaseOrder.Status = W7_ORDER_PAID
-		u.Spec.BaseOrder.Hour = int(info.GetHour())
-		u.changeExpireTime(int(info.GetHour()))
-		baseResource := BuyResource{
-			Cpu:       info.Cpu,
-			Memory:    info.Memory,
-			Storage:   info.Storage,
-			Bandwidth: info.Bandwidth,
-		}
-		u.Spec.BaseOrder.Resource = &v1alpha1.CvmResource{
-			CPU:       baseResource.Cpu,
-			Memory:    baseResource.Memory,
-			Storage:   baseResource.Storage,
-			Bandwidth: baseResource.Bandwidth,
-		}
-		if u.Spec.PurchasedResource == nil {
-			u.Spec.PurchasedResource = &v1alpha1.CvmResource{}
-		}
-		u.Spec.PurchasedResource.Add(u.Spec.BaseOrder.Resource)
-		// u.Spec.PendingPurchasedResource = addCvmResource(u.Spec.PendingPurchasedResource, info.Cpu, info.Memory, info.Storage, info.Bandwidth)
-
-		u.setCapacityCheckPending()
-
+	u.Spec.BaseOrder.Status = W7_ORDER_PAID
+	u.Spec.BaseOrder.Hour = int(info.GetHour())
+	u.changeExpireTime(int(info.GetHour()))
+	baseResource := BuyResource{
+		Cpu:       info.Cpu,
+		Memory:    info.Memory,
+		Storage:   info.Storage,
+		Bandwidth: info.Bandwidth,
 	}
+	u.Spec.BaseOrder.Resource = &v1alpha1.CvmResource{
+		CPU:       baseResource.Cpu,
+		Memory:    baseResource.Memory,
+		Storage:   baseResource.Storage,
+		Bandwidth: baseResource.Bandwidth,
+	}
+	if u.Spec.PendingPurchasedResource == nil {
+		u.Spec.PendingPurchasedResource = &v1alpha1.CvmResource{}
+	}
+	u.Spec.PendingPurchasedResource.Add(u.Spec.BaseOrder.Resource)
+	// u.Spec.PendingPurchasedResource = addCvmResource(u.Spec.PendingPurchasedResource, info.Cpu, info.Memory, info.Storage, info.Bandwidth)
+
+	u.setCapacityCheckPending()
+
+	// }
 }
 
 func (u *K3kCvmOrder) SetRenewOrderPaid(info *console.OrderInfo) {
@@ -228,47 +238,53 @@ func (u *K3kCvmOrder) NeedRenew() bool {
 }
 
 // 有错就是false
-func (u *K3kCvmOrder) CanCreateBaseOrderError() error {
+func (u *K3kCvmOrder) CanBaseBuy() bool {
 
-	if u.NeedBuyResource() {
-		if u.Spec.BaseOrder == nil {
-			return nil
-		}
-		if u.Spec.BaseOrder.Status == W7_ORDER_PAID {
-			return errors.New("已经购买基础资源，无法重复购买")
-		}
-		return nil
-	}
-	return errors.New("当前用户未配置费用套餐，无法购买")
+	u.ComputeStatus()
+	return *u.Status.CanBaseBuy
+	// if u.NeedBuyResource() {
+	// 	if u.Spec.BaseOrder == nil {
+	// 		return nil
+	// 	}
+	// 	if u.Spec.BaseOrder.Status == W7_ORDER_PAID {
+	// 		return errors.New("已经购买基础资源，无法重复购买")
+	// 	}
+	// 	return nil
+	// }
+	// return errors.New("当前用户未配置费用套餐，无法购买")
 }
 
-func (u *K3kCvmOrder) CanRenewError() error {
-	if u.NeedBuyResource() {
-		_, err := u.GetExpireTime() // 如果没有过期时间，则不需要续费
-		if err != nil {
-			return errors.New("未购买基础资源，无需购买")
-		}
-		return nil
-	}
-	return errors.New("当前用户未配置费用套餐，无法购买")
+func (u *K3kCvmOrder) CanRenew() bool {
+	u.ComputeStatus()
+	return *u.Status.CanRenewBuy
+	// if u.NeedBuyResource() {
+	// 	_, err := u.GetExpireTime() // 如果没有过期时间，则不需要续费
+	// 	if err != nil {
+	// 		return errors.New("未购买基础资源，无需购买")
+	// 	}
+	// 	return nil
+	// }
+	// return errors.New("当前用户未配置费用套餐，无法购买")
 }
 
-func (u *K3kCvmOrder) CanExpandError() error {
-	if !u.IsOverSellingSuccess() {
-		return errors.New("超额检查失败，无法扩容")
-	}
-	if u.NeedBuyResource() {
-		extime, err := u.GetExpireTime() // 如果没有过期时间，则不需要续费
-		if err != nil {
-			return errors.New("未购买基础资源，无法扩容")
-		}
-		ok := extime.After(time.Now())
-		if ok {
-			return nil
-		}
-		return errors.New("基础资源已过期，无法扩容")
-	}
-	return errors.New("当前用户未配置费用套餐，无法购买")
+func (u *K3kCvmOrder) CanExpand() bool {
+	u.ComputeStatus()
+	return *u.Status.CanExpandBuy
+	// if !u.IsOverSellingSuccess() {
+	// 	return errors.New("超额检查失败，无法扩容")
+	// }
+	// if u.NeedBuyResource() {
+	// 	extime, err := u.GetExpireTime() // 如果没有过期时间，则不需要续费
+	// 	if err != nil {
+	// 		return errors.New("未购买基础资源，无法扩容")
+	// 	}
+	// 	ok := extime.After(time.Now())
+	// 	if ok {
+	// 		return nil
+	// 	}
+	// 	return errors.New("基础资源已过期，无法扩容")
+	// }
+	// return errors.New("当前用户未配置费用套餐，无法购买")
 }
 
 func (u *K3kCvmOrder) NeedBuyResource() bool {

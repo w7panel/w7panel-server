@@ -101,8 +101,9 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		ExpandErr         string `json:"expandErr"`   //扩容失败消息
 		State             string `json:"state"`       //volume状态
 		VolumeName        string `json:"volumeName"`
-		IsLock            string `json:"isLock"`     //是否锁定
-		LockNodeId        string `json:"lockNodeId"` //锁定nodeId
+		IsLock            string `json:"isLock"`         //是否锁定
+		LockNodeId        string `json:"lockNodeId"`     //锁定nodeId
+		AttachedNodeId    string `json:"attachedNodeId"` //挂载nodeId
 	}
 
 	sdk := k8s.NewK8sClient().Sdk
@@ -141,6 +142,8 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		size := volume.Status.ActualSize //已使用空间 /1024/1024/ MB
 		isExpanding, expandErrstr := longhorn.IsVolumeExpanding(&volume, engineList)
 		isLock, nodeId := longhorn.IsVolumeLock(&volume, vtList)
+		attchNodeId := longhorn.VolumeAttachNodeId(&volume, vtList)
+		// isLock = true //test
 		// isExpanding = true
 		vs := VolumesStatus{
 			NumberOfReplicas:  volume.Spec.NumberOfReplicas,
@@ -156,6 +159,7 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 			VolumeName:        volume.Name,
 			IsLock:            strconv.FormatBool(isLock),
 			LockNodeId:        nodeId,
+			AttachedNodeId:    attchNodeId,
 
 			// CreatedAt:        volume.Status.KubernetesStatus.PVCName,
 			// CreatedAt:        volume.Status.CreatedAt,
@@ -188,7 +192,8 @@ func (self Longhorn) Attach(http *gin.Context) {
 		params.AttachmentID = "longhorn-ui"
 	}
 	volName := http.Param("volumeName")
-	err := longhorn.LonghornVolumeAttach(volName, params.HostId, params.AttachmentID, params.AttachedBy, params.AttacherType)
+	df := strconv.FormatBool(params.DisableFrontend)
+	err := longhorn.LonghornVolumeAttach(volName, params.HostId, params.AttachmentID, params.AttachedBy, params.AttacherType, df)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
@@ -224,6 +229,48 @@ func (self Longhorn) CancelExpansion(http *gin.Context) {
 
 	volName := http.Param("volumeName")
 	err := longhorn.LonghornVolumeCancelExpansion(volName)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponse(http, nil, nil, 200)
+}
+
+func (self Longhorn) TrimFilesystem(http *gin.Context) {
+	//{forceDetach: true, attachmentID: "longhorn-ui", hostId: ""}
+
+	volName := http.Param("volumeName")
+	err := longhorn.LonghornVolumeTrimFilesystem(volName)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponse(http, nil, nil, 200)
+}
+
+func (self Longhorn) SnapshotDelete(http *gin.Context) {
+	//{forceDetach: true, attachmentID: "longhorn-ui", hostId: ""}
+	type Param struct {
+		Name string `json:"name"`
+	}
+	params := Param{}
+	if !self.Validate(http, &params) {
+		return
+	}
+
+	volName := http.Param("volumeName")
+	err := longhorn.LonghornVolumeSnapshotDelete(volName, params.Name)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponse(http, nil, nil, 200)
+}
+func (self Longhorn) SnapshotPurge(http *gin.Context) {
+	//{forceDetach: true, attachmentID: "longhorn-ui", hostId: ""}
+
+	volName := http.Param("volumeName")
+	err := longhorn.LonghornVolumeSnapshotPurge(volName)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return

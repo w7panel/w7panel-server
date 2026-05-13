@@ -35,9 +35,11 @@ type CertVerify struct {
 }
 
 type PayResult struct {
-	NeedPay bool   `json:"needPay"`
-	Ticket  string `json:"ticket"`
-	OrderSn string `json:"ipOrderSn"`
+	NeedPay      bool   `json:"needPay"`
+	Ticket       string `json:"ticket"`
+	OrderSn      string `json:"ipOrderSn"`
+	CvmName      string `json:"cvmName"`
+	CvmNamespace string `json:"cvmNamespace"`
 }
 
 // declared 使用K3kOrder
@@ -50,6 +52,7 @@ type OrderInfo struct {
 	Memory      int64  `json:"memory"`          //
 	Storage     int64  `json:"storage"`         //
 	Bandwidth   int64  `json:"bandwidth"`       // 带宽
+	CvmName     string `json:"cvm_name"`        // cvm名称
 }
 
 func (c *OrderInfo) GetHour() int64 {
@@ -237,13 +240,14 @@ func (c *ConsoleCdClient) PreInstall(consoleurl string, clusterId string) (*PreI
 
 func (c *ConsoleCdClient) CreatePanelOrder(urlValues url.Values) (*PayResult, error) {
 	result := &PayResult{}
-	response, err := c.client.R().SetAuthToken(c.token).SetFormDataFromValues(urlValues).SetResult(result).Post(ConsoleCDPanelOrderApi)
+	cerr := &ConsoleError{}
+	response, err := c.client.R().SetAuthToken(c.token).SetFormDataFromValues(urlValues).SetResult(result).SetError(cerr).Post(ConsoleCDPanelOrderApi)
 	if err != nil {
 		return nil, err
 	}
 	if response.StatusCode() > 299 {
 		slog.Warn("CreatePanelOrder error", "statusCode", response.StatusCode(), "response", response.String())
-		return nil, errors.New("CreatePanelOrder error" + response.String())
+		return nil, cerr
 	}
 	return result, err
 }

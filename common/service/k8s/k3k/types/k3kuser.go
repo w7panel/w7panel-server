@@ -85,16 +85,27 @@ func (u *k3kUser) IsClusterRecycle() bool {
 func (u *k3kUser) IsClusterLabelReady() bool {
 	return u.Labels[K3K_CLUSTER_STATUS] == K3K_STATUS_USER_READY
 }
-func (u *k3kUser) IsK3kUser() bool {
-	return u.Labels[K3K_USER_MODE] == "cluster"
-}
+
+// func (u *k3kUser) IsK3kUser() bool {
+// 	return false //去掉 cluster用户
+// 	// return u.Labels[K3K_USER_MODE] == "cluster"
+// }
 
 func (u *k3kUser) IsClusterUser() bool {
+	return false
+}
+
+func (u *k3kUser) IsOldClusterUser() bool {
 	return u.Labels[K3K_USER_MODE] == "cluster"
 }
 
 func (u *k3kUser) IsNormalUser() bool {
 	return u.Labels[K3K_USER_MODE] == "normal"
+}
+
+// 测试不让agent 每次重建
+func (u *k3kUser) SkipDaemonset() bool {
+	return u.Labels["w7.cc/skip-ds"] == "true"
 }
 
 func (u *k3kUser) IsInitK3k() bool {
@@ -120,26 +131,28 @@ func (u *k3kUser) GetUserMode() string {
 	return ""
 }
 func (u *k3kUser) GetClusterMode() string {
-	name, ok := u.Annotations[K3K_CLUSTER_MODE]
-	if ok {
-		return name
-	}
-	return "unknown"
+	return "virtual"
+	// name, ok := u.Annotations[K3K_CLUSTER_MODE]
+	// if ok {
+	// 	return name
+	// }
+	// return "unknown"
 }
 
 func (u *k3kUser) GetClusterPolicy() string {
-	name, ok := u.Annotations[K3K_CLUSTER_POLICY]
-	if ok {
-		return name
-	}
-	return ""
+	return "default"
+	// name, ok := u.Annotations[K3K_CLUSTER_POLICY]
+	// if ok {
+	// 	return name
+	// }
+	// return ""
 }
 
 func (u *k3kUser) GetK3kNamespace() string {
-	name, ok := u.Labels[K3K_NAMESPACE]
-	if ok {
-		return name
-	}
+	// name, ok := u.Labels[K3K_NAMESPACE]
+	// if ok {
+	// 	return name
+	// }
 	return "k3k-" + u.GetName()
 }
 
@@ -208,19 +221,15 @@ func (u *k3kUser) GetClusterDataStorageRequestSize() string {
 }
 
 func (u *k3kUser) GetAgentName() string {
-	return helper.GetK3kAgentName(u.GetK3kName())
+	return helper.GetK3kAgentName(u.Name)
 }
 
-func (u *k3kUser) GetVirtualIngressServiceName() string {
-	return u.GetK3kNamespace() + "-service-w7"
+func (u *k3kUser) GetVirtualIngressServiceName(cvmName string) string {
+	return helper.GetVirtualIngressServiceName(u.GetK3kNamespace(), cvmName)
 }
 
 func (u *k3kUser) GetApiServerHost() string {
 	return helper.GetApiServerHost(u.GetK3kNamespace())
-}
-
-func (u *k3kUser) GetKubeconfigMapName() string {
-	return "k3k-kubeconfig-" + u.GetK3kName()
 }
 
 func (u *k3kUser) GetDefaultVolumeName() string {
@@ -266,6 +275,11 @@ func (u *k3kUser) SetWeihu(ok bool) {
 
 func (u *k3kUser) GetMenu() string {
 
+	if u.SupportCvm() && !u.IsCvmReqUser() {
+		whMenu := []string{"system-resource", "system-cloud"}
+		json, _ := json.Marshal(whMenu)
+		return string(json)
+	}
 	if u.IsWeihu() { //维护模式菜单
 		whMenu := []string{"cluster", "cluster-panel", "cluster-resource", "app", "app-apps", "app-apps-delete"}
 		json, _ := json.Marshal(whMenu)
@@ -309,6 +323,7 @@ func (u *k3kUser) GetDebugMode() string {
 	if !u.IsClusterUser() {
 		return "true"
 	}
+
 	name, ok := u.Annotations[K3K_DEBUG]
 	if ok {
 		return name
@@ -320,9 +335,9 @@ func (u *k3kUser) CanInitCluster() bool {
 	if !u.IsOverSellingSuccess() {
 		return false
 	}
-	if u.IsClusterUser() {
-		return u.IsClusterCreating() || u.IsClusterNew()
-	}
+	// if u.IsClusterUser() {
+	// 	return u.IsClusterCreating() || u.IsClusterNew()
+	// }
 	return false
 }
 func (u *k3kUser) ToArray() map[string]string {
@@ -405,11 +420,15 @@ func (u *k3kUser) ToArray() map[string]string {
 		W7_WH_JOB_STATUS:              u.GetWHJobStatus(),
 		"w7.cc/server-pod-name":       u.GetServer0Name(),
 		"w7.cc/server-container-name": u.GetServer0ContainerName(),
+		"w7.cc/support-cvm":           boolToString(u.SupportCvm()),
+		"w7.cc/is-cvm-req":            boolToString(u.IsCvmReqUser()), //是否是CVM请求用户
+		"w7.cc/cvm-name":              u.GetCvmName(),                 //cvmName
+		"w7.cc/cvm-namespace":         u.GetK3kNamespace(),
 	}
-	if !u.IsClusterUser() {
-		// result[W7_FILE_EDITTOR] = "true"
-		// result[W7_WEB_SHELL] = "true"
-	}
+	// if !u.IsClusterUser() {
+	// result[W7_FILE_EDITTOR] = "true"
+	// result[W7_WEB_SHELL] = "true"
+	// }
 	return result
 
 }
@@ -431,28 +450,13 @@ func (u *k3kUser) GetRole() string {
 	return "normal"
 }
 
-func (u *k3kUser) GetTokenAud() []string {
-	if !u.IsK3kUser() {
-		return []string{
-			u.Name,
-			u.GetRole(),
-			u.Labels[W7_CONSOLE_ID],
-			"https://kubernetes.default.svc.cluster.local",
-			"k3s",
-		}
-	}
-	// return []string{}
+func (u *k3kUser) GetTokenAud(cvmName string) []string {
 	return []string{
 		u.Name,
 		u.GetRole(),
 		u.Labels[W7_CONSOLE_ID],
-		u.GetK3kName(),
+		cvmName,
 		u.GetK3kNamespace(),
-		u.GetApiServerHost(),
-		u.GetClusterMode(),
-		u.GetClusterPolicy(),
-		u.GetLockVersion(),
-		u.GetClusterPolicyVersion(),
 		"https://kubernetes.default.svc.cluster.local",
 		"k3s",
 	}
@@ -490,11 +494,12 @@ func (u *k3kUser) ReNew() {
 	delete(u.Labels, W7_BASE_ORDER_STATUS)
 }
 
-func (u *k3kUser) ToK3kConfig() *k8s.K3kConfig {
+func (u *k3kUser) ToK3kConfig(cvmName string) *k8s.K3kConfig {
 	return &k8s.K3kConfig{
 		Name:      u.GetK3kName(),
 		Namespace: u.GetK3kNamespace(),
 		ApiServer: u.GetApiServerHost(),
+		CvmName:   cvmName,
 	}
 }
 
@@ -829,4 +834,42 @@ func (u *k3kUser) ProcessReturnK3kOrder() error {
 	}
 	delete(u.Annotations, W7_RETURN_ORDER_INFO)
 	return nil
+}
+
+// 是否是演示用户
+func (u *k3kUser) IsDemo() bool {
+	if u.Labels != nil && u.Labels[W7_DEMO_USER] == "true" {
+		return true
+	}
+	return false
+}
+
+// 当前用户是否支持cvm 购买 续费 扩容
+func (u *k3kUser) SupportCvm() bool {
+	if u.Labels != nil && u.Labels[W7_CVM_USER] == "true" {
+		return true
+	}
+	return false
+}
+
+// 是否是cvm请求用户 子集群请求用户
+func (u *k3kUser) IsCvmReqUser() bool {
+	if u.Annotations == nil {
+		return false
+	}
+	return u.Annotations[W7_CVM_NAME] != ""
+}
+
+func (u *k3kUser) SetCvmName(name string) {
+	if u.Annotations == nil {
+		u.Annotations = make(map[string]string)
+	}
+	u.Annotations[W7_CVM_NAME] = name
+}
+
+func (u *k3kUser) GetCvmName() string {
+	if u.Annotations == nil {
+		return ""
+	}
+	return u.Annotations[W7_CVM_NAME]
 }

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	cvmv1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
 	"github.com/shopspring/decimal"
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
@@ -312,6 +313,9 @@ func (k *K3kOrderApi) NotifyOrder(user *types.K3kUser, sn string) error {
 	if err != nil {
 		slog.Warn("获取订单信息失败", "orderSn", sn, "error", err)
 	}
+	if orderInfo.CvmName != "" {
+		return k.NotifyCvmOrder(user, orderInfo.CvmName, sn)
+	}
 
 	_, err = controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, user.ServiceAccount, func() error {
 		k.mu.Lock()
@@ -377,67 +381,18 @@ func (k *K3kOrderApi) FindLastReturnOrder(user *types.K3kUser) (*console.LastRet
 	return k.consoleSdkClient.FindLastReturnOrder(w7config.ClusterId, user.Name)
 }
 
-// 软事务 先记录下要更改的记录，然后标记处理完成
-func (k *K3kOrderApi) ProcessReturnOrder(user *types.K3kUser) error {
-	if !user.IsClusterUser() {
-		return nil
+func (k *K3kOrderApi) FindLastReturnCvmOrder(cvm *cvmv1alpha1.Cvm) (*console.LastReturnOrder, error) {
+	license := console.GetCurrentLicense()
+	if license == nil {
+		return nil, fmt.Errorf("免费版不支持购买")
 	}
-
-	if user.HasProcessReturnOrder() {
-		returnOrder, err := user.GetLockReturnK3kOrder()
-		if err != nil {
-			return err
-		}
-		order, err := k.consoleSdkClient.FindK3kOrder(user.Name, returnOrder.OrderSn)
-		if err != nil {
-			return err
-		}
-		if order.ReturnAt == "" {
-			_, err := k.consoleSdkClient.ReturnOrderFinish(user.Name, returnOrder.OrderSn)
-			if err != nil {
-				return err
-			}
-		}
-		_, err = controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, user.ServiceAccount, func() error {
-			k.mu.Lock()
-			defer k.mu.Unlock()
-			user.ProcessReturnK3kOrder()
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	return nil
-}
-
-// 软事务 先记录下要更改的记录，然后标记处理完成
-func (k *K3kOrderApi) ProcessReturnLastOrder(user *types.K3kUser, process bool) error {
-	if !user.IsClusterUser() {
-		return nil
-	}
-	returnOrder, err := k.FindLastReturnOrder(user)
+	baseConfigName := license.FounderSaName
+	// w7respo := k.w7respo
+	w7config, err := k.w7respo.Get(baseConfigName)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	slog.Error("处理return订单", "orderSn", returnOrder.K3kOrder.OrderSn)
-	//先锁定数据
-	if returnOrder.HasOrder {
-		_, err := controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, user.ServiceAccount, func() error {
-			k.mu.Lock()
-			defer k.mu.Unlock()
-			user.LockReturnK3kOrder(returnOrder.K3kOrder) //锁定要处理的资源
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	}
-	if process {
-		return k.ProcessReturnOrder(user)
-	}
-	return nil
+	return k.consoleSdkClient.FindLastReturnCvmOrder(w7config.ClusterId, cvm.GetK3kName(), cvm.Name)
 }
 
 func (k *K3kOrderApi) CheckCanBuy(user *types.K3kUser) error {

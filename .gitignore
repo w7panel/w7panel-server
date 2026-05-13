@@ -40,9 +40,11 @@ vendor
 vendor/** 
 w7panel-offline-*.tgz
 k8s-offline-*.tgz
+w7panel-*.tgz
 /main
 *.tar
 /test.sh
 /publish.sh
 publish.sh
 pub.sh
+/pub.sh

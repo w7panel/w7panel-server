@@ -68,11 +68,11 @@ func (self Order) CreateBaseResourceOrder(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if !k3kUser.IsClusterUser() {
-		self.JsonResponseWithServerError(http, fmt.Errorf("集群用户不允许购买资源"))
+	if !k3kUser.SupportCvm() {
+		self.JsonResponseWithServerError(http, fmt.Errorf("当前用户不支持cvm购买"))
 		return
 	}
-	payResult, err := order.CreateBaseResourceOrder(&params, k3kUser)
+	payResult, err := order.CreateBaseResourceCvmOrder(http, &params, k3kUser)
 	if err != nil {
 		slog.Error("购买失败", "error", err)
 		self.JsonResponseWithServerError(http, err)
@@ -102,11 +102,12 @@ func (self Order) CreateRenewOrder(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if !k3kUser.IsClusterUser() {
-		self.JsonResponseWithServerError(http, fmt.Errorf("集群用户不允许购买资源"))
+	if !k3kUser.SupportCvm() {
+		self.JsonResponseWithServerError(http, fmt.Errorf("当前用户不支持cvm购买"))
 		return
 	}
-	payResult, err := order.CreateRenewOrder(&params, k3kUser)
+
+	payResult, err := order.CreateRenewCvmOrder(&params, k3kUser)
 	if err != nil {
 		slog.Error("购买失败", "error", err)
 		self.JsonResponseWithServerError(http, err)
@@ -136,11 +137,12 @@ func (self Order) CreateExpandOrder(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if !k3kUser.IsClusterUser() {
-		self.JsonResponseWithServerError(http, fmt.Errorf("集群用户不允许购买资源"))
+	if !k3kUser.SupportCvm() {
+		self.JsonResponseWithServerError(http, fmt.Errorf("当前用户不支持cvm购买"))
 		return
 	}
-	payResult, err := order.CreateExpandOrder(&params, k3kUser)
+
+	payResult, err := order.CreateExpandCvmOrder(&params, k3kUser)
 	if err != nil {
 		slog.Error("购买失败", "error", err)
 		self.JsonResponseWithServerError(http, err)
@@ -229,10 +231,10 @@ func (self Order) GetPrice(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if !k3kUser.IsClusterUser() {
-		self.JsonResponseWithServerError(http, fmt.Errorf("集群用户不允许购买资源"))
-		return
-	}
+	// if !k3kUser.IsClusterUser() {
+	// 	self.JsonResponseWithServerError(http, fmt.Errorf("集群用户不允许购买资源"))
+	// 	return
+	// }
 	compute, err := k3kUser.GetOrderCompute()
 	if err != nil {
 		slog.Error("获取订单计算失败", "error", err)

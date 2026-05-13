@@ -12,13 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
-	microappType "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 type Proxy struct {
@@ -340,8 +337,10 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 	path := gin.Param("path")
 
 	token := gin.MustGet("k8s_token").(string)
+	k8sToken := k8s.NewK8sToken(token)
 
-	k3kuser, err := k3k.TokenToK3kUser(token)
+	role := k8sToken.GetRole()
+	microAppObj, err := microapp.ListInfo(token, name)
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
@@ -351,33 +350,16 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 		self.JsonResponseWithServerError(gin, err)
 		return
 	}
-	microAppObj := &microappType.MicroApp{}
-	sigclient, err := client.ToSigClient()
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-	err = sigclient.Get(client.Ctx, types.NamespacedName{Name: name, Namespace: k3kuser.GetNamespace()}, microAppObj)
-	if err != nil {
-		// 检查是否是root
-		err = sigclient.Get(client.Ctx, types.NamespacedName{Name: name + "-root", Namespace: k3kuser.GetNamespace()}, microAppObj)
-		if err != nil {
-			self.JsonResponseWithServerError(gin, err)
-			return
-		}
-
-	}
-	role := k3kuser.GetRole()
 	// if role != "founder" && role != "admin" {
 	// 	self.JsonResponseWithServerError(gin, errors.New("无权限访问"))
 	// 	return
 	// }
 	// ZZZ
-	if microAppObj.IsFromRoot() || !k3kuser.IsClusterUser() {
+	if microAppObj.IsFromRoot() || !k8sToken.IsK3kCluster() {
 		if helper.IsK3kVirtual() { //转发到子集群pod后 强制设置成founder
 			role = "founder"
 		}
-		proxy := microapp.NewMicroAppProxy(microAppObj, k3kuser.IsClusterUser(), role)
+		proxy := microapp.NewMicroAppProxy(microAppObj, k8sToken.IsK3kCluster(), role)
 		revert, err := proxy.Proxy(path)
 		if err != nil {
 			self.JsonResponseWithServerError(gin, err)
@@ -387,7 +369,7 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 		return
 	}
 	// --->panel--->sub-cluster--->microapp--->回到ZZZ 处
-	if k3kuser.IsClusterUser() {
+	if k8sToken.IsK3kCluster() {
 
 		k8stoken := k8s.NewK8sToken(token)
 		config, err := k8stoken.GetK3kConfig()

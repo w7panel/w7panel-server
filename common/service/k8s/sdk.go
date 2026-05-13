@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	cvmv1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
 	"github.com/gin-gonic/gin"
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	openapi_v2 "github.com/google/gnostic-models/openapiv2"
@@ -25,7 +26,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/terminal"
 	appgroupv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	buildimagev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/buildimage/v1alpha1"
-	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"golang.org/x/crypto/bcrypt"
@@ -814,6 +814,13 @@ func (self Sdk) Login2(username string, password string, checkPassword bool) (*c
 	if !ok {
 		return nil, fmt.Errorf("用户名密码错误")
 	}
+	// pwd, err := base64.URLEncoding.DecodeString(passwd)
+	// if err == nil {
+	// 	passwd = string(pwd)
+	// }
+	// if err != nil {
+	// 	slog.Warn("not base64 password", "username", username)
+	// }
 	if ok {
 		err = bcrypt.CompareHashAndPassword([]byte(passwd), []byte(password))
 		if err != nil {
@@ -840,23 +847,11 @@ func (self Sdk) Login2(username string, password string, checkPassword bool) (*c
 
 	return sa, nil
 }
-func (self Sdk) Login(username string, password string, createToken bool, seconds int64) (string, error) {
+func (self Sdk) LoginCreateToken(username string, password string, createToken bool, seconds int64) (string, error) {
 
-	sa, err := self.ClientSet.CoreV1().ServiceAccounts(self.namespace).Get(self.Ctx, username, metav1.GetOptions{})
+	_, err := self.Login2(username, password, true)
 	if err != nil {
 		return "", err
-	}
-
-	annotations := sa.GetAnnotations()
-	passwd, ok := annotations["password"]
-	if !ok {
-		return "", fmt.Errorf("用户名密码错误")
-	}
-	if ok {
-		err = bcrypt.CompareHashAndPassword([]byte(passwd), []byte(password))
-		if err != nil {
-			return "", err
-		}
 	}
 	if !createToken {
 		return "", nil
@@ -897,6 +892,7 @@ func (self Sdk) ResetPassword(username string, password string, usermode string)
 		if sa.Annotations == nil {
 			sa.Annotations = make(map[string]string)
 		}
+		// base64passwd := base64.URLEncoding.EncodeToString(bpassword)
 		sa.Annotations["password"] = string(bpassword)
 		if sa.Labels == nil {
 			sa.Labels = make(map[string]string)
@@ -1318,4 +1314,13 @@ func (self Sdk) GetClusterId() (string, error) {
 		return "", nil
 	}
 	return helper.StringToMD5(string(secret.Data["hash"])), nil
+}
+
+func (self Sdk) Create(ctx context.Context, obj sigclient.Object, opts ...sigclient.CreateOption) error {
+	sigclient, err := self.ToSigClient()
+	if err != nil {
+		slog.Error("创建对象失败", "error", err)
+		return err
+	}
+	return sigclient.Create(ctx, obj, opts...)
 }

@@ -2,7 +2,6 @@
 package order
 
 import (
-	"log/slog"
 	"os"
 	"testing"
 	"time"
@@ -280,52 +279,6 @@ func TestLastPaidOrder(t *testing.T) {
 		return
 	}
 	t.Log(order)
-
-	// t.Log(pay)
-}
-
-func TestLastProcessReturnOrder(t *testing.T) {
-
-	os.Setenv("LOCAL_MOCK", "true")
-	os.Setenv("USER_AGENT", "we7test-beta")
-	os.Setenv("DEBUG", "true")
-
-	// console.SetConsoleApi("http://172.16.1.116:9004")
-	// Setup mock
-	sdk := k8s.NewK8sClient().Sdk
-	client, err := sdk.ToSigClient()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	sa := &v1.ServiceAccount{}
-	err = client.Get(sdk.Ctx, ktypes.NamespacedName{Namespace: "default", Name: "console-164315"}, sa)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	k3kUser := types.NewK3kUser(sa)
-	k3kOrderApi, err := NewK3kOrderApi(sdk)
-	if err != nil {
-		t.Log(err)
-		return
-	}
-
-	if k3kUser.HasProcessReturnOrder() {
-		slog.Info("has process return order", "name", sa.Name)
-		err := k3kOrderApi.ProcessReturnOrder(k3kUser)
-		if err != nil {
-			slog.Warn("处理退款记录失败1", "name", sa.Name, "err", err)
-			t.Log(err)
-		}
-	}
-	slog.Info("check new return log")
-	err = k3kOrderApi.ProcessReturnLastOrder(k3kUser, true)
-	if err != nil {
-		slog.Warn("处理退款记录失败2", "name", sa.Name, "err", err)
-		t.Log(err)
-	}
 
 	// t.Log(pay)
 }

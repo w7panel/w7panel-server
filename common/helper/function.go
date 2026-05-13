@@ -733,6 +733,9 @@ func GetK3kServer0Name(name string) string {
 func GetK3kServer0ContainerName(name string) string {
 	return "k3k-" + name + "-server"
 }
+func GetVirtualIngressServiceName(ns, name string) string {
+	return ns + "-" + name + "-service-w7"
+}
 
 func GetApiServerHost(k3kNamespce string) string {
 	if IsLocalMock() {
@@ -1224,4 +1227,8 @@ func RetryFullSuccess(fn func() error, retry int, sleep time.Duration) error {
 		time.Sleep(sleep)
 	}
 	return lasterr
+}
+
+func IsMockPay() bool {
+	return os.Getenv("MOCK_PAY") == "true"
 }

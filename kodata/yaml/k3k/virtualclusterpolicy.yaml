@@ -1,0 +1,20 @@
+apiVersion: k3k.io/v1alpha1
+kind: VirtualClusterPolicy
+metadata:
+    annotations:
+        title: "默认"
+    name: default
+spec:
+    allowedMode: virtual
+    disableNetworkPolicy: true
+    sync:
+        configmaps:
+            enabled: true
+        ingresses: {}
+        persistentVolumeClaims:
+            enabled: true
+        priorityClasses: {}
+        secrets:
+            enabled: true
+        services:
+            enabled: true

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 
+	cvmv1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
-	cvmv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/cvm/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -194,7 +194,7 @@ type BuyBaseResource struct {
 	UnitQuantity
 	BuyResource
 	CouponCode string `form:"couponCode"`
-	CvmName    string `form:"cvm"`
+	CvmName    string `form:"cvmName"`
 }
 
 func (b *BuyBaseResource) ToCvmResource() *cvmv1alpha1.CvmResource {
@@ -211,14 +211,14 @@ type BuyRenewResource struct {
 	BaseConfigName string `form:"baseOAuthConfigName"`
 	UnitQuantity
 	CouponCode string `form:"couponCode"`
-	CvmName    string `form:"cvm"`
+	CvmName    string `form:"cvmName"`
 }
 
 type BuyExpandResource struct {
 	// BuyResource
 	BaseConfigName string `form:"baseOAuthConfigName"`
 	BuyResource
-	CvmName string `form:"cvm"`
+	CvmName string `form:"cvmName"`
 }
 
 func (b *BuyExpandResource) Valid() error {

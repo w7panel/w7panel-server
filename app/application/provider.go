@@ -18,6 +18,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/core"
 	gpustack "github.com/w7panel/w7panel/common/service/k8s/gpu/gpustack"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
+	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	"github.com/w7panel/w7panel/common/service/k8s/mcp"
 	"github.com/w7panel/w7panel/common/service/k8s/shell"
@@ -38,6 +39,7 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(consoleShell.MetricsInstall))
 	console.RegisterCommand(new(consoleShell.UninstallStorePanel)) //删除商店安装的面板
 	console.RegisterCommand(new(consoleShell.DomainParseConfig))   //域名解析
+	console.RegisterCommand(new(consoleShell.Build))               //临时测试
 	console.RegisterCommand(new(consoleShell.BeianCheck))          //备案检查
 	console.RegisterCommand(new(consoleShell.TestUploadChunk))     // 测试分片上传功能
 	p.RegisterValidateRule()
@@ -87,6 +89,7 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	go k8s.CheckLogo()
 	// go k3k.SyncAgentIngress()
 	go higress.LoadBkConfig()
+	go p.recordOverResource()
 
 }
 
@@ -147,6 +150,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			localApiGroup.GET("/exec", middleware.Auth{}.Process, controller2.PodExec{}.Exec)
 			localApiGroup.POST("/exec2", middleware.Auth{}.Process, controller2.PodExec{}.Exec)
+			localApiGroup.POST("/exec-all", middleware.Auth{}.Process, controller2.PodExec{}.ExecAll)
 			localApiGroup.GET("/pid", middleware.Auth{}.Process, middleware.CacheResponseWithExpire(time.Minute*1), controller2.Pid{}.GetPid) //获取所在pod和pid
 			// localApiGroup.GET("/pwd", middleware.Auth{}.Process, controller2.PodExec{}.GetPid)             //获取所在pod和pid
 			localApiGroup.GET("/nodepid", middleware.Auth{}.Process, controller2.PodExec{}.GetNodePid) //获取所在pod和pid
@@ -184,7 +188,9 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/longhorn/volumes/:volumeName/attach", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.Attach)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/detach", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.Detach)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/cancel-expansion", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.CancelExpansion)
-
+			localApiGroup.POST("/longhorn/volumes/:volumeName/trim-filesystem", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.TrimFilesystem)
+			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-delete", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotDelete)
+			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-purge", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotPurge)
 			// localApiGroup.GET("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGc)
 			// localApiGroup.POST("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGcToggle)
 			// localApiGroup.GET("/kubeblocks/installjobyaml", middleware.Auth{}.Process, controller2.KubeBlocks{}.InstallJobYaml)
@@ -245,9 +251,10 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		engine.GET("/panel-api/v1/noauth/site/lianxi", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.Lianxi)
 
 		engine.GET("/panel-api/v1/microapp/top", middleware.Auth{}.Process, controller2.MicroApp{}.List)                     //获取microapp列表
+		engine.GET("/panel-api/v1/microapp/:name/info", middleware.Auth{}.Process, controller2.MicroApp{}.Info)              //获取microapp详情
 		engine.Any("/panel-api/v1/microapp/:name/proxy/*path", middleware.Auth{}.Process, controller2.Proxy{}.ProxyMicroApp) //microapp proxy
 
-		containerGroup := localApiGroup.Group("/containers", middleware.Auth{}.Process)
+		containerGroup := localApiGroup.Group("/containers", middleware.Auth{}.Process, middleware.Proxy{}.Process)
 		{
 			containerGroup.POST("/image/export-push", controller2.Container{}.ExportAndPushImage)
 		}
@@ -281,5 +288,20 @@ func (p Provider) cleanS3() {
 			}
 		}
 
+	}
+}
+
+func (p Provider) recordOverResource() {
+	if err := overselling.RecordOverResource(); err != nil {
+		slog.Error("record over-resource error", "err", err)
+	}
+
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		if err := overselling.RecordOverResource(); err != nil {
+			slog.Error("record over-resource error", "err", err)
+		}
 	}
 }

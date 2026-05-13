@@ -20,7 +20,8 @@ type mockConsoleCdClient struct {
 
 func TestLicenseClient_CreateLicenseSite(t *testing.T) {
 	os.Setenv("USER_AGENT", "we7test-beta")
-	SetConsoleApi("http://172.16.1.150:9004")
+	// SetConsoleApi("http://172.16.1.150:9004")
+
 	sdk := k8s.NewK8sClientInner()
 	repo := config.NewW7ConfigRepository(sdk)
 	client := NewLicenseClient(repo, sdk)

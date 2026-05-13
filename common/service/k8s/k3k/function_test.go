@@ -2,12 +2,10 @@
 package k3k
 
 import (
+	"context"
 	"testing"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestTokenToK3kUser(t *testing.T) {
@@ -26,27 +24,15 @@ func TestRefreshK3kUser(t *testing.T) {
 	t.Log(user.ToArray())
 }
 
-func TestTryOver(t *testing.T) {
-	sdk := k8s.NewK8sClient().Sdk
-	user, err := sdk.ClientSet.CoreV1().ServiceAccounts("default").Get(sdk.Ctx, "console-164315", metav1.GetOptions{})
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log(user)
-
-	kuser := types.NewK3kUser(user)
-	err = TryCheckOverSellingResource(sdk, kuser)
-	if err != nil {
-		t.Error(err)
-	}
-}
-
 func TestResourceVal(t *testing.T) {
-	storage := resource.MustParse("100Mi")
-	scaledValue := storage.Value()
-	t.Log(scaledValue)
-
-	// scaledValue2 := storage.CanonicalizeBytes()()
-	// t.Log(scaledValue2)
-
+	sdk := k8s.NewK8sClient().Sdk
+	cvm, err := GetCvm(context.Background(), sdk, "k3k-console-164315", "console-164315-uvatm")
+	if err != nil {
+		t.Log(err)
+		return
+	}
+	err = TryCheckOverSellingResource(sdk, cvm)
+	if err != nil {
+		t.Log(err)
+	}
 }

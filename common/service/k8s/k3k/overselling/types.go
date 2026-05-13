@@ -116,7 +116,3 @@ func OrderInfoToResource(orderInfo *console.OrderInfo) *Resource {
 type oversellingUser struct {
 	*corev1.ServiceAccount
 }
-
-func (a *oversellingUser) IsClusterUser() bool {
-	return a.Labels["w7.cc/user-mode"] == "cluster"
-}

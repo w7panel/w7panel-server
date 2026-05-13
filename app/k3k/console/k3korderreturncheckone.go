@@ -1,16 +1,16 @@
 package console
 
 import (
-	"errors"
+	"context"
 	"log/slog"
+	"os"
 
+	cvmv1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
 	"github.com/spf13/cobra"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/order"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type K3kOrderReturnCheckOne struct {
@@ -18,7 +18,8 @@ type K3kOrderReturnCheckOne struct {
 }
 
 type shellOption struct {
-	saName string
+	cvmName   string
+	namespace string
 }
 
 // ./runtime/main cluster:register --thirdPartyCDToken=ywA2N3ImkVo0tPOn --registerCluster=true --offlineUrl=http://118.25.145.25:9090 --apiServerUrl=https://118.25.145.25:6443
@@ -30,7 +31,8 @@ func (c K3kOrderReturnCheckOne) GetName() string {
 }
 
 func (c K3kOrderReturnCheckOne) Configure(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&shOp.saName, "sa", "", "用户名")
+	cmd.Flags().StringVar(&shOp.cvmName, "cvmName", "", "cvmName")
+	cmd.Flags().StringVar(&shOp.namespace, "namespace", "", "namespace")
 }
 
 func (c K3kOrderReturnCheckOne) GetDescription() string {
@@ -40,50 +42,26 @@ func (c K3kOrderReturnCheckOne) GetDescription() string {
 func (c K3kOrderReturnCheckOne) Handle(cmd *cobra.Command, args []string) {
 
 	sdk := k8s.NewK8sClient()
-	// sigClient, err := sdk.ToSigClient()
-	// if err != nil {
-	// 	slog.Error("Failed to create sigclient", "error", err)
-	// 	return
-	// }
-
-	sa, err := sdk.ClientSet.CoreV1().ServiceAccounts("default").Get(sdk.Ctx, shOp.saName, v1.GetOptions{})
+	sigClient, err := sdk.ToSigClient()
 	if err != nil {
-		slog.Error("Failed to list configmaps", "error", err)
+		slog.Error("Failed to create sigclient", "error", err)
 		return
+	}
+	cvm := &cvmv1alpha1.Cvm{}
+	err = sigClient.Get(context.TODO(), types.NamespacedName{Name: shOp.cvmName, Namespace: shOp.namespace}, cvm)
+	if err != nil {
+		slog.Error("return check list find err", "err", err)
+		os.Exit(1)
 	}
 	orderApi, err := order.NewK3kOrderApi(sdk.Sdk)
 	if err != nil {
-		slog.Error("获取订单API失败", "error", err)
-		return
+		slog.Error("order api init err", "err", err)
+		os.Exit(1)
 	}
-	err = fixReturn(sa, orderApi)
+	err = fixReturnCvmOrder(cvm, orderApi, sigClient)
 	if err != nil {
-		slog.Warn("handle sa err", "err", err)
+		slog.Error("fix return cvm order err", "err", err)
+		os.Exit(1)
 	}
-}
 
-func fixReturn(sa *corev1.ServiceAccount, orderApi *order.K3kOrderApi) error {
-	k3kUser := types.NewK3kUser(sa)
-	if !k3kUser.IsClusterUser() {
-		return errors.New("not cluster user")
-	}
-	if !k3kUser.IsClusterReady() {
-		// return errors.New("cluster not ready")
-	}
-	if k3kUser.HasProcessReturnOrder() {
-		slog.Info("has process return order", "name", sa.Name)
-		err := orderApi.ProcessReturnOrder(k3kUser)
-		if err != nil {
-			slog.Warn("处理退款记录失败1", "name", sa.Name, "err", err)
-			return err
-		}
-	}
-	slog.Info("check new return log")
-	err := orderApi.ProcessReturnLastOrder(k3kUser, true)
-	if err != nil {
-		slog.Warn("处理退款记录失败2", "name", sa.Name, "err", err)
-		return err
-	}
-	slog.Info("处理退款记录成功", "name", sa.Name)
-	return nil
 }

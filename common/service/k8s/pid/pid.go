@@ -42,7 +42,7 @@ func NewPidTest(saName string) (*pid, error) {
 	var client *k8s.Sdk
 	isVirtual := false
 	if saName != "" {
-		k3kConfig := k8s.NewK3kConfig(saName, "k3k-"+saName, "http://test.cc")
+		k3kConfig := k8s.NewK3kConfig(saName, "k3k-"+saName, "http://test.cc", "")
 		clientSdk, err := root.GetK3kClusterSdkByConfig(k3kConfig)
 		if err != nil {
 			return nil, err

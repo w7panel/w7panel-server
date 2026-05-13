@@ -67,6 +67,17 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/console/import-cert-console", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.ImportCertConsole)
 			localApiGroup.POST("/console/register-zpk-site", controller2.Site{}.RegisterZpkSite)
 		}
+
+		//直接获取code 用于OIDC
+		engine.POST("/panel-api/v1/code", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCode)
+
+		engine.Any("/.well-known/openid-configuration", controller2.Oidc{}.Handle)
+		engine.Any("/jwks", controller2.Oidc{}.Handle)
+		engine.Any("/authorize", controller2.Oidc{}.Handle)
+		engine.Any("/authorize/*path", controller2.Oidc{}.Handle)
+		engine.Any("/token", controller2.Oidc{}.Handle)
+		engine.Any("/userinfo", controller2.Oidc{}.Handle)
+
 	})
 }
 

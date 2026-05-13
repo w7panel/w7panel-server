@@ -10,6 +10,7 @@ import (
 
 type RefreshToken struct {
 	Username  string    `json:"username"`
+	CvmName   string    `json:"cvmName"`
 	Token     string    `json:"token"`
 	ExpiresAt time.Time `json:"expires_at"`
 }
@@ -17,9 +18,10 @@ type RefreshToken struct {
 var tokenMap = sync.Map{} //make(map[string]*RefreshToken)
 var userMap = sync.Map{}  //make(map[string]*RefreshToken)
 
-func NewRefreshToken(username, token string) *RefreshToken {
+func NewRefreshToken(username, cvmName, token string) *RefreshToken {
 	refreshToken := &RefreshToken{
 		Username:  username,
+		CvmName:   cvmName,
 		Token:     token,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
@@ -40,20 +42,20 @@ func clear(username string) {
 	// 	delete(userMap, refreshToken.Username)
 	// }
 }
-func GetRefreshToken(userName string) *RefreshToken {
-	return NewRefreshToken(userName, helper.RandomString(32))
+func GetRefreshToken(userName, cvmName string) *RefreshToken {
+	return NewRefreshToken(userName, cvmName, helper.RandomString(32))
 }
 
-func FindUsernameByToken(token string) (string, error) {
+func FindUsernameByToken(token string) (string, string, error) {
 	val, ok := tokenMap.Load(token)
 	if ok {
 		token := val.(*RefreshToken)
 		if time.Now().After(token.ExpiresAt) {
 			clear(token.Username)
 			tokenMap.Delete(token)
-			return "", errors.New("token expired")
+			return "", "", errors.New("token expired")
 		} else {
-			return token.Username, nil
+			return token.Username, token.CvmName, nil
 		}
 
 		// tokenMap.Delete(val.(*RefreshToken).Token)
@@ -65,5 +67,5 @@ func FindUsernameByToken(token string) (string, error) {
 	// 	}
 	// 	return refreshToken.Username, nil
 	// }
-	return "", errors.New("token not found")
+	return "", "", errors.New("token not found")
 }

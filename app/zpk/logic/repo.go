@@ -53,7 +53,7 @@ func LoadPackage2(uri string, token string, checkUpgrade bool) (*types.ManifestP
 	return repo.Load()
 
 }
-func LoadPackageWithPanelToken(uri string, token string, checkUpgrade bool, panelToken string) (*types.ManifestPackage, error) {
+func LoadPackageWithPanelToken(uri string, token string, checkUpgrade bool, panelToken string, curVersion string) (*types.ManifestPackage, error) {
 	//获取source scheme
 	scheme := getSourceUri(uri)
 	if scheme == "" {
@@ -61,7 +61,11 @@ func LoadPackageWithPanelToken(uri string, token string, checkUpgrade bool, pane
 	}
 	repo := NewRepo(uri, token, "")
 	repo.SetCheckUpgrade(checkUpgrade)
+	repo.SetUpgrade(checkUpgrade)
 	repo.SetPanelToken(panelToken)
+	if curVersion != "" {
+		repo.SetCurVersion(curVersion)
+	}
 	return repo.Load()
 
 }

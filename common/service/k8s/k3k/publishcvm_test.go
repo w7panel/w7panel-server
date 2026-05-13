@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -19,8 +19,8 @@ func TestCheckPublish(t *testing.T) {
 		return
 	}
 
-	cfg := &v1alpha1.VirtualClusterPolicy{}
-	if err := client.Get(sdk.Ctx, types.NamespacedName{Namespace: "default", Name: "dxlxupwa"}, cfg); err != nil {
+	cfg := &corev1.ConfigMap{}
+	if err := client.Get(sdk.Ctx, types.NamespacedName{Namespace: "default", Name: "k3k.uupcpzsz"}, cfg); err != nil {
 		t.Error(err)
 		return
 	}

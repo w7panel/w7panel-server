@@ -48,7 +48,7 @@ func (r *RoleBinding) createRoleAndBinding(ctx context.Context, name string, nam
 			},
 			{
 				APIGroups: []string{"cvm.w7.cc"},
-				Resources: []string{"cvms"}, // cvm 只读
+				Resources: []string{"cvms", "cvmconsoleorders"}, // cvm 只读
 				Verbs:     []string{"get", "list", "watch"},
 			},
 		},

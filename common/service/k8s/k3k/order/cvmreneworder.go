@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -20,8 +21,11 @@ func (k *K3kOrderApi) CreateRenewCvmOrder(baseResource *types.BuyRenewResource, 
 	if err != nil {
 		return nil, err
 	}
-	if err := cvmOrder.CanRenewError(); err != nil {
-		return nil, err
+	// if err := cvmOrder.CanRenewError(); err != nil {
+	// 	return nil, err
+	// }
+	if cvmOrder.CanRenew() == false {
+		return nil, errors.New("不支持续费")
 	}
 	currentResource := currentCvmBuyResource(cvm)
 	compute := types.NewK3kOrderCompute(currentResource, baseResource.UnitQuantity, user.GetCost(), nil)
@@ -41,6 +45,11 @@ func (k *K3kOrderApi) CreateRenewCvmOrder(baseResource *types.BuyRenewResource, 
 	if err != nil {
 		return nil, err
 	}
+	_, err = createCrdOrder(k.sdk.Ctx, k.client, result.OrderSn, cvm.Namespace, cvm.Name, user.IsDemo())
+	if err != nil {
+		slog.Error("create crd order error", "err", err)
+		return nil, err
+	}
 	_, err = controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, cvm, func() error {
 		cvmOrder.SetRenewOrder(result.OrderSn)
 		return nil
@@ -52,10 +61,17 @@ func (k *K3kOrderApi) CreateRenewCvmOrder(baseResource *types.BuyRenewResource, 
 		slog.Error("used coupon code error", "code", conponCode, "err", err)
 		return nil, errors.New("used coupon code error")
 	}
+	if helper.IsMockPay() {
+		time.AfterFunc(time.Second*5, func() {
+			_ = k.NotifyCvmOrder(user, cvm.Name, result.OrderSn)
+		})
+	}
 	if !result.NeedPay {
 		time.AfterFunc(time.Second*2, func() {
 			_ = k.NotifyCvmOrder(user, cvm.Name, result.OrderSn)
 		})
 	}
+	result.CvmName = cvm.Name
+	result.CvmNamespace = cvm.Namespace
 	return result, nil
 }

@@ -62,6 +62,29 @@ lxcfs:
 site:
   enabled: ${SITE_ENABLED-false}
   token_refresh_resolution: ${TOKEN_REFRESH_RESOLUTION-600s} # token刷新间隔
+oidc:
+  enabled: ${OIDC_ENABLED-true}
+  issuer: ${OIDC_ISSUER-}
+  cookie_domain: ${OIDC_COOKIE_DOMAIN-}
+  cookie_secure: ${OIDC_COOKIE_SECURE-false}
+  signing_key_pem: ${OIDC_SIGNING_KEY_PEM-}
+  access_token_ttl: ${OIDC_ACCESS_TOKEN_TTL-3600s}
+  refresh_token_ttl: ${OIDC_REFRESH_TOKEN_TTL-720h}
+  code_ttl: ${OIDC_CODE_TTL-300s}
+  session_ttl: ${OIDC_SESSION_TTL-43200s}
+  registration_enabled: ${OIDC_REGISTRATION_ENABLED-false}
+  registration_access_token: ${OIDC_REGISTRATION_ACCESS_TOKEN-}
+  clients:
+    - client_id: ${OIDC_CLIENT_ID-default}
+      client_secret: ${OIDC_CLIENT_SECRET-}
+      token_endpoint_auth_method: ${OIDC_TOKEN_AUTH_METHOD-none}
+      require_pkce: true
+      redirect_uris:
+        - ${OIDC_REDIRECT_URI-http://127.0.0.1:3000/callback}
+      scopes:
+        - openid
+        - profile
+        - offline_access
 log:
   default:
     driver: stack

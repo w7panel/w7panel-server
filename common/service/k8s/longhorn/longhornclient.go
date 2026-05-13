@@ -268,8 +268,8 @@ func longhornVolumeApiAction(volumeName string, action string, json string) erro
 {"hostId":"server1","disableFrontend":true,"AttachedBy":"","attacherType":"","AttachmentID":"longhorn-ui"}
 */
 
-func LonghornVolumeAttach(volumeName string, nodeName string, attachmentID string, attachBy string, attacherType string) error {
-	return longhornVolumeApiAction(volumeName, "attach", `{"hostId":"`+nodeName+`","disableFrontend":true,"AttachedBy":"`+attachBy+`","attacherType":"`+attacherType+`","AttachmentID":"`+attachmentID+`"}`)
+func LonghornVolumeAttach(volumeName string, nodeName string, attachmentID string, attachBy string, attacherType string, disableFrontend string) error {
+	return longhornVolumeApiAction(volumeName, "attach", `{"hostId":"`+nodeName+`","disableFrontend":"`+disableFrontend+`","AttachedBy":"`+attachBy+`","attacherType":"`+attacherType+`","AttachmentID":"`+attachmentID+`"}`)
 }
 
 /*
@@ -285,6 +285,13 @@ func LonghornVolumeCancelExpansion(volumeName string) error {
 }
 func LonghornVolumeTrimFilesystem(volumeName string) error {
 	return longhornVolumeApiAction(volumeName, "trimFilesystem", `{"name":"`+volumeName+`"}`)
+}
+func LonghornVolumeSnapshotDelete(volumeName string, name string) error {
+	return longhornVolumeApiAction(volumeName, "snapshotDelete", `{"name":"`+name+`"}`)
+}
+
+func LonghornVolumeSnapshotPurge(volumeName string) error {
+	return longhornVolumeApiAction(volumeName, "snapshotPurge", `{"name":"`+volumeName+`"}`)
 }
 
 func LonghorStoragePercentage(value string) error {
