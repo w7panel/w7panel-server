@@ -444,12 +444,44 @@ func TestCreateDirectAuthorizationCodeRejectsInvalidRedirect(t *testing.T) {
 	}
 
 	if _, err := server.CreateDirectAuthorizationCode(context.Background(), DirectAuthorizeRequest{
-
 		ClientID:    "client-1",
 		RedirectURI: "https://evil.example/callback",
 		Scope:       "openid",
 	}); err == nil {
 		t.Fatalf("expected invalid redirect_uri to fail")
+	}
+}
+
+func TestCreateDirectAuthorizationCodeAllowsAnyRedirectWhenInsecureFlagEnabled(t *testing.T) {
+	server := newTestServer(&fakeDynamicClientStore{})
+	server.config.InsecureAllowAnyRedirectURI = true
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("GenerateKey returned error: %v", err)
+	}
+	server.private = privateKey
+	server.kid = "test-kid"
+	server.clients["client-1"] = Client{
+		ClientID:              "client-1",
+		RedirectURIs:          []string{"https://client.example/callback"},
+		Scopes:                []string{"openid"},
+		TokenEndpointAuthMode: "none",
+		CreatedAt:             time.Now(),
+	}
+	if err := server.initProvider(); err != nil {
+		t.Fatalf("initProvider returned error: %v", err)
+	}
+
+	resp, err := server.CreateDirectAuthorizationCode(context.Background(), DirectAuthorizeRequest{
+		ClientID:    "client-1",
+		RedirectURI: "https://evil.example/callback",
+		Scope:       "openid",
+	})
+	if err != nil {
+		t.Fatalf("expected insecure redirect override to allow request, got %v", err)
+	}
+	if resp == nil || resp.Code == "" {
+		t.Fatalf("expected authorization code response")
 	}
 }
 

@@ -8,14 +8,27 @@ import (
 )
 
 type oidcClient struct {
-	client Client
+	client              Client
+	allowAnyRedirectURI bool
 }
 
 func (c oidcClient) GetID() string { return c.client.ClientID }
 func (c oidcClient) RedirectURIs() []string {
 	return c.client.RedirectURIs
 }
+func (c oidcClient) RedirectURIGlobs() []string {
+	if c.allowAnyRedirectURI {
+		return []string{"**"}
+	}
+	return nil
+}
 func (c oidcClient) PostLogoutRedirectURIs() []string { return nil }
+func (c oidcClient) PostLogoutRedirectURIGlobs() []string {
+	if c.allowAnyRedirectURI {
+		return []string{"**"}
+	}
+	return nil
+}
 func (c oidcClient) ApplicationType() op.ApplicationType {
 	if c.client.ClientSecret == "" {
 		return op.ApplicationTypeNative
