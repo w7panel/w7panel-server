@@ -45,7 +45,7 @@ func TestKubeDynamicClientStoreLive(t *testing.T) {
 		t.Fatal("expected generated client_secret")
 	}
 
-	secret, err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Get(sdk.Ctx, client.ClientID, metav1.GetOptions{})
+	secret, err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Get(sdk.Ctx, secretNameForClientID(client.ClientID), metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("expected created secret, got error: %v", err)
 	}
@@ -73,12 +73,11 @@ func TestKubeDynamicClientStoreLive(t *testing.T) {
 
 	client.Name = "live-test-client-updated"
 	client.RedirectURIs = []string{"https://client.example/updated"}
-	client.RequirePKCE = true
 	if err := store.Save(client, true); err != nil {
 		t.Fatalf("Save(update) returned error: %v", err)
 	}
 
-	updatedSecret, err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Get(sdk.Ctx, client.ClientID, metav1.GetOptions{})
+	updatedSecret, err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Get(sdk.Ctx, secretNameForClientID(client.ClientID), metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("expected updated secret, got error: %v", err)
 	}
@@ -89,7 +88,7 @@ func TestKubeDynamicClientStoreLive(t *testing.T) {
 	if err := store.Delete(client.ClientID); err != nil {
 		t.Fatalf("Delete returned error: %v", err)
 	}
-	if _, err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Get(sdk.Ctx, client.ClientID, metav1.GetOptions{}); !k8serrors.IsNotFound(err) {
+	if _, err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Get(sdk.Ctx, secretNameForClientID(client.ClientID), metav1.GetOptions{}); !k8serrors.IsNotFound(err) {
 		t.Fatalf("expected secret to be deleted, got err=%v", err)
 	}
 }

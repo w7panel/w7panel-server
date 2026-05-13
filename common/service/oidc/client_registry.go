@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func (s *Server) RegisterEnabled() bool {
@@ -32,9 +34,6 @@ func (s *Server) RegisterDynamicClient(req DynamicClientRequest) (*DynamicClient
 	if len(req.GrantTypes) > 0 && !sameStrings(req.GrantTypes, []string{"authorization_code"}) &&
 		!sameStrings(req.GrantTypes, []string{"authorization_code", "refresh_token"}) {
 		return nil, errors.New("only authorization_code and refresh_token grant_types are supported")
-	}
-	if len(req.ResponseTypes) > 0 && !sameStrings(req.ResponseTypes, []string{"code"}) {
-		return nil, errors.New("only code response_type is supported")
 	}
 	mode := normalizeAuthMethod(req.TokenEndpointAuthMode, "x")
 	if mode != "client_secret_basic" && mode != "client_secret_post" && mode != "none" {
@@ -73,9 +72,6 @@ func (s *Server) UpdateDynamicClient(clientID string, req DynamicClientRequest) 
 	if req.ClientName != "" {
 		client.Name = req.ClientName
 	}
-	if req.RequirePKCE != nil {
-		client.RequirePKCE = *req.RequirePKCE
-	}
 	if req.TokenEndpointAuthMode != "" {
 		client.TokenEndpointAuthMode = req.TokenEndpointAuthMode
 	}
@@ -104,7 +100,21 @@ func (s *Server) DeleteDynamicClient(clientID string) error {
 
 func (s *Server) findClient(clientID string) (Client, bool) {
 	s.clientsMu.RLock()
-	defer s.clientsMu.RUnlock()
 	client, ok := s.clients[clientID]
-	return client, ok
+	s.clientsMu.RUnlock()
+	if ok {
+		return client, true
+	}
+
+	client, err := s.store.Get(clientID)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return Client{}, false
+		}
+		return Client{}, false
+	}
+	s.clientsMu.Lock()
+	s.clients[clientID] = client
+	s.clientsMu.Unlock()
+	return client, true
 }
