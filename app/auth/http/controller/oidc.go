@@ -125,7 +125,7 @@ func (o Oidc) AuthorizeCallbackURL(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
 		return
 	}
-
+	server.CompleteAuthRequest(req.AuthRequestID, ctx.GetString("username"))
 	callbackURL, err := server.BuildAuthorizationCallbackURLWithRedirect(ctx.Request.Context(), req.AuthRequestID, req.CallbackURL)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
