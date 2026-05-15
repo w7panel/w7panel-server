@@ -95,3 +95,6 @@ kubectl get jobs -n default -o json \
       )
     | .metadata.name' \
   | xargs -r kubectl delete job -n default
+
+echo "longhorn 升级到面板中"
+w7panel longhornupgrade
