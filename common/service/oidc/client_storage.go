@@ -10,6 +10,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type LoadSecretFunc func(name string) (*corev1.Secret, error)
+
+var loadFunc LoadSecretFunc
+
+func SetLoadFunc(f LoadSecretFunc) {
+	loadFunc = f
+}
+
 type dynamicClientStore interface {
 	Load() ([]Client, error)
 	Get(clientID string) (Client, error)
@@ -46,6 +54,15 @@ func (kubeDynamicClientStore) Get(clientID string) (Client, error) {
 	sdk := k8s.NewK8sClient().Sdk
 	secret, err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Get(sdk.Ctx, secretNameForClientID(clientID), metav1.GetOptions{})
 	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			if loadFunc != nil {
+				secret, err := loadFunc(clientID)
+
+				if err == nil {
+					return clientFromSecret(secret), nil
+				}
+			}
+		}
 		return Client{}, err
 	}
 	return clientFromSecret(secret), nil
