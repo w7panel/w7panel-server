@@ -76,7 +76,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		engine.Any("/jwks", controller2.Oidc{}.Handle)
 		engine.POST("/register", controller2.Oidc{}.RegisterClient)
 		//http://127.0.0.1:9007/authorize?client_id=default&redirect_uri=http://127.0.0.1:3000/callback111&scope=openid&response_type=code
-		//http://127.0.0.1:9007/authorize?client_id=default&redirect_uri=http://127.0.0.1:3000/callback111&scope=openid&response_type=code
+		//http://218.23.2.48:9090/authorize?client_id=default&redirect_uri=http://127.0.0.1:3000/callback111&scope=openid&response_type=code
 		engine.Any("/authorize", controller2.Oidc{}.Handle)
 		engine.Any("/authorize/*path", controller2.Oidc{}.Handle)
 		engine.Any("/token", controller2.Oidc{}.Handle)
