@@ -99,7 +99,7 @@ type Server struct {
 	refreshTokens map[string]*refreshToken
 
 	provider op.OpenIDProvider
-	legacy   *op.LegacyServer
+	legacy   op.ExtendedLegacyServer
 	handler  http.Handler
 }
 
@@ -222,8 +222,8 @@ func (s *Server) initProvider() error {
 		JwksURI:       op.NewEndpoint("jwks"),
 	}
 	s.provider = provider
-	s.legacy = op.NewLegacyServer(provider, endpoints)
-
+	legacyServer := op.NewLegacyServer(provider, endpoints)
+	s.legacy = newLegacyServerAdapters(legacyServer, provider)
 	s.handler = op.RegisterLegacyServer(s.legacy, op.AuthorizeCallbackHandler(provider))
 	return nil
 }
