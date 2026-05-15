@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "/"
+      "url": "/panel-api/v1/oidc"
     }
   ],
   "tags": [

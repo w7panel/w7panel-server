@@ -93,7 +93,7 @@ const oidcLoginPage = `<!DOCTYPE html>
     <h1>登录授权</h1>
     <p>继续为客户端 <strong>{{.ClientID}}</strong> 完成登录授权。</p>
     {{if .Error}}<div class="error">{{.Error}}</div>{{end}}
-    <form method="post" action="/authorize/login?authRequestID={{.AuthRequestID}}">
+	    <form method="post" action="/panel-api/v1/oidc/authorize/login?authRequestID={{.AuthRequestID}}">
       <label for="username">用户名</label>
       <input id="username" name="username" type="text" autocomplete="username" value="{{.Username}}" required>
       <label for="password">密码</label>
