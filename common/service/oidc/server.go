@@ -51,6 +51,7 @@ type ClientConfig struct {
 	ClientID              string   `mapstructure:"client_id"`
 	ClientSecret          string   `mapstructure:"client_secret"`
 	RedirectURIs          []string `mapstructure:"redirect_uris"`
+	AllowAnyRedirectURI   bool     `mapstructure:"allow_any_redirect_uri"`
 	Scopes                []string `mapstructure:"scopes"`
 	TokenEndpointAuthMode string   `mapstructure:"token_endpoint_auth_method"`
 }
@@ -60,6 +61,7 @@ type Client struct {
 	ClientID              string
 	ClientSecret          string
 	RedirectURIs          []string
+	AllowAnyRedirectURI   bool
 	Scopes                []string
 	TokenEndpointAuthMode string
 	IsDynamic             bool
@@ -68,6 +70,7 @@ type Client struct {
 
 type DynamicClientRequest struct {
 	RedirectURIs          []string `json:"redirect_uris"`
+	AllowAnyRedirectURI   bool     `json:"allow_any_redirect_uri"`
 	TokenEndpointAuthMode string   `json:"token_endpoint_auth_method"`
 	GrantTypes            []string `json:"grant_types"`
 	Scope                 string   `json:"scope"`
@@ -80,6 +83,7 @@ type DynamicClientResponse struct {
 	ClientIDIssuedAt      int64    `json:"client_id_issued_at"`
 	ClientSecretExpiresAt int64    `json:"client_secret_expires_at"`
 	RedirectURIs          []string `json:"redirect_uris"`
+	AllowAnyRedirectURI   bool     `json:"allow_any_redirect_uri"`
 	TokenEndpointAuthMode string   `json:"token_endpoint_auth_method"`
 	GrantTypes            []string `json:"grant_types"`
 	Scope                 string   `json:"scope"`
@@ -166,7 +170,7 @@ func NewServer(cfg Config) (*Server, error) {
 		if client.ClientID == "" {
 			return nil, errors.New("oidc client_id is required")
 		}
-		if len(client.RedirectURIs) == 0 {
+		if len(client.RedirectURIs) == 0 && !client.AllowAnyRedirectURI {
 			return nil, fmt.Errorf("oidc client %s redirect_uris is required", client.ClientID)
 		}
 		mode := normalizeAuthMethod(client.TokenEndpointAuthMode, client.ClientSecret)
@@ -179,6 +183,7 @@ func NewServer(cfg Config) (*Server, error) {
 			ClientID:              client.ClientID,
 			ClientSecret:          client.ClientSecret,
 			RedirectURIs:          client.RedirectURIs,
+			AllowAnyRedirectURI:   client.AllowAnyRedirectURI,
 			Scopes:                scopes,
 			TokenEndpointAuthMode: mode,
 			CreatedAt:             time.Now(),
