@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
+	"github.com/w7panel/w7panel/common/service/oidc"
 	oidcservice "github.com/w7panel/w7panel/common/service/oidc"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 	zitadeloidc "github.com/zitadel/oidc/v3/pkg/oidc"
@@ -37,6 +39,7 @@ func (o Oidc) Handle(ctx *gin.Context) {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "oidc disabled"})
 		return
 	}
+	oidc.SetLoadFunc(appgroup.AppGroupToOidcSecret)
 	server.ServeHTTP(ctx.Writer, ctx.Request)
 }
 
@@ -73,6 +76,7 @@ func (o Oidc) AuthorizeCode(ctx *gin.Context) {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "oidc disabled"})
 		return
 	}
+	oidc.SetLoadFunc(appgroup.AppGroupToOidcSecret)
 	token := ctx.MustGet("k8s_token").(string)
 	k8sToken := k8s.NewK8sToken(token)
 	username, err := k8sToken.GetSaName()
@@ -120,7 +124,7 @@ func (o Oidc) AuthorizeCallbackURL(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": "authRequestID or callbackUrl is required"})
 		return
 	}
-
+	oidc.SetLoadFunc(appgroup.AppGroupToOidcSecret) //appgroup转secret
 	if _, err := server.AuthRequestByID(ctx.Request.Context(), req.AuthRequestID); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
 		return
