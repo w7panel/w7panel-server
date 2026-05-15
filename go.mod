@@ -1,6 +1,6 @@
 module github.com/w7panel/w7panel
 
-go 1.25.3
+go 1.25.0
 
 replace (
 	k8s.io/api => k8s.io/api v0.35.3
@@ -180,6 +180,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/ipfs/go-cid v0.6.0 // indirect
+	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jmoiron/sqlx v1.4.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
@@ -312,7 +313,7 @@ require (
 )
 
 require (
-	cnb.cool/i0358/ai-cvm v1.0.5
+	cnb.cool/i0358/ai-cvm v1.0.6
 	github.com/aws/smithy-go v1.25.1
 	github.com/bodgit/sevenzip v1.5.2
 	github.com/containerd/cgroups/v3 v3.1.3
@@ -398,7 +399,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/kubernetes/kompose v1.35.0
 	github.com/leodido/go-urn v1.4.0 // indirect
-	github.com/longhorn/longhorn-manager v1.11.2
+	github.com/longhorn/longhorn-manager v1.7.2
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
