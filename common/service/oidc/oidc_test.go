@@ -4,11 +4,14 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
 	zitadeloidc "github.com/zitadel/oidc/v3/pkg/oidc"
+	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
 type fakeDynamicClientStore struct {
@@ -324,7 +327,7 @@ func TestLoginCompletesAuthRequestAfterPasswordValidation(t *testing.T) {
 
 func TestLoginURLUsesAuthorizeLoginPath(t *testing.T) {
 	client := oidcClient{client: Client{ClientID: "client-1"}}
-	if got, want := client.LoginURL("request-1"), "/authorize/login?authRequestID=request-1"; got != want {
+	if got, want := client.LoginURL("request-1"), "/panel-api/v1/oidc/authorize/login?authRequestID=request-1"; got != want {
 		t.Fatalf("unexpected login url: got %q want %q", got, want)
 	}
 }
@@ -482,6 +485,82 @@ func TestCreateDirectAuthorizationCodeAllowsAnyRedirectWhenInsecureFlagEnabled(t
 	}
 	if resp == nil || resp.Code == "" {
 		t.Fatalf("expected authorization code response")
+	}
+}
+
+func TestCodeExchangeRejectsMismatchedRedirectURI(t *testing.T) {
+	server := newTestServer(&fakeDynamicClientStore{})
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("GenerateKey returned error: %v", err)
+	}
+	server.private = privateKey
+	server.kid = "test-kid"
+	server.clients["client-1"] = Client{
+		ClientID:              "client-1",
+		RedirectURIs:          []string{"https://client.example/callback"},
+		Scopes:                []string{"openid", "offline_access"},
+		TokenEndpointAuthMode: "none",
+		CreatedAt:             time.Now(),
+	}
+	if err := server.initProvider(); err != nil {
+		t.Fatalf("initProvider returned error: %v", err)
+	}
+
+	resp, err := server.CreateDirectAuthorizationCode(context.Background(), DirectAuthorizeRequest{
+		Username:     "alice",
+		ClientID:     "client-1",
+		RedirectURI:  "https://client.example/callback",
+		Scope:        "openid offline_access",
+		State:        "state-1",
+		ResponseType: "code",
+	})
+	if err != nil {
+		t.Fatalf("CreateDirectAuthorizationCode returned error: %v", err)
+	}
+
+	authReq, err := server.AuthRequestByCode(context.Background(), resp.Code)
+	if err != nil {
+		t.Fatalf("AuthRequestByCode returned error: %v", err)
+	}
+	if authReq.GetRedirectURI() != "https://client.example/callback" {
+		t.Fatalf("unexpected stored redirect uri: %s", authReq.GetRedirectURI())
+	}
+
+	requestURL, err := url.Parse("https://panel.example.com/panel-api/v1/oidc/token")
+	if err != nil {
+		t.Fatalf("url.Parse returned error: %v", err)
+	}
+	clientReq := &op.ClientRequest[zitadeloidc.AccessTokenRequest]{
+		Request: &op.Request[zitadeloidc.AccessTokenRequest]{
+			Method: http.MethodPost,
+			URL:    requestURL,
+			Header: http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+			Form: url.Values{
+				"grant_type":   []string{"authorization_code"},
+				"client_id":    []string{"client-1"},
+				"code":         []string{resp.Code},
+				"redirect_uri": []string{"https://evil.example/callback"},
+			},
+			PostForm: url.Values{
+				"grant_type":   []string{"authorization_code"},
+				"client_id":    []string{"client-1"},
+				"code":         []string{resp.Code},
+				"redirect_uri": []string{"https://evil.example/callback"},
+			},
+			Data: &zitadeloidc.AccessTokenRequest{
+				Code:        resp.Code,
+				RedirectURI: "https://evil.example/callback",
+				ClientID:    "client-1",
+			},
+		},
+		Client: server.newOIDCClient(server.clients["client-1"]),
+	}
+
+	if _, err := server.legacy.CodeExchange(context.Background(), clientReq); err == nil {
+		t.Fatalf("expected mismatched redirect_uri to fail code exchange")
+	} else if !strings.Contains(err.Error(), "redirect_uri does not correspond") {
+		t.Fatalf("expected redirect mismatch error, got %v", err)
 	}
 }
 
