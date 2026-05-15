@@ -269,7 +269,7 @@ func longhornVolumeApiAction(volumeName string, action string, json string) erro
 */
 
 func LonghornVolumeAttach(volumeName string, nodeName string, attachmentID string, attachBy string, attacherType string, disableFrontend string) error {
-	return longhornVolumeApiAction(volumeName, "attach", `{"hostId":"`+nodeName+`","disableFrontend":"`+disableFrontend+`","AttachedBy":"`+attachBy+`","attacherType":"`+attacherType+`","AttachmentID":"`+attachmentID+`"}`)
+	return longhornVolumeApiAction(volumeName, "attach", `{"hostId":"`+nodeName+`","disableFrontend":`+disableFrontend+`,"AttachedBy":"`+attachBy+`","attacherType":"`+attacherType+`","AttachmentID":"`+attachmentID+`"}`)
 }
 
 /*
