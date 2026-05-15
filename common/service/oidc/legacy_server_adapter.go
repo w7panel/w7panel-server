@@ -41,10 +41,9 @@ func (s *legacyServerAdapters) CodeExchange(ctx context.Context, r *op.ClientReq
 			return nil, err
 		}
 	}
-	// redirectURI 严格验证，但是 需求并未要求严格验证
-	// if r.Data.RedirectURI != authReq.GetRedirectURI() {
-	// 	return nil, oidc.ErrInvalidGrant().WithDescription("redirect_uri does not correspond")
-	// }
+	if r.Data.RedirectURI != authReq.GetRedirectURI() {
+		return nil, oidc.ErrInvalidGrant().WithDescription("redirect_uri does not correspond")
+	}
 	resp, err := op.CreateTokenResponse(ctx, authReq, r.Client, s.provider, true, r.Data.Code, "")
 	if err != nil {
 		return nil, err
