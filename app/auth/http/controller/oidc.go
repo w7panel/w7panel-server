@@ -24,15 +24,6 @@ type authorizeCodeResponse struct {
 	SessionState string `json:"session_state,omitempty"`
 }
 
-type authorizeCallbackResponse struct {
-	CallbackURL string `json:"callbackUrl"`
-}
-
-type authorizeCallbackRequest struct {
-	AuthRequestID string `json:"authRequestID" form:"authRequestID"`
-	CallbackURL   string `json:"callbackUrl" form:"callbackUrl"`
-}
-
 func (o Oidc) Handle(ctx *gin.Context) {
 	server, err := oidcservice.GetServer()
 	if err != nil || server == nil || !server.Enabled() {
@@ -68,6 +59,74 @@ func (o Oidc) RegisterClient(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusCreated, resp)
+}
+
+func (o Oidc) GetClient(ctx *gin.Context) {
+	server, err := oidcservice.GetServer()
+	if err != nil || server == nil || !server.Enabled() || !server.RegisterEnabled() {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "oidc registration disabled"})
+		return
+	}
+
+	token := helper.GetToken(ctx)
+	if !server.ValidateRegistrationAccessToken(token) {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	resp, err := server.GetDynamicClient(ctx.Param("clientId"))
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "not_found", "error_description": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, resp)
+}
+
+func (o Oidc) UpdateClient(ctx *gin.Context) {
+	server, err := oidcservice.GetServer()
+	if err != nil || server == nil || !server.Enabled() || !server.RegisterEnabled() {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "oidc registration disabled"})
+		return
+	}
+
+	token := helper.GetToken(ctx)
+	if !server.ValidateRegistrationAccessToken(token) {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var req oidcservice.DynamicClientRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
+		return
+	}
+
+	resp, err := server.UpdateDynamicClient(ctx.Param("clientId"), req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_client_metadata", "error_description": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, resp)
+}
+
+func (o Oidc) DeleteClient(ctx *gin.Context) {
+	server, err := oidcservice.GetServer()
+	if err != nil || server == nil || !server.Enabled() || !server.RegisterEnabled() {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "oidc registration disabled"})
+		return
+	}
+
+	token := helper.GetToken(ctx)
+	if !server.ValidateRegistrationAccessToken(token) {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	if err := server.DeleteDynamicClient(ctx.Param("clientId")); err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "not_found", "error_description": err.Error()})
+		return
+	}
+	ctx.Status(http.StatusNoContent)
 }
 
 func (o Oidc) AuthorizeCode(ctx *gin.Context) {
@@ -106,36 +165,5 @@ func (o Oidc) AuthorizeCode(ctx *gin.Context) {
 		Code:         resp.Code,
 		State:        resp.State,
 		SessionState: resp.SessionState,
-	})
-}
-
-func (o Oidc) AuthorizeCallbackURL(ctx *gin.Context) {
-	server, err := oidcservice.GetServer()
-	if err != nil || server == nil || !server.Enabled() {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "oidc disabled"})
-		return
-	}
-	var req authorizeCallbackRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
-		return
-	}
-	if req.AuthRequestID == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": "authRequestID or callbackUrl is required"})
-		return
-	}
-	oidc.SetLoadFunc(appgroup.AppGroupToOidcSecret) //appgroup转secret
-	if _, err := server.AuthRequestByID(ctx.Request.Context(), req.AuthRequestID); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
-		return
-	}
-	server.CompleteAuthRequest(req.AuthRequestID, ctx.GetString("username"))
-	callbackURL, err := server.BuildAuthorizationCallbackURLWithRedirect(ctx.Request.Context(), req.AuthRequestID, req.CallbackURL)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
-		return
-	}
-	ctx.JSON(http.StatusOK, authorizeCallbackResponse{
-		CallbackURL: callbackURL,
 	})
 }
