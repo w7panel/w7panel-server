@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -74,6 +75,7 @@ func (kubeDynamicClientStore) Create(req DynamicClientRequest) (Client, error) {
 		Name:                  req.ClientName,
 		ClientID:              normalizeClientID("oidc_" + randomToken(16)),
 		RedirectURIs:          req.RedirectURIs,
+		AllowAnyRedirectURI:   req.AllowAnyRedirectURI,
 		Scopes:                normalizeScopes(strings.Fields(req.Scope)),
 		TokenEndpointAuthMode: mode,
 		IsDynamic:             true,
@@ -126,6 +128,7 @@ func clientFromSecret(secret *corev1.Secret) Client {
 		ClientID:              clientID,
 		ClientSecret:          string(secret.Data["client_secret"]),
 		RedirectURIs:          splitLines(string(secret.Data["redirect_uris"])),
+		AllowAnyRedirectURI:   parseBool(secret.Data["allow_any_redirect_uri"]),
 		Scopes:                normalizeScopes(strings.Fields(string(secret.Data["scopes"]))),
 		TokenEndpointAuthMode: string(secret.Data["token_endpoint_auth_method"]),
 		IsDynamic:             secret.Labels["w7.cc/oidc-client"] == "true",
@@ -148,6 +151,7 @@ func secretFromClient(namespace string, client Client) *corev1.Secret {
 			"client_name":                []byte(client.Name),
 			"client_secret":              []byte(client.ClientSecret),
 			"redirect_uris":              []byte(strings.Join(client.RedirectURIs, "\n")),
+			"allow_any_redirect_uri":     []byte(strconv.FormatBool(client.AllowAnyRedirectURI)),
 			"scopes":                     []byte(strings.Join(client.Scopes, " ")),
 			"token_endpoint_auth_method": []byte(client.TokenEndpointAuthMode),
 		},
@@ -165,9 +169,18 @@ func clientToResponse(client Client) *DynamicClientResponse {
 		ClientIDIssuedAt:      client.CreatedAt.Unix(),
 		ClientSecretExpiresAt: 0,
 		RedirectURIs:          client.RedirectURIs,
+		AllowAnyRedirectURI:   client.AllowAnyRedirectURI,
 		TokenEndpointAuthMode: client.TokenEndpointAuthMode,
 		GrantTypes:            []string{"authorization_code", "refresh_token"},
 		Scope:                 strings.Join(client.Scopes, " "),
 		ClientName:            client.Name,
 	}
+}
+
+func parseBool(data []byte) bool {
+	v, err := strconv.ParseBool(string(data))
+	if err != nil {
+		return false
+	}
+	return v
 }
