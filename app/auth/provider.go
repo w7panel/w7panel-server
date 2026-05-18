@@ -87,6 +87,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		//直接获取code 用于OIDC
 		engine.POST("/panel-api/v1/code", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCode)
+		engine.GET("/panel-api/v1/callback-url", middleware.Auth{}.Process, controller2.Oidc{}.GetRedirectURI)
 
 	})
 }
