@@ -143,6 +143,9 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		isExpanding, expandErrstr := longhorn.IsVolumeExpanding(&volume, engineList)
 		isLock, nodeId := longhorn.IsVolumeLock(&volume, vtList)
 		attchNodeId := longhorn.VolumeAttachNodeId(&volume, vtList)
+		if os.Getenv("MOCK_LONGHORN_LOCK") == "true" {
+			isLock = true //test
+		}
 		// isLock = true //test
 		// isExpanding = true
 		vs := VolumesStatus{
