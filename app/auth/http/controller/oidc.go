@@ -194,13 +194,13 @@ func (o Oidc) GetRedirectURI(ctx *gin.Context) {
 		return
 	}
 	// oidc.SetLoadFunc(appgroup.AppGroupToOidcSecret)
-	// token := ctx.MustGet("k8s_token").(string)
-	// k8sToken := k8s.NewK8sToken(token)
-	// username, err := k8sToken.GetSaName()
-	// if err != nil {
-	// 	ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
-	// 	return
-	// }
+	token := ctx.MustGet("k8s_token").(string)
+	k8sToken := k8s.NewK8sToken(token)
+	username, err := k8sToken.GetSaName()
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
+		return
+	}
 	type authorizeCallbackResponse struct {
 		CallbackURL string `json:"callbackUrl"`
 	}
@@ -216,6 +216,7 @@ func (o Oidc) GetRedirectURI(ctx *gin.Context) {
 		return
 	}
 
+	server.CompleteAuthRequest(req.AuthRequestID, username)
 	resp, err := server.BuildAuthorizationCallbackURL(ctx.Request.Context(), req.AuthRequestID)
 	if err != nil {
 		var oidcErr *zitadeloidc.Error

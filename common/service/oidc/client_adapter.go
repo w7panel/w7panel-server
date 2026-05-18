@@ -57,7 +57,7 @@ func (c oidcClient) GrantTypes() []zitadeloidc.GrantType {
 	return grants
 }
 func (c oidcClient) LoginURL(id string) string {
-	return oidcPath("authorize/login") + "?" + authRequestIDQuery + "=" + url.QueryEscape(id)
+	return ("/login") + "?" + authRequestIDQuery + "=" + url.QueryEscape(id)
 }
 func (c oidcClient) AccessTokenType() op.AccessTokenType { return op.AccessTokenTypeJWT }
 func (c oidcClient) IDTokenLifetime() time.Duration      { return time.Hour }
