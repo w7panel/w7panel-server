@@ -1,0 +1,64 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+    api-approved.kubernetes.io: "https://www.w7.cc"
+  name: oidcclients.oidc.w7.cc
+spec:
+  group: oidc.w7.cc
+  names:
+    kind: OIDCClient
+    listKind: OIDCClientList
+    plural: oidcclients
+    singular: oidcclient
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              allowAnyRedirectUri:
+                type: boolean
+              clientId:
+                type: string
+              clientName:
+                type: string
+              clientSecret:
+                type: string
+              redirectUris:
+                items:
+                  type: string
+                type: array
+              scopes:
+                items:
+                  type: string
+                type: array
+              tokenEndpointAuthMethod:
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
