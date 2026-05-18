@@ -16,8 +16,9 @@ import (
 )
 
 /**
-前端传递apiversion 和 kind 字段，以及name 字段，然后根据这个获取对应deployment statefulset daemonset 然后根据获取到的资源 读取当前挂载的文件列表
+1. 前端传递apiversion 和 kind 字段，以及name 字段，然后根据这个获取对应deployment statefulset daemonset 然后根据获取到的资源 读取当前挂载的文件列表
 文件列表返回 json 格式的文件列表 这个文件对应的哪个secret 或者 configmap的key 等信息, 如有必要获取configmap 或者 secret 的内容
+2. common/service/k8s/pid/mountfiles.go 添加一个方法 参数是绝对路径和文件内容 根据获取映射关系 直接修改对应的secret或者configmap
 */
 
 type MountFiles struct {
@@ -30,6 +31,15 @@ type MountFilesParam struct {
 	Kind           string `form:"kind" binding:"required"`
 	Name           string `form:"name" binding:"required"`
 	IncludeContent bool   `form:"includeContent"`
+}
+
+type UpdateMountFileParam struct {
+	Namespace  string `form:"namespace"`
+	APIVersion string `form:"apiVersion" binding:"required"`
+	Kind       string `form:"kind" binding:"required"`
+	Name       string `form:"name" binding:"required"`
+	Path       string `form:"path" binding:"required"`
+	Content    string `form:"content"`
 }
 
 type MountFilesResult struct {
@@ -117,6 +127,61 @@ func (m *MountFiles) Handle(param MountFilesParam) (*MountFilesResult, error) {
 	return result, nil
 }
 
+func (m *MountFiles) UpdateFileContent(param UpdateMountFileParam) error {
+	result, err := m.Handle(MountFilesParam{
+		Namespace:      param.Namespace,
+		APIVersion:     param.APIVersion,
+		Kind:           param.Kind,
+		Name:           param.Name,
+		IncludeContent: false,
+	})
+	if err != nil {
+		return err
+	}
+
+	target, err := findMountFileTarget(result, param.Path)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.TODO()
+	namespace := result.Namespace
+
+	switch target.SourceType {
+	case "configMap":
+		cm, err := m.ClientSet.CoreV1().ConfigMaps(namespace).Get(ctx, target.SourceName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if cm.Data == nil {
+			cm.Data = make(map[string]string)
+		}
+		if cm.BinaryData != nil {
+			if _, ok := cm.BinaryData[target.Key]; ok {
+				cm.BinaryData[target.Key] = []byte(param.Content)
+				_, err = m.ClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, cm, metav1.UpdateOptions{})
+				return err
+			}
+		}
+		cm.Data[target.Key] = param.Content
+		_, err = m.ClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, cm, metav1.UpdateOptions{})
+		return err
+	case "secret":
+		secret, err := m.ClientSet.CoreV1().Secrets(namespace).Get(ctx, target.SourceName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if secret.Data == nil {
+			secret.Data = make(map[string][]byte)
+		}
+		secret.Data[target.Key] = []byte(param.Content)
+		_, err = m.ClientSet.CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{})
+		return err
+	default:
+		return fmt.Errorf("path %s maps to unsupported source type %s", param.Path, target.SourceType)
+	}
+}
+
 func workloadPodSpec(obj *unstructured.Unstructured) (*corev1.PodSpec, error) {
 	podSpecMap, found, err := unstructured.NestedMap(obj.Object, "spec", "template", "spec")
 	if err != nil {
@@ -130,6 +195,38 @@ func workloadPodSpec(obj *unstructured.Unstructured) (*corev1.PodSpec, error) {
 		return nil, err
 	}
 	return podSpec, nil
+}
+
+func findMountFileTarget(result *MountFilesResult, absolutePath string) (*MountFileEntry, error) {
+	if absolutePath == "" || !path.IsAbs(absolutePath) {
+		return nil, fmt.Errorf("path must be absolute: %s", absolutePath)
+	}
+
+	var target *MountFileEntry
+	for _, mount := range result.Mounts {
+		for _, file := range mount.Files {
+			if file.Path != absolutePath {
+				continue
+			}
+			if file.SourceName == "" || file.Key == "" {
+				return nil, fmt.Errorf("path %s does not map to a writable secret/configmap key", absolutePath)
+			}
+			if target == nil {
+				entry := file
+				target = &entry
+				continue
+			}
+			if target.SourceType == file.SourceType && target.SourceName == file.SourceName && target.Key == file.Key {
+				continue
+			}
+			return nil, fmt.Errorf("path %s matches multiple mount targets", absolutePath)
+		}
+	}
+
+	if target == nil {
+		return nil, fmt.Errorf("path %s not found in mounted files", absolutePath)
+	}
+	return target, nil
 }
 
 func (m *MountFiles) describeContainerMounts(namespace, containerType string, containers []corev1.Container, volumeMap map[string]corev1.Volume, includeContent bool) []MountFileDescription {
