@@ -1,4 +1,4 @@
 // +k8s:deepcopy-gen=package
-// +groupName=oidc.w7.cc
+// +groupName=w7panel.w7.com
 
 package v1alpha1
