@@ -22,22 +22,41 @@ func (s *Server) ValidateRegistrationAccessToken(token string) bool {
 	return token == s.config.RegistrationAccessToken
 }
 
-func (s *Server) RegisterDynamicClient(req DynamicClientRequest) (*DynamicClientResponse, error) {
+func validateDynamicClientRequest(req DynamicClientRequest) error {
 	if len(req.RedirectURIs) == 0 && !req.AllowAnyRedirectURI {
-		return nil, errors.New("redirect_uris is required")
+		return errors.New("redirect_uris is required")
 	}
 	for _, redirectURI := range req.RedirectURIs {
 		if !(strings.HasPrefix(redirectURI, "http://") || strings.HasPrefix(redirectURI, "https://")) {
-			return nil, fmt.Errorf("invalid redirect uri: %s", redirectURI)
+			return fmt.Errorf("invalid redirect uri: %s", redirectURI)
 		}
 	}
 	if len(req.GrantTypes) > 0 && !sameStrings(req.GrantTypes, []string{"authorization_code"}) &&
 		!sameStrings(req.GrantTypes, []string{"authorization_code", "refresh_token"}) {
-		return nil, errors.New("only authorization_code and refresh_token grant_types are supported")
+		return errors.New("only authorization_code and refresh_token grant_types are supported")
 	}
 	mode := normalizeAuthMethod(req.TokenEndpointAuthMode, "x")
 	if mode != "client_secret_basic" && mode != "client_secret_post" && mode != "none" {
-		return nil, errors.New("unsupported token_endpoint_auth_method")
+		return errors.New("unsupported token_endpoint_auth_method")
+	}
+	return nil
+}
+
+func CreateDynamicClient(req DynamicClientRequest) (*DynamicClientResponse, error) {
+	if err := validateDynamicClientRequest(req); err != nil {
+		return nil, err
+	}
+
+	client, err := newDynamicClientStore().Create(req)
+	if err != nil {
+		return nil, err
+	}
+	return clientToResponse(client), nil
+}
+
+func (s *Server) RegisterDynamicClient(req DynamicClientRequest) (*DynamicClientResponse, error) {
+	if err := validateDynamicClientRequest(req); err != nil {
+		return nil, err
 	}
 
 	client, err := s.store.Create(req)
