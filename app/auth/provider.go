@@ -26,6 +26,7 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(app.SiteZpk))
 	console.RegisterCommand(new(app.CreateInnerDb))
 	console.RegisterCommand(new(app.Unzip))
+	console.RegisterCommand(new(app.OidcClientCreate))
 
 	p.RegisterHttpRoutes(httpServer)
 	if facade.GetConfig().GetBool("site.enabled") {
@@ -38,7 +39,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	server.RegisterRouters(func(engine *gin.Engine) {
 		oidcGroup := engine.Group("/panel-api/v1/oidc")
 		{
-			oidcGroup.Any("/.well-known/openid-configuration", controller2.Oidc{}.Handle)
+			oidcGroup.Any("/.well-known/openid-configuration", controller2.Oidc{}.Discovery)
 			oidcGroup.Any("/jwks", controller2.Oidc{}.Handle)
 			oidcGroup.POST("/register", controller2.Oidc{}.RegisterClient)
 			oidcGroup.GET("/register/:clientId", controller2.Oidc{}.GetClient)
@@ -47,7 +48,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			oidcGroup.GET("/authorize/login", controller2.Oidc{}.LoginPage)
 			oidcGroup.POST("/authorize/login", controller2.Oidc{}.Login)
 			oidcGroup.Any("/authorize", controller2.Oidc{}.Handle)
-			oidcGroup.Any("/authorize/*path", controller2.Oidc{}.Handle)
+			// oidcGroup.Any("/authorize/*path", controller2.Oidc{}.Handle)
 			oidcGroup.Any("/token", controller2.Oidc{}.Handle)
 			oidcGroup.Any("/userinfo", controller2.Oidc{}.Handle)
 		}

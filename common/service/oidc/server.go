@@ -270,3 +270,33 @@ func (s *Server) JWKS() map[string]any {
 		}},
 	}
 }
+
+// 类库默认well-known/openid-configuration.json 不支持前缀 需要单独配置
+// func (s *Server) Discovery(ctx context.Context, r *http.Request) *op.Response {
+
+// 	server, ok := s.legacy.(*legacyServerAdapters)
+// 	if !ok {
+// 		return nil
+// 	}
+// 	return server.Discovery(ct)
+// }
+
+func (s *Server) Discovery(ctx context.Context, r *http.Request) (*op.Response, error) {
+	data := &struct{}{}
+	opReq := &op.Request[struct{}]{
+		Method:   r.Method,
+		URL:      r.URL,
+		Header:   r.Header,
+		Form:     r.Form,
+		PostForm: r.PostForm,
+		Data:     data,
+	}
+	ls, ok := s.legacy.(*legacyServerAdapters)
+	if !ok {
+		return nil, fmt.Errorf("legacyServerAdapters 未初始化")
+	}
+	if ls.LegacyServer == nil {
+		return nil, fmt.Errorf("legacyServer 未初始化")
+	}
+	return ls.Discovery(ctx, opReq)
+}
