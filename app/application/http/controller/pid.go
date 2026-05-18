@@ -52,3 +52,22 @@ func (self Pid) GetMountFiles(http *gin.Context) {
 	}
 	self.JsonResponseWithoutError(http, result)
 }
+
+func (self Pid) UpdateMountFile(http *gin.Context) {
+	params := pid.UpdateMountFileParam{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	token := http.MustGet("k8s_token").(string)
+	mountFiles, err := pid.NewMountFilesByToken(token)
+	if err != nil {
+		self.JsonResponseWithoutError(http, err)
+		return
+	}
+	err = mountFiles.UpdateFileContent(params)
+	if err != nil {
+		self.JsonResponseWithoutError(http, err)
+		return
+	}
+	self.JsonSuccessResponse(http)
+}
