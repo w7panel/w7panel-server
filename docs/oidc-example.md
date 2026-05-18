@@ -25,6 +25,7 @@ oidc:
     - client_id: demo-client
       client_secret: demo-secret
       token_endpoint_auth_method: client_secret_post
+      allow_any_redirect_uri: false
       require_pkce: true
       redirect_uris:
         - https://oauthdebugger.com/debug
@@ -35,6 +36,8 @@ oidc:
 ```
 
 如果 `issuer` 留空，服务会根据请求头里的 `Host` 和 `X-Forwarded-Proto` 动态推导。
+
+`allow_any_redirect_uri: true` 时，客户端会跳过 `redirect_uris` 白名单校验；无论 `redirect_uris` 是否为空，任意 `redirect_uri` 都会被接受。该规则现在对静态配置客户端和动态注册客户端保持一致。
 
 ## 2. Discovery
 
@@ -51,6 +54,7 @@ curl -sS -X POST \
   -H 'Authorization: Bearer change-me' \
   -d '{
     "client_name": "local-debug-client",
+    "allow_any_redirect_uri": false,
     "redirect_uris": ["http://127.0.0.1:3000/callback"],
     "token_endpoint_auth_method": "none",
     "grant_types": ["authorization_code", "refresh_token"],
@@ -73,6 +77,8 @@ curl -sS -X POST \
 - `Secret.metadata.name = client_id`
 - `Secret.metadata.labels["w7.cc/oidc-client"] = "true"`
 
+如果动态注册时设置 `allow_any_redirect_uri=true`，则 `redirect_uris` 可以为空，且授权阶段会允许任意 `redirect_uri`。如果未开启该选项，则 `redirect_uris` 仍然必填。
+
 ## 3.1 读取 Client
 
 ```bash
@@ -90,6 +96,7 @@ curl -sS -X PUT \
   -H 'Authorization: Bearer change-me' \
   -d '{
     "client_name": "local-debug-client-v2",
+    "allow_any_redirect_uri": false,
     "redirect_uris": ["http://127.0.0.1:3000/callback"],
     "scope": "openid profile offline_access",
     "require_pkce": true

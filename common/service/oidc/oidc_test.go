@@ -4,11 +4,14 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
 	zitadeloidc "github.com/zitadel/oidc/v3/pkg/oidc"
+	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
 type fakeDynamicClientStore struct {
@@ -63,6 +66,7 @@ func (f *fakeDynamicClientStore) Create(req DynamicClientRequest) (Client, error
 		Name:                  req.ClientName,
 		ClientID:              "oidc-test-client",
 		RedirectURIs:          append([]string{}, req.RedirectURIs...),
+		AllowAnyRedirectURI:   req.AllowAnyRedirectURI,
 		Scopes:                normalizeScopes(strings.Fields(req.Scope)),
 		TokenEndpointAuthMode: mode,
 		IsDynamic:             true,
@@ -165,6 +169,45 @@ func TestRegisterDynamicClientStoresAndDefaults(t *testing.T) {
 	}
 }
 
+func TestRegisterDynamicClientRequiresRedirectURIs(t *testing.T) {
+	server := newTestServer(&fakeDynamicClientStore{})
+
+	if _, err := server.RegisterDynamicClient(DynamicClientRequest{
+		TokenEndpointAuthMode: "none",
+		ClientName:            "demo",
+	}); err == nil {
+		t.Fatalf("expected redirect_uris to remain required for dynamic clients")
+	} else if !strings.Contains(err.Error(), "redirect_uris is required") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRegisterDynamicClientAllowsEmptyRedirectURIsWhenAllowAnyEnabled(t *testing.T) {
+	store := &fakeDynamicClientStore{}
+	server := newTestServer(store)
+
+	resp, err := server.RegisterDynamicClient(DynamicClientRequest{
+		AllowAnyRedirectURI:   true,
+		TokenEndpointAuthMode: "none",
+		ClientName:            "demo",
+	})
+	if err != nil {
+		t.Fatalf("expected dynamic client allow_any_redirect_uri to allow empty redirect_uris, got %v", err)
+	}
+	if resp == nil || resp.ClientID == "" {
+		t.Fatalf("expected registered dynamic client response")
+	}
+	if !resp.AllowAnyRedirectURI {
+		t.Fatalf("expected response to preserve allow_any_redirect_uri")
+	}
+	if len(store.createCalls) != 1 || !store.createCalls[0].AllowAnyRedirectURI {
+		t.Fatalf("expected create request to persist allow_any_redirect_uri, got %#v", store.createCalls)
+	}
+	if !server.clients[resp.ClientID].AllowAnyRedirectURI {
+		t.Fatalf("expected server cache to preserve allow_any_redirect_uri")
+	}
+}
+
 func TestUpdateAndDeleteDynamicClient(t *testing.T) {
 	store := &fakeDynamicClientStore{}
 	server := newTestServer(store)
@@ -179,9 +222,10 @@ func TestUpdateAndDeleteDynamicClient(t *testing.T) {
 	}
 
 	resp, err := server.UpdateDynamicClient("oidc-demo", DynamicClientRequest{
-		RedirectURIs: []string{"https://new.example/callback"},
-		Scope:        "openid profile offline_access invalid",
-		ClientName:   "renamed",
+		RedirectURIs:        []string{"https://new.example/callback"},
+		AllowAnyRedirectURI: true,
+		Scope:               "openid profile offline_access invalid",
+		ClientName:          "renamed",
 	})
 	if err != nil {
 		t.Fatalf("UpdateDynamicClient returned error: %v", err)
@@ -196,8 +240,14 @@ func TestUpdateAndDeleteDynamicClient(t *testing.T) {
 	if len(updated.Scopes) != 3 {
 		t.Fatalf("expected filtered scopes, got %#v", updated.Scopes)
 	}
+	if !updated.AllowAnyRedirectURI {
+		t.Fatalf("expected updated client to preserve allow_any_redirect_uri")
+	}
 	if resp.ClientName != "renamed" {
 		t.Fatalf("expected response with updated client name")
+	}
+	if !resp.AllowAnyRedirectURI {
+		t.Fatalf("expected response to include allow_any_redirect_uri")
 	}
 
 	if err := server.DeleteDynamicClient("oidc-demo"); err != nil {
@@ -324,7 +374,7 @@ func TestLoginCompletesAuthRequestAfterPasswordValidation(t *testing.T) {
 
 func TestLoginURLUsesAuthorizeLoginPath(t *testing.T) {
 	client := oidcClient{client: Client{ClientID: "client-1"}}
-	if got, want := client.LoginURL("request-1"), "/authorize/login?authRequestID=request-1"; got != want {
+	if got, want := client.LoginURL("request-1"), "/panel-api/v1/oidc/authorize/login?authRequestID=request-1"; got != want {
 		t.Fatalf("unexpected login url: got %q want %q", got, want)
 	}
 }
@@ -482,6 +532,147 @@ func TestCreateDirectAuthorizationCodeAllowsAnyRedirectWhenInsecureFlagEnabled(t
 	}
 	if resp == nil || resp.Code == "" {
 		t.Fatalf("expected authorization code response")
+	}
+}
+
+func TestCreateDirectAuthorizationCodeAllowsAnyRedirectForStaticClientConfig(t *testing.T) {
+	server := newTestServer(&fakeDynamicClientStore{})
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("GenerateKey returned error: %v", err)
+	}
+	server.private = privateKey
+	server.kid = "test-kid"
+	server.clients["client-static-any"] = Client{
+		ClientID:              "client-static-any",
+		AllowAnyRedirectURI:   true,
+		Scopes:                []string{"openid"},
+		TokenEndpointAuthMode: "none",
+		CreatedAt:             time.Now(),
+	}
+	if err := server.initProvider(); err != nil {
+		t.Fatalf("initProvider returned error: %v", err)
+	}
+
+	resp, err := server.CreateDirectAuthorizationCode(context.Background(), DirectAuthorizeRequest{
+		ClientID:    "client-static-any",
+		RedirectURI: "https://any.example/callback",
+		Scope:       "openid",
+	})
+	if err != nil {
+		t.Fatalf("expected static client allow_any_redirect_uri to allow request, got %v", err)
+	}
+	if resp == nil || resp.Code == "" {
+		t.Fatalf("expected authorization code response")
+	}
+}
+
+func TestCreateDirectAuthorizationCodeAllowsAnyRedirectForStaticClientConfigEvenWithRedirectList(t *testing.T) {
+	server := newTestServer(&fakeDynamicClientStore{})
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("GenerateKey returned error: %v", err)
+	}
+	server.private = privateKey
+	server.kid = "test-kid"
+	server.clients["client-static-any-with-list"] = Client{
+		ClientID:              "client-static-any-with-list",
+		RedirectURIs:          []string{"https://configured.example/callback"},
+		AllowAnyRedirectURI:   true,
+		Scopes:                []string{"openid"},
+		TokenEndpointAuthMode: "none",
+		CreatedAt:             time.Now(),
+	}
+	if err := server.initProvider(); err != nil {
+		t.Fatalf("initProvider returned error: %v", err)
+	}
+
+	resp, err := server.CreateDirectAuthorizationCode(context.Background(), DirectAuthorizeRequest{
+		ClientID:    "client-static-any-with-list",
+		RedirectURI: "https://unlisted.example/callback",
+		Scope:       "openid",
+	})
+	if err != nil {
+		t.Fatalf("expected allow_any_redirect_uri to override configured redirect list, got %v", err)
+	}
+	if resp == nil || resp.Code == "" {
+		t.Fatalf("expected authorization code response")
+	}
+}
+
+func TestCodeExchangeRejectsMismatchedRedirectURI(t *testing.T) {
+	server := newTestServer(&fakeDynamicClientStore{})
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("GenerateKey returned error: %v", err)
+	}
+	server.private = privateKey
+	server.kid = "test-kid"
+	server.clients["client-1"] = Client{
+		ClientID:              "client-1",
+		RedirectURIs:          []string{"https://client.example/callback"},
+		Scopes:                []string{"openid", "offline_access"},
+		TokenEndpointAuthMode: "none",
+		CreatedAt:             time.Now(),
+	}
+	if err := server.initProvider(); err != nil {
+		t.Fatalf("initProvider returned error: %v", err)
+	}
+
+	resp, err := server.CreateDirectAuthorizationCode(context.Background(), DirectAuthorizeRequest{
+		Username:     "alice",
+		ClientID:     "client-1",
+		RedirectURI:  "https://client.example/callback",
+		Scope:        "openid offline_access",
+		State:        "state-1",
+		ResponseType: "code",
+	})
+	if err != nil {
+		t.Fatalf("CreateDirectAuthorizationCode returned error: %v", err)
+	}
+
+	authReq, err := server.AuthRequestByCode(context.Background(), resp.Code)
+	if err != nil {
+		t.Fatalf("AuthRequestByCode returned error: %v", err)
+	}
+	if authReq.GetRedirectURI() != "https://client.example/callback" {
+		t.Fatalf("unexpected stored redirect uri: %s", authReq.GetRedirectURI())
+	}
+
+	requestURL, err := url.Parse("https://panel.example.com/panel-api/v1/oidc/token")
+	if err != nil {
+		t.Fatalf("url.Parse returned error: %v", err)
+	}
+	clientReq := &op.ClientRequest[zitadeloidc.AccessTokenRequest]{
+		Request: &op.Request[zitadeloidc.AccessTokenRequest]{
+			Method: http.MethodPost,
+			URL:    requestURL,
+			Header: http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+			Form: url.Values{
+				"grant_type":   []string{"authorization_code"},
+				"client_id":    []string{"client-1"},
+				"code":         []string{resp.Code},
+				"redirect_uri": []string{"https://evil.example/callback"},
+			},
+			PostForm: url.Values{
+				"grant_type":   []string{"authorization_code"},
+				"client_id":    []string{"client-1"},
+				"code":         []string{resp.Code},
+				"redirect_uri": []string{"https://evil.example/callback"},
+			},
+			Data: &zitadeloidc.AccessTokenRequest{
+				Code:        resp.Code,
+				RedirectURI: "https://evil.example/callback",
+				ClientID:    "client-1",
+			},
+		},
+		Client: server.newOIDCClient(server.clients["client-1"]),
+	}
+
+	if _, err := server.legacy.CodeExchange(context.Background(), clientReq); err == nil {
+		t.Fatalf("expected mismatched redirect_uri to fail code exchange")
+	} else if !strings.Contains(err.Error(), "redirect_uri does not correspond") {
+		t.Fatalf("expected redirect mismatch error, got %v", err)
 	}
 }
 

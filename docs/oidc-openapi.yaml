@@ -13,6 +13,8 @@ info:
     - `token` uses `application/x-www-form-urlencoded`.
     - Dynamic client registration requires `Authorization: Bearer <registration_access_token>`
       when `oidc.registration_access_token` is configured.
+    - When `allow_any_redirect_uri=true`, the client skips `redirect_uris` whitelist checks.
+      This rule is consistent for both statically configured clients and dynamically registered clients.
 servers:
   - url: http://127.0.0.1:8080/panel-api/v1/oidc
     description: Local example

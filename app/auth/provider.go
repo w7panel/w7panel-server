@@ -36,6 +36,22 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 
 func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	server.RegisterRouters(func(engine *gin.Engine) {
+		oidcGroup := engine.Group("/panel-api/v1/oidc")
+		{
+			oidcGroup.Any("/.well-known/openid-configuration", controller2.Oidc{}.Handle)
+			oidcGroup.Any("/jwks", controller2.Oidc{}.Handle)
+			oidcGroup.POST("/register", controller2.Oidc{}.RegisterClient)
+			oidcGroup.GET("/register/:clientId", controller2.Oidc{}.GetClient)
+			oidcGroup.PUT("/register/:clientId", controller2.Oidc{}.UpdateClient)
+			oidcGroup.DELETE("/register/:clientId", controller2.Oidc{}.DeleteClient)
+			oidcGroup.GET("/authorize/login", controller2.Oidc{}.LoginPage)
+			oidcGroup.POST("/authorize/login", controller2.Oidc{}.Login)
+			oidcGroup.Any("/authorize", controller2.Oidc{}.Handle)
+			oidcGroup.Any("/authorize/*path", controller2.Oidc{}.Handle)
+			oidcGroup.Any("/token", controller2.Oidc{}.Handle)
+			oidcGroup.Any("/userinfo", controller2.Oidc{}.Handle)
+		}
+
 		engine.POST("/panel-api/v1/login", controller2.Auth{}.Login)
 
 		localApiGroup := engine.Group("/panel-api/v1/auth").Use(middleware.Cors{}.Process)
@@ -70,17 +86,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		//直接获取code 用于OIDC
 		engine.POST("/panel-api/v1/code", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCode)
-		engine.POST("/panel-api/v1/callback-url", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCallbackURL)
-
-		engine.Any("/.well-known/openid-configuration", controller2.Oidc{}.Handle)
-		engine.Any("/jwks", controller2.Oidc{}.Handle)
-		engine.POST("/register", controller2.Oidc{}.RegisterClient)
-		//http://127.0.0.1:9007/authorize?client_id=default&redirect_uri=http://127.0.0.1:3000/callback111&scope=openid&response_type=code
-		//http://218.23.2.48:9090/authorize?client_id=default&redirect_uri=http://127.0.0.1:3000/callback111&scope=openid&response_type=code
-		engine.Any("/authorize", controller2.Oidc{}.Handle)
-		engine.Any("/authorize/*path", controller2.Oidc{}.Handle)
-		engine.Any("/token", controller2.Oidc{}.Handle)
-		engine.Any("/userinfo", controller2.Oidc{}.Handle)
+		// engine.POST("/panel-api/v1/callback-url", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCallbackURL)
 
 	})
 }

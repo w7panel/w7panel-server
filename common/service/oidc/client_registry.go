@@ -23,7 +23,7 @@ func (s *Server) ValidateRegistrationAccessToken(token string) bool {
 }
 
 func (s *Server) RegisterDynamicClient(req DynamicClientRequest) (*DynamicClientResponse, error) {
-	if len(req.RedirectURIs) == 0 {
+	if len(req.RedirectURIs) == 0 && !req.AllowAnyRedirectURI {
 		return nil, errors.New("redirect_uris is required")
 	}
 	for _, redirectURI := range req.RedirectURIs {
@@ -72,6 +72,7 @@ func (s *Server) UpdateDynamicClient(clientID string, req DynamicClientRequest) 
 	if req.ClientName != "" {
 		client.Name = req.ClientName
 	}
+	client.AllowAnyRedirectURI = req.AllowAnyRedirectURI
 	if req.TokenEndpointAuthMode != "" {
 		client.TokenEndpointAuthMode = req.TokenEndpointAuthMode
 	}

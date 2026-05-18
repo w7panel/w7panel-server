@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"net/url"
 	"time"
 
 	zitadeloidc "github.com/zitadel/oidc/v3/pkg/oidc"
@@ -56,7 +57,7 @@ func (c oidcClient) GrantTypes() []zitadeloidc.GrantType {
 	return grants
 }
 func (c oidcClient) LoginURL(id string) string {
-	return "/login?" + authRequestIDQuery + "=" + id
+	return oidcPath("authorize/login") + "?" + authRequestIDQuery + "=" + url.QueryEscape(id)
 }
 func (c oidcClient) AccessTokenType() op.AccessTokenType { return op.AccessTokenTypeJWT }
 func (c oidcClient) IDTokenLifetime() time.Duration      { return time.Hour }
