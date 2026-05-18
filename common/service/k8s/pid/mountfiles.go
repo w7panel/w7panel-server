@@ -5,9 +5,11 @@ import (
 	"encoding/base64"
 	"fmt"
 	"path"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,7 +41,9 @@ type UpdateMountFileParam struct {
 	Kind       string `form:"kind" binding:"required"`
 	Name       string `form:"name" binding:"required"`
 	Path       string `form:"path" binding:"required"`
+	Action     string `form:"action"`
 	Content    string `form:"content"`
+	Mode       string `form:"mode"`
 }
 
 type MountFilesResult struct {
@@ -69,6 +73,8 @@ type MountFileEntry struct {
 	SourceName    string `json:"sourceName,omitempty"`
 	Key           string `json:"key,omitempty"`
 	Optional      bool   `json:"optional,omitempty"`
+	Mode          *int32 `json:"mode,omitempty"`
+	ModeOctal     string `json:"modeOctal,omitempty"`
 	Content       string `json:"content,omitempty"`
 	ContentBase64 string `json:"contentBase64,omitempty"`
 	Binary        bool   `json:"binary,omitempty"`
@@ -128,6 +134,117 @@ func (m *MountFiles) Handle(param MountFilesParam) (*MountFilesResult, error) {
 }
 
 func (m *MountFiles) UpdateFileContent(param UpdateMountFileParam) error {
+	action := strings.ToLower(strings.TrimSpace(param.Action))
+	if action == "" {
+		action = "update"
+	}
+
+	switch action {
+	case "create":
+		return m.createFile(param)
+	case "update":
+		return m.updateFileContent(param)
+	case "delete", "remove":
+		return m.deleteFile(param)
+	case "chmod":
+		return m.chmodFile(param)
+	default:
+		return fmt.Errorf("unsupported action: %s", param.Action)
+	}
+}
+
+type createMountTarget struct {
+	ContainerName string
+	ContainerType string
+	MountPath     string
+}
+
+func (m *MountFiles) createFile(param UpdateMountFileParam) error {
+	namespace := param.Namespace
+	if namespace == "" {
+		namespace = m.GetNamespace()
+	}
+
+	obj, err := m.GetK8sRawObject(param.Name, param.APIVersion, param.Kind, namespace)
+	if err != nil {
+		return err
+	}
+	if obj.GetNamespace() != "" {
+		namespace = obj.GetNamespace()
+	}
+
+	podSpec, err := workloadPodSpec(obj)
+	if err != nil {
+		return err
+	}
+
+	result, err := m.Handle(MountFilesParam{
+		Namespace:      namespace,
+		APIVersion:     param.APIVersion,
+		Kind:           param.Kind,
+		Name:           param.Name,
+		IncludeContent: false,
+	})
+	if err != nil {
+		return err
+	}
+
+	target, err := findCreateMountTarget(result, param.Path)
+	if err != nil {
+		return err
+	}
+
+	configMapName := buildMountFileConfigMapName(obj.GetName(), path.Base(param.Path))
+	volumeName := buildMountFileVolumeName(path.Base(param.Path))
+	fileKey := path.Base(param.Path)
+	fileMode := int32(corev1.ConfigMapVolumeSourceDefaultMode)
+
+	if param.Mode != "" {
+		fileMode, err = parseFileMode(param.Mode)
+		if err != nil {
+			return err
+		}
+	}
+
+	ctx := context.TODO()
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      configMapName,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"w7.cc/mountfile": "true",
+				"w7.cc/workload":  obj.GetName(),
+			},
+		},
+		Data: map[string]string{
+			fileKey: param.Content,
+		},
+	}
+	if _, err := m.ClientSet.CoreV1().ConfigMaps(namespace).Create(ctx, cm, metav1.CreateOptions{}); err != nil {
+		return err
+	}
+
+	err = attachCreatedFileToPodSpec(podSpec, *target, volumeName, configMapName, fileKey, param.Path, fileMode)
+	if err != nil {
+		return err
+	}
+
+	podSpecMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(podSpec)
+	if err != nil {
+		return err
+	}
+	if err := unstructured.SetNestedMap(obj.Object, podSpecMap, "spec", "template", "spec"); err != nil {
+		return err
+	}
+	objBytes, err := obj.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	_, err = m.ApplyJson(objBytes, k8s.ApplyOptions{Namespace: namespace})
+	return err
+}
+
+func (m *MountFiles) updateFileContent(param UpdateMountFileParam) error {
 	result, err := m.Handle(MountFilesParam{
 		Namespace:      param.Namespace,
 		APIVersion:     param.APIVersion,
@@ -182,6 +299,93 @@ func (m *MountFiles) UpdateFileContent(param UpdateMountFileParam) error {
 	}
 }
 
+func (m *MountFiles) deleteFile(param UpdateMountFileParam) error {
+	result, err := m.Handle(MountFilesParam{
+		Namespace:      param.Namespace,
+		APIVersion:     param.APIVersion,
+		Kind:           param.Kind,
+		Name:           param.Name,
+		IncludeContent: false,
+	})
+	if err != nil {
+		return err
+	}
+
+	target, err := findMountFileTarget(result, param.Path)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.TODO()
+	namespace := result.Namespace
+
+	switch target.SourceType {
+	case "configMap":
+		cm, err := m.ClientSet.CoreV1().ConfigMaps(namespace).Get(ctx, target.SourceName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		delete(cm.Data, target.Key)
+		delete(cm.BinaryData, target.Key)
+		_, err = m.ClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, cm, metav1.UpdateOptions{})
+		return err
+	case "secret":
+		secret, err := m.ClientSet.CoreV1().Secrets(namespace).Get(ctx, target.SourceName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		delete(secret.Data, target.Key)
+		_, err = m.ClientSet.CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{})
+		return err
+	default:
+		return fmt.Errorf("path %s maps to unsupported source type %s", param.Path, target.SourceType)
+	}
+}
+
+func (m *MountFiles) chmodFile(param UpdateMountFileParam) error {
+	mode, err := parseFileMode(param.Mode)
+	if err != nil {
+		return err
+	}
+
+	namespace := param.Namespace
+	if namespace == "" {
+		namespace = m.GetNamespace()
+	}
+
+	obj, err := m.GetK8sRawObject(param.Name, param.APIVersion, param.Kind, namespace)
+	if err != nil {
+		return err
+	}
+	if obj.GetNamespace() != "" {
+		namespace = obj.GetNamespace()
+	}
+
+	podSpec, err := workloadPodSpec(obj)
+	if err != nil {
+		return err
+	}
+
+	if !applyModeToMountedFile(podSpec, param.Path, mode) {
+		return fmt.Errorf("path %s not found in mounted files", param.Path)
+	}
+
+	podSpecMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(podSpec)
+	if err != nil {
+		return err
+	}
+	if err := unstructured.SetNestedMap(obj.Object, podSpecMap, "spec", "template", "spec"); err != nil {
+		return err
+	}
+
+	objBytes, err := obj.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	_, err = m.ApplyJson(objBytes, k8s.ApplyOptions{Namespace: namespace})
+	return err
+}
+
 func workloadPodSpec(obj *unstructured.Unstructured) (*corev1.PodSpec, error) {
 	podSpecMap, found, err := unstructured.NestedMap(obj.Object, "spec", "template", "spec")
 	if err != nil {
@@ -225,6 +429,55 @@ func findMountFileTarget(result *MountFilesResult, absolutePath string) (*MountF
 
 	if target == nil {
 		return nil, fmt.Errorf("path %s not found in mounted files", absolutePath)
+	}
+	return target, nil
+}
+
+func findCreateMountTarget(result *MountFilesResult, absolutePath string) (*createMountTarget, error) {
+	if absolutePath == "" || !path.IsAbs(absolutePath) {
+		return nil, fmt.Errorf("path must be absolute: %s", absolutePath)
+	}
+
+	for _, mount := range result.Mounts {
+		if hasMountedFile(mount.Files, absolutePath) {
+			return nil, fmt.Errorf("path %s already exists in mounted files", absolutePath)
+		}
+	}
+
+	var target *createMountTarget
+	longestMountPath := -1
+	for _, mount := range result.Mounts {
+		if mount.ReadOnly {
+			continue
+		}
+		if !matchesMountRootByPath(mount.MountPath, absolutePath) {
+			continue
+		}
+		if absolutePath == mount.MountPath {
+			continue
+		}
+		candidate := &createMountTarget{
+			ContainerName: mount.ContainerName,
+			ContainerType: mount.ContainerType,
+			MountPath:     mount.MountPath,
+		}
+		mountLen := len(strings.TrimRight(mount.MountPath, "/"))
+		if target == nil || mountLen > longestMountPath {
+			target = candidate
+			longestMountPath = mountLen
+			continue
+		}
+		if mountLen < longestMountPath {
+			continue
+		}
+		if target.ContainerName == candidate.ContainerName && target.ContainerType == candidate.ContainerType && target.MountPath == candidate.MountPath {
+			continue
+		}
+		return nil, fmt.Errorf("path %s matches multiple mount targets", absolutePath)
+	}
+
+	if target == nil {
+		return nil, fmt.Errorf("path %s does not map to a creatable mount path", absolutePath)
 	}
 	return target, nil
 }
@@ -298,6 +551,7 @@ func (m *MountFiles) describeConfigMapVolume(ctx context.Context, namespace stri
 				Key:          item.Key,
 				Optional:     source.Optional != nil && *source.Optional,
 			}
+			entry.Mode, entry.ModeOctal = effectiveFileMode(item.Mode, source.DefaultMode, corev1.ConfigMapVolumeSourceDefaultMode)
 			if val, ok := cm.Data[item.Key]; ok && includeContent {
 				entry.Content = val
 			}
@@ -318,6 +572,8 @@ func (m *MountFiles) describeConfigMapVolume(ctx context.Context, namespace stri
 			SourceName:   source.Name,
 			Key:          key,
 			Optional:     source.Optional != nil && *source.Optional,
+			Mode:         modePtr(corev1.ConfigMapVolumeSourceDefaultMode, source.DefaultMode),
+			ModeOctal:    formatFileMode(valueOrDefault(source.DefaultMode, corev1.ConfigMapVolumeSourceDefaultMode)),
 			Content:      contentIf(includeContent, val),
 		})
 	}
@@ -330,6 +586,7 @@ func (m *MountFiles) describeConfigMapVolume(ctx context.Context, namespace stri
 			Key:          key,
 			Optional:     source.Optional != nil && *source.Optional,
 		}
+		entry.Mode, entry.ModeOctal = effectiveFileMode(nil, source.DefaultMode, corev1.ConfigMapVolumeSourceDefaultMode)
 		if includeContent {
 			entry.ContentBase64 = base64.StdEncoding.EncodeToString(val)
 			entry.Binary = true
@@ -364,6 +621,7 @@ func (m *MountFiles) describeSecretVolume(ctx context.Context, namespace string,
 				Key:          item.Key,
 				Optional:     source.Optional != nil && *source.Optional,
 			}
+			entry.Mode, entry.ModeOctal = effectiveFileMode(item.Mode, source.DefaultMode, corev1.SecretVolumeSourceDefaultMode)
 			if val, ok := secret.Data[item.Key]; ok && includeContent {
 				fillSecretContent(&entry, val)
 			}
@@ -381,6 +639,7 @@ func (m *MountFiles) describeSecretVolume(ctx context.Context, namespace string,
 			Key:          key,
 			Optional:     source.Optional != nil && *source.Optional,
 		}
+		entry.Mode, entry.ModeOctal = effectiveFileMode(nil, source.DefaultMode, corev1.SecretVolumeSourceDefaultMode)
 		if includeContent {
 			fillSecretContent(&entry, val)
 		}
@@ -394,22 +653,23 @@ func (m *MountFiles) describeProjectedVolume(ctx context.Context, namespace stri
 	for _, item := range source.Sources {
 		switch {
 		case item.ConfigMap != nil:
-			result = append(result, m.describeConfigMapProjection(ctx, namespace, item.ConfigMap, volumeMount, includeContent)...)
+			result = append(result, m.describeConfigMapProjection(ctx, namespace, item.ConfigMap, volumeMount, includeContent, source.DefaultMode)...)
 		case item.Secret != nil:
-			result = append(result, m.describeSecretProjection(ctx, namespace, item.Secret, volumeMount, includeContent)...)
+			result = append(result, m.describeSecretProjection(ctx, namespace, item.Secret, volumeMount, includeContent, source.DefaultMode)...)
 		case item.ServiceAccountToken != nil:
 			entry := MountFileEntry{
 				Path:         mountTargetPath(volumeMount, item.ServiceAccountToken.Path),
 				RelativePath: item.ServiceAccountToken.Path,
 				SourceType:   "serviceAccountToken",
 			}
+			entry.Mode, entry.ModeOctal = effectiveFileMode(nil, source.DefaultMode, corev1.ProjectedVolumeSourceDefaultMode)
 			result = append(result, entry)
 		}
 	}
 	return filterBySubPath(result, volumeMount)
 }
 
-func (m *MountFiles) describeConfigMapProjection(ctx context.Context, namespace string, source *corev1.ConfigMapProjection, volumeMount corev1.VolumeMount, includeContent bool) []MountFileEntry {
+func (m *MountFiles) describeConfigMapProjection(ctx context.Context, namespace string, source *corev1.ConfigMapProjection, volumeMount corev1.VolumeMount, includeContent bool, projectedDefaultMode *int32) []MountFileEntry {
 	if source == nil || source.Name == "" {
 		return nil
 	}
@@ -433,6 +693,7 @@ func (m *MountFiles) describeConfigMapProjection(ctx context.Context, namespace 
 				Key:          projectionItem.Key,
 				Optional:     source.Optional != nil && *source.Optional,
 			}
+			entry.Mode, entry.ModeOctal = effectiveFileMode(projectionItem.Mode, projectedDefaultMode, corev1.ProjectedVolumeSourceDefaultMode)
 			if val, ok := cm.Data[projectionItem.Key]; ok && includeContent {
 				entry.Content = val
 			}
@@ -453,6 +714,8 @@ func (m *MountFiles) describeConfigMapProjection(ctx context.Context, namespace 
 			SourceName:   source.Name,
 			Key:          key,
 			Optional:     source.Optional != nil && *source.Optional,
+			Mode:         modePtr(valueOrDefault(projectedDefaultMode, corev1.ProjectedVolumeSourceDefaultMode), nil),
+			ModeOctal:    formatFileMode(valueOrDefault(projectedDefaultMode, corev1.ProjectedVolumeSourceDefaultMode)),
 			Content:      contentIf(includeContent, val),
 		})
 	}
@@ -465,6 +728,7 @@ func (m *MountFiles) describeConfigMapProjection(ctx context.Context, namespace 
 			Key:          key,
 			Optional:     source.Optional != nil && *source.Optional,
 		}
+		entry.Mode, entry.ModeOctal = effectiveFileMode(nil, projectedDefaultMode, corev1.ProjectedVolumeSourceDefaultMode)
 		if includeContent {
 			entry.ContentBase64 = base64.StdEncoding.EncodeToString(val)
 			entry.Binary = true
@@ -474,7 +738,7 @@ func (m *MountFiles) describeConfigMapProjection(ctx context.Context, namespace 
 	return result
 }
 
-func (m *MountFiles) describeSecretProjection(ctx context.Context, namespace string, source *corev1.SecretProjection, volumeMount corev1.VolumeMount, includeContent bool) []MountFileEntry {
+func (m *MountFiles) describeSecretProjection(ctx context.Context, namespace string, source *corev1.SecretProjection, volumeMount corev1.VolumeMount, includeContent bool, projectedDefaultMode *int32) []MountFileEntry {
 	if source == nil || source.Name == "" {
 		return nil
 	}
@@ -498,6 +762,7 @@ func (m *MountFiles) describeSecretProjection(ctx context.Context, namespace str
 				Key:          projectionItem.Key,
 				Optional:     source.Optional != nil && *source.Optional,
 			}
+			entry.Mode, entry.ModeOctal = effectiveFileMode(projectionItem.Mode, projectedDefaultMode, corev1.ProjectedVolumeSourceDefaultMode)
 			if val, ok := secret.Data[projectionItem.Key]; ok && includeContent {
 				fillSecretContent(&entry, val)
 			}
@@ -515,6 +780,7 @@ func (m *MountFiles) describeSecretProjection(ctx context.Context, namespace str
 			Key:          key,
 			Optional:     source.Optional != nil && *source.Optional,
 		}
+		entry.Mode, entry.ModeOctal = effectiveFileMode(nil, projectedDefaultMode, corev1.ProjectedVolumeSourceDefaultMode)
 		if includeContent {
 			fillSecretContent(&entry, val)
 		}
@@ -564,4 +830,316 @@ func contentIf(include bool, content string) string {
 		return content
 	}
 	return ""
+}
+
+func effectiveFileMode(itemMode, defaultMode *int32, fallback int32) (*int32, string) {
+	mode := valueOrDefault(itemMode, valueOrDefault(defaultMode, fallback))
+	return modePtr(mode, nil), formatFileMode(mode)
+}
+
+func valueOrDefault(mode *int32, fallback int32) int32 {
+	if mode != nil {
+		return *mode
+	}
+	return fallback
+}
+
+func modePtr(fallback int32, mode *int32) *int32 {
+	if mode != nil {
+		val := *mode
+		return &val
+	}
+	val := fallback
+	return &val
+}
+
+func formatFileMode(mode int32) string {
+	return fmt.Sprintf("%04o", mode)
+}
+
+func parseFileMode(raw string) (int32, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0, fmt.Errorf("mode is required for chmod")
+	}
+
+	base := 10
+	if strings.HasPrefix(raw, "0") {
+		base = 8
+	}
+
+	val, err := strconv.ParseInt(raw, base, 32)
+	if err != nil {
+		return 0, fmt.Errorf("invalid mode %q", raw)
+	}
+	if val < 0 || val > 0o7777 {
+		return 0, fmt.Errorf("mode out of range: %s", raw)
+	}
+	return int32(val), nil
+}
+
+func applyModeToMountedFile(podSpec *corev1.PodSpec, absolutePath string, mode int32) bool {
+	volumes := make(map[string]*corev1.Volume, len(podSpec.Volumes))
+	for i := range podSpec.Volumes {
+		volumes[podSpec.Volumes[i].Name] = &podSpec.Volumes[i]
+	}
+
+	if applyModeToContainerMounts(podSpec.Containers, volumes, absolutePath, mode) {
+		return true
+	}
+	return applyModeToContainerMounts(podSpec.InitContainers, volumes, absolutePath, mode)
+}
+
+func applyModeToContainerMounts(containers []corev1.Container, volumes map[string]*corev1.Volume, absolutePath string, mode int32) bool {
+	for _, container := range containers {
+		for _, volumeMount := range container.VolumeMounts {
+			volume, ok := volumes[volumeMount.Name]
+			if !ok {
+				continue
+			}
+			if applyModeToVolume(volume, volumeMount, absolutePath, mode) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func applyModeToVolume(volume *corev1.Volume, volumeMount corev1.VolumeMount, absolutePath string, mode int32) bool {
+	switch {
+	case volume.ConfigMap != nil:
+		return applyModeToConfigMapVolume(volume.ConfigMap, volumeMount, absolutePath, mode)
+	case volume.Secret != nil:
+		return applyModeToSecretVolume(volume.Secret, volumeMount, absolutePath, mode)
+	case volume.Projected != nil:
+		return applyModeToProjectedVolume(volume.Projected, volumeMount, absolutePath, mode)
+	default:
+		return false
+	}
+}
+
+func applyModeToConfigMapVolume(source *corev1.ConfigMapVolumeSource, volumeMount corev1.VolumeMount, absolutePath string, mode int32) bool {
+	if len(source.Items) > 0 {
+		for i := range source.Items {
+			if mountTargetPath(volumeMount, source.Items[i].Path) != absolutePath {
+				continue
+			}
+			source.Items[i].Mode = int32Ptr(mode)
+			return true
+		}
+		return false
+	}
+
+	if !matchesMountRoot(volumeMount, absolutePath) {
+		return false
+	}
+	source.DefaultMode = int32Ptr(mode)
+	return true
+}
+
+func applyModeToSecretVolume(source *corev1.SecretVolumeSource, volumeMount corev1.VolumeMount, absolutePath string, mode int32) bool {
+	if len(source.Items) > 0 {
+		for i := range source.Items {
+			if mountTargetPath(volumeMount, source.Items[i].Path) != absolutePath {
+				continue
+			}
+			source.Items[i].Mode = int32Ptr(mode)
+			return true
+		}
+		return false
+	}
+
+	if !matchesMountRoot(volumeMount, absolutePath) {
+		return false
+	}
+	source.DefaultMode = int32Ptr(mode)
+	return true
+}
+
+func applyModeToProjectedVolume(source *corev1.ProjectedVolumeSource, volumeMount corev1.VolumeMount, absolutePath string, mode int32) bool {
+	for i := range source.Sources {
+		switch {
+		case source.Sources[i].ConfigMap != nil:
+			if applyModeToConfigMapProjection(source.Sources[i].ConfigMap, volumeMount, absolutePath, mode, source) {
+				return true
+			}
+		case source.Sources[i].Secret != nil:
+			if applyModeToSecretProjection(source.Sources[i].Secret, volumeMount, absolutePath, mode, source) {
+				return true
+			}
+		case source.Sources[i].ServiceAccountToken != nil:
+			if mountTargetPath(volumeMount, source.Sources[i].ServiceAccountToken.Path) != absolutePath {
+				continue
+			}
+			source.DefaultMode = int32Ptr(mode)
+			return true
+		}
+	}
+	return false
+}
+
+func applyModeToConfigMapProjection(source *corev1.ConfigMapProjection, volumeMount corev1.VolumeMount, absolutePath string, mode int32, projected *corev1.ProjectedVolumeSource) bool {
+	if len(source.Items) > 0 {
+		for i := range source.Items {
+			if mountTargetPath(volumeMount, source.Items[i].Path) != absolutePath {
+				continue
+			}
+			source.Items[i].Mode = int32Ptr(mode)
+			return true
+		}
+		return false
+	}
+
+	if !matchesMountRoot(volumeMount, absolutePath) {
+		return false
+	}
+	projected.DefaultMode = int32Ptr(mode)
+	return true
+}
+
+func applyModeToSecretProjection(source *corev1.SecretProjection, volumeMount corev1.VolumeMount, absolutePath string, mode int32, projected *corev1.ProjectedVolumeSource) bool {
+	if len(source.Items) > 0 {
+		for i := range source.Items {
+			if mountTargetPath(volumeMount, source.Items[i].Path) != absolutePath {
+				continue
+			}
+			source.Items[i].Mode = int32Ptr(mode)
+			return true
+		}
+		return false
+	}
+
+	if !matchesMountRoot(volumeMount, absolutePath) {
+		return false
+	}
+	projected.DefaultMode = int32Ptr(mode)
+	return true
+}
+
+func int32Ptr(val int32) *int32 {
+	return &val
+}
+
+func matchesMountRoot(volumeMount corev1.VolumeMount, absolutePath string) bool {
+	if volumeMount.SubPath != "" {
+		return absolutePath == volumeMount.MountPath
+	}
+	return matchesMountRootByPath(volumeMount.MountPath, absolutePath)
+}
+
+func matchesMountRootByPath(mountPath, absolutePath string) bool {
+	if absolutePath == mountPath {
+		return true
+	}
+	prefix := strings.TrimRight(mountPath, "/") + "/"
+	return strings.HasPrefix(absolutePath, prefix)
+}
+
+func hasMountedFile(files []MountFileEntry, absolutePath string) bool {
+	for _, file := range files {
+		if file.Path == absolutePath {
+			return true
+		}
+	}
+	return false
+}
+
+func attachCreatedFileToPodSpec(podSpec *corev1.PodSpec, target createMountTarget, volumeName, configMapName, fileKey, absolutePath string, fileMode int32) error {
+	for _, volume := range podSpec.Volumes {
+		if volume.Name == volumeName {
+			return fmt.Errorf("volume %s already exists", volumeName)
+		}
+	}
+
+	podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
+		Name: volumeName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: configMapName},
+				Items: []corev1.KeyToPath{{
+					Key:  fileKey,
+					Path: fileKey,
+					Mode: int32Ptr(fileMode),
+				}},
+				DefaultMode: int32Ptr(fileMode),
+			},
+		},
+	})
+
+	switch target.ContainerType {
+	case "initContainer":
+		return appendMountToContainer(&podSpec.InitContainers, target.ContainerName, volumeName, fileKey, absolutePath)
+	default:
+		return appendMountToContainer(&podSpec.Containers, target.ContainerName, volumeName, fileKey, absolutePath)
+	}
+}
+
+func appendMountToContainer(containers *[]corev1.Container, containerName, volumeName, fileKey, absolutePath string) error {
+	for i := range *containers {
+		if (*containers)[i].Name != containerName {
+			continue
+		}
+		for _, mount := range (*containers)[i].VolumeMounts {
+			if mount.MountPath == absolutePath {
+				return fmt.Errorf("path %s already mounted in container %s", absolutePath, containerName)
+			}
+			if mount.Name == volumeName {
+				return fmt.Errorf("volume %s already mounted in container %s", volumeName, containerName)
+			}
+		}
+		(*containers)[i].VolumeMounts = append((*containers)[i].VolumeMounts, corev1.VolumeMount{
+			Name:      volumeName,
+			MountPath: absolutePath,
+			SubPath:   fileKey,
+		})
+		return nil
+	}
+	return fmt.Errorf("container %s not found", containerName)
+}
+
+func buildMountFileConfigMapName(workloadName, fileName string) string {
+	return buildK8sGeneratedName(workloadName+"-mountfile-"+fileName, 63)
+}
+
+func buildMountFileVolumeName(fileName string) string {
+	return buildK8sGeneratedName("mountfile-"+fileName, 63)
+}
+
+func buildK8sGeneratedName(prefix string, maxLen int) string {
+	suffix := strings.ToLower(helper.RandomString(6))
+	base := sanitizeK8sName(prefix)
+	if base == "" {
+		base = "mountfile"
+	}
+	limit := maxLen - len(suffix) - 1
+	if limit < 1 {
+		limit = 1
+	}
+	if len(base) > limit {
+		base = strings.Trim(base[:limit], "-")
+	}
+	if base == "" {
+		base = "m"
+	}
+	return base + "-" + suffix
+}
+
+func sanitizeK8sName(raw string) string {
+	raw = strings.ToLower(raw)
+	var builder strings.Builder
+	lastDash := false
+	for _, r := range raw {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			builder.WriteRune(r)
+			lastDash = false
+		default:
+			if lastDash {
+				continue
+			}
+			builder.WriteByte('-')
+			lastDash = true
+		}
+	}
+	return strings.Trim(builder.String(), "-")
 }
