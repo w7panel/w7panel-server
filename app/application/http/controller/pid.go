@@ -71,3 +71,63 @@ func (self Pid) UpdateMountFile(http *gin.Context) {
 	}
 	self.JsonSuccessResponse(http)
 }
+
+func (self Pid) CreateMountFile(http *gin.Context) {
+	params := pid.UpdateMountFileParam{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	params.Action = "create"
+	token := http.MustGet("k8s_token").(string)
+	mountFiles, err := pid.NewMountFilesByToken(token)
+	if err != nil {
+		self.JsonResponseWithoutError(http, err)
+		return
+	}
+	err = mountFiles.UpdateFileContent(params)
+	if err != nil {
+		self.JsonResponseWithoutError(http, err)
+		return
+	}
+	self.JsonSuccessResponse(http)
+}
+
+func (self Pid) DeleteMountFile(http *gin.Context) {
+	params := pid.UpdateMountFileParam{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	params.Action = "delete"
+	token := http.MustGet("k8s_token").(string)
+	mountFiles, err := pid.NewMountFilesByToken(token)
+	if err != nil {
+		self.JsonResponseWithoutError(http, err)
+		return
+	}
+	err = mountFiles.UpdateFileContent(params)
+	if err != nil {
+		self.JsonResponseWithoutError(http, err)
+		return
+	}
+	self.JsonSuccessResponse(http)
+}
+
+func (self Pid) ChmodMountFile(http *gin.Context) {
+	params := pid.UpdateMountFileParam{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	params.Action = "chmod"
+	token := http.MustGet("k8s_token").(string)
+	mountFiles, err := pid.NewMountFilesByToken(token)
+	if err != nil {
+		self.JsonResponseWithoutError(http, err)
+		return
+	}
+	err = mountFiles.UpdateFileContent(params)
+	if err != nil {
+		self.JsonResponseWithoutError(http, err)
+		return
+	}
+	self.JsonSuccessResponse(http)
+}
