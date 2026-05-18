@@ -36,14 +36,15 @@ type MountFilesParam struct {
 }
 
 type UpdateMountFileParam struct {
-	Namespace  string `form:"namespace"`
-	APIVersion string `form:"apiVersion" binding:"required"`
-	Kind       string `form:"kind" binding:"required"`
-	Name       string `form:"name" binding:"required"`
-	Path       string `form:"path" binding:"required"`
-	Action     string `form:"action"`
-	Content    string `form:"content"`
-	Mode       string `form:"mode"`
+	Namespace     string `form:"namespace"`
+	APIVersion    string `form:"apiVersion" binding:"required"`
+	Kind          string `form:"kind" binding:"required"`
+	Name          string `form:"name" binding:"required"`
+	Path          string `form:"path" binding:"required"`
+	ContainerName string `form:"containerName"`
+	Action        string `form:"action"`
+	Content       string `form:"content"`
+	Mode          string `form:"mode"`
 }
 
 type MountFilesResult struct {
@@ -178,18 +179,7 @@ func (m *MountFiles) createFile(param UpdateMountFileParam) error {
 		return err
 	}
 
-	result, err := m.Handle(MountFilesParam{
-		Namespace:      namespace,
-		APIVersion:     param.APIVersion,
-		Kind:           param.Kind,
-		Name:           param.Name,
-		IncludeContent: false,
-	})
-	if err != nil {
-		return err
-	}
-
-	target, err := findCreateMountTarget(result, param.Path)
+	target, err := findCreateMountTargetFromPodSpec(podSpec, param.Path, param.ContainerName)
 	if err != nil {
 		return err
 	}
@@ -318,11 +308,34 @@ func (m *MountFiles) deleteFile(param UpdateMountFileParam) error {
 
 	ctx := context.TODO()
 	namespace := result.Namespace
+	obj, err := m.GetK8sRawObject(param.Name, param.APIVersion, param.Kind, namespace)
+	if err != nil {
+		return err
+	}
+	if obj.GetNamespace() != "" {
+		namespace = obj.GetNamespace()
+	}
+
+	podSpec, err := workloadPodSpec(obj)
+	if err != nil {
+		return err
+	}
 
 	switch target.SourceType {
 	case "configMap":
 		cm, err := m.ClientSet.CoreV1().ConfigMaps(namespace).Get(ctx, target.SourceName, metav1.GetOptions{})
 		if err != nil {
+			return err
+		}
+		if configMapEntryCount(cm) <= 1 {
+			removeConfigMapVolumesFromPodSpec(podSpec, target.SourceName)
+			if err := m.applyWorkloadPodSpec(obj, podSpec, namespace); err != nil {
+				return err
+			}
+			return m.ClientSet.CoreV1().ConfigMaps(namespace).Delete(ctx, target.SourceName, metav1.DeleteOptions{})
+		}
+		removeMountedFileReferencesFromPodSpec(podSpec, target)
+		if err := m.applyWorkloadPodSpec(obj, podSpec, namespace); err != nil {
 			return err
 		}
 		delete(cm.Data, target.Key)
@@ -334,12 +347,33 @@ func (m *MountFiles) deleteFile(param UpdateMountFileParam) error {
 		if err != nil {
 			return err
 		}
+		removeMountedFileReferencesFromPodSpec(podSpec, target)
+		if err := m.applyWorkloadPodSpec(obj, podSpec, namespace); err != nil {
+			return err
+		}
 		delete(secret.Data, target.Key)
 		_, err = m.ClientSet.CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{})
 		return err
 	default:
 		return fmt.Errorf("path %s maps to unsupported source type %s", param.Path, target.SourceType)
 	}
+}
+
+func (m *MountFiles) applyWorkloadPodSpec(obj *unstructured.Unstructured, podSpec *corev1.PodSpec, namespace string) error {
+	podSpecMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(podSpec)
+	if err != nil {
+		return err
+	}
+	if err := unstructured.SetNestedMap(obj.Object, podSpecMap, "spec", "template", "spec"); err != nil {
+		return err
+	}
+
+	objBytes, err := obj.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	_, err = m.ApplyJson(objBytes, k8s.ApplyOptions{Namespace: namespace})
+	return err
 }
 
 func (m *MountFiles) chmodFile(param UpdateMountFileParam) error {
@@ -435,12 +469,12 @@ func findMountFileTarget(result *MountFilesResult, absolutePath string) (*MountF
 
 func findCreateMountTarget(result *MountFilesResult, absolutePath string) (*createMountTarget, error) {
 	if absolutePath == "" || !path.IsAbs(absolutePath) {
-		return nil, fmt.Errorf("path must be absolute: %s", absolutePath)
+		return nil, fmt.Errorf("必须是绝对路径: %s", absolutePath)
 	}
 
 	for _, mount := range result.Mounts {
 		if hasMountedFile(mount.Files, absolutePath) {
-			return nil, fmt.Errorf("path %s already exists in mounted files", absolutePath)
+			return nil, fmt.Errorf("路径 %s 已挂载", absolutePath)
 		}
 	}
 
@@ -480,6 +514,134 @@ func findCreateMountTarget(result *MountFilesResult, absolutePath string) (*crea
 		return nil, fmt.Errorf("path %s does not map to a creatable mount path", absolutePath)
 	}
 	return target, nil
+}
+
+func findCreateMountTargetFromPodSpec(podSpec *corev1.PodSpec, absolutePath, containerName string) (*createMountTarget, error) {
+	if absolutePath == "" || !path.IsAbs(absolutePath) {
+		return nil, fmt.Errorf("path must be absolute: %s", absolutePath)
+	}
+
+	target, err := findCreateMountTargetInContainers(podSpec.Containers, "container", absolutePath, containerName)
+	if err != nil || target != nil {
+		return target, err
+	}
+
+	initTarget, initErr := findCreateMountTargetInContainers(podSpec.InitContainers, "initContainer", absolutePath, containerName)
+	if initErr != nil || initTarget != nil {
+		return initTarget, initErr
+	}
+
+	return findStandaloneCreateMountTarget(podSpec, absolutePath, containerName)
+}
+
+func findCreateMountTargetInContainers(containers []corev1.Container, containerType, absolutePath, containerName string) (*createMountTarget, error) {
+	var target *createMountTarget
+	longestMountPath := -1
+
+	for _, container := range containers {
+		if containerName != "" && container.Name != containerName {
+			continue
+		}
+		for _, mount := range container.VolumeMounts {
+			if mount.ReadOnly {
+				continue
+			}
+			if mount.MountPath == absolutePath {
+				return nil, fmt.Errorf("path %s already exists in mounted files", absolutePath)
+			}
+			if !matchesMountRoot(mount, absolutePath) || absolutePath == mount.MountPath {
+				continue
+			}
+
+			candidate := &createMountTarget{
+				ContainerName: container.Name,
+				ContainerType: containerType,
+				MountPath:     mount.MountPath,
+			}
+			mountLen := len(strings.TrimRight(mount.MountPath, "/"))
+			if target == nil || mountLen > longestMountPath {
+				target = candidate
+				longestMountPath = mountLen
+				continue
+			}
+			if mountLen < longestMountPath {
+				continue
+			}
+			if target.ContainerName == candidate.ContainerName && target.ContainerType == candidate.ContainerType && target.MountPath == candidate.MountPath {
+				continue
+			}
+			return nil, fmt.Errorf("path %s matches multiple mount targets", absolutePath)
+		}
+	}
+
+	if target == nil {
+		return nil, nil
+	}
+	return target, nil
+}
+
+func findStandaloneCreateMountTarget(podSpec *corev1.PodSpec, absolutePath, containerName string) (*createMountTarget, error) {
+	if hasConflictingMountPath(podSpec.Containers, absolutePath) || hasConflictingMountPath(podSpec.InitContainers, absolutePath) {
+		return nil, fmt.Errorf("path %s conflicts with an existing mount path", absolutePath)
+	}
+
+	if containerName != "" {
+		if container := findContainerByName(podSpec.Containers, containerName); container != nil {
+			return &createMountTarget{
+				ContainerName: container.Name,
+				ContainerType: "container",
+				MountPath:     absolutePath,
+			}, nil
+		}
+		if container := findContainerByName(podSpec.InitContainers, containerName); container != nil {
+			return &createMountTarget{
+				ContainerName: container.Name,
+				ContainerType: "initContainer",
+				MountPath:     absolutePath,
+			}, nil
+		}
+		return nil, fmt.Errorf("container %s not found", containerName)
+	}
+
+	if len(podSpec.Containers) != 1 {
+		return nil, fmt.Errorf("path %s is outside existing mount paths and workload must have exactly one container or specify containerName", absolutePath)
+	}
+
+	return &createMountTarget{
+		ContainerName: podSpec.Containers[0].Name,
+		ContainerType: "container",
+		MountPath:     absolutePath,
+	}, nil
+}
+
+func findContainerByName(containers []corev1.Container, containerName string) *corev1.Container {
+	for i := range containers {
+		if containers[i].Name == containerName {
+			return &containers[i]
+		}
+	}
+	return nil
+}
+
+func hasConflictingMountPath(containers []corev1.Container, absolutePath string) bool {
+	for _, container := range containers {
+		for _, mount := range container.VolumeMounts {
+			if mount.MountPath == absolutePath {
+				return true
+			}
+			if mount.SubPath != "" {
+				prefix := strings.TrimRight(mount.MountPath, "/") + "/"
+				if strings.HasPrefix(absolutePath, prefix) {
+					return true
+				}
+				continue
+			}
+			if matchesMountRootByPath(mount.MountPath, absolutePath) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (m *MountFiles) describeContainerMounts(namespace, containerType string, containers []corev1.Container, volumeMap map[string]corev1.Volume, includeContent bool) []MountFileDescription {
@@ -1095,6 +1257,153 @@ func appendMountToContainer(containers *[]corev1.Container, containerName, volum
 		return nil
 	}
 	return fmt.Errorf("container %s not found", containerName)
+}
+
+func configMapEntryCount(cm *corev1.ConfigMap) int {
+	return len(cm.Data) + len(cm.BinaryData)
+}
+
+func removeConfigMapVolumesFromPodSpec(podSpec *corev1.PodSpec, configMapName string) {
+	volumeNames := make(map[string]struct{})
+	filteredVolumes := make([]corev1.Volume, 0, len(podSpec.Volumes))
+	for _, volume := range podSpec.Volumes {
+		if volume.ConfigMap != nil && volume.ConfigMap.Name == configMapName {
+			volumeNames[volume.Name] = struct{}{}
+			continue
+		}
+		filteredVolumes = append(filteredVolumes, volume)
+	}
+	podSpec.Volumes = filteredVolumes
+
+	if len(volumeNames) == 0 {
+		return
+	}
+
+	removeVolumeMounts := func(containers []corev1.Container) {
+		for i := range containers {
+			filteredMounts := make([]corev1.VolumeMount, 0, len(containers[i].VolumeMounts))
+			for _, mount := range containers[i].VolumeMounts {
+				if _, ok := volumeNames[mount.Name]; ok {
+					continue
+				}
+				filteredMounts = append(filteredMounts, mount)
+			}
+			containers[i].VolumeMounts = filteredMounts
+		}
+	}
+
+	removeVolumeMounts(podSpec.Containers)
+	removeVolumeMounts(podSpec.InitContainers)
+}
+
+func removeMountedFileReferencesFromPodSpec(podSpec *corev1.PodSpec, target *MountFileEntry) {
+	volumeNames := findSourceVolumeNames(podSpec.Volumes, target)
+	if len(volumeNames) == 0 {
+		return
+	}
+
+	emptyVolumes := make(map[string]struct{})
+	for i := range podSpec.Volumes {
+		if _, ok := volumeNames[podSpec.Volumes[i].Name]; !ok {
+			continue
+		}
+		if removeKeyFromVolume(&podSpec.Volumes[i], target) {
+			emptyVolumes[podSpec.Volumes[i].Name] = struct{}{}
+		}
+	}
+
+	removeMountsByAbsolutePath := func(containers []corev1.Container) {
+		for i := range containers {
+			filteredMounts := make([]corev1.VolumeMount, 0, len(containers[i].VolumeMounts))
+			for _, mount := range containers[i].VolumeMounts {
+				if _, ok := volumeNames[mount.Name]; ok && mountTargetPath(mount, target.RelativePath) == target.Path {
+					continue
+				}
+				filteredMounts = append(filteredMounts, mount)
+			}
+			containers[i].VolumeMounts = filteredMounts
+		}
+	}
+
+	removeMountsByAbsolutePath(podSpec.Containers)
+	removeMountsByAbsolutePath(podSpec.InitContainers)
+
+	usedVolumes := mountedVolumeNames(podSpec)
+	filteredVolumes := make([]corev1.Volume, 0, len(podSpec.Volumes))
+	for _, volume := range podSpec.Volumes {
+		if _, empty := emptyVolumes[volume.Name]; empty {
+			if _, mounted := usedVolumes[volume.Name]; !mounted {
+				continue
+			}
+		}
+		filteredVolumes = append(filteredVolumes, volume)
+	}
+	podSpec.Volumes = filteredVolumes
+}
+
+func findSourceVolumeNames(volumes []corev1.Volume, target *MountFileEntry) map[string]struct{} {
+	result := make(map[string]struct{})
+	for _, volume := range volumes {
+		switch target.SourceType {
+		case "configMap":
+			if volume.ConfigMap != nil && volume.ConfigMap.Name == target.SourceName {
+				result[volume.Name] = struct{}{}
+			}
+		case "secret":
+			if volume.Secret != nil && volume.Secret.SecretName == target.SourceName {
+				result[volume.Name] = struct{}{}
+			}
+		}
+	}
+	return result
+}
+
+func removeKeyFromVolume(volume *corev1.Volume, target *MountFileEntry) bool {
+	switch target.SourceType {
+	case "configMap":
+		if volume.ConfigMap == nil || len(volume.ConfigMap.Items) == 0 {
+			return false
+		}
+		filteredItems := make([]corev1.KeyToPath, 0, len(volume.ConfigMap.Items))
+		for _, item := range volume.ConfigMap.Items {
+			if item.Key == target.Key {
+				continue
+			}
+			filteredItems = append(filteredItems, item)
+		}
+		volume.ConfigMap.Items = filteredItems
+		return len(volume.ConfigMap.Items) == 0
+	case "secret":
+		if volume.Secret == nil || len(volume.Secret.Items) == 0 {
+			return false
+		}
+		filteredItems := make([]corev1.KeyToPath, 0, len(volume.Secret.Items))
+		for _, item := range volume.Secret.Items {
+			if item.Key == target.Key {
+				continue
+			}
+			filteredItems = append(filteredItems, item)
+		}
+		volume.Secret.Items = filteredItems
+		return len(volume.Secret.Items) == 0
+	default:
+		return false
+	}
+}
+
+func mountedVolumeNames(podSpec *corev1.PodSpec) map[string]struct{} {
+	result := make(map[string]struct{})
+	for _, container := range podSpec.Containers {
+		for _, mount := range container.VolumeMounts {
+			result[mount.Name] = struct{}{}
+		}
+	}
+	for _, container := range podSpec.InitContainers {
+		for _, mount := range container.VolumeMounts {
+			result[mount.Name] = struct{}{}
+		}
+	}
+	return result
 }
 
 func buildMountFileConfigMapName(workloadName, fileName string) string {

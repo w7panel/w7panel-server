@@ -20,12 +20,12 @@ func (self Pid) GetPid(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
 	pidObj, err := pid.NewPid(token)
 	if err != nil {
-		self.JsonResponseWithoutError(http, err)
+		self.JsonResponseWithServerError(http, err)
 		return
 	}
 	pidResult, err := pidObj.Handle(params)
 	if err != nil {
-		self.JsonResponseWithoutError(http, err)
+		self.JsonResponseWithServerError(http, err)
 		return
 	}
 	result := pidResult.ToArray()
@@ -42,12 +42,12 @@ func (self Pid) GetMountFiles(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
 	mountFiles, err := pid.NewMountFilesByToken(token)
 	if err != nil {
-		self.JsonResponseWithoutError(http, err)
+		self.JsonResponseWithServerError(http, err)
 		return
 	}
 	result, err := mountFiles.Handle(params)
 	if err != nil {
-		self.JsonResponseWithoutError(http, err)
+		self.JsonResponseWithServerError(http, err)
 		return
 	}
 	self.JsonResponseWithoutError(http, result)
@@ -61,12 +61,12 @@ func (self Pid) UpdateMountFile(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
 	mountFiles, err := pid.NewMountFilesByToken(token)
 	if err != nil {
-		self.JsonResponseWithoutError(http, err)
+		self.JsonResponseWithServerError(http, err)
 		return
 	}
 	err = mountFiles.UpdateFileContent(params)
 	if err != nil {
-		self.JsonResponseWithoutError(http, err)
+		self.JsonResponseWithServerError(http, err)
 		return
 	}
 	self.JsonSuccessResponse(http)
@@ -86,7 +86,7 @@ func (self Pid) CreateMountFile(http *gin.Context) {
 	}
 	err = mountFiles.UpdateFileContent(params)
 	if err != nil {
-		self.JsonResponseWithoutError(http, err)
+		self.JsonResponseWithServerError(http, err)
 		return
 	}
 	self.JsonSuccessResponse(http)
@@ -106,7 +106,7 @@ func (self Pid) DeleteMountFile(http *gin.Context) {
 	}
 	err = mountFiles.UpdateFileContent(params)
 	if err != nil {
-		self.JsonResponseWithoutError(http, err)
+		self.JsonResponseWithServerError(http, err)
 		return
 	}
 	self.JsonSuccessResponse(http)
@@ -126,7 +126,7 @@ func (self Pid) ChmodMountFile(http *gin.Context) {
 	}
 	err = mountFiles.UpdateFileContent(params)
 	if err != nil {
-		self.JsonResponseWithoutError(http, err)
+		self.JsonResponseWithServerError(http, err)
 		return
 	}
 	self.JsonSuccessResponse(http)
