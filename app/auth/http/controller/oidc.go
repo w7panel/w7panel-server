@@ -186,3 +186,47 @@ func (o Oidc) AuthorizeCode(ctx *gin.Context) {
 		SessionState: resp.SessionState,
 	})
 }
+
+func (o Oidc) GetRedirectURI(ctx *gin.Context) {
+	server, err := oidcservice.GetServer()
+	if err != nil || server == nil || !server.Enabled() {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "oidc disabled"})
+		return
+	}
+	// oidc.SetLoadFunc(appgroup.AppGroupToOidcSecret)
+	// token := ctx.MustGet("k8s_token").(string)
+	// k8sToken := k8s.NewK8sToken(token)
+	// username, err := k8sToken.GetSaName()
+	// if err != nil {
+	// 	ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
+	// 	return
+	// }
+	type authorizeCallbackResponse struct {
+		CallbackURL string `json:"callbackUrl"`
+	}
+
+	type authorizeCallbackRequest struct {
+		AuthRequestID string `json:"authRequestID" form:"authRequestID"`
+		CallbackURL   string `json:"callbackUrl" form:"callbackUrl"`
+	}
+
+	var req authorizeCallbackRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
+		return
+	}
+
+	resp, err := server.BuildAuthorizationCallbackURL(ctx.Request.Context(), req.AuthRequestID)
+	if err != nil {
+		var oidcErr *zitadeloidc.Error
+		if errors.As(err, &oidcErr) {
+			ctx.JSON(http.StatusBadRequest, oidcErr)
+			return
+		}
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, authorizeCallbackResponse{
+		CallbackURL: resp,
+	})
+}
