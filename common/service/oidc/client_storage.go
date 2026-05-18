@@ -1,14 +1,15 @@
 package oidc
 
 import (
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
+	oidcv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/oidc/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type LoadSecretFunc func(name string) (*corev1.Secret, error)
@@ -35,15 +36,17 @@ func newDynamicClientStore() dynamicClientStore {
 
 func (kubeDynamicClientStore) Load() ([]Client, error) {
 	sdk := k8s.NewK8sClient().Sdk
-	secrets, err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).List(sdk.Ctx, metav1.ListOptions{
-		LabelSelector: "w7.cc/oidc-client=true",
-	})
+	sigClient, err := sdk.ToSigClient()
 	if err != nil {
 		return nil, err
 	}
-	clients := make([]Client, 0, len(secrets.Items))
-	for _, secret := range secrets.Items {
-		client := clientFromSecret(&secret)
+	oidcClients := &oidcv1alpha1.OIDCClientList{}
+	if err := sigClient.List(sdk.Ctx, oidcClients, sigclient.InNamespace(sdk.GetNamespace())); err != nil {
+		return nil, err
+	}
+	clients := make([]Client, 0, len(oidcClients.Items))
+	for i := range oidcClients.Items {
+		client := clientFromOIDCClient(&oidcClients.Items[i])
 		if client.ClientID != "" {
 			clients = append(clients, client)
 		}
@@ -53,20 +56,28 @@ func (kubeDynamicClientStore) Load() ([]Client, error) {
 
 func (kubeDynamicClientStore) Get(clientID string) (Client, error) {
 	sdk := k8s.NewK8sClient().Sdk
-	secret, err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Get(sdk.Ctx, secretNameForClientID(clientID), metav1.GetOptions{})
+	sigClient, err := sdk.ToSigClient()
 	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			if loadFunc != nil {
-				secret, err := loadFunc(clientID)
-
-				if err == nil {
-					return clientFromSecret(secret), nil
-				}
-			}
-		}
 		return Client{}, err
 	}
-	return clientFromSecret(secret), nil
+	item := &oidcv1alpha1.OIDCClient{}
+	err = sigClient.Get(sdk.Ctx, sigclient.ObjectKey{Name: resourceNameForClientID(clientID), Namespace: sdk.GetNamespace()}, item)
+	if err == nil {
+		return clientFromOIDCClient(item), nil
+	}
+	if k8serrors.IsNotFound(err) && loadFunc != nil {
+		secret, loadErr := loadFunc(clientID)
+		if loadErr == nil {
+			return clientFromSecret(secret), nil
+		}
+		if !k8serrors.IsNotFound(loadErr) {
+			return Client{}, loadErr
+		}
+	}
+	if err != nil {
+		return Client{}, err
+	}
+	return Client{}, nil
 }
 
 func (kubeDynamicClientStore) Create(req DynamicClientRequest) (Client, error) {
@@ -93,29 +104,84 @@ func (kubeDynamicClientStore) Create(req DynamicClientRequest) (Client, error) {
 	return client, nil
 }
 
-func (kubeDynamicClientStore) Save(client Client, isUpdate bool) error {
+func (kubeDynamicClientStore) Save(item Client, isUpdate bool) error {
 	sdk := k8s.NewK8sClient().Sdk
-	secret := secretFromClient(sdk.GetNamespace(), client)
-	if isUpdate {
-		current, err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Get(sdk.Ctx, secretNameForClientID(client.ClientID), metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		secret.ResourceVersion = current.ResourceVersion
-		_, err = sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Update(sdk.Ctx, secret, metav1.UpdateOptions{})
+	sigClient, err := sdk.ToSigClient()
+	if err != nil {
 		return err
 	}
-	_, err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Create(sdk.Ctx, secret, metav1.CreateOptions{})
-	return err
+	resource := oidcClientFromClient(sdk.GetNamespace(), item)
+	if isUpdate {
+		current := &oidcv1alpha1.OIDCClient{}
+		if err := sigClient.Get(sdk.Ctx, sigclient.ObjectKey{Name: resourceNameForClientID(item.ClientID), Namespace: sdk.GetNamespace()}, current); err != nil {
+			return err
+		}
+		resource.ResourceVersion = current.ResourceVersion
+		resource.CreationTimestamp = current.CreationTimestamp
+		return sigClient.Update(sdk.Ctx, resource)
+	}
+	return sigClient.Create(sdk.Ctx, resource)
 }
 
 func (kubeDynamicClientStore) Delete(clientID string) error {
 	sdk := k8s.NewK8sClient().Sdk
-	err := sdk.ClientSet.CoreV1().Secrets(sdk.GetNamespace()).Delete(sdk.Ctx, secretNameForClientID(clientID), metav1.DeleteOptions{})
+	sigClient, err := sdk.ToSigClient()
+	if err != nil {
+		return err
+	}
+	err = sigClient.Delete(sdk.Ctx, &oidcv1alpha1.OIDCClient{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      resourceNameForClientID(clientID),
+			Namespace: sdk.GetNamespace(),
+		},
+	})
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
 	return nil
+}
+
+func clientFromOIDCClient(item *oidcv1alpha1.OIDCClient) Client {
+	clientID := item.Spec.ClientID
+	if clientID == "" {
+		clientID = item.Name
+	}
+	return Client{
+		Name:                  item.Spec.ClientName,
+		ClientID:              clientID,
+		ClientSecret:          item.Spec.ClientSecret,
+		RedirectURIs:          item.Spec.RedirectURIs,
+		AllowAnyRedirectURI:   item.Spec.AllowAnyRedirectURI,
+		Scopes:                normalizeScopes(item.Spec.Scopes),
+		TokenEndpointAuthMode: item.Spec.TokenEndpointAuthMode,
+		IsDynamic:             true,
+		CreatedAt:             item.CreationTimestamp.Time,
+	}
+}
+
+func oidcClientFromClient(namespace string, item Client) *oidcv1alpha1.OIDCClient {
+	return &oidcv1alpha1.OIDCClient{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: oidcv1alpha1.SchemeGroupVersion.String(),
+			Kind:       "OIDCClient",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      resourceNameForClientID(item.ClientID),
+			Namespace: namespace,
+			Labels: map[string]string{
+				"w7.cc/oidc-client": "true",
+			},
+		},
+		Spec: oidcv1alpha1.OIDCClientSpec{
+			ClientID:              item.ClientID,
+			ClientName:            item.Name,
+			ClientSecret:          item.ClientSecret,
+			RedirectURIs:          item.RedirectURIs,
+			AllowAnyRedirectURI:   item.AllowAnyRedirectURI,
+			Scopes:                item.Scopes,
+			TokenEndpointAuthMode: item.TokenEndpointAuthMode,
+		},
+	}
 }
 
 func clientFromSecret(secret *corev1.Secret) Client {
@@ -151,15 +217,19 @@ func secretFromClient(namespace string, client Client) *corev1.Secret {
 			"client_name":                []byte(client.Name),
 			"client_secret":              []byte(client.ClientSecret),
 			"redirect_uris":              []byte(strings.Join(client.RedirectURIs, "\n")),
-			"allow_any_redirect_uri":     []byte(strconv.FormatBool(client.AllowAnyRedirectURI)),
+			"allow_any_redirect_uri":     []byte(boolString(client.AllowAnyRedirectURI)),
 			"scopes":                     []byte(strings.Join(client.Scopes, " ")),
 			"token_endpoint_auth_method": []byte(client.TokenEndpointAuthMode),
 		},
 	}
 }
 
+func resourceNameForClientID(clientID string) string {
+	return clientID
+}
+
 func secretNameForClientID(clientID string) string {
-	return clientID + "-oidc"
+	return resourceNameForClientID(clientID) + "-oidc"
 }
 
 func clientToResponse(client Client) *DynamicClientResponse {
@@ -178,9 +248,12 @@ func clientToResponse(client Client) *DynamicClientResponse {
 }
 
 func parseBool(data []byte) bool {
-	v, err := strconv.ParseBool(string(data))
-	if err != nil {
-		return false
+	return strings.EqualFold(string(data), "true")
+}
+
+func boolString(v bool) string {
+	if v {
+		return "true"
 	}
-	return v
+	return "false"
 }

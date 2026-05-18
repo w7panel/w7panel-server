@@ -30,7 +30,6 @@ func (o Oidc) Handle(ctx *gin.Context) {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "oidc disabled"})
 		return
 	}
-	oidc.SetLoadFunc(appgroup.AppGroupToOidcSecret)
 	server.ServeHTTP(ctx.Writer, ctx.Request)
 }
 
@@ -155,7 +154,7 @@ func (o Oidc) AuthorizeCode(ctx *gin.Context) {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "oidc disabled"})
 		return
 	}
-	oidc.SetLoadFunc(appgroup.AppGroupToOidcSecret)
+	// oidc.SetLoadFunc(appgroup.AppGroupToOidcSecret)
 	token := ctx.MustGet("k8s_token").(string)
 	k8sToken := k8s.NewK8sToken(token)
 	username, err := k8sToken.GetSaName()
