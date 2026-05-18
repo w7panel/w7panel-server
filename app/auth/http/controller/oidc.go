@@ -34,6 +34,22 @@ func (o Oidc) Handle(ctx *gin.Context) {
 	server.ServeHTTP(ctx.Writer, ctx.Request)
 }
 
+func (o Oidc) Discovery(ctx *gin.Context) {
+	server, err := oidcservice.GetServer()
+	if err != nil || server == nil || !server.Enabled() {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "oidc disabled"})
+		return
+	}
+	oidc.SetLoadFunc(appgroup.AppGroupToOidcSecret)
+	rep, err := server.Discovery(ctx, ctx.Request)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
+		return
+	}
+	// rep.Header 不需要处理
+	ctx.JSON(http.StatusOK, rep.Data)
+}
+
 func (o Oidc) RegisterClient(ctx *gin.Context) {
 	server, err := oidcservice.GetServer()
 	if err != nil || server == nil || !server.Enabled() || !server.RegisterEnabled() {
