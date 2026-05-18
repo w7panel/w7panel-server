@@ -131,6 +131,89 @@ func TestFindCreateMountTarget(t *testing.T) {
 	}
 }
 
+func TestFindCreateMountTargetFromPodSpecEmptyMount(t *testing.T) {
+	podSpec := &corev1.PodSpec{
+		Containers: []corev1.Container{{
+			Name: "app",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "cfg",
+				MountPath: "/etc/app",
+			}},
+		}},
+	}
+
+	target, err := findCreateMountTargetFromPodSpec(podSpec, "/etc/app/new.yaml", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if target.ContainerName != "app" || target.ContainerType != "container" || target.MountPath != "/etc/app" {
+		t.Fatalf("unexpected target: %#v", target)
+	}
+}
+
+func TestFindCreateMountTargetFromPodSpecRejectsSubPathChild(t *testing.T) {
+	podSpec := &corev1.PodSpec{
+		Containers: []corev1.Container{{
+			Name: "app",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "cfg",
+				MountPath: "/etc/app/config.yaml",
+				SubPath:   "config.yaml",
+			}},
+		}},
+	}
+
+	if _, err := findCreateMountTargetFromPodSpec(podSpec, "/etc/app/config.yaml/child", ""); err == nil {
+		t.Fatal("expected subPath file mount child path to be rejected")
+	}
+}
+
+func TestFindCreateMountTargetFromPodSpecStandalonePath(t *testing.T) {
+	podSpec := &corev1.PodSpec{
+		Containers: []corev1.Container{{
+			Name: "app",
+		}},
+	}
+
+	target, err := findCreateMountTargetFromPodSpec(podSpec, "/tmp/test1234.txt", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if target.ContainerName != "app" || target.ContainerType != "container" || target.MountPath != "/tmp/test1234.txt" {
+		t.Fatalf("unexpected target: %#v", target)
+	}
+}
+
+func TestFindCreateMountTargetFromPodSpecStandalonePathRequiresSingleContainer(t *testing.T) {
+	podSpec := &corev1.PodSpec{
+		Containers: []corev1.Container{
+			{Name: "app-1"},
+			{Name: "app-2"},
+		},
+	}
+
+	if _, err := findCreateMountTargetFromPodSpec(podSpec, "/tmp/test1234.txt", ""); err == nil {
+		t.Fatal("expected standalone path to require a single container")
+	}
+}
+
+func TestFindCreateMountTargetFromPodSpecStandalonePathWithContainerName(t *testing.T) {
+	podSpec := &corev1.PodSpec{
+		Containers: []corev1.Container{
+			{Name: "app-1"},
+			{Name: "app-2"},
+		},
+	}
+
+	target, err := findCreateMountTargetFromPodSpec(podSpec, "/tmp/test1234.txt", "app-2")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if target.ContainerName != "app-2" || target.ContainerType != "container" || target.MountPath != "/tmp/test1234.txt" {
+		t.Fatalf("unexpected target: %#v", target)
+	}
+}
+
 func TestAttachCreatedFileToPodSpec(t *testing.T) {
 	podSpec := &corev1.PodSpec{
 		Containers: []corev1.Container{{
