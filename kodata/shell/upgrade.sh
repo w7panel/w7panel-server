@@ -98,3 +98,7 @@ kubectl get jobs -n default -o json \
 
 echo "longhorn 升级到面板中"
 w7panel longhornupgrade
+
+echo "限流配置"
+# apply -f 会覆盖原有配置 所以使用create 
+kubectl create -f $KO_DATA_PATH/yaml/longhorn/cluster-key-rate-limit.yaml || echo "已存在longhorn cluster-key-rate-limit"
