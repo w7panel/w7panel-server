@@ -401,7 +401,7 @@ func (m *MountFiles) chmodFile(param UpdateMountFileParam) error {
 	}
 
 	if !applyModeToMountedFile(podSpec, param.Path, mode) {
-		return fmt.Errorf("path %s not found in mounted files", param.Path)
+		return fmt.Errorf("path %s 没有挂载", param.Path)
 	}
 
 	podSpecMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(podSpec)
