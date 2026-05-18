@@ -47,6 +47,10 @@ func (o Oidc) Discovery(ctx *gin.Context) {
 		return
 	}
 	// rep.Header 不需要处理
+	headers := rep.Header
+	for k, v := range headers {
+		ctx.Header(k, v[0])
+	}
 	ctx.JSON(http.StatusOK, rep.Data)
 }
 

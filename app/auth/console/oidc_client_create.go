@@ -27,6 +27,7 @@ func (c OidcClientCreate) GetName() string {
 	return "oidc:client-create"
 }
 
+// go run main.go oidc:client-create --client-name=gitea --allow-any-redirect-uri=true --token-endpoint-auth-method=client_secret_post --scope="openid offline_access profile"
 func (c OidcClientCreate) Configure(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&oidcCreateOption.ClientName, "client-name", "", "client name")
 	cmd.Flags().StringArrayVar(&oidcCreateOption.RedirectURIs, "redirect-uri", nil, "redirect uri, repeatable")
@@ -40,6 +41,7 @@ func (c OidcClientCreate) GetDescription() string {
 	return "创建 OIDC dynamic client"
 }
 
+// go run main.go oidc:client-create --client-name=gitea --allow-any-redirect-uri=true --token-endpoint-auth-method=client_secret_post --scope=openid offline_access profile
 func (c OidcClientCreate) Handle(cmd *cobra.Command, args []string) {
 	resp, err := oidc.CreateDynamicClient(oidc.DynamicClientRequest{
 		RedirectURIs:          oidcCreateOption.RedirectURIs,
