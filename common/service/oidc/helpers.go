@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"strings"
 	"time"
+	"unicode"
 )
 
 func (s *Server) pruneAuthRequestsLocked() {
@@ -59,9 +60,25 @@ func normalizeScopes(scopes []string) []string {
 
 func normalizeClientID(value string) string {
 	value = strings.ToLower(value)
-	value = strings.ReplaceAll(value, "_", "-")
-	if strings.HasPrefix(value, "oidc_") {
-		value = strings.ReplaceAll(value, "oidc_", "oidc-")
+	var b strings.Builder
+	b.Grow(len(value))
+	lastWasDash := false
+	for _, r := range value {
+		switch {
+		case unicode.IsLower(r) || unicode.IsDigit(r):
+			b.WriteRune(r)
+			lastWasDash = false
+		case r == '-' || r == '_' || r == '.':
+			if b.Len() == 0 || lastWasDash {
+				continue
+			}
+			b.WriteByte('-')
+			lastWasDash = true
+		}
+	}
+	value = strings.Trim(b.String(), "-")
+	if value == "" {
+		return "oidc"
 	}
 	return value
 }
