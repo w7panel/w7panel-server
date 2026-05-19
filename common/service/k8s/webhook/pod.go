@@ -41,17 +41,17 @@ func (m *ResourceMutator) handlePod(ctx context.Context, req admission.Request) 
 	// 纯普通pod
 	modified := false
 	// 新版cluster spec 直接指定limit
-	namespace := pod.Namespace
-	if strings.HasPrefix(namespace, "k3k-") && !helper.IsChildAgent() {
-		err := handlePodLabel(m.client, m.sdk, pod, namespace)
-		if err == nil {
-			modified = true
-		}
-		err = handlePodLimit(pod)// 
-		if err == nil {
-			modified = true
-		}
-	}
+	// namespace := pod.Namespace
+	// if strings.HasPrefix(namespace, "k3k-") && !helper.IsChildAgent() {
+	// 	err := handlePodLabel(m.client, m.sdk, pod, namespace)
+	// 	if err == nil {
+	// 		modified = true
+	// 	}
+	// 	err = handlePodLimit(pod)//
+	// 	if err == nil {
+	// 		modified = true
+	// 	}
+	// }
 	if helper.IsLxcfsEnabled() {
 		//https://github.com/ymping/lxcfs-admission-webhook/blob/main/cmd/volume.go
 		pod.Spec.Volumes = append(pod.Spec.Volumes, volumesTemplate...)
