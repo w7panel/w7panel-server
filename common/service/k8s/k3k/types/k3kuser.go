@@ -835,3 +835,7 @@ func (u *k3kUser) ProcessReturnK3kOrder() error {
 	delete(u.Annotations, W7_RETURN_ORDER_INFO)
 	return nil
 }
+
+func (u *k3kUser) GetNickName() string {
+	return u.Annotations["w7.cc/console-nickname"]
+}
