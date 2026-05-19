@@ -51,6 +51,11 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			// oidcGroup.Any("/authorize/*path", controller2.Oidc{}.Handle)
 			oidcGroup.Any("/token", controller2.Oidc{}.Handle)
 			oidcGroup.Any("/userinfo", controller2.Oidc{}.Handle)
+			//统一路由
+			//http://127.0.0.1:9007/authorize?client_id=default&redirect_uri=http://127.0.0.1:3000/callback111&scope=openid&response_type=code
+			oidcGroup.POST("/js-code", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCode)
+			oidcGroup.POST("/redirect-uri", middleware.Auth{}.Process, controller2.Oidc{}.GetRedirectURI)
+
 		}
 
 		engine.POST("/panel-api/v1/login", controller2.Auth{}.Login)
@@ -85,9 +90,10 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/console/register-zpk-site", controller2.Site{}.RegisterZpkSite)
 		}
 
-		//直接获取code 用于OIDC
+		//直接获取code 用于OIDC //旧路由
 		engine.POST("/panel-api/v1/code", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCode)
-		// engine.POST("/panel-api/v1/callback-url", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCallbackURL)
+		//http://127.0.0.1:9007/authorize?client_id=default&redirect_uri=http://127.0.0.1:3000/callback111&scope=openid&response_type=code
+		engine.POST("/panel-api/v1/callback-url", middleware.Auth{}.Process, controller2.Oidc{}.GetRedirectURI)
 
 	})
 }

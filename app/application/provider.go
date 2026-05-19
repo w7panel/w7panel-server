@@ -156,7 +156,11 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/exec2", middleware.Auth{}.Process, controller2.PodExec{}.Exec)
 			localApiGroup.POST("/exec-all", middleware.Auth{}.Process, controller2.PodExec{}.ExecAll)
 			localApiGroup.GET("/pid", middleware.Auth{}.Process, middleware.CacheResponseWithExpire(time.Minute*1), controller2.Pid{}.GetPid) //获取所在pod和pid
-			localApiGroup.GET("/mountfiles", middleware.Auth{}.Process, controller2.Pid{}.GetMountFiles)                                      // 获取工作负载挂载文件
+			localApiGroup.GET("/mountfiles", middleware.Auth{}.Process, controller2.Pid{}.GetMountFiles)                                      //获取挂载文件配置                                     // 获取工作负载挂载文件
+			localApiGroup.POST("/mountfiles", middleware.Auth{}.Process, controller2.Pid{}.CreateMountFile)                                   //新建挂载文件
+			localApiGroup.PUT("/mountfiles", middleware.Auth{}.Process, controller2.Pid{}.UpdateMountFile)                                    //更新挂载文件列表                                      // 获取工作负载挂载文件
+			localApiGroup.DELETE("/mountfiles", middleware.Auth{}.Process, controller2.Pid{}.DeleteMountFile)                                 //删除挂载文件
+			localApiGroup.PUT("/mountfiles/chmod", middleware.Auth{}.Process, controller2.Pid{}.ChmodMountFile)                               //修改挂载文件权限
 			// localApiGroup.GET("/pwd", middleware.Auth{}.Process, controller2.PodExec{}.GetPid)             //获取所在pod和pid
 			localApiGroup.GET("/nodepid", middleware.Auth{}.Process, controller2.PodExec{}.GetNodePid) //获取所在pod和pid
 
