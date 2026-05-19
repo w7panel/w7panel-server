@@ -3,15 +3,21 @@ package middleware
 import (
 	"bytes"
 	"encoding/json"
+	"html"
 	"io"
+	"log/slog"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	microappsettingv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/microappsetting/v1alpha1"
 
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 /*
@@ -49,6 +55,11 @@ func (self Html) Process(ctx *gin.Context) {
 	}
 
 	if microappConfig, ok := buildMicroAppConfig(ctx); ok {
+		if siteName, err := loadMicroAppSiteName(microappConfig); err != nil {
+			slog.Warn("load microapp site name failed", "err", err)
+		} else if siteName != "" {
+			htmlContent = replaceHTMLTitle(htmlContent, siteName)
+		}
 		htmlContent = injectMicroAppScript(htmlContent, microappConfig)
 	}
 
@@ -125,6 +136,46 @@ func injectMicroAppScript(htmlContent []byte, microappConfig map[string]any) []b
 	}
 
 	return append(htmlContent, script...)
+}
+
+func loadMicroAppSiteName(microappConfig map[string]any) (string, error) {
+	name, _ := microappConfig["name"].(string)
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", nil
+	}
+
+	sdk := k8s.NewK8sClient().Sdk
+	sigClient, err := sdk.ToSigClient()
+	if err != nil {
+		return "", err
+	}
+
+	setting := &microappsettingv1alpha1.MicroAppSetting{}
+	err = sigClient.Get(sdk.Ctx, types.NamespacedName{
+		Name:      name,
+		Namespace: sdk.GetNamespace(),
+	}, setting)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(setting.Spec.General.SiteName), nil
+}
+
+func replaceHTMLTitle(htmlContent []byte, title string) []byte {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return htmlContent
+	}
+
+	re := regexp.MustCompile(`(?is)<title\b[^>]*>.*?</title>`)
+	replaced := re.ReplaceAll(htmlContent, []byte("<title>"+html.EscapeString(title)+"</title>"))
+	if !bytes.Equal(replaced, htmlContent) {
+		return replaced
+	}
+
+	return htmlContent
 }
 
 func slicesInsert(src []byte, index int, insert []byte) []byte {
