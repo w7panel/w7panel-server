@@ -313,6 +313,7 @@ func (s *Server) Discovery(ctx context.Context, r *http.Request) (*op.Response, 
 	if ls.LegacyServer == nil {
 		return nil, fmt.Errorf("legacyServer 未初始化")
 	}
+	op.ContextWithIssuer(ctx, s.Issuer(r))
 	return ls.Discovery(ctx, opReq)
 }
 
