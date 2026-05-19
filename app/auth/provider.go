@@ -62,7 +62,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		localApiGroup := engine.Group("/panel-api/v1/auth").Use(middleware.Cors{}.Process)
 		{
-			// localApiGroup.POST("/login", controller2.Auth{}.Login)
+			localApiGroup.POST("/login", middleware.ConsoleSignature{}.Process, controller2.Auth{}.LoginBySign)
 			localApiGroup.POST("/register", controller2.Auth{}.Register)
 			// localApiGroup.POST("/console/k3k-register", middleware.Auth{}.Process, controller2.Auth{}.RegisterUseUid)
 			// localApiGroup.POST("/refresh-token", middleware.Auth{}.Process, controller2.Auth{}.RefreshToken) //废弃
@@ -87,7 +87,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/console/import-cert", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.ImportCert)
 			localApiGroup.POST("/console/verify-cert", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.VerifyCert)
 			localApiGroup.POST("/console/import-cert-console", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.ImportCertConsole)
-			localApiGroup.POST("/console/register-zpk-site", controller2.Site{}.RegisterZpkSite)
+			localApiGroup.POST("/console/register-zpk-site" /* middleware.ConsoleSignature{}.Process */, controller2.Site{}.RegisterZpkSite)
 		}
 
 		//直接获取code 用于OIDC //旧路由

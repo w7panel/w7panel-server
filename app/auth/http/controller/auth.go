@@ -29,8 +29,14 @@ type Auth struct {
 }
 
 func (self Auth) Login(http *gin.Context) {
-	captchaEnabled := facade.Config.GetBool("captcha.enabled")
+	self.login(http, true)
+}
 
+func (self Auth) LoginBySign(http *gin.Context) {
+	self.login(http, false)
+}
+
+func (self Auth) login(http *gin.Context, verifyCaptcha bool) {
 	type ParamsValidate struct {
 		Username string `form:"username" binding:"required"`
 		Password string `form:"password" binding:"required"`
@@ -42,7 +48,7 @@ func (self Auth) Login(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
-	if captchaEnabled {
+	if verifyCaptcha && facade.Config.GetBool("captcha.enabled") {
 		if params.Point == "" || params.Key == "" {
 			self.JsonResponseWithError(http, errors.New("验证码参数缺失"), 500)
 			return
@@ -58,7 +64,6 @@ func (self Auth) Login(http *gin.Context) {
 	client := k8s.NewK8sClient()
 	sa, err := client.Login2(params.Username, params.Password, true)
 	if err != nil {
-		// err2 := fmt.Errorf("用户名密码不正确.")
 		if k8serrors.IsNotFound(err) {
 			self.JsonResponseWithError(http, errors.New("用户不存在"), 500)
 			return
@@ -67,7 +72,6 @@ func (self Auth) Login(http *gin.Context) {
 		return
 	}
 	self.dologin(client.Sdk, sa, http, true)
-
 }
 
 func (self Auth) Register(http *gin.Context) {
