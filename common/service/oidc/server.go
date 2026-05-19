@@ -10,12 +10,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
+	oidclib "github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
@@ -275,6 +277,19 @@ func (s *Server) Issuer(r *http.Request) string {
 	return s.provider.IssuerFromRequest(r)
 }
 
+func (s *Server) discoveryIssuer(r *http.Request) string {
+	issuer := s.Issuer(r)
+	parsedIssuer, err := url.Parse(issuer)
+	if err != nil {
+		return issuer
+	}
+	parsedIssuer.Path = ""
+	parsedIssuer.RawPath = ""
+	parsedIssuer.RawQuery = ""
+	parsedIssuer.Fragment = ""
+	return strings.TrimRight(parsedIssuer.String(), "/")
+}
+
 func (s *Server) JWKS() map[string]any {
 	return map[string]any{
 		"keys": []jose.JSONWebKey{{
@@ -313,8 +328,26 @@ func (s *Server) Discovery(ctx context.Context, r *http.Request) (*op.Response, 
 	if ls.LegacyServer == nil {
 		return nil, fmt.Errorf("legacyServer 未初始化")
 	}
-	op.ContextWithIssuer(ctx, s.Issuer(r))
-	return ls.Discovery(ctx, opReq)
+	ctxt := op.ContextWithIssuer(ctx, s.Issuer(r))
+	response, err := ls.Discovery(ctxt, opReq)
+	if err != nil {
+		return nil, err
+	}
+	resdata := response.Data
+	config, ok := resdata.(*oidclib.DiscoveryConfiguration)
+	if !ok {
+		return nil, fmt.Errorf("response.Data.(*oidclib.DiscoveryConfiguration) 未初始化")
+	}
+	// ctxt := op.ContextWithIssuer(ctx, s.Issuer(r)) 预设issuer 会导致 其他token 等路径出错 因此改为手动赋值
+	config.Issuer = s.Issuer(r)
+	config.JwksURI = s.discoveryIssuer(r) + oidcPath("jwks")
+	config.AuthorizationEndpoint = s.discoveryIssuer(r) + oidcPath("authorize")
+	config.TokenEndpoint = s.discoveryIssuer(r) + oidcPath("token")
+	config.UserinfoEndpoint = s.discoveryIssuer(r) + oidcPath("userinfo")
+	// config.RevocationEndpoint = s.discoveryIssuer(r) + oidcPath("revoke")
+	// config.IntrospectionEndpoint = s.discoveryIssuer(r) + oidcPath("introspect")
+	// config.EndSessionEndpoint = s.discoveryIssuer(r) + oidcPath("end_session")
+	return response, nil
 }
 
 func (s *Server) CreateDefaultAccessToken(ctx context.Context, subject string) (string, error) {
