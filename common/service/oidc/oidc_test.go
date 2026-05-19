@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -700,6 +701,36 @@ func TestCreateAuthRequestPromptNoneRequiresLogin(t *testing.T) {
 	}, "")
 	if err == nil {
 		t.Fatalf("expected prompt=none without user to fail")
+	}
+}
+
+func TestDiscoveryIssuerDoesNotIncludePath(t *testing.T) {
+	server := newTestServer(&fakeDynamicClientStore{})
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("GenerateKey returned error: %v", err)
+	}
+	server.private = privateKey
+	server.kid = "test-kid"
+	if err := server.initProvider(); err != nil {
+		t.Fatalf("initProvider returned error: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "https://panel.example.com/panel-api/v1/oidc/.well-known/openid-configuration", nil)
+	resp, err := server.Discovery(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Discovery returned error: %v", err)
+	}
+
+	config, ok := resp.Data.(*zitadeloidc.DiscoveryConfiguration)
+	if !ok {
+		t.Fatalf("unexpected discovery response type: %T", resp.Data)
+	}
+	if got, want := config.Issuer, "http://panel.example.com"; got != want {
+		t.Fatalf("unexpected issuer: got %s want %s", got, want)
+	}
+	if got, want := config.AuthorizationEndpoint, "http://panel.example.com/panel-api/v1/oidc/authorize"; got != want {
+		t.Fatalf("unexpected authorization endpoint: got %s want %s", got, want)
 	}
 }
 
