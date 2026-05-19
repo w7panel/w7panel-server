@@ -103,10 +103,10 @@ func fillHelmSet(packageApp *types.PackageApp, childName string, ignore []string
 		if lo.Contains(ignore, params.Name) {
 			continue
 		}
-		set += " --set " + childName + params.Name + "='" + params.ValuesText + "'"
+		set += " --set '" + childName + params.Name + "=" + params.ValuesText + "'"
 	}
 	for _, env := range packageApp.Manifest.Platform.Container.Env {
-		set += " --set " + childName + env.Name + "='" + env.Value + "'"
+		set += " --set '" + childName + env.Name + "=" + env.Value + "'"
 	}
 
 	if packageApp.PvcName != "" {
