@@ -360,7 +360,11 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 			role = "founder"
 		}
 		proxy := microapp.NewMicroAppProxy(microAppObj, k8sToken.IsK3kCluster(), role)
-		revert, err := proxy.Proxy(path)
+		replace, err := microapp.NewMicroAppReplace(token)
+		if err == nil && replace != nil {
+			proxy.WithReplace(replace) //替换掉原有请求
+		}
+		revert, err := proxy.Proxy(gin, path)
 		if err != nil {
 			self.JsonResponseWithServerError(gin, err)
 			return
@@ -369,7 +373,7 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 		return
 	}
 	// --->panel--->sub-cluster--->microapp--->回到ZZZ 处
-	if k8sToken.IsK3kCluster() {
+	if k8sToken.IsK3kCluster() { //转发到子集群pod后 强制设置成founder
 
 		k8stoken := k8s.NewK8sToken(token)
 		config, err := k8stoken.GetK3kConfig()

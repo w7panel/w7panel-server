@@ -109,11 +109,25 @@ type Server struct {
 	tokenMu       sync.Mutex
 	accessTokens  map[string]*accessToken
 	refreshTokens map[string]*refreshToken
+	accessTokenMu sync.Mutex
+	accessTokenBy map[string]*cachedAccessToken
 
 	provider op.OpenIDProvider
 	legacy   op.ExtendedLegacyServer
 	handler  http.Handler
 }
+
+type defaultAccessTokenRequest struct {
+	subject  string
+	audience []string
+	scopes   []string
+	clientID string
+}
+
+func (r defaultAccessTokenRequest) GetSubject() string    { return r.subject }
+func (r defaultAccessTokenRequest) GetAudience() []string { return r.audience }
+func (r defaultAccessTokenRequest) GetScopes() []string   { return r.scopes }
+func (r defaultAccessTokenRequest) GetClientID() string   { return r.clientID }
 
 var (
 	defaultServer *Server
@@ -164,6 +178,7 @@ func NewServer(cfg Config) (*Server, error) {
 		authCodes:     make(map[string]string),
 		accessTokens:  make(map[string]*accessToken),
 		refreshTokens: make(map[string]*refreshToken),
+		accessTokenBy: make(map[string]*cachedAccessToken),
 	}
 
 	for _, client := range cfg.Clients {
@@ -299,4 +314,8 @@ func (s *Server) Discovery(ctx context.Context, r *http.Request) (*op.Response, 
 		return nil, fmt.Errorf("legacyServer 未初始化")
 	}
 	return ls.Discovery(ctx, opReq)
+}
+
+func (s *Server) CreateDefaultAccessToken(ctx context.Context, subject string) (string, error) {
+	return s.getOrCreateDefaultAccessToken(ctx, subject)
 }
