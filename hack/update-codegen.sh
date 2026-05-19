@@ -93,4 +93,13 @@ kube::codegen::gen_client \
     --output-pkg "${THIS_PKG}/k8s/pkg/client/buildimage" \
     --boilerplate "${SCRIPT_ROOT}/hack/boilerplate.go.txt" \
     --one-input-api "buildimage" \
+    "${SCRIPT_DIR}/../k8s/pkg/apis"  
+
+kube::codegen::gen_client \
+    --with-watch \
+    --with-applyconfig \
+    --output-dir "${SCRIPT_ROOT}/k8s/pkg/client/microappsetting" \
+    --output-pkg "${THIS_PKG}/k8s/pkg/client/microappsetting" \
+    --boilerplate "${SCRIPT_ROOT}/hack/boilerplate.go.txt" \
+    --one-input-api "microappsetting" \
     "${SCRIPT_DIR}/../k8s/pkg/apis"
