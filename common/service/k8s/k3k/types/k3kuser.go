@@ -873,3 +873,7 @@ func (u *k3kUser) GetCvmName() string {
 	}
 	return u.Annotations[W7_CVM_NAME]
 }
+
+func (u *k3kUser) GetNickName() string {
+	return u.Annotations["w7.cc/console-nickname"]
+}
