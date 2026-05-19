@@ -91,7 +91,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		}
 
 		//直接获取code 用于OIDC //旧路由
-		engine.GET("/.well-known/openid-configuration", controller2.Oidc{}.Handle) //框架限制
+		// engine.GET("/.well-known/openid-configuration", controller2.Oidc{}.Handle) //框架限制
 		engine.POST("/panel-api/v1/code", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCode)
 		//http://127.0.0.1:9007/authorize?client_id=default&redirect_uri=http://127.0.0.1:3000/callback111&scope=openid&response_type=code
 		engine.POST("/panel-api/v1/callback-url", middleware.Auth{}.Process, controller2.Oidc{}.GetRedirectURI)
