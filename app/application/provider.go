@@ -255,6 +255,9 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		engine.GET("/panel-api/v1/noauth/site/k3k-config", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.K3kConfig)
 		engine.GET("/panel-api/v1/noauth/site/init-user", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.InitUser)
 		engine.GET("/panel-api/v1/noauth/site/lianxi", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.Lianxi)
+		// 获取配置文件内容，label w7.cc/noauth=true 允许不授权访问
+		// 用于应用直达 注册协议 和logo 通用接口
+		engine.GET("/panel-api/v1/noauth/site/{name}/configmap", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.NoAuthConfigMap)
 
 		engine.GET("/panel-api/v1/microapp/top", middleware.Auth{}.Process, controller2.MicroApp{}.List)                     //获取microapp列表
 		engine.GET("/panel-api/v1/microapp/:name/info", middleware.Auth{}.Process, controller2.MicroApp{}.Info)              //获取microapp详情
