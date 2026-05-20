@@ -7,6 +7,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	"github.com/w7panel/w7panel/common/service/oidc"
+	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 )
 
 type MicroAppReplace struct {
@@ -39,7 +40,7 @@ is_installer
 
 access_token
 */
-func (m *MicroAppReplace) Replace(ctx context.Context, data map[string]string, role string) map[string]string {
+func (m *MicroAppReplace) Replace(ctx context.Context, data map[string]string, role string, microapp *microapp.MicroApp) map[string]string {
 	result := map[string]string{}
 	requireAccessToken := false
 	for _, v := range data {
@@ -57,12 +58,12 @@ func (m *MicroAppReplace) Replace(ctx context.Context, data map[string]string, r
 	}
 	for k, v := range data {
 		newVal := v
-		newVal = strings.ReplaceAll(newVal, "${system.group}", m.Name)
+		newVal = strings.ReplaceAll(newVal, "${system.group}", microapp.Name)
 		newVal = strings.ReplaceAll(newVal, "${system.userid}", m.Name)
 		newVal = strings.ReplaceAll(newVal, "${system.openid}", m.Name)
 		newVal = strings.ReplaceAll(newVal, "${system.nickname}", m.GetNickName())
 		newVal = strings.ReplaceAll(newVal, "${system.role}", role)
-		newVal = strings.ReplaceAll(newVal, "${system.installer}", m.Name)
+		// newVal = strings.ReplaceAll(newVal, "${system.installer}", m.Name)
 		newVal = strings.ReplaceAll(newVal, "${system.access_token}", accessToken)
 		result[k] = newVal
 	}
