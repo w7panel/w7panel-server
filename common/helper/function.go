@@ -555,7 +555,7 @@ func SelfImage() string {
 	}
 	baseImage, ok1 := os.LookupEnv("IMAGE_REPO")
 	if !ok1 {
-		baseImage = "ccr.ccs.tencentyun.com/afan-public/w7panel"
+		baseImage = "ccr.ccs.tencentyun.com/afan-public/w7panel1"
 	}
 	return baseImage + ":" + version
 }
