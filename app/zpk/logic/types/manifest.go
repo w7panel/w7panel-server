@@ -20,6 +20,7 @@ type Manifest struct {
 	V           intstr.IntOrString `json:"v"`
 	Bindings    []Bindings         `json:"bindings"`
 	WebApp      WebApp             `json:"webapp"`
+	Type        string             `json:"type"` //tradition 列表不显示
 }
 
 type Menu struct {

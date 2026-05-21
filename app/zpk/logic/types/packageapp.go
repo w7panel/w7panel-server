@@ -484,6 +484,9 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 	if p.RequireBuildImage() {
 		result["w7.cc/has-build"] = "true"
 	}
+	if p.Manifest.Application.Type == "tradition" {
+		result["w7.cc/hide"] = "true" //隐藏传统应用
+	}
 
 	for k, v := range p.InstallOption.Annotations {
 		result[k] = v
