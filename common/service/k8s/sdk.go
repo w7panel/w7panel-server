@@ -27,6 +27,7 @@ import (
 	appgroupv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	buildimagev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/buildimage/v1alpha1"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
+	microappsettingv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/microappsetting/v1alpha1"
 	oidcv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/oidc/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"golang.org/x/crypto/bcrypt"
@@ -84,6 +85,7 @@ func init() {
 	_ = apirbacv1.AddToScheme(scheme)
 	_ = appgroupv1.AddToScheme(scheme)
 	_ = microapp.AddToScheme(scheme)
+	_ = microappsettingv1alpha1.AddToScheme(scheme)
 	_ = buildimagev1alpha1.AddToScheme(scheme)
 	_ = cvmv1alpha1.AddToScheme(scheme)
 	_ = oidcv1alpha1.AddToScheme(scheme)

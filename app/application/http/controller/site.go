@@ -114,3 +114,24 @@ func (self Site) Lianxi(http *gin.Context) {
 	self.JsonResponseWithoutError(http, list)
 
 }
+
+// TODO 子集群的configmap获取不到 未登录情况下无法获取到子集群的configmap
+func (self Site) NoAuthConfigMap(http *gin.Context) {
+	sdk := k8s.NewK8sClient()
+	name := http.Param("name")
+
+	configMap, err := sdk.ClientSet.CoreV1().ConfigMaps(sdk.GetNamespace()).Get(http, name, metav1.GetOptions{})
+	if err != nil {
+		self.JsonResponseWithoutError(http, corev1.ConfigMap{})
+		return
+	}
+	if configMap.Labels == nil {
+		configMap.Labels = make(map[string]string)
+	}
+	if configMap.Labels["w7.cc/noauth"] != "true" {
+		self.JsonResponseWithoutError(http, corev1.ConfigMap{})
+		return
+	}
+	self.JsonResponseWithoutError(http, configMap)
+
+}

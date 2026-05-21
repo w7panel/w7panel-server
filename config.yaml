@@ -79,9 +79,9 @@ oidc:
     - client_id: ${OIDC_CLIENT_ID-default} # 默认客户端ID
       client_secret: ${OIDC_CLIENT_SECRET-}
       token_endpoint_auth_method: ${OIDC_TOKEN_AUTH_METHOD-none}
-      require_pkce: true
-      redirect_uris:
-        - ${OIDC_REDIRECT_URI-https://www.w7.com/w7panel/oatuh/callback}
+      allow_any_redirect_uri: true
+      # redirect_uris:
+      #   - ${OIDC_REDIRECT_URI-https://www.w7.com/w7panel/oatuh/callback}
       scopes:
         - openid
         - profile
