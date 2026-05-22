@@ -2,10 +2,7 @@
 package k3k
 
 import (
-	"context"
 	"testing"
-
-	"github.com/w7panel/w7panel/common/service/k8s"
 )
 
 func TestTokenToK3kUser(t *testing.T) {
@@ -22,17 +19,4 @@ func TestRefreshK3kUser(t *testing.T) {
 
 	t.Log(user)
 	t.Log(user.ToArray())
-}
-
-func TestResourceVal(t *testing.T) {
-	sdk := k8s.NewK8sClient().Sdk
-	cvm, err := GetCvm(context.Background(), sdk, "k3k-console-164315", "console-164315-uvatm")
-	if err != nil {
-		t.Log(err)
-		return
-	}
-	err = TryCheckOverSellingResource(sdk, cvm)
-	if err != nil {
-		t.Log(err)
-	}
 }

@@ -297,6 +297,7 @@ require (
 	k8s.io/apiserver v0.35.4 // indirect
 	k8s.io/component-base v0.35.4 // indirect
 	k8s.io/component-helpers v0.35.3 // indirect
+	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5 // indirect
 	lukechampine.com/blake3 v1.4.1 // indirect
 	modernc.org/gc/v3 v3.0.0-20240107210532-573471604cb6 // indirect
 	modernc.org/libc v1.55.3 // indirect
@@ -313,7 +314,6 @@ require (
 )
 
 require (
-	github.com/w7panel/w7panel-ckm v1.0.19
 	github.com/aws/smithy-go v1.25.1
 	github.com/bodgit/sevenzip v1.5.2
 	github.com/containerd/cgroups/v3 v3.1.3
@@ -343,6 +343,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	github.com/ulikunitz/xz v0.5.12
+	github.com/w7panel/w7panel-ckm v1.0.19
 	github.com/we7coreteam/w7-rangine-go/v2 v2.0.2
 	github.com/zitadel/oidc/v3 v3.47.5
 	go.eigsys.de/gin-cachecontrol/v2 v2.3.0
@@ -357,7 +358,6 @@ require (
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912
 	k8s.io/kubectl v0.33.3
-	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
 	sigs.k8s.io/controller-runtime v0.23.3
 	sigs.k8s.io/yaml v1.6.0
 )

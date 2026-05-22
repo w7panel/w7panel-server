@@ -58,7 +58,7 @@ func (r *K3kJobController) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			logger.Info("k3k-sa label is empty")
 			return ctrl.Result{}, nil
 		}
-		cvm := &cvmv1alpha1.Cvm{}
+		cvm := &cvmv1alpha1.Ckm{}
 		if err := r.Get(ctx, types.NamespacedName{Namespace: job.Labels["k3k-namespace"], Name: cvmName}, cvm); err != nil {
 			logger.Error(err, "Failed to get ServiceAccount")
 			return ctrl.Result{}, client.IgnoreNotFound(err)

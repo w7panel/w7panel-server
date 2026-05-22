@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func ToK3kDaemonSet(cvm *cvmv1alpha1.Cvm) *appsv1.DaemonSet {
+func ToK3kDaemonSet(cvm *cvmv1alpha1.Ckm) *appsv1.DaemonSet {
 	labels := map[string]string{
 		"k3k-agent-pod": "true",
 		"k3k-sa":        cvm.Name,
@@ -51,7 +51,7 @@ func ToK3kDaemonSet(cvm *cvmv1alpha1.Cvm) *appsv1.DaemonSet {
 	return ds
 }
 
-func ToK3kPod(cvm *cvmv1alpha1.Cvm) *corev1.Pod {
+func ToK3kPod(cvm *cvmv1alpha1.Ckm) *corev1.Pod {
 	// shell := "cd /tmp && k3kcli kubeconfig generate --namespace $K3K_NAMESPACE --name $K3K_NAME && k8s-offline"
 	clusterMode := "virtual"
 	// cacheKey := "k3k-" + k3kUser.GetName()
@@ -307,7 +307,7 @@ func ToK3kPod(cvm *cvmv1alpha1.Cvm) *corev1.Pod {
 }
 
 // 子集群service
-func ToK3kAgentService(cvm *cvmv1alpha1.Cvm) *corev1.Service {
+func ToK3kAgentService(cvm *cvmv1alpha1.Ckm) *corev1.Service {
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -347,7 +347,7 @@ func ToK3kAgentService(cvm *cvmv1alpha1.Cvm) *corev1.Service {
 	}
 }
 
-func ToVirtualIngressService(cvm *cvmv1alpha1.Cvm) *corev1.Service {
+func ToVirtualIngressService(cvm *cvmv1alpha1.Ckm) *corev1.Service {
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -401,7 +401,7 @@ func ToVirtualIngressService(cvm *cvmv1alpha1.Cvm) *corev1.Service {
 	}
 }
 
-func ToK3kWeihJob(cvm *cvmv1alpha1.Cvm) *batchv1.Job {
+func ToK3kWeihJob(cvm *cvmv1alpha1.Ckm) *batchv1.Job {
 
 	// 设置环境变量
 	//ToK3kJob
@@ -489,7 +489,7 @@ func ToK3kWeihJob(cvm *cvmv1alpha1.Cvm) *batchv1.Job {
 	return job
 }
 
-func ToClusterRoleBinding(cvm *cvmv1alpha1.Cvm) *rbacv1.ClusterRoleBinding {
+func ToClusterRoleBinding(cvm *cvmv1alpha1.Ckm) *rbacv1.ClusterRoleBinding {
 	return &rbacv1.ClusterRoleBinding{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "rbac.authorization.k8s.io/v1",
@@ -512,7 +512,7 @@ func ToClusterRoleBinding(cvm *cvmv1alpha1.Cvm) *rbacv1.ClusterRoleBinding {
 	}
 }
 
-func ToServiceAccount(cvm *cvmv1alpha1.Cvm) *corev1.ServiceAccount {
+func ToServiceAccount(cvm *cvmv1alpha1.Ckm) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",

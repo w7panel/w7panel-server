@@ -99,8 +99,8 @@ func (c *ResourceClient) GetUsed(callback func(*corev1.ServiceAccount) *Resource
 		Storage: storage,
 	}, nil
 }
-func (c *ResourceClient) GetUsedCvm(callback func(*cvmv1alpha1.Cvm) *Resource) (*Resource, error) {
-	list := &cvmv1alpha1.CvmList{}
+func (c *ResourceClient) GetUsedCvm(callback func(*cvmv1alpha1.Ckm) *Resource) (*Resource, error) {
+	list := &cvmv1alpha1.CkmList{}
 	err := c.client.List(c.sdk.Ctx, list, &sigclient.ListOptions{})
 	if err != nil {
 		return nil, err

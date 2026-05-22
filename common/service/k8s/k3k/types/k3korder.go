@@ -197,8 +197,8 @@ type BuyBaseResource struct {
 	CvmName    string `form:"cvmName"`
 }
 
-func (b *BuyBaseResource) ToCvmResource() *cvmv1alpha1.CvmResource {
-	return &cvmv1alpha1.CvmResource{
+func (b *BuyBaseResource) ToCvmResource() *cvmv1alpha1.CkmResource {
+	return &cvmv1alpha1.CkmResource{
 		CPU:       b.Cpu,
 		Memory:    b.Memory,
 		Storage:   b.Storage,

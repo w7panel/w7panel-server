@@ -72,7 +72,7 @@ func (k *K3kUsage) GetResourceUsage(k8stoken *k8s.K8sToken) (cpuUsage, memoryUsa
 }
 
 // 救援模式token 不是cvm token 是用户token 需要单独查cvm
-func (k *K3kUsage) GetResourceCvmUsage(cvm *cvmv1alpha1.Cvm) (cpuUsage, memoryUsage resource.Quantity, allocatedCPU, allocatedMemory resource.Quantity, err error) {
+func (k *K3kUsage) GetResourceCvmUsage(cvm *cvmv1alpha1.Ckm) (cpuUsage, memoryUsage resource.Quantity, allocatedCPU, allocatedMemory resource.Quantity, err error) {
 
 	cfg := &k8s.K3kConfig{
 		Name:      cvm.GetK3kName(),
@@ -101,8 +101,8 @@ func (k *K3kUsage) GetResourceCvmUsage(cvm *cvmv1alpha1.Cvm) (cpuUsage, memoryUs
 
 	return cpuUsage, memoryUsage, allocatedCPU, allocatedMemory, nil
 }
-func (k *K3kUsage) getCvm(cvmName, ns string) (*cvmv1alpha1.Cvm, error) {
-	cvm := &cvmv1alpha1.Cvm{}
+func (k *K3kUsage) getCvm(cvmName, ns string) (*cvmv1alpha1.Ckm, error) {
+	cvm := &cvmv1alpha1.Ckm{}
 	sigClient, err := k.sdk.ToSigClient()
 	if err != nil {
 		return nil, err
@@ -169,7 +169,7 @@ func (k *K3kUsage) GetResourceDiskUsage(k8stoken *k8s.K8sToken) (storageUsage in
 }
 
 // cvm 获取cvm的磁盘使用情况
-func (k *K3kUsage) GetResourceCvmDiskUsage(cvm *cvmv1alpha1.Cvm) (storageUsage int64, storageTotal int64, err error) {
+func (k *K3kUsage) GetResourceCvmDiskUsage(cvm *cvmv1alpha1.Ckm) (storageUsage int64, storageTotal int64, err error) {
 	// scName := k3kuser.GetStorageClass()
 
 	longhornClient, err := longhorn.NewLonghornClient(k.sdk)

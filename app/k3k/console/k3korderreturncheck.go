@@ -37,7 +37,7 @@ func (c K3kOrderReturnCheck) Handle(cmd *cobra.Command, args []string) {
 		slog.Error("Failed to create sigclient", "error", err)
 		return
 	}
-	cvmList := &cvmv1alpha1.CvmList{}
+	cvmList := &cvmv1alpha1.CkmList{}
 	err = sigClient.List(context.TODO(), cvmList)
 	if err != nil {
 		slog.Error("return check list find err", "err", err)
@@ -46,7 +46,7 @@ func (c K3kOrderReturnCheck) Handle(cmd *cobra.Command, args []string) {
 	c.handleCvm(cvmList, sdk.Sdk, sigClient)
 }
 
-func (K3kOrderReturnCheck) handleCvm(cvmList *cvmv1alpha1.CvmList, sdk *k8s.Sdk, client sigclient.Client) error {
+func (K3kOrderReturnCheck) handleCvm(cvmList *cvmv1alpha1.CkmList, sdk *k8s.Sdk, client sigclient.Client) error {
 	orderApi, err := order.NewK3kOrderApi(sdk)
 	if err != nil {
 		return err
@@ -60,11 +60,12 @@ func (K3kOrderReturnCheck) handleCvm(cvmList *cvmv1alpha1.CvmList, sdk *k8s.Sdk,
 	}
 	return nil
 }
-func fixReturnCvmOrder(cvm *cvmv1alpha1.Cvm, orderApi *order.K3kOrderApi, client sigclient.Client) error {
+func fixReturnCvmOrder(cvm *cvmv1alpha1.Ckm, orderApi *order.K3kOrderApi, client sigclient.Client) error {
 
-	err := orderApi.LockReturnLastOrder(context.Background(), cvm, true)
-	if err != nil {
-		return err
-	}
 	return nil
+	// err := orderApi.LockReturnLastOrder(context.Background(), cvm, true)
+	// if err != nil {
+	// 	return err
+	// }
+	// return nil
 }

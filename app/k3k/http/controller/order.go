@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
-	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
@@ -39,116 +38,6 @@ func (self Order) CreateLicenseOrder(http *gin.Context) {
 		return
 	}
 	self.JsonResponseWithoutError(http, result)
-	return
-}
-
-/*
-*
-创建资源购买订单
-*/
-func (self Order) CreateBaseResourceOrder(http *gin.Context) {
-
-	// 初始化参数结构体
-
-	if config.MainW7Config == nil {
-		self.JsonResponseWithServerError(http, fmt.Errorf("集群不允许购买资源"))
-		return
-	}
-	// params := types.BuyBaseResource{BaseConfigName: config.MainW7Config.Name}
-	params := types.BuyBaseResource{}
-	if !self.Validate(http, &params) {
-		return
-	}
-
-	params.BaseConfigName = config.MainW7Config.Name
-	token := http.MustGet("k8s_token").(string)
-	k3kUser, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		slog.Error("token解析失败", "error", err)
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	if !k3kUser.SupportCvm() {
-		self.JsonResponseWithServerError(http, fmt.Errorf("当前用户不支持cvm购买"))
-		return
-	}
-	payResult, err := order.CreateBaseResourceCvmOrder(http, &params, k3kUser)
-	if err != nil {
-		slog.Error("购买失败", "error", err)
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonResponseWithoutError(http, payResult)
-	return
-}
-
-func (self Order) CreateRenewOrder(http *gin.Context) {
-
-	// 初始化参数结构体
-
-	if config.MainW7Config == nil {
-		self.JsonResponseWithServerError(http, fmt.Errorf("集群不允许购买资源"))
-		return
-	}
-	params := types.BuyRenewResource{}
-	if !self.Validate(http, &params) {
-		return
-	}
-	params.BaseConfigName = config.MainW7Config.Name
-	token := http.MustGet("k8s_token").(string)
-	k3kUser, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		slog.Error("token解析失败", "error", err)
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	if !k3kUser.SupportCvm() {
-		self.JsonResponseWithServerError(http, fmt.Errorf("当前用户不支持cvm购买"))
-		return
-	}
-
-	payResult, err := order.CreateRenewCvmOrder(&params, k3kUser)
-	if err != nil {
-		slog.Error("购买失败", "error", err)
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonResponseWithoutError(http, payResult)
-	return
-}
-
-func (self Order) CreateExpandOrder(http *gin.Context) {
-
-	// 初始化参数结构体
-
-	if config.MainW7Config == nil {
-		self.JsonResponseWithServerError(http, fmt.Errorf("集群不允许购买资源"))
-		return
-	}
-	params := types.BuyExpandResource{}
-	if !self.Validate(http, &params) {
-		return
-	}
-	params.BaseConfigName = config.MainW7Config.Name
-	token := http.MustGet("k8s_token").(string)
-	k3kUser, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		slog.Error("token解析失败", "error", err)
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	if !k3kUser.SupportCvm() {
-		self.JsonResponseWithServerError(http, fmt.Errorf("当前用户不支持cvm购买"))
-		return
-	}
-
-	payResult, err := order.CreateExpandCvmOrder(&params, k3kUser)
-	if err != nil {
-		slog.Error("购买失败", "error", err)
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonResponseWithoutError(http, payResult)
 	return
 }
 

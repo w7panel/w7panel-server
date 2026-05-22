@@ -314,7 +314,7 @@ func (k *K3kOrderApi) NotifyOrder(user *types.K3kUser, sn string) error {
 		slog.Warn("获取订单信息失败", "orderSn", sn, "error", err)
 	}
 	if orderInfo.CvmName != "" {
-		return k.NotifyCvmOrder(user, orderInfo.CvmName, sn)
+		//return k.NotifyCvmOrder(user, orderInfo.CvmName, sn)
 	}
 
 	_, err = controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, user.ServiceAccount, func() error {
@@ -381,7 +381,7 @@ func (k *K3kOrderApi) FindLastReturnOrder(user *types.K3kUser) (*console.LastRet
 	return k.consoleSdkClient.FindLastReturnOrder(w7config.ClusterId, user.Name)
 }
 
-func (k *K3kOrderApi) FindLastReturnCvmOrder(cvm *cvmv1alpha1.Cvm) (*console.LastReturnOrder, error) {
+func (k *K3kOrderApi) FindLastReturnCvmOrder(cvm *cvmv1alpha1.Ckm) (*console.LastReturnOrder, error) {
 	license := console.GetCurrentLicense()
 	if license == nil {
 		return nil, fmt.Errorf("免费版不支持购买")

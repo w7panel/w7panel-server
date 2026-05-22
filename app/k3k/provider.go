@@ -48,29 +48,12 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			k3kGroup.POST("/sync-microapp", controller2.K3k{}.SyncMicroApp)      //microapp同步到子集群
 			// 主集群login 需要验证是否founder
 			k3kGroup.POST("/login", middleware.Auth{}.Process, controller2.K3k{}.Login) //
-			// k3kGroup.POST("/loginCvm", middleware.Auth{}.Process, controller2.K3k{}.LoginCurrent) //
+
 			// k3kGroup.POST("/wh", middleware.Auth{}.Process, controller2.K3k{}.WhMoshi) // 维护模式 切换
 
-			// k3kGroup.GET("/order/price", middleware.Auth{}.Process, controller2.Order{}.GetPrice)   // 获取当前价格 cvm版本不需要
-
-			k3kGroup.POST("/order/base", middleware.Auth{}.Process, controller2.Order{}.CreateBaseResourceOrder) // 创建基础资源订单
-
-			k3kGroup.POST("/order/renew", middleware.Auth{}.Process, controller2.Order{}.CreateRenewOrder)   // 创建续费订单
-			k3kGroup.POST("/order/expand", middleware.Auth{}.Process, controller2.Order{}.CreateExpandOrder) // 创建续费订单
-			k3kGroup.POST("/order/notify", controller2.Order{}.OrderNotify)                                  // 支付回调 不需要登录
-			// k3kGroup.POST("/order/refresh", middleware.Auth{}.Process, controller2.Order{}.Refresh)          // 当前用户拉取支付状态
+			k3kGroup.POST("/order/notify", controller2.Order{}.OrderNotify) // 支付回调 不需要登录
 
 			k3kGroup.POST("/order/license", middleware.Auth{}.Process, controller2.Order{}.CreateLicenseOrder) // 面板授权购买
-
-			// k3kGroup.POST("/storage/resize", middleware.Auth{}.Process, controller2.K3k{}.ResizeSysStorage) // 扩容系统存储
-
-			k3kGroup.GET("/cvm", middleware.Auth{}.Process, controller2.Cvm{}.List)                                    // cvm列表
-			k3kGroup.GET("/cvm/v1/:namespace/info/:name", middleware.Auth{}.Process, controller2.Cvm{}.Info)           // cvm详情
-			k3kGroup.POST("/cvm/sync", middleware.Auth{}.Process, controller2.Cvm{}.Sync)                              // 用户信息同步到cvm
-			k3kGroup.POST("/cvm/:namespace/action/:name/login", middleware.Auth{}.Process, controller2.K3k{}.LoginCvm) // cvm 登录
-			// k3kGroup.GET("/cvm/:namespace/action/:name/health", middleware.Auth{}.Process, controller2.Cvm{}.Health)                 // 健康检查
-			k3kGroup.POST("/cvm/:namespace/action/:name/rescue", middleware.Auth{}.Process, controller2.Cvm{}.RescueToggle)          //救援模式
-			k3kGroup.POST("/cvm/:namespace/action/:name/check-resource", middleware.Auth{}.Process, controller2.Cvm{}.CheckResource) //检查资源是否超出集群配置
 
 		}
 

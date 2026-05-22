@@ -42,7 +42,7 @@ func CanAddResource(rs *Resource, callback func(*corev1.ServiceAccount) *Resourc
 	return errors.New("resource not enough")
 }
 
-func CanAddResourceCvm(rs *Resource, callback func(*cvmv1alpha1.Cvm) *Resource) error {
+func CanAddResourceCvm(rs *Resource, callback func(*cvmv1alpha1.Ckm) *Resource) error {
 
 	client, err := NewResourceClient(k8s.NewK8sClient().Sdk)
 	if err != nil {

@@ -47,7 +47,7 @@ func (c K3kOrderReturnCheckOne) Handle(cmd *cobra.Command, args []string) {
 		slog.Error("Failed to create sigclient", "error", err)
 		return
 	}
-	cvm := &cvmv1alpha1.Cvm{}
+	cvm := &cvmv1alpha1.Ckm{}
 	err = sigClient.Get(context.TODO(), types.NamespacedName{Name: shOp.cvmName, Namespace: shOp.namespace}, cvm)
 	if err != nil {
 		slog.Error("return check list find err", "err", err)

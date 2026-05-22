@@ -18,7 +18,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -108,7 +107,7 @@ func TokenToK3kUser(token string) (*types.K3kUser, error) {
 	return RefreshK3kUser(user, rootSdk, false)
 }
 
-func TokenToCvm(ctx context.Context, token, namespace, name string) (*cvmv1alpha1.Cvm, error) {
+func TokenToCvm(ctx context.Context, token, namespace, name string) (*cvmv1alpha1.Ckm, error) {
 	k8sToken := k8s.NewK8sToken(token)
 	rootSdk := k8s.NewK8sClient()
 	user, err := TokenToK3kUser(token)
@@ -196,25 +195,6 @@ func getServiceAccountResource(sa *corev1.ServiceAccount) *overselling.Resource 
 	return overselling.EmptyResource()
 }
 
-func getCvmResource(cvm *cvmv1alpha1.Cvm) *overselling.Resource {
-	resourceSpec := cvm.Status.EffectiveResource
-	if resourceSpec == nil {
-		resourceSpec = &cvmv1alpha1.CvmResource{}
-	}
-
-	return cvmResourceToOverSelling(resourceSpec)
-}
-
-func cvmResourceToOverSelling(resourceSpec *cvmv1alpha1.CvmResource) *overselling.Resource {
-
-	return &overselling.Resource{
-		CPU:       resource.MustParse(fmt.Sprintf("%dm", resourceSpec.CPU)),
-		Memory:    resource.MustParse(fmt.Sprintf("%dGi", resourceSpec.Memory)),
-		Storage:   resource.MustParse(fmt.Sprintf("%dGi", resourceSpec.Storage)),
-		BandWidth: resource.MustParse(fmt.Sprintf("%dM", resourceSpec.Bandwidth)),
-	}
-}
-
 func RefreshK3kPolicy(policy *v1alpha1.VirtualClusterPolicy, rootSdk *k8s.Sdk, update bool) error {
 	if policy.Annotations == nil {
 		return nil
@@ -234,30 +214,7 @@ func RefreshK3kPolicy(policy *v1alpha1.VirtualClusterPolicy, rootSdk *k8s.Sdk, u
 	return nil
 }
 
-func TryCheckOverSellingResource(sdk *k8s.Sdk, cvm *cvmv1alpha1.Cvm) error {
-	if !cvm.CanOverSellingCheck() {
-		// 不需要资源检测
-		return nil
-	}
-	sigClient, err := sdk.ToSigClient()
-	if err != nil {
-		return err
-	}
-	//资源验证有问题
-	err = overselling.CanAddResourceCvm(cvmResourceToOverSelling(cvm.Spec.PendingPurchasedResource), getCvmResource)
-	if err != nil {
-		return err
-	}
-	_, err = controllerutil.CreateOrPatch(context.TODO(), sigClient, cvm, func() error {
-		cvm.CheckSuccess()
-		return nil
-	})
-
-	// TODO: 尝试添加资源
-	return err
-}
-
-func GetCvm(ctx context.Context, sdk *k8s.Sdk, namespace, cvmName string) (*cvmv1alpha1.Cvm, error) {
+func GetCvm(ctx context.Context, sdk *k8s.Sdk, namespace, cvmName string) (*cvmv1alpha1.Ckm, error) {
 	if cvmName == "" {
 		return nil, fmt.Errorf("cvm不能为空")
 	}
@@ -265,7 +222,7 @@ func GetCvm(ctx context.Context, sdk *k8s.Sdk, namespace, cvmName string) (*cvmv
 	if err != nil {
 		return nil, err
 	}
-	cvm := &cvmv1alpha1.Cvm{}
+	cvm := &cvmv1alpha1.Ckm{}
 	if err := sigClient.Get(ctx, client.ObjectKey{Name: cvmName, Namespace: namespace}, cvm); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, err
@@ -307,13 +264,13 @@ func SyncUserToCvm(ctx context.Context, user *types.K3kUser, sdk *k8s.Sdk) error
 		if apierrors.IsNotFound(err) {
 			rs := lr.GetHardBuyResource()
 
-			cvm = &cvmv1alpha1.Cvm{
+			cvm = &cvmv1alpha1.Ckm{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      user.GetName(),
 					Namespace: user.GetK3kNamespace(),
 				},
-				Spec: cvmv1alpha1.CvmSpec{
-					PurchasedResource: &cvmv1alpha1.CvmResource{
+				Spec: cvmv1alpha1.CkmSpec{
+					PurchasedResource: &cvmv1alpha1.CkmResource{
 						CPU:       rs.Cpu,
 						Memory:    rs.Memory,
 						Storage:   rs.Storage,

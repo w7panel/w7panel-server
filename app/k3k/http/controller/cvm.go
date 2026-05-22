@@ -2,7 +2,6 @@ package controller
 
 import (
 	"log/slog"
-	"os"
 
 	"github.com/gin-gonic/gin"
 	v1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
@@ -11,7 +10,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type Cvm struct {
@@ -53,7 +51,7 @@ func (self Cvm) List(http *gin.Context) {
 	if !user.IsFounder() {
 		ns = k8sToken.GetNamespace()
 	}
-	list := &v1alpha1.CvmList{}
+	list := &v1alpha1.CkmList{}
 	options := &client.ListOptions{}
 	if ns != "" {
 		options.ApplyOptions([]client.ListOption{
@@ -100,54 +98,6 @@ func (self Cvm) RescueToggle(http *gin.Context) {
 		return
 	}
 	self.JsonResponseWithoutError(http, cvm)
-}
-
-func (self Cvm) CheckResource(http *gin.Context) {
-
-	type Result struct {
-		Pass bool `json:"pass"`
-	}
-	result := Result{
-		Pass: false,
-	}
-	token := http.MustGet("k8s_token").(string)
-
-	name := http.Param("name")
-	namespace := http.Param("namespace")
-	rootSdk := k8s.NewK8sClient()
-	sigclient, err := rootSdk.ToSigClient()
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	cvm, err := k3k.TokenToCvm(http, token, namespace, name)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	if os.Getenv("MOCK_CHECK_RES") == "true" { //测试直接通过
-		_, err := controllerutil.CreateOrPatch(http, sigclient, cvm, func() error {
-			cvm.CheckSuccess()
-			return nil
-		})
-		if err != nil {
-			self.JsonResponseWithServerError(http, err)
-			return
-		}
-		result.Pass = true // 集群资源充足
-		self.JsonResponseWithoutError(http, result)
-		return
-	}
-	err = k3k.TryCheckOverSellingResource(rootSdk.Sdk, cvm)
-	if err != nil {
-		slog.Error("集群资源不足", "error", err)
-		self.JsonResponseWithoutError(http, result)
-		return
-	}
-	result.Pass = true // 集群资源充足
-	self.JsonResponseWithoutError(http, result)
-	return
-
 }
 
 // 同步用户的集群

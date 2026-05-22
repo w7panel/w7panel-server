@@ -1,6 +1,9 @@
 
 IV ?= v1.1.42.x
-
+tidy:
+   go env -w GOPRIVATE=github.com/w7panel/w7panel-ckm
+   go mod tidy
+   
 build-charts:
 	helm package ./kodata/charts/k8s-offline
 
