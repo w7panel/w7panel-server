@@ -17,13 +17,13 @@ echo "卸载旧版metrics pod " # 之前helm cleanup.enabled=false 导致无法�
 kubectl delete deployment.apps/vmsingle-vm-operator-k8s-offline-metrics-single -n w7-system --ignore-not-found
 kubectl delete deployment.apps/vmagent-vm-operator-k8s-offline-metrics-agent -n w7-system --ignore-not-found
 
-echo "安装k3k"
-helm upgrade --namespace k3k-system --create-namespace k3k $KO_DATA_PATH/charts/k3k-0.3.5.tgz --install --timeout 600s
+# echo "安装k3k"
+# helm upgrade --namespace k3k-system --create-namespace k3k $KO_DATA_PATH/charts/k3k-0.3.5.tgz --install --timeout 600s
 
-kubectl create secret generic k3k-virtual --from-file=$KO_DATA_PATH/yaml/k3k/k3k-virtual.yaml -n k3k-system | echo "已存在k3k-virtual"
+# kubectl create secret generic k3k-virtual --from-file=$KO_DATA_PATH/yaml/k3k/k3k-virtual.yaml -n k3k-system | echo "已存在k3k-virtual"
 
-echo "导入k3k 0.3.5 crd"
-kubectl apply -f $KO_DATA_PATH/crds-k3k 
+# echo "导入k3k 0.3.5 crd"
+# kubectl apply -f $KO_DATA_PATH/crds-k3k 
 
 echo "apply longhorn-volumes configmap"
 kubectl create -f $KO_DATA_PATH/yaml/longhorn-volumes-config.yaml || echo "已存在longhorn-volumes-config"
