@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	cvmv1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
+	cvmv1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	corev1 "k8s.io/api/core/v1"

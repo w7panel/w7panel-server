@@ -313,7 +313,7 @@ require (
 )
 
 require (
-	cnb.cool/i0358/ai-cvm v1.0.6
+	github.com/w7panel/w7panel-ckm v1.0.19
 	github.com/aws/smithy-go v1.25.1
 	github.com/bodgit/sevenzip v1.5.2
 	github.com/containerd/cgroups/v3 v3.1.3

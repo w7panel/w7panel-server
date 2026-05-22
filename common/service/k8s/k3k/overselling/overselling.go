@@ -4,7 +4,7 @@ import (
 	"errors"
 	"log/slog"
 
-	cvmv1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
+	cvmv1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	corev1 "k8s.io/api/core/v1"
 )

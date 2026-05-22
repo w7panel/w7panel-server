@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"os"
 
-	cvmv1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
 	"github.com/spf13/cobra"
+	cvmv1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/order"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"

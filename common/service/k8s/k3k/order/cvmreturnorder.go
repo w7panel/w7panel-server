@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	cvmv1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
+	cvmv1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/console"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )

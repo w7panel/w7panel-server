@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	cvmv1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
+	cvmv1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	"k8s.io/apimachinery/pkg/api/resource"

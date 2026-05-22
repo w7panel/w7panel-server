@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	v1alpha1 "cnb.cool/i0358/ai-cvm/api/v1alpha1"
+	v1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
 )
 
 type k3kCvmTime struct {
