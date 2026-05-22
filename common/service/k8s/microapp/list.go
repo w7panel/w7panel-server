@@ -22,35 +22,24 @@ func ListTop(t string) (*microapp.MicroAppList, error) {
 		return nil, errors.New("role is empty")
 	}
 	rootSdk := k8s.NewK8sClient().Sdk
-	clientSdk, err := k8s.NewK8sClient().Channel(t)
-	if err != nil {
-		return nil, err
-	}
-	allList := &microapp.MicroAppList{}
-	newList := &microapp.MicroAppList{}
-	currentList, err := loadMicroAppList(clientSdk)
-	if err != nil {
-		return nil, err
-	}
-	rList := &microapp.MicroAppList{}
-	if token.IsK3kCluster() {
-		rootList, err := loadMicroAppList(rootSdk)
-		if err != nil {
-			return nil, err
-		}
-		rootList.Items = lo.Filter(rootList.Items, func(item microapp.MicroApp, index int) bool {
-			_, hasRole := item.Spec.ConfigV2.Props.RoleConfig[role]
-			return item.RoleCount() > 1 && hasRole
-		})
-		rList = rootList
-	}
 
-	rList.Items = lo.Map(rList.Items, func(item microapp.MicroApp, index int) microapp.MicroApp {
+	newList := &microapp.MicroAppList{}
+
+	rootList, err := loadMicroAppList(rootSdk)
+	if err != nil {
+		return nil, err
+	}
+	rootList.Items = lo.Filter(rootList.Items, func(item microapp.MicroApp, index int) bool {
+		_, hasRole := item.Spec.ConfigV2.Props.RoleConfig[role]
+		return item.RoleCount() > 1 && hasRole
+	})
+
+	rootList.Items = lo.Map(rootList.Items, func(item microapp.MicroApp, index int) microapp.MicroApp {
 		filterMicroapp(&item, role)
 		return item
 	})
-	allList.Items = append(rList.Items, currentList.Items...)
-	lo.ForEach(allList.Items, func(item microapp.MicroApp, index int) {
+
+	lo.ForEach(rootList.Items, func(item microapp.MicroApp, index int) {
 		if item.Labels != nil {
 			if item.RoleCount() > 1 || item.Labels["microapp.w7.cc/from"] == "root" {
 				newList.Items = append(newList.Items, item)
