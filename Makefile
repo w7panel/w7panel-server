@@ -3,7 +3,10 @@ IV ?= v1.1.42.x
 tidy:
    go env -w GOPRIVATE=github.com/w7panel/w7panel-ckm
    go mod tidy
-   
+build-docker:
+   export KO_DOCKER_REPO=docker.cnb.cool/i0358/zpk
+   export KO_DEFAULTBASEIMAGE=ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui 
+   ko build --bare --tags=v1.1.60.26 --tag-only --sbom=none --platform=all   
 build-charts:
 	helm package ./kodata/charts/k8s-offline
 
