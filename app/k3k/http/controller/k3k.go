@@ -306,7 +306,7 @@ func (self K3k) SyncMicroApp(http *gin.Context) {
 		return
 	}
 	// slog.Error("同步SyncMicroApp")
-	microapp.Sync(params.K3kName, params.K3kNamespace, params.CvmName)
+	microapp.Sync(params.K3kName, params.K3kNamespace, params.CkmName)
 	self.JsonSuccessResponse(http)
 	return
 }
