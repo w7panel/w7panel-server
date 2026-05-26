@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"time"
@@ -26,6 +27,9 @@ import (
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Provider struct {
@@ -47,6 +51,9 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console2.SetConsoleApi(facade.GetConfig().GetString("app.console_base_url"))
 	if helper.IsLocalMock() {
 		// console2.SetConsoleApi("http://172.16.1.116:9004")
+	}
+	if err := p.syncSelfImageConfigMap(); err != nil {
+		slog.Error("同步自有镜像配置失败", "error", err)
 	}
 
 	// p.CRD() //upgrade.sh 中处理
@@ -91,6 +98,54 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	go higress.LoadBkConfig()
 	go p.recordOverResource()
 
+}
+
+func (p Provider) syncSelfImageConfigMap() error {
+	const (
+		namespace = "kube-system"
+		name      = "w7panel-server"
+	)
+
+	repo, version := helper.SelfImageInfo()
+	sdk := k8s.NewK8sClient()
+	configMaps := sdk.ClientSet.CoreV1().ConfigMaps(namespace)
+	ctx := context.Background()
+
+	configMap, err := configMaps.Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+
+		_, err = configMaps.Create(ctx, &corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ConfigMap",
+				APIVersion: "v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Data: map[string]string{
+				"imageRepo":    repo,
+				"imageVersion": version,
+			},
+		}, metav1.CreateOptions{})
+		return err
+	}
+
+	if configMap.Data == nil {
+		configMap.Data = map[string]string{}
+	}
+
+	if configMap.Data["imageRepo"] == repo && configMap.Data["imageVersion"] == version {
+		return nil
+	}
+
+	configMap.Data["imageRepo"] = repo
+	configMap.Data["imageVersion"] = version
+	_, err = configMaps.Update(ctx, configMap, metav1.UpdateOptions{})
+	return err
 }
 
 func (p Provider) RegisterValidateRule() {

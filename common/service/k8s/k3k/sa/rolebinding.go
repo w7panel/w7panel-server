@@ -186,7 +186,7 @@ func (r *RoleBinding) CreateNormalUserRoleBinding(ctx context.Context, sa *v1.Se
 
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "w7panel-rb-" + role,
+			Name: fmt.Sprintf("w7panel-rb-%s-%s", role, sa.Name),
 		},
 		Subjects: []rbacv1.Subject{
 			{

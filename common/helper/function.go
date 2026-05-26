@@ -549,15 +549,20 @@ func WaitForNamedCacheSync(controllerName string, stopCh <-chan struct{}, cacheS
 
 // 镜像地址
 func SelfImage() string {
+	baseImage, version := SelfImageInfo()
+	return baseImage + ":" + version
+}
+
+func SelfImageInfo() (string, string) {
 	version, ok := os.LookupEnv("HELM_VERSION")
 	if !ok {
 		version = "1.0.123"
 	}
-	baseImage, ok1 := os.LookupEnv("IMAGE_REPO")
-	if !ok1 {
+	baseImage, ok := os.LookupEnv("IMAGE_REPO")
+	if !ok {
 		baseImage = "ccr.ccs.tencentyun.com/afan-public/w7panel1"
 	}
-	return baseImage + ":" + version
+	return baseImage, version
 }
 
 func ExtractSingleFileFromTgz(url, fileName string) ([]byte, error) {

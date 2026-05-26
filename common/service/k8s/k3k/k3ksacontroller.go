@@ -7,6 +7,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/sa"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
@@ -110,6 +111,15 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 	}
 	k3ktypes.SetSaVersion(sa.Name, sa.Annotations[k3ktypes.K3K_LOCK_VERSION])
+	role := k3kUser.GetRole()
+	if role == "super" || role == "founder" {
+		err := r.rolebinding.CreateNormalUserRoleBinding(ctx, sa, helper.ServiceAccountName())
+		if err != nil {
+			logger.Error(err, "Failed to create offline cluster role binding")
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+		return ctrl.Result{}, nil
+	}
 	//w7panel-ckm 处理权限
 	// if k3kUser.SupportCvm() {
 	// 	namespace := &corev1.Namespace{
