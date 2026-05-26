@@ -78,7 +78,7 @@ func (self Ckm) Permission(http *gin.Context) {
 	}
 	// 是否是cvm请求用户
 	if user.IsCvmReqUser() {
-		k3k.GetCkm(http, s)
+		// k3k.GetCkm(http, s)
 	}
 	// rootSdk := k8s.NewK8sClient().Sdk
 	if user != nil {
