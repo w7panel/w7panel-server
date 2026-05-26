@@ -40,21 +40,7 @@ func (self K3k) Info(http *gin.Context) {
 	}
 }
 
-func (self K3k) Menu(http *gin.Context) {
 
-	token := http.MustGet("k8s_token").(string)
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	// rootSdk := k8s.NewK8sClient().Sdk
-	if user != nil {
-		result := user.ToArray()
-		self.JsonResponseWithoutError(http, result)
-		return
-	}
-}
 
 func (self K3k) ReInitCluster(http *gin.Context) {
 	// token := http.MustGet("k8s_token").(string)

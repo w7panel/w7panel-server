@@ -68,6 +68,25 @@ func (self Ckm) List(http *gin.Context) {
 	}
 	self.JsonResponseWithoutError(http, list)
 }
+func (self Ckm) Permission(http *gin.Context) {
+
+	token := http.MustGet("k8s_token").(string)
+	user, err := k3k.TokenToK3kUser(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	// 是否是cvm请求用户
+	if user.IsCvmReqUser() {
+		k3k.GetCkm(http, s)
+	}
+	// rootSdk := k8s.NewK8sClient().Sdk
+	if user != nil {
+		result := user.ToArray()
+		self.JsonResponseWithoutError(http, result)
+		return
+	}
+}
 
 // 救援模式
 func (self Ckm) IdcResource(http *gin.Context) {

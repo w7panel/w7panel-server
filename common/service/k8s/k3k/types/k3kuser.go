@@ -341,22 +341,22 @@ func (u *k3kUser) CanInitCluster() bool {
 	return false
 }
 func (u *k3kUser) ToArray() map[string]string {
-	needCreateOrder := "true"
-	if !u.NeedCreateOrder() {
-		needCreateOrder = "false"
-	}
-	canReNew := "false"
-	if err := u.CanRenewError(); err == nil {
-		canReNew = "true"
-	}
-	needRenew := "false"
-	if u.NeedRenew() {
-		needRenew = "true"
-	}
-	canExpand := "false"
-	if err := u.CanExpandError(); err == nil {
-		canExpand = "true"
-	}
+	// needCreateOrder := "true"
+	// if !u.NeedCreateOrder() {
+	// 	needCreateOrder = "false"
+	// }
+	// canReNew := "false"
+	// if err := u.CanRenewError(); err == nil {
+	// 	canReNew = "true"
+	// }
+	// needRenew := "false"
+	// if u.NeedRenew() {
+	// 	needRenew = "true"
+	// }
+	// canExpand := "false"
+	// if err := u.CanExpandError(); err == nil {
+	// 	canExpand = "true"
+	// }
 	expiretime, err := u.GetExpireTime()
 	expiretimeStr := "" //expiretime.Format("2006-01-02 15:04:05")
 	if err == nil {
@@ -398,17 +398,17 @@ func (u *k3kUser) ToArray() map[string]string {
 		W7_DEMO_USER:              u.Labels[W7_DEMO_USER],
 		W7_SYS_STORAGE_PVC_NAME:   u.GetClusterServer0PvcName(), // 系统存储PVC名称
 		W7_COST:                   u.Annotations[W7_COST],
-		"w7.cc/can-init-cluster":  boolToString(u.CanInitCluster()),       //是否可以初始化集群
-		"w7.cc/need-create-order": needCreateOrder,                        //需要创建初始订单
-		"w7.cc/need-over-check":   boolToString(u.NeedOverSellingCheck()), //是否必须超额检查 首次购买
-		"w7.cc/can-over-check":    boolToString(u.CanOverSellingCheck()),  //是否可以超额检查 扩容不强制检查
-		"w7.cc/has-over-resource": boolToString(!u.CanOverSellingCheck()), //资源是否超额
-		"w7.cc/has-password":      boolToString(hasPassword),              //是否设置了密码
+		"w7.cc/can-init-cluster":  "false",                   //boolToString(u.CanInitCluster()),       //是否可以初始化集群
+		"w7.cc/need-create-order": "false",                   //needCreateOrder,                        //需要创建初始订单
+		"w7.cc/need-over-check":   "false",                   //boolToString(u.NeedOverSellingCheck()), //是否必须超额检查 首次购买
+		"w7.cc/can-over-check":    "false",                   //boolToString(u.CanOverSellingCheck()),  //是否可以超额检查 扩容不强制检查
+		"w7.cc/has-over-resource": "false",                   //boolToString(!u.CanOverSellingCheck()), //资源是否超额
+		"w7.cc/has-password":      boolToString(hasPassword), //是否设置了密码
 		// "w7.cc/base-price-total":  price.String(),                         //初始订单价格
 		"w7.cc/unit-price-total": uprice.String(),        //续费订单单价
-		"w7.cc/can-renew":        canReNew,               //是否可以续费
-		"w7.cc/need-renew":       needRenew,              //必须续费
-		"w7.cc/can-expand":       canExpand,              //是否可以扩容
+		"w7.cc/can-renew":        "false",                //canReNew,               //是否可以续费
+		"w7.cc/need-renew":       "false",                //needRenew,              //必须续费
+		"w7.cc/can-expand":       "false",                //canExpand,              //是否可以扩容
 		"w7.cc/over-mode":        u.Labels[W7_OVER_MODE], //检测资源是否足够
 		K3K_EXPIRE_TIME:          expiretimeStr,
 		K3K_CLUSTER_STATUS:       u.Labels[K3K_CLUSTER_STATUS],
@@ -868,12 +868,14 @@ func (u *k3kUser) SetCvmName(name string) {
 }
 
 func (u *k3kUser) GetCvmName() string {
+	return u.GetCkmName()
+}
+func (u *k3kUser) GetCkmName() string {
 	if u.Annotations == nil {
 		return ""
 	}
 	return u.Annotations[W7_CVM_NAME]
 }
-
 func (u *k3kUser) GetNickName() string {
 	return u.Annotations["w7.cc/console-nickname"]
 }

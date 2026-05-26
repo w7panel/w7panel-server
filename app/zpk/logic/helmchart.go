@@ -154,6 +154,7 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 	}
 	helmConfig := packageApp.Manifest.Platform.Helm
 	labels := packageApp.GetLabels()
+	repo, version := helper.SelfImageInfo()
 	// anno := packageApp.GetAnnotations()
 	shellCmd := "/ko-app/w7panel helmgo --chartName=" + helmConfig.ChartName + " --namespace=" + packageApp.Namespace + " --repository=" + helmConfig.Repository + " --zipUrl=" + packageApp.ZipUrl + " --releaseName=" + releaseName + ""
 	shellCmd += " --set " + "global.panel.image=" + helper.SelfImage()
@@ -163,6 +164,8 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 	shellCmd += " --set " + "global.panel.panelToken=" + packageApp.K8sToken.GetToken()
 	shellCmd += " --set " + "global.panel.panelRealToken=" + packageApp.RealToken              //子集群内网访问 需要
 	shellCmd += " --set " + "global.panel.serviceAccountName=" + packageApp.ServiceAccountName //用户名
+	shellCmd += " --set " + "global.panel.imageRepo=" + repo                                   //镜像仓库地址
+	shellCmd += " --set " + "global.panel.version=" + version                                  //版本号
 	shellCmd += " --set " + "DOMAIN_URL=" + packageApp.IngressHost                             //添加DOMAIN_URL
 	atomic := false
 	set := fillHelmSet(packageApp, "", []string{"HELM_ATOMIC", "DOMAIN_URL"}, false) //pvc 站点管理 会新建一个名字出来

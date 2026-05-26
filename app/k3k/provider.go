@@ -74,7 +74,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		k8kGroup := engine.Group("/panel-api/v1") //.Use(middleware.Cors{}.Process)
 		{
 			k8kGroup.GET("/userinfo", middleware.Auth{}.Process, controller2.K3k{}.Info) // 登录信息
-			k8kGroup.GET("/menu", middleware.Auth{}.Process, controller2.K3k{}.Menu)     // 登录信息
+			k8kGroup.GET("/menu", middleware.Auth{}.Process, controller2.Ckm{}.Permission)     // 登录信息
 			k8kGroup.GET("/idc-list", controller2.Ckm{}.IdcResource)                     // IDC资源列表
 		}
 
