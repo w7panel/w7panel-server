@@ -1,9 +1,24 @@
 #!/bin/bash
 
 
+if ! kubectl create -f - <<'EOF'; then
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: longhorn-volumes-config
+data:
+  customs: default-volume
+  default: default-volume
+EOF
+  echo "longhorn-volumes-config 已存在"
+fi
+
+echo "配置k3s.config configmap..."
+kubectl -n kube-system create configmap k3s.config --from-literal=k3s.mode=4 --dry-run=client -o yaml | kubectl create -f - || echo "k3s.config 已更新"
+
+
 echo "更新higress"
 helm upgrade higress https://cdn.w7.cc/w7panel/charts/higress-2.1.6.tgz \
-     --kubeconfig=${KUBECONFIG_PATH} \
      --namespace higress-system \
      --create-namespace \
      --version v2.1.6 \
@@ -115,13 +130,6 @@ kubectl apply -f $KO_DATA_PATH/crds --server-side
 # w7panel sitemanager-upgrade --version=1.0.26 --identifie=w7_python --is-agent=true
 # w7panel sitemanager-upgrade --version=1.0.25 --identifie=w7_sitemanager --is-agent=true
 # add k3s.config
-kind: ConfigMap
-apiVersion: v1
-metadata:
-    name: k3s.config
-    namespace: kube-system
-data:
-    k3s.mode: '4'
 
 echo "删除旧的microapp"
 kubectl -n default delete microapp -l microapp.w7.cc/from=root | echo "clear root microapp"

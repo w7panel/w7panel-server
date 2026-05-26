@@ -61,6 +61,7 @@ type Ckm struct {
 type CkmSpec struct {
 	StorageClassName         string               `json:"storageClassName,omitempty"`
 	CostName                 string               `json:"costName,omitempty"`
+	PermissionName           string               `json:"permissionName,omitempty"`
 	Workload                 Workload             `json:"workload,omitempty"`
 	UserResource             *CkmResource         `json:"userResource,omitempty"`             // 强制指定资源，直接生效
 	PurchasedResource        *CkmResource         `json:"purchasedResource,omitempty"`        // 累计已购买资源，待容量检测后生效

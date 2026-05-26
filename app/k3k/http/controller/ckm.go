@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"log/slog"
+	"encoding/json"
 
 	"github.com/gin-gonic/gin"
 	v1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
@@ -70,32 +70,39 @@ func (self Ckm) List(http *gin.Context) {
 }
 
 // 救援模式
-func (self Ckm) RescueToggle(http *gin.Context) {
-	token := http.MustGet("k8s_token").(string)
-	name := http.Param("name")
-	namespace := http.Param("namespace")
+func (self Ckm) IdcResource(http *gin.Context) {
+	sdk := k8s.NewK8sClient()
+	client, err := sdk.ToSigClient()
+	if err != nil {
+		self.JsonSuccessResponse(http)
+		return
+	}
+	list := &v1alpha1.CostList{}
+	err = client.List(http, list)
+	if err != nil {
+		self.JsonResponseWithoutError(http, list)
+		return
+	}
+	result := types.Params{}
+	for _, v := range list.Items {
+		if (v.Labels != nil) && (v.Labels["w7.cc/showInShop"] != "true") {
+			continue
+		}
+		if v.Annotations == nil {
+			continue
+		}
+		items := v.Annotations["w7.cc/package-items"]
+		if items == "" {
+			continue
+		}
+		params := types.Params{}
+		err := json.Unmarshal([]byte(items), &params)
+		if err != nil {
+			continue
+		}
+		result = append(result, params...)
+	}
 
-	rootSdk := k8s.NewK8sClient()
-	sigClient, err := rootSdk.ToSigClient()
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	cvm, err := k3k.TokenToCkm(http, token, namespace, name)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	job := types.ToK3kWeihJob(cvm)
-	err = sigClient.Delete(http, job)
-	if err != nil {
-		slog.Warn("delete job err", "err", err)
-	}
-	cvm.RescueToggle()
-	err = sigClient.Update(http, cvm)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonResponseWithoutError(http, cvm)
+	self.JsonResponseWithoutError(http, result)
+
 }

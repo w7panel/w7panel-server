@@ -11,11 +11,9 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -27,6 +25,22 @@ type K3k struct {
 *
  */
 func (self K3k) Info(http *gin.Context) {
+
+	token := http.MustGet("k8s_token").(string)
+	user, err := k3k.TokenToK3kUser(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	// rootSdk := k8s.NewK8sClient().Sdk
+	if user != nil {
+		result := user.ToArray()
+		self.JsonResponseWithoutError(http, result)
+		return
+	}
+}
+
+func (self K3k) Menu(http *gin.Context) {
 
 	token := http.MustGet("k8s_token").(string)
 	user, err := k3k.TokenToK3kUser(token)
@@ -319,37 +333,5 @@ func (self K3k) ResizeSysStorage(http *gin.Context) {
 	}
 	self.JsonSuccessResponse(http)
 	return
-
-}
-
-func (self K3k) IdcResource(http *gin.Context) {
-	sdk := k8s.NewK8sClient()
-	client, err := sdk.ToSigClient()
-	if err != nil {
-		self.JsonSuccessResponse(http)
-		return
-	}
-	list := &v1.ConfigMapList{}
-	err = client.List(http, list)
-	if err != nil {
-		self.JsonResponseWithoutError(http, list)
-		return
-	}
-	result := types.Params{}
-	for _, v := range list.Items {
-		if (v.Labels != nil) && (v.Labels["w7.cc/showInShop"] != "true") {
-			continue
-		}
-
-		policy := types.NewK3kCostConfigMap(&v)
-		params, err := policy.ToPackageItemsParams(true)
-		if err != nil {
-			slog.Warn("idc resource err", "error", err)
-			continue
-		}
-		result = append(result, params...)
-	}
-
-	self.JsonResponseWithoutError(http, result)
 
 }

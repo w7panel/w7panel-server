@@ -12,16 +12,17 @@ type Cost struct {
 }
 
 type CostSpec struct {
-	City         string        `json:"city,omitempty"`
-	Title        string        `json:"title,omitempty"`
-	PublishTitle string        `json:"publishTitle,omitempty"`
-	ShowInShop   bool          `json:"showInShop,omitempty"`
-	CPU          Decimal       `json:"cpu,omitempty"`
-	Memory       Decimal       `json:"memory,omitempty"`
-	Storage      Decimal       `json:"storage,omitempty"`
-	Bandwidth    Decimal       `json:"bandwidth,omitempty"`
-	Quota        *CostQuota    `json:"quota,omitempty"`
-	Packages     []CostPackage `json:"packages,omitempty"`
+	City           string        `json:"city,omitempty"`
+	Title          string        `json:"title,omitempty"`
+	PublishTitle   string        `json:"publishTitle,omitempty"`
+	PermissionName string        `json:"permissionName,omitempty"`
+	ShowInShop     bool          `json:"showInShop,omitempty"`
+	CPU            Decimal       `json:"cpu,omitempty"`
+	Memory         Decimal       `json:"memory,omitempty"`
+	Storage        Decimal       `json:"storage,omitempty"`
+	Bandwidth      Decimal       `json:"bandwidth,omitempty"`
+	Quota          *CostQuota    `json:"quota,omitempty"`
+	Packages       []CostPackage `json:"packages,omitempty"`
 }
 
 type CostQuota struct {

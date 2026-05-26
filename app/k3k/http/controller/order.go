@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/w7panel/w7panel/common/service/console"
-	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/order"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
@@ -44,33 +43,33 @@ func (self Order) CreateLicenseOrder(http *gin.Context) {
 func (self Order) OrderNotify(http *gin.Context) {
 
 	// 初始化参数结构体
-	params := types.BuyNotify{}
-	if !self.Validate(http, &params) {
-		return
-	}
-	sdk := k8s.NewK8sClient().Sdk
-	k3kName := params.K3kName
+	// params := types.BuyNotify{}
+	// if !self.Validate(http, &params) {
+	// 	return
+	// }
+	// sdk := k8s.NewK8sClient().Sdk
+	// k3kName := params.K3kName
 
-	sa, err := sdk.GetServiceAccount(sdk.GetNamespace(), k3kName)
-	if err != nil {
-		slog.Error("获取服务账号失败", "error", err)
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	k3kUser := types.NewK3kUser(sa)
+	// sa, err := sdk.GetServiceAccount(sdk.GetNamespace(), k3kName)
+	// if err != nil {
+	// 	slog.Error("获取服务账号失败", "error", err)
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
+	// k3kUser := types.NewK3kUser(sa)
 
-	orderApi, err := order.NewK3kOrderApi(sdk)
-	if err != nil {
-		slog.Error("获取订单API失败", "error", err)
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	err = orderApi.NotifyOrder(k3kUser, params.OrderSn)
-	if err != nil {
-		slog.Error("通知失败", "error", err)
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
+	// orderApi, err := order.NewK3kOrderApi(sdk)
+	// if err != nil {
+	// 	slog.Error("获取订单API失败", "error", err)
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
+	// err = orderApi.NotifyOrder(k3kUser, params.OrderSn)
+	// if err != nil {
+	// 	slog.Error("通知失败", "error", err)
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
 	self.JsonSuccessResponse(http)
 	return
 }
