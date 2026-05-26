@@ -7,12 +7,10 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/sa"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -112,43 +110,43 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 	}
 	k3ktypes.SetSaVersion(sa.Name, sa.Annotations[k3ktypes.K3K_LOCK_VERSION])
+	//w7panel-ckm 处理权限
+	// if k3kUser.SupportCvm() {
+	// 	namespace := &corev1.Namespace{
+	// 		ObjectMeta: metav1.ObjectMeta{
+	// 			Name: k3kUser.GetK3kNamespace(),
+	// 			Labels: map[string]string{
+	// 				"policy.k3k.io/policy-name": k3kUser.GetClusterPolicy(),
+	// 			},
+	// 		},
+	// 	}
+	// 	_, err := controllerutil.CreateOrPatch(ctx, r.Client, namespace, func() error {
+	// 		namespace.Labels = map[string]string{
+	// 			"policy.k3k.io/policy-name": k3kUser.GetClusterPolicy(),
+	// 		}
+	// 		return nil
+	// 	})
+	// 	if err != nil {
+	// 		logger.Error(err, "Failed to create namespace")
+	// 		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	// 	}
 
-	if k3kUser.SupportCvm() {
-		namespace := &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: k3kUser.GetK3kNamespace(),
-				Labels: map[string]string{
-					"policy.k3k.io/policy-name": k3kUser.GetClusterPolicy(),
-				},
-			},
-		}
-		_, err := controllerutil.CreateOrPatch(ctx, r.Client, namespace, func() error {
-			namespace.Labels = map[string]string{
-				"policy.k3k.io/policy-name": k3kUser.GetClusterPolicy(),
-			}
-			return nil
-		})
-		if err != nil {
-			logger.Error(err, "Failed to create namespace")
-			return ctrl.Result{RequeueAfter: time.Minute}, nil
-		}
+	// 	err = r.rolebinding.CreateRole(ctx, sa, k3kUser.GetK3kNamespace())
+	// 	if err != nil {
+	// 		logger.Error(err, "Failed to create role")
+	// 		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	// 	}
+	// }
 
-		err = r.rolebinding.CreateRole(ctx, sa, k3kUser.GetK3kNamespace())
-		if err != nil {
-			logger.Error(err, "Failed to create role")
-			return ctrl.Result{RequeueAfter: time.Minute}, nil
-		}
-	}
-
-	if k3kUser.IsNormalUser() {
-		// 创建角色 需要job 查看权限
-		err := r.rolebinding.CreateNormalUserRoleBinding(ctx, sa, helper.ServiceAccountName())
-		if err != nil {
-			logger.Error(err, "Failed to create normal user role binding")
-			return ctrl.Result{RequeueAfter: time.Minute}, nil
-		}
-		return ctrl.Result{}, nil
-	}
+	// if k3kUser.IsNormalUser() {
+	// 	// 创建角色 需要job 查看权限
+	// 	err := r.rolebinding.CreateNormalUserRoleBinding(ctx, sa, helper.ServiceAccountName())
+	// 	if err != nil {
+	// 		logger.Error(err, "Failed to create normal user role binding")
+	// 		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	// 	}
+	// 	return ctrl.Result{}, nil
+	// }
 
 	if true {
 		return ctrl.Result{}, nil
