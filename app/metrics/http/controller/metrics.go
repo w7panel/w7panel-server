@@ -613,7 +613,7 @@ func (self Metrics) UsageCvm(http *gin.Context) {
 	namespace := http.Param("namespace")
 
 	uage := metrics.NewK3kUsage(k8s.NewK8sClient().Sdk)
-	cvm, err := k3k.TokenToCvm(http, token, namespace, name)
+	cvm, err := k3k.TokenToCkm(http, token, namespace, name)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
@@ -667,7 +667,7 @@ func (self Metrics) UsageDiskCvm(http *gin.Context) {
 	name := http.Param("name")
 	namespace := http.Param("namespace")
 
-	cvm, err := k3k.TokenToCvm(http, token, namespace, name)
+	cvm, err := k3k.TokenToCkm(http, token, namespace, name)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return

@@ -5,16 +5,11 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/w7panel/w7panel/common/helper"
-	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	"github.com/w7panel/w7panel/common/service/k8s/pid"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -70,31 +65,6 @@ func (m *ResourceMutator) handlePod(ctx context.Context, req admission.Request) 
 
 	// 返回修改后的资源
 	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
-}
-
-// 添加维护标签
-func handlePodLabel(client sigclient.Client, sdk *k8s.Sdk, pod *corev1.Pod, namespace string) error {
-	cvm, err := k3k.GetCvm(context.TODO(), sdk, namespace, strings.ReplaceAll(namespace, "k3k-", ""))
-	if err != nil {
-		slog.Error("webhook pod 获取cvm失败", "err", err)
-		return err
-	}
-	if cvm.Spec.Rescue {
-		pod.Labels["w7.cc/weihu"] = "true"
-	}
-	return nil
-}
-
-func handlePodLimit(pod *corev1.Pod) error {
-	for i := range pod.Spec.Containers {
-		rs := pod.Spec.Containers[i].Resources
-		if rs.Requests == nil {
-			rs.Requests = make(corev1.ResourceList)
-		}
-		rs.Requests["cpu"] = resource.MustParse("0")
-		rs.Requests["memory"] = resource.MustParse("0")
-	}
-	return nil
 }
 
 var volumeMountsTemplate = []corev1.VolumeMount{

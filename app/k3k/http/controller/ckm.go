@@ -12,19 +12,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type Cvm struct {
+type Ckm struct {
 	controller.Abstract
 }
 
 /*
 *
  */
-func (self Cvm) Info(http *gin.Context) {
+func (self Ckm) Info(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
 	name := http.Param("name")
 	namespace := http.Param("namespace")
 
-	cvm, err := k3k.TokenToCvm(http, token, namespace, name)
+	cvm, err := k3k.TokenToCkm(http, token, namespace, name)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
@@ -33,7 +33,7 @@ func (self Cvm) Info(http *gin.Context) {
 	self.JsonResponseWithoutError(http, cvm)
 
 }
-func (self Cvm) List(http *gin.Context) {
+func (self Ckm) List(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
 	k8sToken := k8s.NewK8sToken(token)
 	ns := http.Query("namespace")
@@ -70,7 +70,7 @@ func (self Cvm) List(http *gin.Context) {
 }
 
 // 救援模式
-func (self Cvm) RescueToggle(http *gin.Context) {
+func (self Ckm) RescueToggle(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
 	name := http.Param("name")
 	namespace := http.Param("namespace")
@@ -81,7 +81,7 @@ func (self Cvm) RescueToggle(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	cvm, err := k3k.TokenToCvm(http, token, namespace, name)
+	cvm, err := k3k.TokenToCkm(http, token, namespace, name)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
@@ -98,45 +98,4 @@ func (self Cvm) RescueToggle(http *gin.Context) {
 		return
 	}
 	self.JsonResponseWithoutError(http, cvm)
-}
-
-// 同步用户的集群
-func (self Cvm) Sync(http *gin.Context) {
-
-	token := http.MustGet("k8s_token").(string)
-	rootSdk := k8s.NewK8sClient()
-
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	err = k3k.SyncUserToCvm(http, user, rootSdk.Sdk)
-	if err != nil {
-		slog.Error("同步用户集群失败", "error", err)
-		self.JsonSuccessResponse(http)
-		return
-	}
-	self.JsonSuccessResponse(http)
-
-}
-
-func (self Cvm) Health(http *gin.Context) {
-
-	token := http.MustGet("k8s_token").(string)
-	rootSdk := k8s.NewK8sClient()
-
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	err = k3k.SyncUserToCvm(http, user, rootSdk.Sdk)
-	if err != nil {
-		slog.Error("同步用户集群失败", "error", err)
-		self.JsonSuccessResponse(http)
-		return
-	}
-	self.JsonSuccessResponse(http)
-
 }

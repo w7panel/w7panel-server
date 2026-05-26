@@ -88,7 +88,7 @@ func (self K3k) LoginCvm(http *gin.Context) {
 	// }
 	client := k8s.NewK8sClient().Sdk
 
-	cvm, err := k3k.TokenToCvm(http, token, namespace, name)
+	cvm, err := k3k.TokenToCkm(http, token, namespace, name)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return

@@ -107,7 +107,7 @@ func TokenToK3kUser(token string) (*types.K3kUser, error) {
 	return RefreshK3kUser(user, rootSdk, false)
 }
 
-func TokenToCvm(ctx context.Context, token, namespace, name string) (*cvmv1alpha1.Ckm, error) {
+func TokenToCkm(ctx context.Context, token, namespace, name string) (*cvmv1alpha1.Ckm, error) {
 	k8sToken := k8s.NewK8sToken(token)
 	rootSdk := k8s.NewK8sClient()
 	user, err := TokenToK3kUser(token)
@@ -117,7 +117,7 @@ func TokenToCvm(ctx context.Context, token, namespace, name string) (*cvmv1alpha
 	if !user.IsFounder() {
 		namespace = k8sToken.GetNamespace()
 	}
-	return GetCvm(ctx, rootSdk.Sdk, namespace, name)
+	return GetCkm(ctx, rootSdk.Sdk, namespace, name)
 }
 
 // 登录时候刷新用户权限
@@ -214,7 +214,7 @@ func RefreshK3kPolicy(policy *v1alpha1.VirtualClusterPolicy, rootSdk *k8s.Sdk, u
 	return nil
 }
 
-func GetCvm(ctx context.Context, sdk *k8s.Sdk, namespace, cvmName string) (*cvmv1alpha1.Ckm, error) {
+func GetCkm(ctx context.Context, sdk *k8s.Sdk, namespace, cvmName string) (*cvmv1alpha1.Ckm, error) {
 	if cvmName == "" {
 		return nil, fmt.Errorf("cvm不能为空")
 	}
@@ -259,7 +259,7 @@ func SyncUserToCvm(ctx context.Context, user *types.K3kUser, sdk *k8s.Sdk) error
 	}
 	slog.Info("cvm token", "token", token)
 
-	cvm, err := GetCvm(ctx, sdk, user.GetK3kNamespace(), user.GetName())
+	cvm, err := GetCkm(ctx, sdk, user.GetK3kNamespace(), user.GetName())
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			rs := lr.GetHardBuyResource()
