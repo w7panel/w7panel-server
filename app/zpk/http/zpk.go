@@ -69,6 +69,10 @@ func (self Zpk) GetConfig(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	saName, err := k8sToken.GetSaName()
+	if err != nil {
+		slog.Error("zpk config get saName err", "err", err)
+	}
 	params.ReleaseName = strings.ToLower(params.ReleaseName)
 	appgroupObj, err := appgroup.GetAppgroupUseSdk(params.ReleaseName, client.GetNamespace(), client)
 	// helmApi := k8s.NewHelm(client)
@@ -86,7 +90,7 @@ func (self Zpk) GetConfig(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	mPackage.ReplaceDefault()
+	mPackage.ReplaceDefault(saName)
 	rootConfig := mPackage.ToPackageAddConfig(params.ReleaseName, k8sToken.IsShared())
 	rootConfig.IsUpgrade = upgrade
 	if dependsEnv != nil {
@@ -94,7 +98,7 @@ func (self Zpk) GetConfig(http *gin.Context) {
 	}
 	config = append(config, rootConfig)
 	for _, p := range mPackage.Children {
-		p.ReplaceDefault()
+		p.ReplaceDefault(saName)
 		childConfig := p.ToPackageAddConfig(params.ReleaseName, k8sToken.IsShared())
 		childConfig.IsUpgrade = upgrade
 		if dependsEnv != nil {
