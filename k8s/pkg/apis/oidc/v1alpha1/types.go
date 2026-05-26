@@ -14,6 +14,7 @@ type OIDCClient struct {
 }
 
 type OIDCClientSpec struct {
+	Enabled               bool     `json:"enabled,omitempty"`
 	ClientID              string   `json:"clientId,omitempty"`
 	ClientName            string   `json:"clientName,omitempty"`
 	ClientSecret          string   `json:"clientSecret,omitempty"`
