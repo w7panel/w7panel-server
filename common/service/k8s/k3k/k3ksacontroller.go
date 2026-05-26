@@ -113,12 +113,17 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	k3ktypes.SetSaVersion(sa.Name, sa.Annotations[k3ktypes.K3K_LOCK_VERSION])
 	role := k3kUser.GetRole()
 	if role == "super" || role == "founder" {
-		err := r.rolebinding.CreateNormalUserRoleBinding(ctx, sa, helper.ServiceAccountName())
+		err := r.rolebinding.CreateSuperUserRoleBinding(ctx, sa, helper.ServiceAccountName())
 		if err != nil {
 			logger.Error(err, "Failed to create offline cluster role binding")
 			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
 		return ctrl.Result{}, nil
+	}
+	err := r.rolebinding.DeleteSuperUserRoleBinding(ctx, sa, helper.ServiceAccountName())
+	if err != nil {
+		logger.Error(err, "Failed to delete offline cluster role binding")
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 	//w7panel-ckm 处理权限
 	// if k3kUser.SupportCvm() {
