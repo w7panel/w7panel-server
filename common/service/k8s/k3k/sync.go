@@ -70,7 +70,7 @@ type K3kSync struct {
 	K3kName          string `form:"k3kName"`
 	K3kNamespace     string `form:"k3kNamespace"`
 	K3kMode          string `form:"k3kMode"`
-	CvmName          string `form:"cvmName"`
+	CkmName          string `form:"ckmName"`
 	Version          string `form:"version"`
 }
 
@@ -81,7 +81,7 @@ func (k *K3kSync) DeepCopy() *K3kSync {
 		K3kName:          k.K3kName,
 		K3kNamespace:     k.K3kNamespace,
 		K3kMode:          k.K3kMode,
-		CvmName:          k.CvmName,
+		CkmName:          k.CkmName,
 		Version:          k.Version,
 	}
 }
@@ -118,7 +118,7 @@ func SyncHttp(obj SyncObjectInterface, path string) error {
 	urlvalues.Add("k3kName", os.Getenv("K3K_NAME"))
 	urlvalues.Add("k3kNamespace", os.Getenv("K3K_NAMESPACE"))
 	urlvalues.Add("k3kMode", os.Getenv("K3K_MODE"))
-	urlvalues.Add("cvmName", os.Getenv("CVM_NAME"))
+	urlvalues.Add("ckmName", os.Getenv("CKM_NAME"))
 	// urlvalues.Add("version", os.Getenv("K3K_MODE"))
 
 	slog.Info("sync start", "urlvalues", urlvalues)
@@ -145,7 +145,7 @@ func SyncHttp(obj SyncObjectInterface, path string) error {
 }
 
 func SyncIngress(params *K3kSync) error {
-	k3kConfig := k8s.NewK3kConfig(params.K3kName, params.K3kNamespace, helper.GetApiServerHost(params.K3kNamespace), params.CvmName)
+	k3kConfig := k8s.NewK3kConfig(params.K3kName, params.K3kNamespace, helper.GetApiServerHost(params.K3kNamespace), params.CkmName)
 	root := k8s.NewK8sClient()
 	clientsdk, err := root.GetK3kClusterSdkByConfig(k3kConfig)
 	if err != nil {
@@ -280,7 +280,7 @@ func SyncIngressHttp(ingress *networkingv1.Ingress) error {
 }
 
 func SyncMcpBridge(params *K3kSync) error {
-	k3kConfig := k8s.NewK3kConfig(params.K3kName, params.K3kNamespace, helper.GetApiServerHost(params.K3kNamespace), params.CvmName)
+	k3kConfig := k8s.NewK3kConfig(params.K3kName, params.K3kNamespace, helper.GetApiServerHost(params.K3kNamespace), params.CkmName)
 	root := k8s.NewK8sClient()
 	clientsdk, err := root.GetK3kClusterSdkByConfig(k3kConfig)
 	if err != nil {
@@ -342,7 +342,7 @@ func SyncMcpBridgeHttp(bridge SyncObjectInterface) error {
 }
 
 func SyncConfigmap(params *K3kSync) error {
-	k3kConfig := k8s.NewK3kConfig(params.K3kName, params.K3kNamespace, helper.GetApiServerHost(params.K3kNamespace), params.CvmName)
+	k3kConfig := k8s.NewK3kConfig(params.K3kName, params.K3kNamespace, helper.GetApiServerHost(params.K3kNamespace), params.CkmName)
 	root := k8s.NewK8sClient()
 	clientsdk, err := root.GetK3kClusterSdkByConfig(k3kConfig)
 	if err != nil {
@@ -388,7 +388,7 @@ func SyncConfigmapHttp(configmap *corev1.ConfigMap) error {
 }
 
 func SyncSecret(params *K3kSync) error {
-	k3kConfig := k8s.NewK3kConfig(params.K3kName, params.K3kNamespace, helper.GetApiServerHost(params.K3kNamespace), params.CvmName)
+	k3kConfig := k8s.NewK3kConfig(params.K3kName, params.K3kNamespace, helper.GetApiServerHost(params.K3kNamespace), params.CkmName)
 	root := k8s.NewK8sClient()
 	clientsdk, err := root.GetK3kClusterSdkByConfig(k3kConfig)
 	if err != nil {
@@ -475,7 +475,7 @@ func SyncToChildSecret(secret *corev1.Secret) error {
 		VirtualName:      secret.Name,
 	}
 
-	k3kConfig := k8s.NewK3kConfig(params.K3kName, secret.Namespace, helper.GetApiServerHost(secret.Namespace), params.CvmName)
+	k3kConfig := k8s.NewK3kConfig(params.K3kName, secret.Namespace, helper.GetApiServerHost(secret.Namespace), params.CkmName)
 	root := k8s.NewK8sClient()
 	clientsdk, err := root.GetK3kClusterSdkByConfig(k3kConfig)
 	if err != nil {
