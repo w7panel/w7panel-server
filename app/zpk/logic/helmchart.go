@@ -161,8 +161,9 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 	shellCmd += " --set " + "global.panel.installId=" + packageApp.InstallId
 	shellCmd += " --set " + "global.panel.innerUrl=" + helper.PanelInnerUrl()
 	shellCmd += " --set " + "global.panel.panelToken=" + packageApp.K8sToken.GetToken()
-	shellCmd += " --set " + "global.panel.panelRealToken=" + packageApp.RealToken //子集群内网访问 需要
-	shellCmd += " --set " + "DOMAIN_URL=" + packageApp.IngressHost                //添加DOMAIN_URL
+	shellCmd += " --set " + "global.panel.panelRealToken=" + packageApp.RealToken              //子集群内网访问 需要
+	shellCmd += " --set " + "global.panel.serviceAccountName=" + packageApp.ServiceAccountName //用户名
+	shellCmd += " --set " + "DOMAIN_URL=" + packageApp.IngressHost                             //添加DOMAIN_URL
 	atomic := false
 	set := fillHelmSet(packageApp, "", []string{"HELM_ATOMIC", "DOMAIN_URL"}, false) //pvc 站点管理 会新建一个名字出来
 

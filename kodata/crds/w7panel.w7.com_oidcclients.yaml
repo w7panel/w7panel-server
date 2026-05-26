@@ -4,7 +4,6 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-    api-approved.kubernetes.io: "https://www.w7.cc"
   name: oidcclients.w7panel.w7.com
 spec:
   group: w7panel.w7.com
@@ -46,6 +45,8 @@ spec:
                 type: string
               clientSecret:
                 type: string
+              enabled:
+                type: boolean
               redirectUris:
                 items:
                   type: string
