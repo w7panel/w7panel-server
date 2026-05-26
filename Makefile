@@ -1,7 +1,6 @@
 
 IV ?= v1.1.42.x
 tidy:
-   go env -w GOPRIVATE=github.com/w7panel/w7panel-ckm
    go mod tidy
 build-docker:
    export KO_DOCKER_REPO=docker.cnb.cool/i0358/zpk
