@@ -1,1 +1,0 @@
-https://www.spectrocloud.com/blog/how-to-uninstall-multus-cni-without-borking-your-k8s-cluster
