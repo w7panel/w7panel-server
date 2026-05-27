@@ -24,6 +24,7 @@ import (
 	higressextv1 "github.com/w7panel/w7panel/common/service/k8s/higress/client/pkg/apis/extensions/v1alpha1"
 	higressnetworkingv1 "github.com/w7panel/w7panel/common/service/k8s/higress/client/pkg/apis/networking/v1"
 	"github.com/w7panel/w7panel/common/service/k8s/terminal"
+	apiclientv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/apiclient/v1alpha1"
 	appgroupv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	buildimagev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/buildimage/v1alpha1"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
@@ -83,6 +84,7 @@ func init() {
 	_ = higressnetworkingv1.AddToScheme(scheme)
 	_ = higressextv1.AddToScheme(scheme)
 	_ = apirbacv1.AddToScheme(scheme)
+	_ = apiclientv1alpha1.AddToScheme(scheme)
 	_ = appgroupv1.AddToScheme(scheme)
 	_ = microapp.AddToScheme(scheme)
 	_ = microappsettingv1alpha1.AddToScheme(scheme)

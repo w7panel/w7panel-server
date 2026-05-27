@@ -319,10 +319,11 @@ func (p *ManifestPackage) ReplaceStartParams(suffix string, root *ManifestPackag
 	}
 	return ""
 }
-func (p *ManifestPackage) ReplaceDefault() {
+func (p *ManifestPackage) ReplaceDefault(saName string) {
 	params := p.Manifest.Platform.Container.StartParams
 	for i, param := range params {
 		valuesTxt := param.ValuesText
+		valuesTxt = strings.ReplaceAll(valuesTxt, "%USERNAME%", saName)
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%RANDOM%", helper.RandomString(10))
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%LARAVEL_APP_KEY%", helper.LaravelAppKey(32))
 		p.Manifest.Platform.Container.StartParams[i].ValuesText = valuesTxt
@@ -330,6 +331,7 @@ func (p *ManifestPackage) ReplaceDefault() {
 	envs := p.Manifest.Platform.Container.Env
 	for k, env := range envs {
 		valuesTxt := env.Value
+		valuesTxt = strings.ReplaceAll(valuesTxt, "%USERNAME%", saName)
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%RANDOM%", helper.RandomString(10))
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%LARAVEL_APP_KEY%", helper.LaravelAppKey(32))
 		p.Manifest.Platform.Container.Env[k].Value = valuesTxt
