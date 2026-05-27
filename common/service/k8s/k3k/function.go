@@ -134,6 +134,16 @@ func RefreshK3kUser(user *types.K3kUser, rootSdk *k8s.Sdk, update bool) (*types.
 			user.ReplaceMenu(menuConfig)
 		}
 	}
+
+	if user.IsCvmReqUser() {
+		cvm, err := GetCkm(context.TODO(), rootSdk, "default", user.GetCkmName())
+		if err != nil {
+			slog.Error("GetCkm error", "error", err)
+		}
+		if cvm != nil {
+			user.ReplaceCkm(cvm) //
+		}
+	}
 	// if !user.IsCustomQuota() {
 	// 	quotaConfig, err := rootSdk.ClientSet.CoreV1().ConfigMaps(user.GetNamespace()).Get(rootSdk.Ctx, user.GetQuotaName(), metav1.GetOptions{})
 	// 	if err != nil {
