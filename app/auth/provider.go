@@ -63,7 +63,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		localApiGroup := engine.Group("/panel-api/v1/auth").Use(middleware.Cors{}.Process)
 		{
 			localApiGroup.POST("/login", middleware.ConsoleSignature{}.Process, controller2.Auth{}.LoginBySign)
-			localApiGroup.POST("/register", controller2.Auth{}.Register)
+			// localApiGroup.POST("/register", controller2.Auth{}.Register) //去掉注册功能 走控制台注册
 			// localApiGroup.POST("/console/k3k-register", middleware.Auth{}.Process, controller2.Auth{}.RegisterUseUid)
 			// localApiGroup.POST("/refresh-token", middleware.Auth{}.Process, controller2.Auth{}.RefreshToken) //废弃
 			localApiGroup.POST("/refresh-token2", controller2.Auth{}.RefreshToken2)

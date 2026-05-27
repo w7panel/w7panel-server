@@ -3,7 +3,6 @@ package sa
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"strconv"
 
 	"github.com/w7corp/sdk-open-cloud-go/service"
@@ -31,17 +30,17 @@ func DoRegister(sdk *k8s.Sdk, accessToken *types.ConsoleOAuthAccessToken, userin
 		return nil, err
 	}
 	k3kClient := types.NewK3kClient(client)
-	kconfig, err := k3kClient.GetK3kConfig()
+	kconfig, err := k3kClient.GetK3kConfigSetting()
 	if err != nil {
 		return nil, err
 	}
-	if policyName != "" {
+	// if policyName != "" {
+	// 	register := NewRegister(client, sdk)
+	// 	return register.RegisterUseConsole(accessToken, userinfo, kconfig, policyName)
+	// }
+	if kconfig.AllowConsoleRegister {
 		register := NewRegister(client, sdk)
-		return register.RegisterUseConsole(accessToken, userinfo, kconfig, policyName)
-	}
-	if kconfig.AllowConsoleRegister && kconfig.DefaultPolicyName != "" {
-		register := NewRegister(client, sdk)
-		return register.RegisterUseConsole(accessToken, userinfo, kconfig, kconfig.DefaultPolicyName)
+		return register.RegisterUseConsole(accessToken, userinfo, kconfig)
 	} else {
 		return nil, errors.New("不允许控制台注册")
 	}
@@ -53,7 +52,7 @@ func DoRegisterByUid(sdk *k8s.Sdk, uid int) (*corev1.ServiceAccount, error) {
 		return nil, err
 	}
 	k3kClient := types.NewK3kClient(client)
-	kconfig, err := k3kClient.GetK3kConfig()
+	kconfig, err := k3kClient.GetK3kConfigSetting()
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +89,7 @@ func DoRegisterLink(sdk *k8s.Sdk, username, password, policyName string) (*corev
 	annotations := map[string]string{
 		"password": string(bpassword),
 	}
-	return register.doRegister(policyName, username, "", annotations, true)
+	return register.doRegister(username, "", annotations, true)
 }
 
 func NewRegister(client client.Client, sdk *k8s.Sdk) *Register {
@@ -103,58 +102,30 @@ func NewRegister(client client.Client, sdk *k8s.Sdk) *Register {
 	}
 }
 
-func (register *Register) RegisterUseConsole(accessToken *types.ConsoleOAuthAccessToken, userinfo *service.ResultUserinfo, k3kConfig *types.K3kConfig, policyName string) (*corev1.ServiceAccount, error) {
+func (register *Register) RegisterUseConsole(accessToken *types.ConsoleOAuthAccessToken, userinfo *service.ResultUserinfo, k3kConfig *types.K3kConfigSetting) (*corev1.ServiceAccount, error) {
 	userId := strconv.Itoa(userinfo.UserId)
 	anns := map[string]string{
 		types.W7_ACCESS_TOKEN: accessToken.ToString(),
 	}
-	return register.doRegister(policyName, "console-"+userId, userId, anns, false)
+	return register.doRegister("console-"+userId, userId, anns, false)
 }
 
-func (register *Register) RegisterUid(uid int, k3kConfig *types.K3kConfig) (*corev1.ServiceAccount, error) {
+func (register *Register) RegisterUid(uid int, k3kConfig *types.K3kConfigSetting) (*corev1.ServiceAccount, error) {
 	userId := strconv.Itoa(uid)
-	return register.doRegister(k3kConfig.DefaultPolicyName, "console-"+userId, userId, nil, false)
+	return register.doRegister("console-"+userId, userId, nil, false)
 }
 
-func (register *Register) doRegister(policyName string, saName string, consoleId string, anns map[string]string, checkAllowRegister bool) (*corev1.ServiceAccount, error) {
-	policy, err := register.k3kClient.GetPolicyByName(policyName)
-	if err != nil {
-		slog.Error("get policy error", "error", err)
-		return nil, err
-	}
-	if checkAllowRegister {
-		if policy.Labels["w7.cc/allow-register"] != "true" {
-			return nil, errors.New("不允许注册")
-		}
-	}
+func (register *Register) doRegister(saName string, consoleId string, anns map[string]string, checkAllowRegister bool) (*corev1.ServiceAccount, error) {
 
 	labels := map[string]string{
-		"k3k.io/cluster-status": "new",
-		"w7.cc/user-mode":       "cluster",
-		"k3k.io/policy":         policyName,
-		// "w7.cc/console-id":      consoleId,
-		"w7.cc/demo-user": policy.Labels["w7.cc/demo-user"],
-		"w7.cc/cvm-user":  policy.Labels["w7.cc/cvm-user"],
+		"w7.cc/role":    "normal",
+		"w7.cc/w7panel": "true",
 	}
 	if consoleId != "0" && consoleId != "" {
 		labels["w7.cc/console-id"] = consoleId
 	}
-	annotations := policy.Annotations
-	annotations["k3k.io/policy"] = policyName
-	annotations["k3k.io/policy-title"] = policy.Annotations["title"]
-	annotations["k3k.io/cluster-mode"] = string(policy.Spec.AllowedMode)
-	// annotations["w7.cc/quota-limit"] = policy.Annotations["w7.cc/quota-limit"]
-	costName, ok := policy.Annotations["w7.cc/cost-name"]
-	if ok {
-		costConfig, err := register.sdk.ClientSet.CoreV1().ConfigMaps("default").Get(register.sdk.Ctx, costName, metav1.GetOptions{})
-		if err != nil {
-			// return nil, errors.New("获取成本配置失败")
-			slog.Error("user register get cost config error", "error", err)
-		}
-		if err == nil {
-			annotations["w7.cc/quota-limit"] = costConfig.Data["quota"]
-		}
-	}
+	annotations := map[string]string{}
+
 	if anns != nil {
 		for k, v := range anns {
 			annotations[k] = v
@@ -179,7 +150,7 @@ func (register *Register) doRegister(policyName string, saName string, consoleId
 	// if err != nil {
 	// 	return nil, err
 	// }
-	_, err = controllerutil.CreateOrPatch(context.Background(), register.client, sa, func() error {
+	_, err := controllerutil.CreateOrPatch(context.Background(), register.client, sa, func() error {
 		return nil
 	})
 	return sa, err

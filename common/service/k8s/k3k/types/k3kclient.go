@@ -114,7 +114,7 @@ func (k *K3kClient) GetCluster(user *K3kUser) (*v1alpha1.Cluster, error) {
 	}
 	return cluster, err
 }
-func (k *K3kClient) GetK3kConfig() (*K3kConfig, error) {
+func (k *K3kClient) GetK3kConfigSetting() (*K3kConfigSetting, error) {
 
 	configmap := &corev1.ConfigMap{}
 	err := k.k3kClient.Get(context.Background(), types.NamespacedName{Namespace: "kube-system", Name: "k3k.config"}, configmap)
