@@ -46,7 +46,6 @@ w7panel/
 │   ├── shell/                   # 运行时安装、升级和集群操作脚本
 │   ├── wasm/                    # Wasm 插件资源
 │   └── yaml/                    # 内置 Kubernetes YAML 模板
-├── mod/                         # 本仓库内维护的第三方模块副本或补丁模块
 ├── config.yaml                  # 默认配置文件
 ├── go.mod                       # Go 模块依赖定义
 └── main.go                      # 服务启动入口

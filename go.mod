@@ -446,9 +446,8 @@ require (
 )
 
 replace (
-	github.com/containerd/nerdctl/mod/tigron v0.0.0 => ./mod/tigron
+	github.com/containerd/nerdctl/mod/tigron v0.0.0 => github.com/containerd/nerdctl/mod/tigron v0.0.0-20260527012312-23296bb4620f
 	github.com/docker/compose/v2 => github.com/docker/compose/v2 v2.2.0
-	github.com/google/go-containerregistry v0.20.6 => ./mod/go-containerregistry
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20250613215107-59a4b8593039 => ./mod/go-containerregistry/pkg/authn/k8schain
 	github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20250225234217-098045d5e61f => ./mod/go-containerregistry/pkg/authn/kubernetes
 	istio.io/istio => istio.io/istio v1.12.0
