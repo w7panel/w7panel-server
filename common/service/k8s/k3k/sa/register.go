@@ -118,8 +118,9 @@ func (register *Register) RegisterUid(uid int, k3kConfig *types.K3kConfigSetting
 func (register *Register) doRegister(saName string, consoleId string, anns map[string]string, checkAllowRegister bool) (*corev1.ServiceAccount, error) {
 
 	labels := map[string]string{
-		"w7.cc/role":    "normal",
-		"w7.cc/w7panel": "true",
+		"w7.cc/role":      "normal",
+		"w7.cc/w7panel":   "true",
+		"w7.cc/user-mode": "normal",
 	}
 	if consoleId != "0" && consoleId != "" {
 		labels["w7.cc/console-id"] = consoleId
