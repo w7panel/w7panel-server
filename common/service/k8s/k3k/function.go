@@ -141,6 +141,7 @@ func RefreshK3kUser(user *types.K3kUser, rootSdk *k8s.Sdk, update bool) (*types.
 			slog.Error("GetCkm error", "error", err)
 		}
 		if cvm != nil {
+			
 			user.ReplaceCkm(cvm) //
 		}
 	}

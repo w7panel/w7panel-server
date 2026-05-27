@@ -275,16 +275,16 @@ func (u *k3kUser) SetWeihu(ok bool) {
 
 func (u *k3kUser) GetMenu() string {
 
-	if u.SupportCvm() && !u.IsCvmReqUser() {
-		whMenu := []string{"system-resource", "system-cloud"}
-		json, _ := json.Marshal(whMenu)
-		return string(json)
-	}
-	if u.IsWeihu() { //维护模式菜单
-		whMenu := []string{"cluster", "cluster-panel", "cluster-resource", "app", "app-apps", "app-apps-delete"}
-		json, _ := json.Marshal(whMenu)
-		return string(json)
-	}
+	// if u.SupportCvm() && !u.IsCvmReqUser() {
+	// 	whMenu := []string{"system-resource", "system-cloud"}
+	// 	json, _ := json.Marshal(whMenu)
+	// 	return string(json)
+	// }
+	// if u.IsWeihu() { //维护模式菜单
+	// 	whMenu := []string{"cluster", "cluster-panel", "cluster-resource", "app", "app-apps", "app-apps-delete"}
+	// 	json, _ := json.Marshal(whMenu)
+	// 	return string(json)
+	// }
 	name, ok := u.Annotations[W7_MENU]
 	if ok {
 		if console.IsFree() {

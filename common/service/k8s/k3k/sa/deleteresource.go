@@ -66,43 +66,43 @@ func (r *DeleteResource) deleteAssociatedResources(ctx context.Context, k3kUser 
 
 	// Delete Pod
 	// err := r.Sdk.ClientSet.CoreV1().Pods(k3kUser.Namespace).Delete(ctx, k3kUser.GetAgentName(), metav1.DeleteOptions{})
-	err := r.Client.Delete(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: k3kUser.GetAgentName(), Namespace: k3kUser.Namespace}})
-	if err != nil && !errors.IsNotFound(err) {
-		logger.Error(err, "Failed to delete pod")
-		return err
-	}
+	// err := r.Client.Delete(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: k3kUser.GetAgentName(), Namespace: k3kUser.Namespace}})
+	// if err != nil && !errors.IsNotFound(err) {
+	// 	logger.Error(err, "Failed to delete pod")
+	// 	return err
+	// }
 
-	// Delete Service
-	// err = r.Sdk.ClientSet.CoreV1().Services(k3kUser.Namespace).Delete(ctx, k3kUser.GetAgentName(), metav1.DeleteOptions{})
-	err = r.Client.Delete(ctx, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: k3kUser.GetAgentName(), Namespace: k3kUser.Namespace}})
-	if err != nil && !errors.IsNotFound(err) {
-		logger.Error(err, "Failed to delete service")
-		return err
-	}
+	// // Delete Service
+	// // err = r.Sdk.ClientSet.CoreV1().Services(k3kUser.Namespace).Delete(ctx, k3kUser.GetAgentName(), metav1.DeleteOptions{})
+	// err = r.Client.Delete(ctx, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: k3kUser.GetAgentName(), Namespace: k3kUser.Namespace}})
+	// if err != nil && !errors.IsNotFound(err) {
+	// 	logger.Error(err, "Failed to delete service")
+	// 	return err
+	// }
 
-	err = r.k3kClient.Delete(k3kUser)
-	if err != nil && !errors.IsNotFound(err) {
-		logger.Error(err, "Failed to delete k3kUser")
-		return err
-	}
-	err = r.limitrangeclient.Delete(ctx, k3kUser.ServiceAccount)
-	if err != nil && !errors.IsNotFound(err) {
-		logger.Error(err, "Failed to delete limitrange")
-		return err
-	}
+	// err = r.k3kClient.Delete(k3kUser)
+	// if err != nil && !errors.IsNotFound(err) {
+	// 	logger.Error(err, "Failed to delete k3kUser")
+	// 	return err
+	// }
+	// err = r.limitrangeclient.Delete(ctx, k3kUser.ServiceAccount)
+	// if err != nil && !errors.IsNotFound(err) {
+	// 	logger.Error(err, "Failed to delete limitrange")
+	// 	return err
+	// }
 
-	pvc := &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      k3kUser.GetClusterServer0PvcName(),
-			Namespace: k3kUser.GetK3kNamespace(),
-		},
-	}
+	// pvc := &corev1.PersistentVolumeClaim{
+	// 	ObjectMeta: metav1.ObjectMeta{
+	// 		Name:      k3kUser.GetClusterServer0PvcName(),
+	// 		Namespace: k3kUser.GetK3kNamespace(),
+	// 	},
+	// }
 
-	err = r.Client.Delete(ctx, pvc)
-	if err != nil && !errors.IsNotFound(err) {
-		logger.Error(err, "Failed to delete pvc")
-		return err
-	}
+	// err = r.Client.Delete(ctx, pvc)
+	// if err != nil && !errors.IsNotFound(err) {
+	// 	logger.Error(err, "Failed to delete pvc")
+	// 	return err
+	// }
 
 	// consoleId := k3kUser.GetConsoleId()
 	// if consoleId != "" {
@@ -113,22 +113,22 @@ func (r *DeleteResource) deleteAssociatedResources(ctx context.Context, k3kUser 
 	// 		return err
 	// 	}
 	// }
-	err = r.Client.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: k3kUser.Name + ".w7-config", Namespace: k3kUser.Namespace}})
+	err := r.Client.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: k3kUser.Name + ".w7-config", Namespace: k3kUser.Namespace}})
 	if err != nil && !errors.IsNotFound(err) {
 		slog.Error("Failed to delete config secret", "err", err)
 		logger.Error(err, "Failed to delete config secret")
 		return err
 	}
 
-	err = r.k3kClient.DeleteNamespace(k3kUser)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Error(err, "Failed to delete namespace")
-			return nil
-		}
-		//namespace 删除失败，则不重复执行
-		return nil
-	}
+	// err = r.k3kClient.DeleteNamespace(k3kUser)
+	// if err != nil {
+	// 	if errors.IsNotFound(err) {
+	// 		logger.Error(err, "Failed to delete namespace")
+	// 		return nil
+	// 	}
+	// 	//namespace 删除失败，则不重复执行
+	// 	return nil
+	// }
 
 	return nil
 }

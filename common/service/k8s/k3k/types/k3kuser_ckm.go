@@ -1,6 +1,8 @@
 package types
 
 import (
+	"encoding/json"
+
 	cvmv1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
 )
 
@@ -27,5 +29,11 @@ func (u *k3kUser) ReplaceCkm(ckm *cvmv1alpha1.Ckm) {
 	u.Annotations[W7_MENU] = ckm.Annotations[W7_MENU]
 	u.Annotations[W7_WEB_SHELL] = ckm.Annotations[W7_WEB_SHELL]
 	u.Annotations[W7_FILE_EDITTOR] = ckm.Annotations[W7_FILE_EDITTOR]
+	if ckm.Spec.Rescue { //维护模式 只给这几个权限 只能删除 不能新建编辑
+		whMenu := []string{"cluster", "cluster-panel", "cluster-resource", "app", "app-apps", "app-apps-delete"}
+		json, _ := json.Marshal(whMenu)
+		u.Annotations[W7_MENU] = string(json)
+
+	}
 
 }
