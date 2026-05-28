@@ -2,6 +2,7 @@ package auth
 
 import (
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -88,6 +89,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/console/verify-cert", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.VerifyCert)
 			localApiGroup.POST("/console/import-cert-console", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.ImportCertConsole)
 			localApiGroup.POST("/console/register-zpk-site" /* middleware.ConsoleSignature{}.Process */, controller2.Site{}.RegisterZpkSite)
+			registerHawkTestRoute(localApiGroup, middleware.Hawk{}.Process)
 		}
 
 		//直接获取code 用于OIDC //旧路由
@@ -96,6 +98,17 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		//http://127.0.0.1:9007/authorize?client_id=default&redirect_uri=http://127.0.0.1:3000/callback111&scope=openid&response_type=code
 		engine.POST("/panel-api/v1/callback-url", middleware.Auth{}.Process, controller2.Oidc{}.GetRedirectURI)
 
+	})
+}
+
+func registerHawkTestRoute(group gin.IRoutes, hawkMiddleware gin.HandlerFunc) {
+	group.GET("/hawk-test", hawkMiddleware, func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{
+			"ok":            true,
+			"apiClientId":   ctx.GetString("api_client_id"),
+			"apiClientName": ctx.GetString("api_client_name"),
+			"hawkClientId":  ctx.GetString("hawk_client_id"),
+		})
 	})
 }
 

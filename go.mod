@@ -388,6 +388,7 @@ require (
 	github.com/gorilla/sessions v1.2.1 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/grafana/pyroscope-go v1.2.0
+	github.com/hiyosi/hawk v1.0.1
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jedib0t/go-pretty/v6 v6.4.4 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
