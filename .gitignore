@@ -50,3 +50,4 @@ w7panel-*.tgz
 publish.sh
 pub.sh
 build.sh
+.cache
