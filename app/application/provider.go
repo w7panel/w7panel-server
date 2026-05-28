@@ -226,6 +226,15 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/pinyin", middleware.Auth{}.Process, controller2.Util{}.Pinyin)                    // pinyin
 			localApiGroup.GET("/dnsip", middleware.Auth{}.Process, controller2.Util{}.DnsIp)
 			localApiGroup.GET("/dns-cname", middleware.Auth{}.Process, controller2.Util{}.DnsCName)
+			localApiGroup.GET("/dns/zones", middleware.Auth{}.Process, controller2.DNS{}.Zones)
+			localApiGroup.POST("/dns/zones", middleware.Auth{}.Process, controller2.DNS{}.CreateZone)
+			localApiGroup.DELETE("/dns/zones/:domain", middleware.Auth{}.Process, controller2.DNS{}.DeleteZone)
+			localApiGroup.GET("/dns/zones/:domain/records", middleware.Auth{}.Process, controller2.DNS{}.Records)
+			localApiGroup.POST("/dns/zones/:domain/records", middleware.Auth{}.Process, controller2.DNS{}.CreateRecord)
+			localApiGroup.PUT("/dns/zones/:domain/records/:id", middleware.Auth{}.Process, controller2.DNS{}.UpdateRecord)
+			localApiGroup.DELETE("/dns/zones/:domain/records/:id", middleware.Auth{}.Process, controller2.DNS{}.DeleteRecord)
+			localApiGroup.GET("/dns/server", middleware.Auth{}.Process, controller2.DNS{}.Server)
+			localApiGroup.PUT("/dns/server", middleware.Auth{}.Process, controller2.DNS{}.UpdateServer)
 			localApiGroup.GET("/myip", middleware.Auth{}.Process, controller2.Util{}.MyIp)
 			localApiGroup.POST("/db-conn-test", middleware.Auth{}.Process, controller2.Util{}.DbConnTest) // 数据库连接测试
 			localApiGroup.POST("/ping-etcd", middleware.Auth{}.Process, controller2.Util{}.PintEtcd)      // etcd连接测试

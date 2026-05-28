@@ -51,3 +51,4 @@ publish.sh
 pub.sh
 build.sh
 .cache
+/.cache
