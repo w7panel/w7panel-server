@@ -13,6 +13,7 @@ import (
 
 	"github.com/w7panel/w7panel/app/application"
 	"github.com/w7panel/w7panel/app/application/http/controller"
+	auditapp "github.com/w7panel/w7panel/app/audit"
 	"github.com/w7panel/w7panel/app/auth"
 	"github.com/w7panel/w7panel/app/k3k"
 	k3sregistry "github.com/w7panel/w7panel/app/k3s-registry"
@@ -116,6 +117,7 @@ func main() {
 
 	httpServer.RegisterRouters(func(engine *gin.Engine) {
 		engine.Use(middleware2.Cors{}.Process)
+		engine.Use(middleware2.Audit{}.Process)
 		microappPath := facade.Config.GetString("static.microapp_path")
 		os.MkdirAll(microappPath, 0755)
 
@@ -154,6 +156,7 @@ func main() {
 
 	new(application.Provider).Register(httpServer, newApp.GetConsole())
 	new(auth.Provider).Register(httpServer, newApp.GetConsole())
+	new(auditapp.Provider).Register(httpServer, newApp.GetConsole())
 	new(metrics2.Provider).Register(httpServer, newApp.GetConsole())
 	new(zpk.Provider).Register(httpServer, newApp.GetConsole())
 	new(k3k.Provider).Register(httpServer, newApp.GetConsole())

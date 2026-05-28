@@ -75,6 +75,11 @@ func (c MetricsInstall) Handle(cmd *cobra.Command, args []string) {
 		slog.Error("apply vm error", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
+	err = c.Apply(baseDir, "/yaml/victoria-logs")
+	if err != nil {
+		slog.Error("apply victoria logs error", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
 
 	if !isInstalled {
 

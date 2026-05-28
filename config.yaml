@@ -115,6 +115,11 @@ metrics:
   duration: ${METRIC_DURATION-7200s} # 指标采集清理间隔 分钟
   db_file: ${METRIC_DB_file-/tmp/metrics.db} # 指标采集清理间隔 分钟
   enabled: ${METRIC_ENABLED-false} # 是否开启指标采集
+logs:
+  enabled: ${LOGS_ENABLED-true}
+  base_url: ${LOGS_BASE_URL-http://vlsingle-w7panel-logs.default.svc:9428}
+  timeout: ${LOGS_TIMEOUT-5s}
+  batch_size: ${LOGS_BATCH_SIZE-1}
 s3:
   base_dir: ${S3BASEDIR-/tmp/buckets} # 上传 下载文件 临时中转目录
 pyroscope:
