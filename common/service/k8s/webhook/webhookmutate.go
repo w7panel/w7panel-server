@@ -223,6 +223,14 @@ func getDefaultCrdOperations() []admissionregistrationv1.RuleWithOperations {
 				Resources:   []string{"clusters"},
 			},
 		},
+		{
+			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
+			Rule: admissionregistrationv1.Rule{
+				APIGroups:   []string{"w7panel.w7.com"},
+				APIVersions: []string{"v1alpha1"},
+				Resources:   []string{"apiclients"},
+			},
+		},
 	}
 }
 
