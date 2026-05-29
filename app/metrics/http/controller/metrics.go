@@ -649,7 +649,6 @@ func (self Metrics) UsageDisk(http *gin.Context) {
 			},
 		}
 		self.JsonResponseWithoutError(http, response)
-<<<<<<< HEAD
 		return
 	}
 	response := gin.H{
@@ -682,8 +681,6 @@ func (self Metrics) UsageDiskCvm(http *gin.Context) {
 			},
 		}
 		self.JsonResponseWithoutError(http, response)
-=======
->>>>>>> dev-v1
 		return
 	}
 	response := gin.H{

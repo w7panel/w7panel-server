@@ -19,18 +19,11 @@ type Weihu struct {
 	clusterName string
 	namespace   string
 	volumeName  string
-<<<<<<< HEAD
 	cvmName     string
 }
 
 func NewWeihu(sdk *k8s.Sdk, clusterName, namespace, cvmName string) *Weihu {
 	return &Weihu{sdk: sdk, clusterName: clusterName, namespace: namespace, cvmName: cvmName}
-=======
-}
-
-func NewWeihu(sdk *k8s.Sdk, clusterName, namespace string) *Weihu {
-	return &Weihu{sdk: sdk, clusterName: clusterName, namespace: namespace}
->>>>>>> dev-v1
 }
 func (c *Weihu) GetPvcName() string {
 	return "varlibrancherk3s-" + c.namespace + "-server-0"
@@ -264,15 +257,9 @@ func (c *Weihu) ClearTicket(ctx context.Context) error {
 }
 
 func (c *Weihu) CheckOk(ctx context.Context) error {
-<<<<<<< HEAD
 	k3kconfig := k8s.NewK3kConfig(c.clusterName, c.namespace, "", c.cvmName)
 	sdk := k8s.NewK8sClient()
 	sdk.Clear(c.clusterName, c.cvmName)
-=======
-	k3kconfig := k8s.NewK3kConfig(c.clusterName, c.namespace, "")
-	sdk := k8s.NewK8sClient()
-	sdk.Clear(c.clusterName)
->>>>>>> dev-v1
 	client, err := sdk.GetK3kClusterSdkByConfig(k3kconfig)
 	if err != nil {
 		slog.Error("获取k3k集群失败", "err", err)

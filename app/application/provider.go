@@ -19,7 +19,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/core"
 	gpustack "github.com/w7panel/w7panel/common/service/k8s/gpu/gpustack"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	"github.com/w7panel/w7panel/common/service/k8s/mcp"
 	"github.com/w7panel/w7panel/common/service/k8s/shell"
@@ -96,7 +95,6 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	go k8s.CheckLogo()
 	// go k3k.SyncAgentIngress()
 	go higress.LoadBkConfig()
-	go p.recordOverResource()
 
 }
 
@@ -266,13 +264,9 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-purge", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotPurge)
 			// localApiGroup.GET("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGc)
 			// localApiGroup.POST("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGcToggle)
-<<<<<<< HEAD
 			// localApiGroup.GET("/kubeblocks/installjobyaml", middleware.Auth{}.Process, controller2.KubeBlocks{}.InstallJobYaml)
 			// localApiGroup.POST("/kubeblocks/install", middleware.Auth{}.Process, controller2.KubeBlocks{}.Install)
-=======
-			localApiGroup.GET("/kubeblocks/installjobyaml", middleware.Auth{}.Process, controller2.KubeBlocks{}.InstallJobYaml)
-			localApiGroup.POST("/kubeblocks/install", middleware.Auth{}.Process, controller2.KubeBlocks{}.Install)
->>>>>>> dev-v1
+
 			localApiGroup.GET("/static/:identifie/status", middleware.Auth{}.Process, controller2.Static{}.StaticInfo)
 			localApiGroup.POST("/static/:namespace/download/:name", middleware.Auth{}.Process, controller2.Static{}.Download)
 
@@ -371,21 +365,3 @@ func (p Provider) cleanS3() {
 
 	}
 }
-<<<<<<< HEAD
-
-func (p Provider) recordOverResource() {
-	if err := overselling.RecordOverResource(); err != nil {
-		slog.Error("record over-resource error", "err", err)
-	}
-
-	ticker := time.NewTicker(time.Minute)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		if err := overselling.RecordOverResource(); err != nil {
-			slog.Error("record over-resource error", "err", err)
-		}
-	}
-}
-=======
->>>>>>> dev-v1

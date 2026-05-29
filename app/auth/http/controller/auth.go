@@ -44,18 +44,11 @@ func (self Auth) login(http *gin.Context, verifyCaptcha bool) {
 		Point    string `form:"point"`
 		Key      string `form:"key"`
 	}
-
+	loginMethod := "password"
 	params := ParamsValidate{}
 	if !self.Validate(http, &params) {
 		return
 	}
-<<<<<<< HEAD
-=======
-	loginMethod := "password"
-	if !verifyCaptcha {
-		loginMethod = "sign"
-	}
->>>>>>> dev-v1
 	if verifyCaptcha && facade.Config.GetBool("captcha.enabled") {
 		if params.Point == "" || params.Key == "" {
 			err := errors.New("验证码参数缺失")
@@ -85,11 +78,7 @@ func (self Auth) login(http *gin.Context, verifyCaptcha bool) {
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-<<<<<<< HEAD
 	self.dologin(client.Sdk, sa, http, true, "")
-=======
-	self.dologin(client.Sdk, sa, http, true, loginMethod)
->>>>>>> dev-v1
 }
 
 func (self Auth) Register(http *gin.Context) {
@@ -155,11 +144,7 @@ func (self Auth) ConsoleLogin(http *gin.Context) {
 			return
 		}
 
-<<<<<<< HEAD
 		self.dologin(sdk, sa, http, false, "")
-=======
-		self.dologin(sdk, sa, http, false, "oauth")
->>>>>>> dev-v1
 		return
 	}
 	saName := w7config.Name
@@ -175,21 +160,14 @@ func (self Auth) ConsoleLogin(http *gin.Context) {
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-<<<<<<< HEAD
 	self.dologin(sdk, sa, http, true, "")
 
 }
 
-func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Context, updateK3kUser bool, cvmName string) {
-=======
-	self.dologin(sdk, sa, http, true, "oauth")
-
-}
-
-func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Context, updateK3kUser bool, loginMethod string) {
->>>>>>> dev-v1
+func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Context, updateK3kUser bool, ckmName string) {
 	seconds := facade.Config.GetInt64("app.login_seconds")
-	token, isK3kUser, err := k3k.LoginByServiceAccount(sdk, sa, seconds, updateK3kUser, cvmName)
+	token, isK3kUser, err := k3k.LoginByServiceAccount(sdk, sa, seconds, updateK3kUser, ckmName)
+	loginMethod := "password"
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			err = errors.New("用户不存在")
@@ -201,12 +179,8 @@ func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Cont
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-<<<<<<< HEAD
-	rs := service.GetRefreshToken(sa.Name, cvmName)
-=======
-	rs := service.GetRefreshToken(sa.Name)
+	rs := service.GetRefreshToken(sa.Name, ckmName)
 	auditservice.RecordLoginSuccess(http, sa.Name, loginMethod, sa)
->>>>>>> dev-v1
 	self.JsonResponseWithoutError(http, gin.H{
 		"token":         token,
 		"expire":        time.Now().Add(time.Duration(seconds) * time.Second).Unix(),
@@ -269,11 +243,7 @@ func (self Auth) RefreshToken2(http *gin.Context) {
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-<<<<<<< HEAD
 	self.dologin(sdk, sa, http, true, cvmName)
-=======
-	self.dologin(sdk, sa, http, true, "refresh_token")
->>>>>>> dev-v1
 }
 
 func (self Auth) InitUser(http *gin.Context) {

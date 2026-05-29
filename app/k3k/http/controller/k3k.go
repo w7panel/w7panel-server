@@ -292,11 +292,7 @@ func (self K3k) SyncMicroApp(http *gin.Context) {
 		return
 	}
 	// slog.Error("同步SyncMicroApp")
-<<<<<<< HEAD
 	microapp.Sync(params.K3kName, params.K3kNamespace, params.CkmName)
-=======
-	microapp.Sync(params.K3kName, params.K3kNamespace)
->>>>>>> dev-v1
 	self.JsonSuccessResponse(http)
 	return
 }
@@ -325,71 +321,3 @@ func (self K3k) ResizeSysStorage(http *gin.Context) {
 	return
 
 }
-<<<<<<< HEAD
-=======
-
-func (self K3k) IdcResource(http *gin.Context) {
-	sdk := k8s.NewK8sClient()
-	client, err := sdk.ToSigClient()
-	if err != nil {
-		self.JsonSuccessResponse(http)
-		return
-	}
-	list := &v1alpha1.VirtualClusterPolicyList{}
-	err = client.List(http, list)
-	if err != nil {
-		self.JsonResponseWithoutError(http, list)
-		return
-	}
-	result := types.Params{}
-	for i, v := range list.Items {
-		if (v.Labels != nil) && (v.Labels["w7.cc/showInShop"] != "true") {
-			continue
-		}
-		k3k.RefreshK3kPolicy(&list.Items[i], sdk.Sdk, false)
-		policy := types.NewK3kClusterPolicy(&v)
-		params, err := policy.ToPackageItemsParams(true)
-		if err != nil {
-			slog.Warn("idc resource err", "error", err)
-			continue
-		}
-		result = append(result, params...)
-	}
-
-	self.JsonResponseWithoutError(http, result)
-
-}
-
-func (self K3k) WhMoshi(http *gin.Context) {
-	token := http.MustGet("k8s_token").(string)
-	client := k8s.NewK8sClient()
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	if !user.IsClusterUser() {
-		self.JsonSuccessResponse(http)
-		return
-	}
-	k3k.WhMoshiToggle(client.Sdk, user)
-	self.JsonSuccessResponse(http)
-}
-
-// 维护救援模式job 重新新建job
-func (self K3k) WhJob(http *gin.Context) {
-	token := http.MustGet("k8s_token").(string)
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	err = k3k.WhJob(k8s.NewK8sClient().Sdk, user)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonSuccessResponse(http)
-	return
-}
->>>>>>> dev-v1

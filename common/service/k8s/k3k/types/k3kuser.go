@@ -420,17 +420,10 @@ func (u *k3kUser) ToArray() map[string]string {
 		W7_WH_JOB_STATUS:              u.GetWHJobStatus(),
 		"w7.cc/server-pod-name":       u.GetServer0Name(),
 		"w7.cc/server-container-name": u.GetServer0ContainerName(),
-<<<<<<< HEAD
 		"w7.cc/support-cvm":           boolToString(u.SupportCvm()),
 		"w7.cc/is-cvm-req":            boolToString(u.IsCvmReqUser()), //是否是CVM请求用户
 		"w7.cc/cvm-name":              u.GetCvmName(),                 //cvmName
 		"w7.cc/cvm-namespace":         u.GetK3kNamespace(),
-=======
-	}
-	if !u.IsClusterUser() {
-		// result[W7_FILE_EDITTOR] = "true"
-		// result[W7_WEB_SHELL] = "true"
->>>>>>> dev-v1
 	}
 	// if !u.IsClusterUser() {
 	// result[W7_FILE_EDITTOR] = "true"
@@ -843,7 +836,6 @@ func (u *k3kUser) ProcessReturnK3kOrder() error {
 	return nil
 }
 
-<<<<<<< HEAD
 // 是否是演示用户
 func (u *k3kUser) IsDemo() bool {
 	if u.Labels != nil && u.Labels[W7_DEMO_USER] == "true" {
@@ -884,8 +876,6 @@ func (u *k3kUser) GetCkmName() string {
 	}
 	return u.Annotations[W7_CVM_NAME]
 }
-=======
->>>>>>> dev-v1
 func (u *k3kUser) GetNickName() string {
 	return u.Annotations["w7.cc/console-nickname"]
 }

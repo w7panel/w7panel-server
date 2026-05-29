@@ -23,12 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-<<<<<<< HEAD
 func LoginByServiceAccount(client *k8s.Sdk, sa *v1.ServiceAccount, seconds int64, updateK3kUser bool, cvmName string) (string, bool, error) {
-=======
-func LoginByServiceAccount(client *k8s.Sdk, sa *v1.ServiceAccount, seconds int64, updateK3kUser bool) (string, bool, error) {
-	k8s.NewK8sClient().Clear(sa.Name)
->>>>>>> dev-v1
 	k3kUser := types.NewK3kUser(sa)
 	isK3kUser := false
 	// if k3kUser.IsClusterUser() {
@@ -275,52 +270,10 @@ func SyncUserToCvm(ctx context.Context, user *types.K3kUser, sdk *k8s.Sdk) error
 	}
 	slog.Info("cvm token", "token", token)
 
-<<<<<<< HEAD
 	cvm, err := GetCkm(ctx, sdk, user.GetK3kNamespace(), user.GetName())
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			rs := lr.GetHardBuyResource()
-=======
-	_, err = controllerutil.CreateOrPatch(context.TODO(), sigClient, k3kuser.ServiceAccount, func() error {
-		// k3kuser.SetLoginTime()
-		k3kuser.SetWeihu(!k3kuser.IsWeihu())
-		if k3kuser.IsWeihu() {
-			k3kuser.SetWHJobStatus(k3ktypes.K3K_STATUS_RUNNING)
-		} else {
-			k3kuser.SetWHJobStatus("")
-		}
-		return nil
-	})
-
-	// TODO: 尝试添加资源
-	return err
-}
-func WhJob(sdk *k8s.Sdk, k3kuser *types.K3kUser) error {
-
-	if !k3kuser.IsWeihu() {
-		return errors.New("当前非维护模式")
-	}
-	sigClient, err := sdk.ToSigClient()
-	if err != nil {
-		return err
-	}
-	// jobName := k3kuser.GetWeihuJobName() //job会自动删除
-	// if jobName != "" {
-	// 	err := sdk.ClientSet.BatchV1().Jobs("default").Delete(sdk.Ctx, jobName, metav1.DeleteOptions{})
-	// 	if err != nil {
-	// 		if !k8serrors.IsNotFound(err) {
-	// 			slog.Error("delete job error", "error", err)
-	// 			return err
-	// 		}
-	// 	}
-	// }
-
-	_, err = controllerutil.CreateOrPatch(context.TODO(), sigClient, k3kuser.ServiceAccount, func() error {
-		k3kuser.SetWeihuJobName(k3kuser.GenerateWeihuJobName())
-		k3kuser.SetWHJobStatus(k3ktypes.K3K_STATUS_RUNNING)
-		return nil
-	})
->>>>>>> dev-v1
 
 			cvm = &cvmv1alpha1.Ckm{
 				ObjectMeta: metav1.ObjectMeta{

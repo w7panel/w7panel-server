@@ -18,6 +18,7 @@ import (
 
 var (
 	errInvalidHawkAuthorization = errors.New("invalid hawk authorization header")
+	errClientNotFound           = errors.New("client not found")
 	hawkValidationMu            sync.Mutex
 )
 

@@ -89,10 +89,7 @@ func init() {
 	_ = microapp.AddToScheme(scheme)
 	_ = microappsettingv1alpha1.AddToScheme(scheme)
 	_ = buildimagev1alpha1.AddToScheme(scheme)
-<<<<<<< HEAD
 	_ = cvmv1alpha1.AddToScheme(scheme)
-=======
->>>>>>> dev-v1
 	_ = oidcv1alpha1.AddToScheme(scheme)
 }
 

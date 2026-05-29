@@ -64,7 +64,6 @@ func (r *K3kJobController) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 		if job.Labels[k3ktypes.W7_WH_MODE] == "true" {
-<<<<<<< HEAD
 			_, err := controllerutil.CreateOrPatch(ctx, r.Client, cvm, func() error {
 				cvm.Status.RescuePhase = "running"
 				if job.Status.Succeeded > 0 {
@@ -72,14 +71,6 @@ func (r *K3kJobController) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				}
 				if job.Status.Failed > 0 {
 					cvm.Status.RescuePhase = "failed"
-=======
-			_, err := controllerutil.CreateOrPatch(ctx, r.Client, sa, func() error {
-				if job.Status.Succeeded > 0 {
-					sa.Labels[k3ktypes.W7_WH_JOB_STATUS] = k3ktypes.K3K_STATUS_COMPLETE
-				}
-				if job.Status.Failed > 0 {
-					sa.Labels[k3ktypes.W7_WH_JOB_STATUS] = k3ktypes.K3K_STATUS_FAILED
->>>>>>> dev-v1
 				}
 				return nil
 			})
@@ -87,13 +78,6 @@ func (r *K3kJobController) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				logger.Error(err, "Failed to update weihu job status")
 				return ctrl.Result{RequeueAfter: time.Minute}, err
 			}
-<<<<<<< HEAD
-=======
-			return ctrl.Result{}, nil
-		}
-
-		if sa.Annotations[k3ktypes.K3K_JOB_NAME] != job.Name {
->>>>>>> dev-v1
 			return ctrl.Result{}, nil
 		}
 
