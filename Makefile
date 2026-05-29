@@ -1,6 +1,5 @@
 
 IV ?= v1.1.42.x
-<<<<<<< HEAD
 tidy:
    go mod tidy
 build-docker:
@@ -22,18 +21,6 @@ test162:
 test218:
 	cp /home/workspace/.kube/218.config /home/workspace/.kube/config
 
-=======
-
-build-charts:
-	helm package ./kodata/charts/k8s-offline
-
-build-metrics:
-	helm package ./kodata/charts/k8s-offline-metrics
-
-build-longhorn:
-	helm package ./kodata/charts/w7panel-longhorn
-
->>>>>>> dev-v1
 build-image:
 # 	export KO_DOCKER_REPO=docker.cnb.cool/i0358/zpk  
 # 	export KO_DEFAULTBASEIMAGE=ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui 
