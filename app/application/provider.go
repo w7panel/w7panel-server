@@ -292,7 +292,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		}
 		// /etc/passwd 缓存
 
-		// 新版 API - 代理到服务
+		// 新版 API - 代理到服务 //TODO 没有权限校验的代理接口，需要加auth middleware
 		engine.Any("/panel-api/v1/namespaces/:namespace/services/:name/proxy-no/*path", middleware.ProxyNoAuth{}.Process, controller2.Proxy{}.ProxyNoAuthService)
 
 		engine.POST("/panel-api/v1/files/compress-agent/:pid/compress", middleware.Auth{}.Process, controller2.CompressAgent{}.Compress)
