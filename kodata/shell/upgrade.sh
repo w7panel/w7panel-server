@@ -76,6 +76,7 @@ echo "higress config"
 kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
 
 
+<<<<<<< HEAD
 
 kubectl create secret generic k3k.addon --from-file=manifests.yaml=$KO_DATA_PATH/yaml/k3k/k3k.addon.yaml --dry-run=client -o yaml | kubectl apply -f - || echo "已存在k3k.addon"
 
@@ -92,6 +93,8 @@ w7panel metrics:upgrade
 
 echo "域名解析配置"
 w7panel domain-config
+=======
+>>>>>>> dev-v1
 kubectl get jobs -n default -o json \
   | jq -r '.items[]
     | select(

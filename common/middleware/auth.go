@@ -78,7 +78,11 @@ func (self Auth) Process(ctx *gin.Context) {
 		// }
 	}
 	if k8sToken.IsCacheToken() {
+		if saName, err := k8sToken.GetSaName(); err == nil {
+			ctx.Set("username", saName)
+		}
 		ctx.Set("k8s_token", bearertoken)
+		ctx.Next()
 		return
 	}
 

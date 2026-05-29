@@ -64,7 +64,11 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		localApiGroup := engine.Group("/panel-api/v1/auth").Use(middleware.Cors{}.Process)
 		{
 			localApiGroup.POST("/login", middleware.ConsoleSignature{}.Process, controller2.Auth{}.LoginBySign)
+<<<<<<< HEAD
 			// localApiGroup.POST("/register", controller2.Auth{}.Register) //去掉注册功能 走控制台注册
+=======
+			localApiGroup.POST("/register", controller2.Auth{}.Register)
+>>>>>>> dev-v1
 			// localApiGroup.POST("/console/k3k-register", middleware.Auth{}.Process, controller2.Auth{}.RegisterUseUid)
 			// localApiGroup.POST("/refresh-token", middleware.Auth{}.Process, controller2.Auth{}.RefreshToken) //废弃
 			localApiGroup.POST("/refresh-token2", controller2.Auth{}.RefreshToken2)
@@ -89,7 +93,10 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/console/verify-cert", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.VerifyCert)
 			localApiGroup.POST("/console/import-cert-console", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.ImportCertConsole)
 			localApiGroup.POST("/console/register-zpk-site" /* middleware.ConsoleSignature{}.Process */, controller2.Site{}.RegisterZpkSite)
+<<<<<<< HEAD
 			registerHawkTestRoute(localApiGroup, middleware.Hawk{}.Process)
+=======
+>>>>>>> dev-v1
 		}
 
 		//直接获取code 用于OIDC //旧路由
@@ -98,6 +105,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		//http://127.0.0.1:9007/authorize?client_id=default&redirect_uri=http://127.0.0.1:3000/callback111&scope=openid&response_type=code
 		engine.POST("/panel-api/v1/callback-url", middleware.Auth{}.Process, controller2.Oidc{}.GetRedirectURI)
 
+<<<<<<< HEAD
 	})
 }
 
@@ -109,6 +117,8 @@ func registerHawkTestRoute(group gin.IRoutes, hawkMiddleware gin.HandlerFunc) {
 			"apiClientName": ctx.GetString("api_client_name"),
 			"hawkClientId":  ctx.GetString("hawk_client_id"),
 		})
+=======
+>>>>>>> dev-v1
 	})
 }
 

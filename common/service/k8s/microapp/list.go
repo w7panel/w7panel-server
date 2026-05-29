@@ -78,8 +78,11 @@ func ListInfo(t string, name string) (*microapp.MicroApp, error) {
 	}
 	microapp, err := loadMicroApp(clientSdk, name)
 	if err != nil {
+<<<<<<< HEAD
 
 		//找不到 获取没有权限读取
+=======
+>>>>>>> dev-v1
 		if k8serrors.IsNotFound(err) || k8serrors.IsForbidden(err) {
 			rootMicroapp, err := loadMicroApp(rootSdk, name)
 			if err != nil {

@@ -266,8 +266,13 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-purge", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotPurge)
 			// localApiGroup.GET("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGc)
 			// localApiGroup.POST("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGcToggle)
+<<<<<<< HEAD
 			// localApiGroup.GET("/kubeblocks/installjobyaml", middleware.Auth{}.Process, controller2.KubeBlocks{}.InstallJobYaml)
 			// localApiGroup.POST("/kubeblocks/install", middleware.Auth{}.Process, controller2.KubeBlocks{}.Install)
+=======
+			localApiGroup.GET("/kubeblocks/installjobyaml", middleware.Auth{}.Process, controller2.KubeBlocks{}.InstallJobYaml)
+			localApiGroup.POST("/kubeblocks/install", middleware.Auth{}.Process, controller2.KubeBlocks{}.Install)
+>>>>>>> dev-v1
 			localApiGroup.GET("/static/:identifie/status", middleware.Auth{}.Process, controller2.Static{}.StaticInfo)
 			localApiGroup.POST("/static/:namespace/download/:name", middleware.Auth{}.Process, controller2.Static{}.Download)
 
@@ -366,6 +371,7 @@ func (p Provider) cleanS3() {
 
 	}
 }
+<<<<<<< HEAD
 
 func (p Provider) recordOverResource() {
 	if err := overselling.RecordOverResource(); err != nil {
@@ -381,3 +387,5 @@ func (p Provider) recordOverResource() {
 		}
 	}
 }
+=======
+>>>>>>> dev-v1

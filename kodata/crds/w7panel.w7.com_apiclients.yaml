@@ -46,12 +46,15 @@ spec:
               enabled:
                 type: boolean
             type: object
+<<<<<<< HEAD
           status:
             properties:
               lastAccessedAt:
                 format: date-time
                 type: string
             type: object
+=======
+>>>>>>> dev-v1
         required:
         - spec
         type: object

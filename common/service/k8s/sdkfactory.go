@@ -90,9 +90,12 @@ func (s *singleton) loadFromCache(token string) (*Sdk, error) {
 	return sdk, nil
 }
 func (s *singleton) GetK3kClusterSdkByConfig(k3kconfig *K3kConfig) (*Sdk, error) {
+<<<<<<< HEAD
 	return s.GetK3kClusterSdkByConfig0(k3kconfig, true)
 }
 func (s *singleton) GetK3kClusterSdkByConfig0(k3kconfig *K3kConfig, createToken bool) (*Sdk, error) {
+=======
+>>>>>>> dev-v1
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -103,8 +106,13 @@ func (s *singleton) GetK3kClusterSdkByConfig0(k3kconfig *K3kConfig, createToken 
 	}
 	// 检查缓存是否存在且未过期
 	// cacheCheckStart := time.Now()
+<<<<<<< HEAD
 	if sdk, ok := s.sdks[cacheKey]; ok {
 		if expireTime, ok := s.expires[cacheKey]; ok && expireTime > time.Now().Unix() {
+=======
+	if sdk, ok := s.sdks[k3kconfig.Name]; ok {
+		if expireTime, ok := s.expires[k3kconfig.Name]; ok && expireTime > time.Now().Unix() {
+>>>>>>> dev-v1
 
 			return sdk, nil
 		}
@@ -140,9 +148,12 @@ func (s *singleton) GetK3kClusterSdkByConfig0(k3kconfig *K3kConfig, createToken 
 		return sdk, nil
 	}
 
+<<<<<<< HEAD
 	// token, err := sdk.CreateTokenRequest(k3kconfig.Name, 7200, []string{})
 	//k3k cluster 使用addons挂载 不能使用动态k3kconfig.Name 写死default
 	// addons 不能使用 k3kcvmcontroller.go 动态绑定rolebings 改回k3kconfig.Name
+=======
+>>>>>>> dev-v1
 	token, err := sdk.CreateTokenRequest(k3kconfig.Name, 7200, []string{})
 
 	if err != nil {
@@ -195,11 +206,21 @@ func (s *singleton) Clear(k3kName string, cvmName string) {
 //	*clientcmdapi.Config: 解析后的kubeconfig配置
 //	error: 如果获取kubeconfig失败，则返回错误信息
 func GetK3kKubeConfig(sigClient client.Client, k3kconfig *K3kConfig) (*clientcmdapi.Config, error) {
+<<<<<<< HEAD
+=======
+	// startTime := time.Now()
+>>>>>>> dev-v1
 
 	secret := &corev1.Secret{}
 	kubeConfigName := "k3k-" + k3kconfig.CvmName + "-kubeconfig"
 
+<<<<<<< HEAD
 	err := sigClient.Get(context.TODO(), types.NamespacedName{Name: kubeConfigName, Namespace: k3kconfig.Namespace}, secret)
+=======
+	// getSecretStart := time.Now()
+	err := sigClient.Get(context.TODO(), types.NamespacedName{Name: kubeConfigName, Namespace: k3kconfig.Namespace}, secret)
+	// log.Printf("[PERF] GetK3kKubeConfig - Get Secret took %v", time.Since(getSecretStart))
+>>>>>>> dev-v1
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +229,15 @@ func GetK3kKubeConfig(sigClient client.Client, k3kconfig *K3kConfig) (*clientcmd
 	if len(kubeconfigYaml) == 0 {
 		return nil, errors.New("kubeconfig.yaml is empty")
 	}
+<<<<<<< HEAD
 	kubeconfig, err := clientcmd.Load(kubeconfigYaml)
+=======
+
+	// loadStart := time.Now()
+	kubeconfig, err := clientcmd.Load(kubeconfigYaml)
+	// log.Printf("[PERF] GetK3kKubeConfig - Load kubeconfig took %v", time.Since(loadStart))
+	// log.Printf("[PERF] GetK3kKubeConfig total time %v", time.Since(startTime))
+>>>>>>> dev-v1
 	return kubeconfig, err
 }
 

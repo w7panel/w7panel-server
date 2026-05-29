@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service"
+	auditservice "github.com/w7panel/w7panel/common/service/audit"
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -48,14 +49,24 @@ func (self Auth) login(http *gin.Context, verifyCaptcha bool) {
 	if !self.Validate(http, &params) {
 		return
 	}
+<<<<<<< HEAD
+=======
+	loginMethod := "password"
+	if !verifyCaptcha {
+		loginMethod = "sign"
+	}
+>>>>>>> dev-v1
 	if verifyCaptcha && facade.Config.GetBool("captcha.enabled") {
 		if params.Point == "" || params.Key == "" {
-			self.JsonResponseWithError(http, errors.New("验证码参数缺失"), 500)
+			err := errors.New("验证码参数缺失")
+			auditservice.RecordLoginFailure(http, params.Username, loginMethod, err)
+			self.JsonResponseWithError(http, err, 500)
 			return
 		}
 		err := helper.VerifyCaptcha(params.Point, params.Key, true)
 		if err != nil {
 			err2 := fmt.Errorf("验证码不正确")
+			auditservice.RecordLoginFailure(http, params.Username, loginMethod, err2)
 			self.JsonResponseWithError(http, err2, 500)
 			return
 		}
@@ -65,13 +76,20 @@ func (self Auth) login(http *gin.Context, verifyCaptcha bool) {
 	sa, err := client.Login2(params.Username, params.Password, true)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			self.JsonResponseWithError(http, errors.New("用户不存在"), 500)
+			err = errors.New("用户不存在")
+			auditservice.RecordLoginFailure(http, params.Username, loginMethod, err)
+			self.JsonResponseWithError(http, err, 500)
 			return
 		}
+		auditservice.RecordLoginFailure(http, params.Username, loginMethod, err)
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
+<<<<<<< HEAD
 	self.dologin(client.Sdk, sa, http, true, "")
+=======
+	self.dologin(client.Sdk, sa, http, true, loginMethod)
+>>>>>>> dev-v1
 }
 
 func (self Auth) Register(http *gin.Context) {
@@ -109,6 +127,7 @@ func (self Auth) ConsoleLogin(http *gin.Context) {
 	oclient := console.NewOauthClient(client, w7respo)
 	accessToken, userInfo, err := oclient.GetUserInfo(params.Code)
 	if err != nil {
+		auditservice.RecordLoginFailure(http, "", "oauth", err)
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
@@ -119,50 +138,75 @@ func (self Auth) ConsoleLogin(http *gin.Context) {
 		sa, err := saLogic.DoRegister(sdk, types.NewConsoleOAuthAccessToken2(accessToken), userInfo, params.PolicyName)
 		if err != nil {
 			if !k8serrors.IsAlreadyExists(err) {
+				auditservice.RecordLoginFailure(http, strconv.Itoa(userInfo.UserId), "oauth", err)
 				self.JsonResponseWithError(http, err, 500)
 				return
 			}
 		}
 		_, err = oclient.BindUseAccessToken(sa.Name, accessToken)
 		if err != nil {
-			err = sdk.ClientSet.CoreV1().ServiceAccounts(sa.Namespace).Delete(sdk.Ctx, sa.Name, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("删除serviceaccount失败", "err", err)
+			bindErr := err
+			deleteErr := sdk.ClientSet.CoreV1().ServiceAccounts(sa.Namespace).Delete(sdk.Ctx, sa.Name, metav1.DeleteOptions{})
+			if deleteErr != nil {
+				slog.Error("删除serviceaccount失败", "err", deleteErr)
 			}
-			self.JsonResponseWithError(http, err, 500)
+			auditservice.RecordLoginFailure(http, sa.Name, "oauth", bindErr)
+			self.JsonResponseWithError(http, bindErr, 500)
 			return
 		}
 
+<<<<<<< HEAD
 		self.dologin(sdk, sa, http, false, "")
+=======
+		self.dologin(sdk, sa, http, false, "oauth")
+>>>>>>> dev-v1
 		return
 	}
 	saName := w7config.Name
 	_, err = oclient.BindUseAccessToken(saName, accessToken)
 	if err != nil {
+		auditservice.RecordLoginFailure(http, saName, "oauth", err)
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
 	sa, err := sdk.GetServiceAccount(sdk.GetNamespace(), saName)
 	if err != nil {
+		auditservice.RecordLoginFailure(http, saName, "oauth", err)
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
+<<<<<<< HEAD
 	self.dologin(sdk, sa, http, true, "")
 
 }
 
 func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Context, updateK3kUser bool, cvmName string) {
+=======
+	self.dologin(sdk, sa, http, true, "oauth")
+
+}
+
+func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Context, updateK3kUser bool, loginMethod string) {
+>>>>>>> dev-v1
 	seconds := facade.Config.GetInt64("app.login_seconds")
 	token, isK3kUser, err := k3k.LoginByServiceAccount(sdk, sa, seconds, updateK3kUser, cvmName)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			self.JsonResponseWithError(http, errors.New("用户不存在"), 500)
+			err = errors.New("用户不存在")
+			auditservice.RecordLoginFailure(http, sa.Name, loginMethod, err)
+			self.JsonResponseWithError(http, err, 500)
 			return
 		}
+		auditservice.RecordLoginFailure(http, sa.Name, loginMethod, err)
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
+<<<<<<< HEAD
 	rs := service.GetRefreshToken(sa.Name, cvmName)
+=======
+	rs := service.GetRefreshToken(sa.Name)
+	auditservice.RecordLoginSuccess(http, sa.Name, loginMethod, sa)
+>>>>>>> dev-v1
 	self.JsonResponseWithoutError(http, gin.H{
 		"token":         token,
 		"expire":        time.Now().Add(time.Duration(seconds) * time.Second).Unix(),
@@ -225,7 +269,11 @@ func (self Auth) RefreshToken2(http *gin.Context) {
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
+<<<<<<< HEAD
 	self.dologin(sdk, sa, http, true, cvmName)
+=======
+	self.dologin(sdk, sa, http, true, "refresh_token")
+>>>>>>> dev-v1
 }
 
 func (self Auth) InitUser(http *gin.Context) {

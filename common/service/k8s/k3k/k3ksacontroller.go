@@ -10,8 +10,14 @@ import (
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/sa"
+	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	corev1 "k8s.io/api/core/v1"
+<<<<<<< HEAD
+=======
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+>>>>>>> dev-v1
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -111,15 +117,23 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 	}
 	k3ktypes.SetSaVersion(sa.Name, sa.Annotations[k3ktypes.K3K_LOCK_VERSION])
+<<<<<<< HEAD
 	role := k3kUser.GetRole()
 	if role == "super" || role == "founder" {
 		err := r.rolebinding.CreateSuperUserRoleBinding(ctx, sa, helper.ServiceAccountName())
+=======
+
+	if k3kUser.IsNormalUser() {
+		// 创建角色 需要job 查看权限
+		err := r.rolebinding.CreateNormalUserRoleBinding(ctx, sa, helper.ServiceAccountName())
+>>>>>>> dev-v1
 		if err != nil {
 			logger.Error(err, "Failed to create offline cluster role binding")
 			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
 		return ctrl.Result{}, nil
 	}
+<<<<<<< HEAD
 	err := r.rolebinding.DeleteSuperUserRoleBinding(ctx, sa, helper.ServiceAccountName())
 	if err != nil {
 		logger.Error(err, "Failed to delete offline cluster role binding")
@@ -162,6 +176,106 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	// 	}
 	// 	return ctrl.Result{}, nil
 	// }
+=======
+	if !k3kUser.IsClusterUser() {
+		// Not our ServiceAccount, ignore it
+		return ctrl.Result{}, nil
+	}
+
+	// 处理资源回收阶段
+	if err := r.deleteRc.HandleResourceRecycleStatus(ctx, sa, k3kUser); err != nil {
+		logger.Error(err, "Failed to handle resource recycle status")
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
+
+	namespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: k3kUser.GetK3kNamespace(),
+			Labels: map[string]string{
+				"policy.k3k.io/policy-name": k3kUser.GetClusterPolicy(),
+			},
+		},
+	}
+	_, err := controllerutil.CreateOrPatch(ctx, r.Client, namespace, func() error {
+		namespace.Labels = map[string]string{
+			"policy.k3k.io/policy-name": k3kUser.GetClusterPolicy(),
+		}
+		return nil
+	})
+	if err != nil {
+		logger.Error(err, "Failed to create namespace")
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
+
+	err = r.rolebinding.CreateRole(ctx, sa, k3kUser.GetK3kNamespace())
+	if err != nil {
+		logger.Error(err, "Failed to create role")
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
+	// 创建 registries ConfigMap
+	// err = r.createRegistriesConfigMap(ctx, k3kUser)
+	// if err != nil {
+	// 	logger.Error(err, "Failed to create registries ConfigMap")
+	// 	return ctrl.Result{RequeueAfter: time.Second * 10}, err
+	// }\
+
+	if !k3kUser.IsClusterReady() {
+		slog.Error("cluster not ready", "uname", k3kUser.GetName())
+		return ctrl.Result{}, nil
+	}
+
+	if k3kUser.IsWeihu() {
+		jobName := k3kUser.GenerateWeihuJobName()
+		if !k3kUser.HasWeihuJob() {
+			_, err = controllerutil.CreateOrPatch(ctx, r.Client, k3kUser.ServiceAccount, func() error {
+				k3kUser.SetWeihuJobName(jobName)
+				return nil
+			})
+			if err != nil {
+				slog.Error("failed to update weihu job2", "err", err)
+				return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
+			}
+		}
+		if k3kUser.HasWeihuJob() {
+			job := types.ToK3kWeihJob(k3kUser)
+			err := r.Client.Create(ctx, job)
+			if err != nil {
+				if k8serrors.IsAlreadyExists(err) {
+					slog.Error("failed to create weihu job", "err", err)
+					return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
+				}
+			}
+		}
+
+	} else {
+		jobName := k3kUser.GetWeihuJobName()
+		if jobName != "" {
+			job := types.ToK3kWeihJob(k3kUser)
+			err := r.Client.Delete(ctx, job)
+			if err != nil {
+				if !k8serrors.IsNotFound(err) {
+					slog.Error("failed to delete weihu job", "err", err)
+					return ctrl.Result{RequeueAfter: time.Minute * 5}, nil
+				}
+			}
+		}
+	}
+
+	err = r.storage.Handle(ctx, k3kUser)
+	if err != nil {
+		logger.Error(err, "Failed to handle storage")
+		// return ctrl.Result{}, err
+	}
+	if k3kUser.SkipDaemonset() {
+		return ctrl.Result{}, nil
+	}
+
+	err = r.createAgent(ctx, k3kUser)
+	if err != nil {
+		slog.Error("k3ksacontroller agent error", "err", err, "uname", k3kUser.GetName())
+		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
+	}
+>>>>>>> dev-v1
 
 	if true {
 		return ctrl.Result{}, nil
@@ -169,3 +283,93 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 
 	return ctrl.Result{}, nil
 }
+<<<<<<< HEAD
+=======
+
+func (r *K3kServiceAccountController) createAgent(ctx context.Context, k3kUser *k3ktypes.K3kUser) error {
+
+	root := k8s.NewK8sClient()
+	clientSdk, err := root.GetK3kClusterSdkByConfig(k3kUser.ToK3kConfig())
+	if err != nil {
+		slog.Warn("failed to get sdk", "err", err)
+		return err
+	}
+	clientSigClient, err := clientSdk.ToSigClient()
+	if err != nil {
+		slog.Warn("failed to get sigclient", "err", err)
+		return err
+	}
+
+	agentService := k3ktypes.ToK3kAgentService(k3kUser)
+	_, err = controllerutil.CreateOrUpdate(ctx, clientSigClient, agentService, func() error { return nil })
+	if err != nil {
+		slog.Warn("failed to create agentService", "err", err)
+		return err
+	}
+
+	ingService := k3ktypes.ToVirtualIngressService(k3kUser)
+	clone := ingService.DeepCopy()
+	_, err = controllerutil.CreateOrPatch(ctx, r.Client, clone, func() error {
+		clone.Spec = ingService.Spec
+		return nil
+	})
+	if err != nil {
+		slog.Warn("failed to create ingService", "err", err)
+		return err
+	}
+
+	// endpoints := k3ktypes.ToK3kPanelPodIpEndpoint(k3kUser)
+	// _, err = controllerutil.CreateOrUpdate(ctx, clientSigClient, endpoints, func() error { return nil })
+	// if err != nil {
+	// 	slog.Warn("failed to create endpoints", "err", err)
+	// 	// return err
+	// }
+
+	// endpointsSvc := k3ktypes.ToK3kPanelEndpointService(k3kUser)
+	// _, err = controllerutil.CreateOrUpdate(ctx, clientSigClient, endpointsSvc, func() error { return nil })
+	// if err != nil {
+	// 	slog.Warn("failed to create endpointsSvc", "err", err)
+	// 	// return err
+	// }
+
+	ds := k3ktypes.ToK3kDaemonSet(k3kUser)
+	copy := ds.DeepCopy()
+	result, err := controllerutil.CreateOrPatch(ctx, clientSigClient, copy, func() error {
+		//copy 变成 etcd 返回的 ds
+		copy.Annotations = ds.Annotations
+		// host-ip helm-version 任意一个变动就patch 更新 否则 不更新
+		copy.Annotations["root-node-ip"] = os.Getenv("NODE_IP") //
+		copy.Annotations["helm-version"] = os.Getenv("HELM_VERSION")
+		// copy.Labels["d"]
+		copy.Spec = ds.Spec
+		return nil
+	})
+	if err != nil {
+		slog.Warn("failed to create daemonSet", "err", err)
+		return err
+	}
+	slog.Error("create agent daemonset", "result", result, "name", k3kUser.GetName())
+	// helmVersion := os.Getenv("HELM_VERSION") //pod.Annotations["helm-version"]
+	// podVersion := pod.Annotations["helm-version"]
+	// rootPodIp := pod.Annotations["root-pod-ip"]
+	// needReCreate := helmVersion != podVersion && helmVersion != "" || rootPodIp != os.Getenv("ROOT_POD_IP")
+	// // If pod is in failed state, delete and recreate it
+	// if pod.Status.Phase == corev1.PodUnknown || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed || needReCreate {
+	// 	if err := clientSigClient.Delete(ctx, pod); err != nil {
+	// 		slog.Warn("failed to delete pod", "err", err)
+	// 		return err
+	// 	}
+	// 	return r.createPod(ctx, clientSigClient, k3kUser)
+	// }
+	return nil
+}
+
+func (r *K3kServiceAccountController) createPod(ctx context.Context, client client.Client, k3kUser *k3ktypes.K3kUser) error {
+	pod := k3ktypes.ToK3kPod(k3kUser)
+	if err := client.Create(ctx, pod); err != nil {
+		slog.Warn("failed to create agent", "err", err)
+		return err
+	}
+	return nil
+}
+>>>>>>> dev-v1

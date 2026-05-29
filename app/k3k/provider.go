@@ -21,7 +21,10 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(consoleShell.K3kOrderReturnCheck))    //处理有退款记录的用户
 	console.RegisterCommand(new(consoleShell.K3kOrderReturnCheckOne)) //处理有退款记录的用户one
 	console.RegisterCommand(new(consoleShell.Weihu))                  //维护模式下的job
+<<<<<<< HEAD
 	console.RegisterCommand(new(consoleShell.SyncCvm))                //同步用户集群到cvm
+=======
+>>>>>>> dev-v1
 	p.RegisterHttpRoutes(httpServer)
 	// if facade.Config.GetBool("k3k.watch") {
 	// 	go k3kapi.Watch()
@@ -36,6 +39,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	server.RegisterRouters(func(engine *gin.Engine) {
 		k3kGroup := engine.Group("/panel-api/v1/k3k") //.Use(middleware.Cors{}.Process)
 		{
+<<<<<<< HEAD
 			k3kGroup.GET("/info", middleware.Auth{}.Process, controller2.K3k{}.Info)           // 登录信息
 			k3kGroup.POST("/init", middleware.Auth{}.Process, controller2.K3k{}.ReInitCluster) // 初始化集群
 			// k3kGroup.POST("/whjob", middleware.Auth{}.Process, controller2.K3k{}.WhJob)        // 重新新建救援任务
@@ -48,6 +52,20 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			k3kGroup.POST("/sync-microapp", controller2.K3k{}.SyncMicroApp)      //microapp同步到子集群
 			// 主集群login 需要验证是否founder
 			k3kGroup.POST("/login", middleware.Auth{}.Process, controller2.K3k{}.Login) //
+=======
+			k3kGroup.GET("/info", middleware.Auth{}.Process, controller2.K3k{}.Info)                        // 登录信息
+			k3kGroup.POST("/init", middleware.Auth{}.Process, controller2.K3k{}.ReInitCluster)              // 初始化集群
+			k3kGroup.POST("/whjob", middleware.Auth{}.Process, controller2.K3k{}.WhJob)                     // 重新新建救援任务
+			k3kGroup.POST("/init-cluster", middleware.Auth{}.Process, controller2.K3k{}.ReInitClusterSuper) // 创始人初始化集群
+			k3kGroup.POST("/sync-ingress", controller2.K3k{}.SyncIngress)                                   //
+			k3kGroup.POST("/sync-configmap", controller2.K3k{}.SyncConfigmap)                               //
+			k3kGroup.POST("/sync-mcpbridge", controller2.K3k{}.SyncMcpBridge)                               //
+			k3kGroup.POST("/sync-secret", controller2.K3k{}.SyncSecret)                                     //
+			k3kGroup.POST("/sync-down-static", controller2.K3k{}.SyncDownStatic)                            //
+			k3kGroup.POST("/sync-microapp", controller2.K3k{}.SyncMicroApp)                                 //microapp同步到子集群
+			k3kGroup.POST("/login", middleware.Auth{}.Process, controller2.K3k{}.Login)                     //
+			k3kGroup.POST("/wh", middleware.Auth{}.Process, controller2.K3k{}.WhMoshi)                      // 维护模式 切换
+>>>>>>> dev-v1
 
 			// k3kGroup.POST("/wh", middleware.Auth{}.Process, controller2.K3k{}.WhMoshi) // 维护模式 切换
 

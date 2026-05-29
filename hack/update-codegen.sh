@@ -50,32 +50,32 @@ fi
 #     --one-input-api "gpuclass" \
 #     "${SCRIPT_DIR}/../pkg/"  
 
-# kube::codegen::gen_client \
-#     --with-watch \
-#     --with-applyconfig \
-#     --output-dir "${SCRIPT_ROOT}/k8s/pkg/client/gpuclass" \
-#     --output-pkg "${THIS_PKG}/k8s/pkg/client/gpuclass" \
-#     --boilerplate "${SCRIPT_ROOT}/hack/boilerplate.go.txt" \
-#     --one-input-api "gpuclass" \
-#     "${SCRIPT_DIR}/../k8s/pkg/apis"  
+kube::codegen::gen_client \
+    --with-watch \
+    --with-applyconfig \
+    --output-dir "${SCRIPT_ROOT}/k8s/pkg/client/gpuclass" \
+    --output-pkg "${THIS_PKG}/k8s/pkg/client/gpuclass" \
+    --boilerplate "${SCRIPT_ROOT}/hack/boilerplate.go.txt" \
+    --one-input-api "gpuclass" \
+    "${SCRIPT_DIR}/../k8s/pkg/apis"  
 
-# kube::codegen::gen_client \
-#     --with-watch \
-#     --with-applyconfig \
-#     --output-dir "${SCRIPT_ROOT}/k8s/pkg/client/appgroup" \
-#     --output-pkg "${THIS_PKG}/k8s/pkg/client/appgroup" \
-#     --boilerplate "${SCRIPT_ROOT}/hack/boilerplate.go.txt" \
-#     --one-input-api "appgroup" \
-#     "${SCRIPT_DIR}/../k8s/pkg/apis"      
+kube::codegen::gen_client \
+    --with-watch \
+    --with-applyconfig \
+    --output-dir "${SCRIPT_ROOT}/k8s/pkg/client/appgroup" \
+    --output-pkg "${THIS_PKG}/k8s/pkg/client/appgroup" \
+    --boilerplate "${SCRIPT_ROOT}/hack/boilerplate.go.txt" \
+    --one-input-api "appgroup" \
+    "${SCRIPT_DIR}/../k8s/pkg/apis"      
 
-# kube::codegen::gen_client \
-#     --with-watch \
-#     --with-applyconfig \
-#     --output-dir "${SCRIPT_ROOT}/k8s/pkg/client/mcpserver" \
-#     --output-pkg "${THIS_PKG}/k8s/pkg/client/mcpserver" \
-#     --boilerplate "${SCRIPT_ROOT}/hack/boilerplate.go.txt" \
-#     --one-input-api "mcpserver" \
-#     "${SCRIPT_DIR}/../k8s/pkg/apis"        
+kube::codegen::gen_client \
+    --with-watch \
+    --with-applyconfig \
+    --output-dir "${SCRIPT_ROOT}/k8s/pkg/client/mcpserver" \
+    --output-pkg "${THIS_PKG}/k8s/pkg/client/mcpserver" \
+    --boilerplate "${SCRIPT_ROOT}/hack/boilerplate.go.txt" \
+    --one-input-api "mcpserver" \
+    "${SCRIPT_DIR}/../k8s/pkg/apis"        
 
 # kube::codegen::gen_client \
 #     --with-watch \
@@ -101,6 +101,18 @@ kube::codegen::gen_client \
     --output-dir "${SCRIPT_ROOT}/k8s/pkg/client/cvm" \
     --output-pkg "${THIS_PKG}/k8s/pkg/client/cvm" \
     --boilerplate "${SCRIPT_ROOT}/hack/boilerplate.go.txt" \
+<<<<<<< HEAD
+=======
+    --one-input-api "microapp" \
+    "${SCRIPT_DIR}/../k8s/pkg/apis"     
+
+kube::codegen::gen_client \
+    --with-watch \
+    --with-applyconfig \
+    --output-dir "${SCRIPT_ROOT}/k8s/pkg/client/buildimage" \
+    --output-pkg "${THIS_PKG}/k8s/pkg/client/buildimage" \
+    --boilerplate "${SCRIPT_ROOT}/hack/boilerplate.go.txt" \
+>>>>>>> dev-v1
     --one-input-api "buildimage" \
     "${SCRIPT_DIR}/../k8s/pkg/apis"  
 
@@ -112,6 +124,9 @@ kube::codegen::gen_client \
     --boilerplate "${SCRIPT_ROOT}/hack/boilerplate.go.txt" \
     --one-input-api "microappsetting" \
     "${SCRIPT_DIR}/../k8s/pkg/apis"
+<<<<<<< HEAD
 
     --one-input-api "cvm" \
     "${SCRIPT_DIR}/../k8s/pkg/apis"
+=======
+>>>>>>> dev-v1

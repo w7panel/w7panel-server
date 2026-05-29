@@ -20,7 +20,10 @@ type Weihu struct {
 type weihuOp struct {
 	clusterName  string
 	k3kNamespace string
+<<<<<<< HEAD
 	cvmName      string
+=======
+>>>>>>> dev-v1
 }
 
 var whOp = weihuOp{}
@@ -32,7 +35,10 @@ func (c Weihu) GetName() string {
 func (c Weihu) Configure(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&whOp.clusterName, "clusterName", "", "clusterName")
 	cmd.Flags().StringVar(&whOp.k3kNamespace, "k3knamespace", "", "namespace")
+<<<<<<< HEAD
 	cmd.Flags().StringVar(&whOp.k3kNamespace, "cvmName", "", "cvmName")
+=======
+>>>>>>> dev-v1
 }
 
 func (c Weihu) GetDescription() string {
@@ -40,7 +46,11 @@ func (c Weihu) GetDescription() string {
 }
 
 func (c Weihu) Handle(cmd *cobra.Command, args []string) {
+<<<<<<< HEAD
 	c.HandleK3k(whOp.clusterName, whOp.k3kNamespace, whOp.cvmName)
+=======
+	c.HandleK3k(whOp.clusterName, whOp.k3kNamespace)
+>>>>>>> dev-v1
 }
 
 /**
@@ -56,9 +66,15 @@ Events:
 *
 k3k 集群维护模式
 */
+<<<<<<< HEAD
 func (c Weihu) HandleK3k(clusterName, namespace, cvmName string) {
 	sdk := k8s.NewK8sClient().Sdk
 	wh := k3k.NewWeihu(sdk, clusterName, namespace, cvmName)
+=======
+func (c Weihu) HandleK3k(clusterName, namespace string) {
+	sdk := k8s.NewK8sClient().Sdk
+	wh := k3k.NewWeihu(sdk, clusterName, namespace)
+>>>>>>> dev-v1
 	//controll runtime 重试3次
 	ctx := context.Background()
 	retry := 3
