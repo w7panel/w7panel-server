@@ -3,33 +3,51 @@ package coredns
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/coredns/caddy"
 	"github.com/coredns/caddy/caddyfile"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes"
 )
 
-const filename = "Caddyfile"
+const (
+	filename                    = "Caddyfile"
+	coreDNSCorefileKey          = "Corefile"
+	coreDNSCustomImport         = "import /etc/coredns/custom/*.server"
+	coreDNSCustomVolumeName     = "w7-coredns-custom"
+	coreDNSCustomMountPath      = "/etc/coredns/custom"
+	coreDNSRestartAnnotationKey = "w7.cc/coredns-restarted-at"
+)
 
 type CoreDnsController struct {
 	*caddy.Controller
 }
 
 type Service struct {
-	sdk *k8s.Sdk
+	sdk       *k8s.Sdk
+	clientSet kubernetes.Interface
 }
 
 func NewService() *Service {
-	return &Service{sdk: k8s.NewK8sClient().Sdk}
+	sdk := k8s.NewK8sClient().Sdk
+	return &Service{sdk: sdk, clientSet: sdk.ClientSet}
 }
 
 func NewServiceWithSdk(sdk *k8s.Sdk) *Service {
-	return &Service{sdk: sdk}
+	return &Service{sdk: sdk, clientSet: sdk.ClientSet}
+}
+
+func newServiceWithClient(clientSet kubernetes.Interface) *Service {
+	return &Service{clientSet: clientSet}
 }
 
 func NewTestController(serverType, input string) *CoreDnsController {
@@ -84,6 +102,9 @@ func (s *Service) CreateZone(ctx context.Context, domain string) (Zone, error) {
 	if _, err := s.updateCustomConfigMap(ctx, cfg); err != nil {
 		return Zone{}, err
 	}
+	if err := s.applyCoreDNSChange(ctx); err != nil {
+		return Zone{}, err
+	}
 	return Zone{Domain: domain}, nil
 }
 
@@ -97,8 +118,10 @@ func (s *Service) DeleteZone(ctx context.Context, domain string) error {
 		return err
 	}
 	delete(cfg.Data, ConfigMapKey(domain))
-	_, err = s.updateCustomConfigMap(ctx, cfg)
-	return err
+	if _, err = s.updateCustomConfigMap(ctx, cfg); err != nil {
+		return err
+	}
+	return s.applyCoreDNSChange(ctx)
 }
 
 func (s *Service) ListRecords(ctx context.Context, domain string) ([]Record, error) {
@@ -134,6 +157,9 @@ func (s *Service) CreateRecord(ctx context.Context, domain string, record Record
 	}
 	cfg.Data[key] = data
 	if _, err := s.updateCustomConfigMap(ctx, cfg); err != nil {
+		return Record{}, err
+	}
+	if err := s.applyCoreDNSChange(ctx); err != nil {
 		return Record{}, err
 	}
 	return record, nil
@@ -177,6 +203,9 @@ func (s *Service) UpdateRecord(ctx context.Context, domain string, id string, re
 	if _, err := s.updateCustomConfigMap(ctx, cfg); err != nil {
 		return Record{}, err
 	}
+	if err := s.applyCoreDNSChange(ctx); err != nil {
+		return Record{}, err
+	}
 	return record, nil
 }
 
@@ -211,13 +240,15 @@ func (s *Service) DeleteRecord(ctx context.Context, domain string, id string) er
 		return err
 	}
 	cfg.Data[key] = data
-	_, err = s.updateCustomConfigMap(ctx, cfg)
-	return err
+	if _, err = s.updateCustomConfigMap(ctx, cfg); err != nil {
+		return err
+	}
+	return s.applyCoreDNSChange(ctx)
 }
 
 func (s *Service) ServerStatus(ctx context.Context) (ServerStatus, error) {
 	status := ServerStatus{ServiceName: PublicDNSServiceName}
-	svc, err := s.sdk.ClientSet.CoreV1().Services(CoreDNSNamespace).Get(ctx, PublicDNSServiceName, metav1.GetOptions{})
+	svc, err := s.clientSet.CoreV1().Services(CoreDNSNamespace).Get(ctx, PublicDNSServiceName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return status, nil
@@ -240,7 +271,7 @@ func (s *Service) ServerStatus(ctx context.Context) (ServerStatus, error) {
 }
 
 func (s *Service) SetServerEnabled(ctx context.Context, enabled bool) (ServerStatus, error) {
-	services := s.sdk.ClientSet.CoreV1().Services(CoreDNSNamespace)
+	services := s.clientSet.CoreV1().Services(CoreDNSNamespace)
 	if !enabled {
 		err := services.Delete(ctx, PublicDNSServiceName, metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
@@ -285,7 +316,7 @@ func (s *Service) getZoneData(ctx context.Context, domain string) (string, strin
 }
 
 func (s *Service) getOrCreateCustomConfigMap(ctx context.Context) (*corev1.ConfigMap, error) {
-	configMaps := s.sdk.ClientSet.CoreV1().ConfigMaps(CoreDNSNamespace)
+	configMaps := s.clientSet.CoreV1().ConfigMaps(CoreDNSNamespace)
 	cfg, err := configMaps.Get(ctx, CoreDNSCustomName, metav1.GetOptions{})
 	if err == nil {
 		if cfg.Data == nil {
@@ -310,7 +341,155 @@ func (s *Service) getOrCreateCustomConfigMap(ctx context.Context) (*corev1.Confi
 }
 
 func (s *Service) updateCustomConfigMap(ctx context.Context, cfg *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	return s.sdk.ClientSet.CoreV1().ConfigMaps(CoreDNSNamespace).Update(ctx, cfg, metav1.UpdateOptions{})
+	return s.clientSet.CoreV1().ConfigMaps(CoreDNSNamespace).Update(ctx, cfg, metav1.UpdateOptions{})
+}
+
+func (s *Service) applyCoreDNSChange(ctx context.Context) error {
+	if err := s.ensureCoreDNSCorefileImportsCustomZones(ctx); err != nil {
+		return err
+	}
+	deployment, err := s.getCoreDNSDeployment(ctx)
+	if err != nil {
+		return err
+	}
+	ensureCoreDNSDeploymentCustomConfig(deployment)
+	if deployment.Spec.Template.Annotations == nil {
+		deployment.Spec.Template.Annotations = map[string]string{}
+	}
+	deployment.Spec.Template.Annotations[coreDNSRestartAnnotationKey] = time.Now().Format(time.RFC3339Nano)
+	_, err = s.clientSet.AppsV1().Deployments(CoreDNSNamespace).Update(ctx, deployment, metav1.UpdateOptions{})
+	return err
+}
+
+func (s *Service) ensureCoreDNSCorefileImportsCustomZones(ctx context.Context) error {
+	configMaps := s.clientSet.CoreV1().ConfigMaps(CoreDNSNamespace)
+	cfg, err := configMaps.Get(ctx, CoreDNSName, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return apierrors.NewNotFound(corev1.Resource("configmap"), CoreDNSName)
+		}
+		return err
+	}
+	corefile, ok := cfg.Data[coreDNSCorefileKey]
+	if !ok {
+		return fmt.Errorf("%s/%s configmap missing %q", CoreDNSNamespace, CoreDNSName, coreDNSCorefileKey)
+	}
+	nextCorefile := ensureCoreDNSCustomImport(corefile)
+	if nextCorefile == corefile {
+		return nil
+	}
+	if cfg.Data == nil {
+		cfg.Data = map[string]string{}
+	}
+	cfg.Data[coreDNSCorefileKey] = nextCorefile
+	_, err = configMaps.Update(ctx, cfg, metav1.UpdateOptions{})
+	return err
+}
+
+func (s *Service) getCoreDNSDeployment(ctx context.Context) (*appsv1.Deployment, error) {
+	deployments := s.clientSet.AppsV1().Deployments(CoreDNSNamespace)
+	deployment, err := deployments.Get(ctx, CoreDNSName, metav1.GetOptions{})
+	if err == nil {
+		return deployment, nil
+	}
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	list, err := deployments.List(ctx, metav1.ListOptions{LabelSelector: "k8s-app=kube-dns"})
+	if err != nil {
+		return nil, err
+	}
+	if len(list.Items) == 0 {
+		return nil, apierrors.NewNotFound(corev1.Resource("deployment"), CoreDNSName)
+	}
+	sort.Slice(list.Items, func(i, j int) bool {
+		return list.Items[i].Name < list.Items[j].Name
+	})
+	return &list.Items[0], nil
+}
+
+func ensureCoreDNSCustomImport(corefile string) string {
+	for _, line := range strings.Split(corefile, "\n") {
+		if strings.TrimSpace(line) == coreDNSCustomImport {
+			return corefile
+		}
+	}
+	corefile = strings.TrimRight(corefile, "\n")
+	if corefile == "" {
+		return coreDNSCustomImport + "\n"
+	}
+	return corefile + "\n" + coreDNSCustomImport + "\n"
+}
+
+func ensureCoreDNSDeploymentCustomConfig(deployment *appsv1.Deployment) {
+	optional := true
+	customVolume := corev1.Volume{
+		Name: coreDNSCustomVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: CoreDNSCustomName},
+				Optional:             &optional,
+			},
+		},
+	}
+	volumeFound := false
+	for i := range deployment.Spec.Template.Spec.Volumes {
+		if deployment.Spec.Template.Spec.Volumes[i].Name == coreDNSCustomVolumeName {
+			deployment.Spec.Template.Spec.Volumes[i] = customVolume
+			volumeFound = true
+			break
+		}
+	}
+	if !volumeFound {
+		deployment.Spec.Template.Spec.Volumes = append(deployment.Spec.Template.Spec.Volumes, corev1.Volume{
+			Name:         customVolume.Name,
+			VolumeSource: customVolume.VolumeSource,
+		})
+	}
+	for i := range deployment.Spec.Template.Spec.Containers {
+		mounts := deployment.Spec.Template.Spec.Containers[i].VolumeMounts
+		mountFound := false
+		for j := range mounts {
+			if mounts[j].Name == coreDNSCustomVolumeName {
+				mounts[j].MountPath = coreDNSCustomMountPath
+				mounts[j].ReadOnly = true
+				mountFound = true
+				break
+			}
+			if mounts[j].MountPath == coreDNSCustomMountPath {
+				mountFound = true
+			}
+		}
+		if mountFound {
+			deployment.Spec.Template.Spec.Containers[i].VolumeMounts = mounts
+			continue
+		}
+		deployment.Spec.Template.Spec.Containers[i].VolumeMounts = append(mounts,
+			corev1.VolumeMount{
+				Name:      coreDNSCustomVolumeName,
+				MountPath: coreDNSCustomMountPath,
+				ReadOnly:  true,
+			},
+		)
+	}
+}
+
+func hasCoreDNSCustomVolume(volumes []corev1.Volume) bool {
+	for _, volume := range volumes {
+		if volume.Name == coreDNSCustomVolumeName {
+			return true
+		}
+	}
+	return false
+}
+
+func hasCoreDNSCustomVolumeMount(mounts []corev1.VolumeMount) bool {
+	for _, mount := range mounts {
+		if mount.Name == coreDNSCustomVolumeName || mount.MountPath == coreDNSCustomMountPath {
+			return true
+		}
+	}
+	return false
 }
 
 func publicDNSService() *corev1.Service {

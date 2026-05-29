@@ -16,6 +16,7 @@ import (
 
 const (
 	CoreDNSNamespace      = "kube-system"
+	CoreDNSName           = "coredns"
 	CoreDNSCustomName     = "coredns-custom"
 	PublicDNSServiceName  = "w7-coredns-public"
 	DefaultTTL            = 60
