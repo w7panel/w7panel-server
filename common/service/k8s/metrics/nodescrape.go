@@ -10,6 +10,7 @@ import (
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"github.com/w7panel/w7panel/common/helper"
 	v1 "k8s.io/api/core/v1"
 )
@@ -147,7 +148,7 @@ func (n *NodeScrape) Parse(metricsData string) (map[string]*dto.MetricFamily, er
 	// # TYPE vGPU_device_memory_usage_in_bytes gauge
 	// vGPU_device_memory_usage_in_bytes{ctrname="gpu-cxeyttpu",deviceuuid="GPU-59ab1128-3130-b95a-9870-4bd748926e97",podname="gpu-cxeyttpu-5bc96fc469-8q2zb",podnamespace="default",vdeviceid="0",zone="vGPU"} 0
 	// `
-	parser := expfmt.TextParser{}
+	parser := expfmt.NewTextParser(model.LegacyValidation)
 	metrics, err := parser.TextToMetricFamilies(strings.NewReader(metricsData))
 	if err != nil {
 		slog.Error("Error parsing metrics: %v", "err", err)
@@ -166,7 +167,7 @@ func parseMetrics(ip, port string) (map[string]*dto.MetricFamily, error) {
 		log.Fatalf("Error fetching metrics: %v", err)
 		return nil, err
 	}
-	parser := expfmt.TextParser{}
+	parser := expfmt.NewTextParser(model.LegacyValidation)
 	metrics, err := parser.TextToMetricFamilies(response.Body)
 	if err != nil {
 		log.Fatalf("Error parsing metrics: %v", err)

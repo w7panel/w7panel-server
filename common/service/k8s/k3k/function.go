@@ -136,12 +136,14 @@ func RefreshK3kUser(user *types.K3kUser, rootSdk *k8s.Sdk, update bool) (*types.
 	}
 
 	if user.IsCvmReqUser() {
-		cvm, err := GetCkm(context.TODO(), rootSdk, "default", user.GetCkmName())
+		ckmName := user.GetCkmName()
+		k3kNs := user.GetK3kNamespace()
+		cvm, err := GetCkm(context.TODO(), rootSdk, k3kNs, ckmName)
 		if err != nil {
 			slog.Error("GetCkm error", "error", err)
 		}
 		if cvm != nil {
-			
+
 			user.ReplaceCkm(cvm) //
 		}
 	}

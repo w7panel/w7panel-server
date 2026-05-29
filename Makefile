@@ -1,5 +1,5 @@
 
-IV ?= v1.1.42.x
+IV ?= v1.1.60.52
 tidy:
    go mod tidy
 build-docker:
