@@ -47,7 +47,15 @@ func sanitizeParams(params gin.Params) string {
 
 func buildOperationMessage(ctx *gin.Context) string {
 	if ctx == nil || ctx.Request == nil {
-		return "operation"
+		return "操作"
 	}
-	return ctx.Request.Method + " " + ctx.Request.URL.Path
+	method := ctx.Request.Method
+	route := ctx.FullPath()
+	if route == "" {
+		route = ctx.Request.URL.Path
+	}
+	if description := lookupRouteDescription(method, route); description != "" {
+		return description
+	}
+	return methodDescription(method) + " " + route
 }
