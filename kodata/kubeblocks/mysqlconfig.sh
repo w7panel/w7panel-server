@@ -1,1 +1,0 @@
-kbcli cluster configure kubeblocks-mysql-bysquqtz --set=max_connections=800,innodb_buffer_pool_size=512M

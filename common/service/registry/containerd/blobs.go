@@ -8,7 +8,6 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/v2/core/content"
-	"github.com/google/go-containerregistry/pkg/registry"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -17,6 +16,22 @@ import (
 type containerdBlobHandler struct {
 	store   content.Store
 	putLock sync.Mutex
+}
+
+type blobNotFoundError struct {
+	err error
+}
+
+func (e blobNotFoundError) Error() string {
+	return e.err.Error()
+}
+
+func (e blobNotFoundError) Unwrap() error {
+	return e.err
+}
+
+func (e blobNotFoundError) Is(target error) bool {
+	return target != nil && target.Error() == "not found"
 }
 
 func NewBlobHandler(store content.Store) *containerdBlobHandler {
@@ -39,14 +54,17 @@ func (handler *containerdBlobHandler) Get(ctx context.Context, repo string, h v1
 }
 
 // blobs 是否已存在
-func (hd *containerdBlobHandler) Stat(ctx context.Context, repo string, h v1.Hash) (int64, error) {
+func (hd *containerdBlobHandler) Stat(ctx context.Context, _ string, h v1.Hash) (int64, error) {
 	dgst, err := digest.Parse(h.String())
 	if err != nil {
 		return 0, err
 	}
 	info, err := hd.store.Info(WithNamespace(ctx), dgst)
+	if errdefs.IsNotFound(err) {
+		return 0, blobNotFoundError{err: err}
+	}
 	if err != nil {
-		return 0, registry.ErrNotFound()
+		return 0, err
 	}
 	return info.Size, nil
 }
