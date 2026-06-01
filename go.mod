@@ -234,6 +234,7 @@ require (
 	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
@@ -309,7 +310,7 @@ require (
 )
 
 require (
-	github.com/aws/smithy-go v1.22.3
+	github.com/aws/smithy-go v1.25.1
 	github.com/bodgit/sevenzip v1.5.2
 	github.com/containerd/cgroups/v3 v3.1.3
 	github.com/containerd/containerd v1.7.27
@@ -349,13 +350,12 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217
 	gopkg.in/yaml.v2 v2.4.0
 	istio.io/api v0.0.0-20211122181927-8da52c66ff23
-	k8s.io/api v0.35.3
-	k8s.io/cli-runtime v0.35.3
+	k8s.io/api v0.36.1
+	k8s.io/cli-runtime v0.35.4
 	k8s.io/code-generator v0.35.3
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a
 	k8s.io/kubectl v0.33.3
-	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
 	sigs.k8s.io/controller-runtime v0.23.3
 	sigs.k8s.io/yaml v1.6.0
 )
@@ -376,8 +376,8 @@ require (
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-sql-driver/mysql v1.8.1
-	github.com/goccy/go-json v0.10.4 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.2
+	github.com/goccy/go-json v0.10.5 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golobby/container/v3 v3.0.2 // indirect
 	github.com/google/go-containerregistry v0.21.5
 	github.com/gorilla/context v1.1.2 // indirect
@@ -424,15 +424,15 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
 	go.uber.org/zap/exp v0.2.0 // indirect
-	golang.org/x/arch v0.13.0 // indirect
-	golang.org/x/crypto v0.49.0
-	golang.org/x/mod v0.34.0
-	golang.org/x/net v0.52.0
-	golang.org/x/sys v0.42.0
+	golang.org/x/arch v0.22.0 // indirect
+	golang.org/x/crypto v0.50.0
+	golang.org/x/mod v0.35.0
+	golang.org/x/net v0.53.0
+	golang.org/x/sys v0.44.0
 	golang.org/x/text v0.36.0
 	golang.org/x/tools v0.44.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/datatypes v1.1.1-0.20230130040222-c43177d3cf8c // indirect
@@ -441,9 +441,9 @@ require (
 	gorm.io/hints v1.1.0 // indirect
 	gorm.io/plugin/dbresolver v1.3.0 // indirect
 	helm.sh/helm/v3 v3.18.5
-	k8s.io/apimachinery v0.35.3
-	k8s.io/client-go v0.35.3
-	k8s.io/metrics v0.35.3
+	k8s.io/apimachinery v0.36.1
+	k8s.io/client-go v0.36.1
+	k8s.io/metrics v0.35.4
 	modernc.org/sqlite v1.32.0
 	oras.land/oras-go/v2 v2.6.0
 )
@@ -451,8 +451,9 @@ require (
 replace (
 	github.com/containerd/nerdctl/mod/tigron v0.0.0 => github.com/containerd/nerdctl/mod/tigron v0.0.0-20260527012312-23296bb4620f
 	github.com/docker/compose/v2 => github.com/docker/compose/v2 v2.2.0
-	github.com/google/go-containerregistry v0.20.6 => ./mod/go-containerregistry
-	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20250613215107-59a4b8593039 => ./mod/go-containerregistry/pkg/authn/k8schain
-	github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20250225234217-098045d5e61f => ./mod/go-containerregistry/pkg/authn/kubernetes
+	// github.com/google/go-containerregistry v0.20.6 => ./mod/go-containerregistry
+	// github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20250613215107-59a4b8593039 => ./mod/go-containerregistry/pkg/authn/k8schain
+	// github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20250225234217-098045d5e61f => ./mod/go-containerregistry/pkg/authn/kubernetes
+	github.com/w7panel/w7panel-ckm => ./mod/w7panel-ckm
 	istio.io/istio => istio.io/istio v1.12.0
 )
