@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -79,7 +78,6 @@ func (q *VictoriaLogsQuery) Query(ctx context.Context, auditType string, params 
 	if err != nil {
 		return QueryResult{}, err
 	}
-	sortLogsByTimeDesc(list)
 	total, err := q.queryLogCount(ctx, query)
 	if err != nil {
 		return QueryResult{}, err
@@ -94,9 +92,7 @@ func (q *VictoriaLogsQuery) Query(ctx context.Context, auditType string, params 
 
 func (q *VictoriaLogsQuery) queryLogEntries(ctx context.Context, query string, limit int, offset int) ([]map[string]any, error) {
 	values := url.Values{}
-	values.Set("query", query)
-	values.Set("limit", strconv.Itoa(limit))
-	values.Set("offset", strconv.Itoa(offset))
+	values.Set("query", buildEntriesQuery(query, limit, offset))
 	endpoint := q.baseURL + "/select/logsql/query?" + values.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -150,6 +146,10 @@ func normalizeQueryParams(params *QueryParams) {
 	if params.PageSize > 200 {
 		params.PageSize = 200
 	}
+}
+
+func buildEntriesQuery(query string, limit int, offset int) string {
+	return fmt.Sprintf("%s | sort by (_time desc) | offset %d | limit %d", query, offset, limit)
 }
 
 func buildLogsQL(auditType string, params QueryParams, current UserContext) string {
@@ -257,38 +257,5 @@ func intFromAny(value any) (int, bool) {
 		return n, err == nil
 	default:
 		return 0, false
-	}
-}
-
-func sortLogsByTimeDesc(list []map[string]any) {
-	sort.SliceStable(list, func(i, j int) bool {
-		return logTime(list[i]).After(logTime(list[j]))
-	})
-}
-
-func logTime(item map[string]any) time.Time {
-	for _, key := range []string{"time", "_time"} {
-		if value, ok := item[key]; ok {
-			if t, ok := parseLogTime(value); ok {
-				return t
-			}
-		}
-	}
-	return time.Time{}
-}
-
-func parseLogTime(value any) (time.Time, bool) {
-	switch v := value.(type) {
-	case time.Time:
-		return v, true
-	case string:
-		t, err := time.Parse(time.RFC3339Nano, v)
-		if err == nil {
-			return t, true
-		}
-		t, err = time.Parse(time.RFC3339, v)
-		return t, err == nil
-	default:
-		return time.Time{}, false
 	}
 }
