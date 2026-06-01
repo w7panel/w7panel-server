@@ -97,6 +97,9 @@ func filterMicroapp(item *microapp.MicroApp, role string) {
 	if item.Labels == nil {
 		item.Labels = map[string]string{}
 	}
+	if role == "founder" {
+		return
+	}
 	item.Labels["microapp.w7.cc/from"] = "root"
 	item.Name = item.Name + "-root"
 	item.Spec.Bindings = lo.Filter(item.Spec.Bindings, func(bindings microapp.Bindings, index int) bool {
