@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -838,6 +839,10 @@ func (u *k3kUser) ProcessReturnK3kOrder() error {
 
 // 是否是演示用户
 func (u *k3kUser) IsDemo() bool {
+	val, ok := os.LookupEnv("DEMO_USER")
+	if ok && val == "true" {
+		return true
+	}
 	if u.Labels != nil && u.Labels[W7_DEMO_USER] == "true" {
 		return true
 	}

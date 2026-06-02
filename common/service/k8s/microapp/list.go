@@ -103,6 +103,9 @@ func filterMicroapp(item *microapp.MicroApp, role string) {
 	item.Labels["microapp.w7.cc/from"] = "root"
 	item.Name = item.Name + "-root"
 	item.Spec.Bindings = lo.Filter(item.Spec.Bindings, func(bindings microapp.Bindings, index int) bool {
+		if role == "super" { //super 管理员可以看到所有角色
+			return bindings.Name != "founder"
+		}
 		return bindings.Name == role
 	})
 	newRole := item.Spec.ConfigV2.Props.RoleConfig[role]
