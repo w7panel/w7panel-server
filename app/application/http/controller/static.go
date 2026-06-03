@@ -50,7 +50,7 @@ func (self Static) StaticInfo(http *gin.Context) {
 			// 拼好 proxy 地址 zpkUrl base64url 编码后放入 path
 			if zpkUrl != "" {
 				zpkUrlEncoded := base64.RawURLEncoding.EncodeToString([]byte(zpkUrl))
-				proxyUrl = fmt.Sprintf("/panel-api/v1/static/%s/%s/%s/frontend/index.html", zpkUrlEncoded, identifie, version)
+				proxyUrl = fmt.Sprintf("/panel-api/v1/static/proxy/%s/%s/%s/frontend/index.html", zpkUrlEncoded, identifie, version)
 			}
 		}
 	}
