@@ -165,6 +165,66 @@ func TestCreateZoneWritesServerAndZoneFiles(t *testing.T) {
 	}
 }
 
+func TestListRecordsMigratesLegacyTemplateZone(t *testing.T) {
+	ctx := context.Background()
+	legacyServer := `test4.com {
+  template IN A test4.com. {
+    answer "test4.com. 60 IN A 8.8.8.8"
+  }
+
+  template IN A a.test4.com. {
+    answer "a.test4.com. 1 IN A 10.42.0.154"
+  }
+
+  template ANY ANY {
+    rcode NOERROR
+  }
+
+  loadbalance
+}
+`
+	client := fake.NewSimpleClientset(
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: CoreDNSCustomName, Namespace: CoreDNSNamespace},
+			Data: map[string]string{
+				ConfigMapKey("test4.com"): legacyServer,
+			},
+		},
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: CoreDNSName, Namespace: CoreDNSNamespace},
+			Data:       map[string]string{coreDNSCorefileKey: ".:53 {\n  errors\n}\n"},
+		},
+		coreDNSDeployment(),
+	)
+	service := newServiceWithClient(client)
+
+	records, err := service.ListRecords(ctx, "test4.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 2 {
+		t.Fatalf("expected 2 migrated records, got %d: %#v", len(records), records)
+	}
+	customConfig, err := client.CoreV1().ConfigMaps(CoreDNSNamespace).Get(ctx, CoreDNSCustomName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	serverData := customConfig.Data[ConfigMapKey("test4.com")]
+	if strings.Contains(serverData, "template ") {
+		t.Fatalf("expected template server to be replaced, got:\n%s", serverData)
+	}
+	if !strings.Contains(serverData, "file /etc/coredns/custom/test4.com.zone") {
+		t.Fatalf("expected migrated server block to reference zone file, got:\n%s", serverData)
+	}
+	zoneData := customConfig.Data[ZoneFileConfigMapKey("test4.com")]
+	if !strings.Contains(zoneData, "$ORIGIN test4.com.") {
+		t.Fatalf("expected migrated zone origin, got:\n%s", zoneData)
+	}
+	if !strings.Contains(zoneData, "@ 60 IN A 8.8.8.8") || !strings.Contains(zoneData, "a 1 IN A 10.42.0.154") {
+		t.Fatalf("expected migrated records, got:\n%s", zoneData)
+	}
+}
+
 func TestDeleteZoneRemovesServerAndZoneFiles(t *testing.T) {
 	ctx := context.Background()
 	client := fake.NewSimpleClientset(

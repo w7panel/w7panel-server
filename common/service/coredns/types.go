@@ -18,16 +18,17 @@ import (
 )
 
 const (
-	CoreDNSNamespace     = "kube-system"
-	CoreDNSName          = "coredns"
-	CoreDNSCustomName    = "coredns-custom"
-	PublicDNSServiceName = "w7-coredns-public"
-	DefaultTTL           = 60
-	DefaultMXPriority    = 10
-	soaRefresh           = 3600
-	soaRetry             = 1800
-	soaExpire            = 86400
-	soaMinimum           = 1
+	CoreDNSNamespace      = "kube-system"
+	CoreDNSName           = "coredns"
+	CoreDNSCustomName     = "coredns-custom"
+	PublicDNSServiceName  = "w7-coredns-public"
+	DefaultTTL            = 60
+	DefaultMXPriority     = 10
+	recordIDCommentPrefix = "# w7-dns-record-id:"
+	soaRefresh            = 3600
+	soaRetry              = 1800
+	soaExpire             = 86400
+	soaMinimum            = 1
 )
 
 var (
@@ -233,6 +234,48 @@ func ParseZone(domain string, data string) ([]Record, error) {
 	return records, nil
 }
 
+func ParseLegacyTemplateZone(domain string, data string) ([]Record, error) {
+	domain, err := NormalizeDomain(domain)
+	if err != nil {
+		return nil, err
+	}
+	lines := strings.Split(data, "\n")
+	records := make([]Record, 0)
+	nextID := ""
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, recordIDCommentPrefix) {
+			nextID = strings.TrimSpace(strings.TrimPrefix(line, recordIDCommentPrefix))
+			continue
+		}
+		if !strings.HasPrefix(line, "answer ") {
+			continue
+		}
+		answer := strings.TrimSpace(strings.TrimPrefix(line, "answer "))
+		if unquoted, err := strconv.Unquote(answer); err == nil {
+			answer = unquoted
+		} else {
+			answer = strings.Trim(answer, `"`)
+			answer = strings.ReplaceAll(answer, `\"`, `"`)
+		}
+		record, err := parseLegacyTemplateAnswer(domain, answer)
+		if err != nil {
+			continue
+		}
+		if nextID != "" {
+			record.ID = nextID
+			nextID = ""
+		}
+		record, err = NormalizeRecord(domain, record)
+		if err != nil {
+			continue
+		}
+		records = append(records, record)
+	}
+	sortRecords(records)
+	return records, nil
+}
+
 func ConfigMapKey(domain string) string {
 	return domain + ".server"
 }
@@ -315,8 +358,46 @@ func renderZoneRecord(record Record) string {
 	}
 }
 
-func recordNameFromRR(domain string, header *mdns.RR_Header) (string, error) {
-	qname := strings.TrimSuffix(strings.ToLower(header.Name), ".")
+func parseLegacyTemplateAnswer(domain string, answer string) (Record, error) {
+	fields := strings.Fields(answer)
+	if len(fields) < 5 {
+		return Record{}, errors.New("answer is invalid")
+	}
+	name, err := recordNameFromQName(domain, fields[0])
+	if err != nil {
+		return Record{}, err
+	}
+	ttl, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return Record{}, err
+	}
+	recordType := strings.ToUpper(fields[3])
+	record := Record{Name: name, Type: recordType, TTL: ttl}
+	switch recordType {
+	case "MX":
+		if len(fields) < 6 {
+			return Record{}, errors.New("MX answer is invalid")
+		}
+		priority, err := strconv.Atoi(fields[4])
+		if err != nil {
+			return Record{}, err
+		}
+		record.MXPriority = priority
+		record.Value = strings.TrimSuffix(strings.ToLower(fields[5]), ".")
+	case "TXT":
+		value := strings.Join(fields[4:], " ")
+		value = strings.Trim(value, `"`)
+		record.Value = value
+	case "A", "AAAA":
+		record.Value = fields[4]
+	default:
+		record.Value = strings.TrimSuffix(strings.ToLower(fields[4]), ".")
+	}
+	return record, nil
+}
+
+func recordNameFromQName(domain string, qname string) (string, error) {
+	qname = strings.TrimSuffix(strings.ToLower(qname), ".")
 	name := "@"
 	if qname != domain {
 		suffix := "." + domain
@@ -326,6 +407,10 @@ func recordNameFromRR(domain string, header *mdns.RR_Header) (string, error) {
 		name = strings.TrimSuffix(qname, suffix)
 	}
 	return name, nil
+}
+
+func recordNameFromRR(domain string, header *mdns.RR_Header) (string, error) {
+	return recordNameFromQName(domain, header.Name)
 }
 
 func recordFromRR(domain string, rr mdns.RR) (Record, error) {

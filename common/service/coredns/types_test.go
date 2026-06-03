@@ -91,6 +91,40 @@ b 1 IN A 1.0.0.4
 	}
 }
 
+func TestParseLegacyTemplateZone(t *testing.T) {
+	data := `test4.com {
+  template IN A test4.com. {
+    # w7-dns-record-id: apex-id
+    answer "test4.com. 60 IN A 8.8.8.8"
+  }
+
+  template IN A a.test4.com. {
+    answer "a.test4.com. 1 IN A 10.42.0.154"
+  }
+
+  template IN TXT txt.test4.com. {
+    answer "txt.test4.com. 60 IN TXT \"hello world\""
+  }
+}
+`
+	records, err := ParseLegacyTemplateZone("test4.com", data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 3 {
+		t.Fatalf("expected 3 records, got %d: %#v", len(records), records)
+	}
+	if records[0].Name != "@" || records[0].Value != "8.8.8.8" || records[0].ID != "apex-id" {
+		t.Fatalf("unexpected apex record: %#v", records[0])
+	}
+	if records[1].Name != "a" || records[1].Value != "10.42.0.154" {
+		t.Fatalf("unexpected subdomain record: %#v", records[1])
+	}
+	if records[2].Name != "txt" || records[2].Value != "hello world" {
+		t.Fatalf("unexpected TXT record: %#v", records[2])
+	}
+}
+
 func TestNextZoneSerial(t *testing.T) {
 	now := time.Date(2026, 6, 2, 12, 0, 0, 0, time.UTC)
 	if serial := nextZoneSerial(0, now); serial != 2026060201 {
