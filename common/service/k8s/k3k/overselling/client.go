@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	cvmv1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

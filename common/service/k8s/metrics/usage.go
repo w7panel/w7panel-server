@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	cvmv1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

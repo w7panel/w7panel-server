@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	cvmv1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"

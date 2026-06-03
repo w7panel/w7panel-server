@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	cvmv1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/runtime"

@@ -340,7 +340,6 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	github.com/ulikunitz/xz v0.5.12
-	github.com/w7panel/w7panel-ckm v1.0.19
 	github.com/we7coreteam/w7-rangine-go/v2 v2.0.2
 	github.com/zitadel/oidc/v3 v3.47.5
 	go.eigsys.de/gin-cachecontrol/v2 v2.3.0
@@ -454,6 +453,6 @@ replace (
 	// github.com/google/go-containerregistry v0.20.6 => ./mod/go-containerregistry
 	// github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20250613215107-59a4b8593039 => ./mod/go-containerregistry/pkg/authn/k8schain
 	// github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20250225234217-098045d5e61f => ./mod/go-containerregistry/pkg/authn/kubernetes
-	github.com/w7panel/w7panel-ckm => ./mod/w7panel-ckm
+
 	istio.io/istio => istio.io/istio v1.12.0
 )
