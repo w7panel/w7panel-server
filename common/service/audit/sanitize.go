@@ -57,5 +57,13 @@ func buildOperationMessage(ctx *gin.Context) string {
 	if description := lookupRouteDescription(method, route); description != "" {
 		return description
 	}
-	return methodDescription(method) + " " + route
+	return fallbackOperationMessage(method, route)
+}
+
+func fallbackOperationMessage(method string, route string) string {
+	action := methodDescription(method)
+	if strings.TrimSpace(route) == "" {
+		return action
+	}
+	return action + " " + route
 }

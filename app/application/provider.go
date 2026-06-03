@@ -269,6 +269,8 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			localApiGroup.GET("/static/:identifie/status", middleware.Auth{}.Process, controller2.Static{}.StaticInfo)
 			localApiGroup.POST("/static/:namespace/download/:name", middleware.Auth{}.Process, controller2.Static{}.Download)
+			// 前端静态资源回源代理：本地未下载时从远程制品库拉取
+			localApiGroup.GET("/static/proxy/:zpkUrl/:identifie/:version/frontend/*path", middleware.Auth{}.Process, controller2.Static{}.FrontendProxy)
 
 		}
 		gpuGroup := engine.Group("/panel-api/v1/gpu").Use(middleware.Auth{}.Process, middleware.Proxy{}.Process)
