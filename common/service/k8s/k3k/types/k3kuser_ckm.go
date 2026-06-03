@@ -3,7 +3,7 @@ package types
 import (
 	"encoding/json"
 
-	cvmv1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
+	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 )
 
 /*

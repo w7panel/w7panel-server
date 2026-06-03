@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	cvmv1alpha1 "github.com/w7panel/w7panel-ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/console"
+	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
