@@ -63,12 +63,12 @@ func (s *Service) ListZones(ctx context.Context) ([]Zone, error) {
 		return nil, err
 	}
 	zones := make([]Zone, 0)
-	for key, data := range cfg.Data {
+	for key := range cfg.Data {
 		domain, ok := DomainFromConfigMapKey(key)
 		if !ok {
 			continue
 		}
-		records, _ := ParseZone(domain, data)
+		records, _ := ParseZone(domain, cfg.Data[ZoneFileConfigMapKey(domain)])
 		zones = append(zones, Zone{
 			Domain:     domain,
 			RecordNum:  len(records),
@@ -90,15 +90,21 @@ func (s *Service) CreateZone(ctx context.Context, domain string) (Zone, error) {
 	if cfg.Data == nil {
 		cfg.Data = map[string]string{}
 	}
-	key := ConfigMapKey(domain)
-	if _, ok := cfg.Data[key]; ok {
+	serverKey := ConfigMapKey(domain)
+	zoneKey := ZoneFileConfigMapKey(domain)
+	if _, ok := cfg.Data[serverKey]; ok {
 		return Zone{Domain: domain, UpdateTime: configMapTime(cfg)}, nil
 	}
-	data, err := RenderZone(domain, nil)
+	serverData, err := RenderZoneServer(domain)
 	if err != nil {
 		return Zone{}, err
 	}
-	cfg.Data[key] = data
+	zoneData, err := RenderZone(domain, nil)
+	if err != nil {
+		return Zone{}, err
+	}
+	cfg.Data[serverKey] = serverData
+	cfg.Data[zoneKey] = zoneData
 	if _, err := s.updateCustomConfigMap(ctx, cfg); err != nil {
 		return Zone{}, err
 	}
@@ -118,6 +124,7 @@ func (s *Service) DeleteZone(ctx context.Context, domain string) error {
 		return err
 	}
 	delete(cfg.Data, ConfigMapKey(domain))
+	delete(cfg.Data, ZoneFileConfigMapKey(domain))
 	if _, err = s.updateCustomConfigMap(ctx, cfg); err != nil {
 		return err
 	}
@@ -145,17 +152,23 @@ func (s *Service) CreateRecord(ctx context.Context, domain string, record Record
 	if err != nil {
 		return Record{}, err
 	}
-	key := ConfigMapKey(domain)
-	if _, ok := cfg.Data[key]; !ok {
-		return Record{}, apierrors.NewNotFound(corev1.Resource("configmap"), key)
+	serverKey := ConfigMapKey(domain)
+	zoneKey := ZoneFileConfigMapKey(domain)
+	if _, ok := cfg.Data[serverKey]; !ok {
+		return Record{}, apierrors.NewNotFound(corev1.Resource("dnszone"), domain)
 	}
-	records, _ := ParseZone(domain, cfg.Data[key])
+	records, _ := ParseZone(domain, cfg.Data[zoneKey])
 	records = append(records, record)
-	data, err := RenderZone(domain, records)
+	data, err := RenderZoneWithNextSerial(domain, records, cfg.Data[zoneKey])
 	if err != nil {
 		return Record{}, err
 	}
-	cfg.Data[key] = data
+	serverData, err := RenderZoneServer(domain)
+	if err != nil {
+		return Record{}, err
+	}
+	cfg.Data[serverKey] = serverData
+	cfg.Data[zoneKey] = data
 	if _, err := s.updateCustomConfigMap(ctx, cfg); err != nil {
 		return Record{}, err
 	}
@@ -179,8 +192,12 @@ func (s *Service) UpdateRecord(ctx context.Context, domain string, id string, re
 	if err != nil {
 		return Record{}, err
 	}
-	key := ConfigMapKey(domain)
-	records, err := ParseZone(domain, cfg.Data[key])
+	serverKey := ConfigMapKey(domain)
+	zoneKey := ZoneFileConfigMapKey(domain)
+	if _, ok := cfg.Data[serverKey]; !ok {
+		return Record{}, apierrors.NewNotFound(corev1.Resource("dnszone"), domain)
+	}
+	records, err := ParseZone(domain, cfg.Data[zoneKey])
 	if err != nil {
 		return Record{}, err
 	}
@@ -195,11 +212,16 @@ func (s *Service) UpdateRecord(ctx context.Context, domain string, id string, re
 	if !found {
 		return Record{}, apierrors.NewNotFound(corev1.Resource("dnsrecord"), id)
 	}
-	data, err := RenderZone(domain, records)
+	data, err := RenderZoneWithNextSerial(domain, records, cfg.Data[zoneKey])
 	if err != nil {
 		return Record{}, err
 	}
-	cfg.Data[key] = data
+	serverData, err := RenderZoneServer(domain)
+	if err != nil {
+		return Record{}, err
+	}
+	cfg.Data[serverKey] = serverData
+	cfg.Data[zoneKey] = data
 	if _, err := s.updateCustomConfigMap(ctx, cfg); err != nil {
 		return Record{}, err
 	}
@@ -218,8 +240,12 @@ func (s *Service) DeleteRecord(ctx context.Context, domain string, id string) er
 	if err != nil {
 		return err
 	}
-	key := ConfigMapKey(domain)
-	records, err := ParseZone(domain, cfg.Data[key])
+	serverKey := ConfigMapKey(domain)
+	zoneKey := ZoneFileConfigMapKey(domain)
+	if _, ok := cfg.Data[serverKey]; !ok {
+		return apierrors.NewNotFound(corev1.Resource("dnszone"), domain)
+	}
+	records, err := ParseZone(domain, cfg.Data[zoneKey])
 	if err != nil {
 		return err
 	}
@@ -235,11 +261,16 @@ func (s *Service) DeleteRecord(ctx context.Context, domain string, id string) er
 	if !found {
 		return apierrors.NewNotFound(corev1.Resource("dnsrecord"), id)
 	}
-	data, err := RenderZone(domain, next)
+	data, err := RenderZoneWithNextSerial(domain, next, cfg.Data[zoneKey])
 	if err != nil {
 		return err
 	}
-	cfg.Data[key] = data
+	serverData, err := RenderZoneServer(domain)
+	if err != nil {
+		return err
+	}
+	cfg.Data[serverKey] = serverData
+	cfg.Data[zoneKey] = data
 	if _, err = s.updateCustomConfigMap(ctx, cfg); err != nil {
 		return err
 	}
@@ -308,7 +339,10 @@ func (s *Service) getZoneData(ctx context.Context, domain string) (string, strin
 	if err != nil {
 		return "", "", err
 	}
-	data, ok := cfg.Data[ConfigMapKey(domain)]
+	if _, ok := cfg.Data[ConfigMapKey(domain)]; !ok {
+		return "", "", apierrors.NewNotFound(corev1.Resource("dnszone"), domain)
+	}
+	data, ok := cfg.Data[ZoneFileConfigMapKey(domain)]
 	if !ok {
 		return "", "", apierrors.NewNotFound(corev1.Resource("dnszone"), domain)
 	}

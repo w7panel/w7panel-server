@@ -3,6 +3,7 @@ package coredns
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -62,14 +63,26 @@ func TestEnsureCoreDNSDeploymentCustomConfig(t *testing.T) {
 
 func TestUpdateRecordAppliesCoreDNSChange(t *testing.T) {
 	ctx := context.Background()
-	customZone, err := RenderZone("example.com", []Record{{ID: "record-1", Name: "www", Type: "A", Value: "1.1.1.1", TTL: 60}})
+	original, err := NormalizeRecord("example.com", Record{Name: "www", Type: "A", Value: "1.1.1.1", TTL: 60})
 	if err != nil {
 		t.Fatal(err)
 	}
+	customServer, err := RenderZoneServer("example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	customZone, err := RenderZone("example.com", []Record{original})
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalSerial := extractZoneSerial(customZone)
 	client := fake.NewSimpleClientset(
 		&corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: CoreDNSCustomName, Namespace: CoreDNSNamespace},
-			Data:       map[string]string{ConfigMapKey("example.com"): customZone},
+			Data: map[string]string{
+				ConfigMapKey("example.com"):         customServer,
+				ZoneFileConfigMapKey("example.com"): customZone,
+			},
 		},
 		&corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: CoreDNSName, Namespace: CoreDNSNamespace},
@@ -79,7 +92,7 @@ func TestUpdateRecordAppliesCoreDNSChange(t *testing.T) {
 	)
 	service := newServiceWithClient(client)
 
-	updated, err := service.UpdateRecord(ctx, "example.com", "record-1", Record{Name: "www", Type: "A", Value: "2.2.2.2", TTL: 60})
+	updated, err := service.UpdateRecord(ctx, "example.com", original.ID, Record{Name: "www", Type: "A", Value: "2.2.2.2", TTL: 60})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,6 +106,20 @@ func TestUpdateRecordAppliesCoreDNSChange(t *testing.T) {
 	if corefileConfig.Data[coreDNSCorefileKey] != ".:53 {\n  errors\n}\nimport /etc/coredns/custom/*.server\n" {
 		t.Fatalf("unexpected corefile:\n%s", corefileConfig.Data[coreDNSCorefileKey])
 	}
+	customConfig, err := client.CoreV1().ConfigMaps(CoreDNSNamespace).Get(ctx, CoreDNSCustomName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if customConfig.Data[ConfigMapKey("example.com")] != customServer {
+		t.Fatalf("unexpected server block:\n%s", customConfig.Data[ConfigMapKey("example.com")])
+	}
+	zoneData := customConfig.Data[ZoneFileConfigMapKey("example.com")]
+	if !strings.Contains(zoneData, "www 60 IN A 2.2.2.2") {
+		t.Fatalf("expected updated zone record, got:\n%s", zoneData)
+	}
+	if serial := extractZoneSerial(zoneData); serial <= originalSerial {
+		t.Fatalf("expected serial to increase from %d, got %d", originalSerial, serial)
+	}
 	deployment, err := client.AppsV1().Deployments(CoreDNSNamespace).Get(ctx, CoreDNSName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -105,6 +132,69 @@ func TestUpdateRecordAppliesCoreDNSChange(t *testing.T) {
 	}
 	if !hasCoreDNSCustomVolumeMount(deployment.Spec.Template.Spec.Containers[0].VolumeMounts) {
 		t.Fatalf("expected custom config mount")
+	}
+}
+
+func TestCreateZoneWritesServerAndZoneFiles(t *testing.T) {
+	ctx := context.Background()
+	client := fake.NewSimpleClientset(
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: CoreDNSCustomName, Namespace: CoreDNSNamespace},
+			Data:       map[string]string{},
+		},
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: CoreDNSName, Namespace: CoreDNSNamespace},
+			Data:       map[string]string{coreDNSCorefileKey: ".:53 {\n  errors\n}\n"},
+		},
+		coreDNSDeployment(),
+	)
+	service := newServiceWithClient(client)
+
+	if _, err := service.CreateZone(ctx, "test4.com"); err != nil {
+		t.Fatal(err)
+	}
+	customConfig, err := client.CoreV1().ConfigMaps(CoreDNSNamespace).Get(ctx, CoreDNSCustomName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(customConfig.Data[ConfigMapKey("test4.com")], "file /etc/coredns/custom/test4.com.zone") {
+		t.Fatalf("expected server block to reference zone file, got:\n%s", customConfig.Data[ConfigMapKey("test4.com")])
+	}
+	if !strings.Contains(customConfig.Data[ZoneFileConfigMapKey("test4.com")], "$ORIGIN test4.com.") {
+		t.Fatalf("expected zone file, got:\n%s", customConfig.Data[ZoneFileConfigMapKey("test4.com")])
+	}
+}
+
+func TestDeleteZoneRemovesServerAndZoneFiles(t *testing.T) {
+	ctx := context.Background()
+	client := fake.NewSimpleClientset(
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: CoreDNSCustomName, Namespace: CoreDNSNamespace},
+			Data: map[string]string{
+				ConfigMapKey("example.com"):         "server",
+				ZoneFileConfigMapKey("example.com"): "zone",
+			},
+		},
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: CoreDNSName, Namespace: CoreDNSNamespace},
+			Data:       map[string]string{coreDNSCorefileKey: ".:53 {\n  errors\n}\n"},
+		},
+		coreDNSDeployment(),
+	)
+	service := newServiceWithClient(client)
+
+	if err := service.DeleteZone(ctx, "example.com"); err != nil {
+		t.Fatal(err)
+	}
+	customConfig, err := client.CoreV1().ConfigMaps(CoreDNSNamespace).Get(ctx, CoreDNSCustomName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := customConfig.Data[ConfigMapKey("example.com")]; ok {
+		t.Fatalf("expected server key to be deleted")
+	}
+	if _, ok := customConfig.Data[ZoneFileConfigMapKey("example.com")]; ok {
+		t.Fatalf("expected zone key to be deleted")
 	}
 }
 

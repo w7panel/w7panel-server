@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/netip"
 	"regexp"
@@ -12,16 +13,21 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	mdns "github.com/miekg/dns"
 )
 
 const (
-	CoreDNSNamespace      = "kube-system"
-	CoreDNSName           = "coredns"
-	CoreDNSCustomName     = "coredns-custom"
-	PublicDNSServiceName  = "w7-coredns-public"
-	DefaultTTL            = 60
-	DefaultMXPriority     = 10
-	recordIDCommentPrefix = "# w7-dns-record-id:"
+	CoreDNSNamespace     = "kube-system"
+	CoreDNSName          = "coredns"
+	CoreDNSCustomName    = "coredns-custom"
+	PublicDNSServiceName = "w7-coredns-public"
+	DefaultTTL           = 60
+	DefaultMXPriority    = 10
+	soaRefresh           = 3600
+	soaRetry             = 1800
+	soaExpire            = 86400
+	soaMinimum           = 1
 )
 
 var (
@@ -124,6 +130,35 @@ func FQDN(domain string, name string) string {
 }
 
 func RenderZone(domain string, records []Record) (string, error) {
+	return renderZone(domain, records, 0, time.Now())
+}
+
+func RenderZoneWithNextSerial(domain string, records []Record, previousZone string) (string, error) {
+	serial := nextZoneSerial(extractZoneSerial(previousZone), time.Now())
+	return renderZone(domain, records, serial, time.Now())
+}
+
+func RenderZoneServer(domain string) (string, error) {
+	domain, err := NormalizeDomain(domain)
+	if err != nil {
+		return "", err
+	}
+	var builder strings.Builder
+	builder.WriteString(domain)
+	builder.WriteString(" {\n")
+	builder.WriteString("  file /etc/coredns/custom/")
+	builder.WriteString(ZoneFileConfigMapKey(domain))
+	builder.WriteString(" {\n")
+	builder.WriteString("    reload 5s\n")
+	builder.WriteString("    fallthrough\n")
+	builder.WriteString("  }\n")
+	builder.WriteString("  reload\n")
+	builder.WriteString("  loadbalance\n")
+	builder.WriteString("}\n")
+	return builder.String(), nil
+}
+
+func renderZone(domain string, records []Record, serial int64, now time.Time) (string, error) {
 	domain, err := NormalizeDomain(domain)
 	if err != nil {
 		return "", err
@@ -137,37 +172,39 @@ func RenderZone(domain string, records []Record) (string, error) {
 		normalized = append(normalized, item)
 	}
 	sortRecords(normalized)
+	if serial <= 0 {
+		serial = nextZoneSerial(0, now)
+	}
 
 	var builder strings.Builder
+	builder.WriteString("$ORIGIN ")
 	builder.WriteString(domain)
-	builder.WriteString(" {\n")
-	for i := 0; i < len(normalized); {
-		record := normalized[i]
-		qname := FQDN(domain, record.Name)
-		builder.WriteString("  template IN ")
-		builder.WriteString(record.Type)
-		builder.WriteString(" ")
-		builder.WriteString(qname)
-		builder.WriteString(" {\n")
-		for i < len(normalized) && normalized[i].Name == record.Name && normalized[i].Type == record.Type {
-			item := normalized[i]
-			builder.WriteString("    ")
-			builder.WriteString(recordIDCommentPrefix)
-			builder.WriteString(" ")
-			builder.WriteString(item.ID)
-			builder.WriteString("\n")
-			builder.WriteString("    answer \"")
-			builder.WriteString(escapeAnswer(renderAnswer(qname, item)))
-			builder.WriteString("\"\n")
-			i++
-		}
-		builder.WriteString("  }\n\n")
+	builder.WriteString(".\n\n")
+	builder.WriteString("@ IN SOA ns.")
+	builder.WriteString(domain)
+	builder.WriteString(". admin.")
+	builder.WriteString(domain)
+	builder.WriteString(". (\n")
+	builder.WriteString("    ")
+	builder.WriteString(strconv.FormatInt(serial, 10))
+	builder.WriteString("\n")
+	builder.WriteString("    ")
+	builder.WriteString(strconv.Itoa(soaRefresh))
+	builder.WriteString("\n")
+	builder.WriteString("    ")
+	builder.WriteString(strconv.Itoa(soaRetry))
+	builder.WriteString("\n")
+	builder.WriteString("    ")
+	builder.WriteString(strconv.Itoa(soaExpire))
+	builder.WriteString("\n")
+	builder.WriteString("    ")
+	builder.WriteString(strconv.Itoa(soaMinimum))
+	builder.WriteString("\n")
+	builder.WriteString(")\n\n")
+	for _, record := range normalized {
+		builder.WriteString(renderZoneRecord(record))
+		builder.WriteString("\n")
 	}
-	builder.WriteString("  template ANY ANY {\n")
-	builder.WriteString("    rcode NOERROR\n")
-	builder.WriteString("  }\n\n")
-	builder.WriteString("  loadbalance\n")
-	builder.WriteString("}\n")
 	return builder.String(), nil
 }
 
@@ -176,28 +213,12 @@ func ParseZone(domain string, data string) ([]Record, error) {
 	if err != nil {
 		return nil, err
 	}
-	lines := strings.Split(data, "\n")
+	parser := mdns.NewZoneParser(strings.NewReader(data), domain+".", "")
 	records := make([]Record, 0)
-	nextID := ""
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, recordIDCommentPrefix) {
-			nextID = strings.TrimSpace(strings.TrimPrefix(line, recordIDCommentPrefix))
-			continue
-		}
-		if !strings.HasPrefix(line, "answer ") {
-			continue
-		}
-		answer := strings.TrimSpace(strings.TrimPrefix(line, "answer "))
-		answer = strings.Trim(answer, `"`)
-		answer = strings.ReplaceAll(answer, `\"`, `"`)
-		record, err := parseAnswer(domain, answer)
+	for rr, ok := parser.Next(); ok; rr, ok = parser.Next() {
+		record, err := recordFromRR(domain, rr)
 		if err != nil {
 			continue
-		}
-		if nextID != "" {
-			record.ID = nextID
-			nextID = ""
 		}
 		record, err = NormalizeRecord(domain, record)
 		if err != nil {
@@ -205,12 +226,19 @@ func ParseZone(domain string, data string) ([]Record, error) {
 		}
 		records = append(records, record)
 	}
+	if err := parser.Err(); err != nil && !errors.Is(err, io.EOF) {
+		return nil, err
+	}
 	sortRecords(records)
 	return records, nil
 }
 
 func ConfigMapKey(domain string) string {
 	return domain + ".server"
+}
+
+func ZoneFileConfigMapKey(domain string) string {
+	return domain + ".zone"
 }
 
 func DomainFromConfigMapKey(key string) (string, bool) {
@@ -270,65 +298,86 @@ func validateRecordValue(domain string, record Record) error {
 	return nil
 }
 
-func renderAnswer(qname string, record Record) string {
+func renderZoneRecord(record Record) string {
+	name := record.Name
+	if name == "" {
+		name = "@"
+	}
 	switch record.Type {
 	case "CNAME":
-		return fmt.Sprintf("%s %d IN CNAME %s.", qname, record.TTL, strings.TrimSuffix(record.Value, "."))
+		return fmt.Sprintf("%s %d IN CNAME %s.", name, record.TTL, strings.TrimSuffix(record.Value, "."))
 	case "MX":
-		return fmt.Sprintf("%s %d IN MX %d %s.", qname, record.TTL, record.MXPriority, strings.TrimSuffix(record.Value, "."))
+		return fmt.Sprintf("%s %d IN MX %d %s.", name, record.TTL, record.MXPriority, strings.TrimSuffix(record.Value, "."))
 	case "TXT":
-		return fmt.Sprintf("%s %d IN TXT %q", qname, record.TTL, record.Value)
+		return fmt.Sprintf("%s %d IN TXT %s", name, record.TTL, strconv.Quote(record.Value))
 	default:
-		return fmt.Sprintf("%s %d IN %s %s", qname, record.TTL, record.Type, record.Value)
+		return fmt.Sprintf("%s %d IN %s %s", name, record.TTL, record.Type, record.Value)
 	}
 }
 
-func escapeAnswer(answer string) string {
-	return strings.ReplaceAll(answer, `"`, `\"`)
-}
-
-func parseAnswer(domain string, answer string) (Record, error) {
-	fields := strings.Fields(answer)
-	if len(fields) < 5 {
-		return Record{}, errors.New("answer is invalid")
-	}
-	qname := strings.TrimSuffix(fields[0], ".")
-	suffix := "." + domain
+func recordNameFromRR(domain string, header *mdns.RR_Header) (string, error) {
+	qname := strings.TrimSuffix(strings.ToLower(header.Name), ".")
 	name := "@"
 	if qname != domain {
+		suffix := "." + domain
 		if !strings.HasSuffix(qname, suffix) {
-			return Record{}, errors.New("answer domain mismatch")
+			return "", errors.New("record domain mismatch")
 		}
 		name = strings.TrimSuffix(qname, suffix)
 	}
-	ttl, err := strconv.Atoi(fields[1])
+	return name, nil
+}
+
+func recordFromRR(domain string, rr mdns.RR) (Record, error) {
+	header := rr.Header()
+	name, err := recordNameFromRR(domain, header)
 	if err != nil {
 		return Record{}, err
 	}
-	recordType := strings.ToUpper(fields[3])
-	record := Record{Name: name, Type: recordType, TTL: ttl}
-	switch recordType {
-	case "MX":
-		if len(fields) < 6 {
-			return Record{}, errors.New("MX answer is invalid")
+	record := Record{Name: name, TTL: int(header.Ttl)}
+	switch item := rr.(type) {
+	case *mdns.A:
+		record.Type = "A"
+		record.Value = item.A.String()
+	case *mdns.AAAA:
+		record.Type = "AAAA"
+		record.Value = item.AAAA.String()
+	case *mdns.CNAME:
+		record.Type = "CNAME"
+		record.Value = strings.TrimSuffix(strings.ToLower(item.Target), ".")
+	case *mdns.MX:
+		record.Type = "MX"
+		record.MXPriority = int(item.Preference)
+		record.Value = strings.TrimSuffix(strings.ToLower(item.Mx), ".")
+	case *mdns.TXT:
+		record.Type = "TXT"
+		if len(item.Txt) == 0 {
+			record.Value = ""
+		} else {
+			record.Value = strings.Join(item.Txt, "")
 		}
-		priority, err := strconv.Atoi(fields[4])
-		if err != nil {
-			return Record{}, err
-		}
-		record.MXPriority = priority
-		record.Value = strings.TrimSuffix(fields[5], ".")
-	case "TXT":
-		value := strings.Join(fields[4:], " ")
-		value = strings.Trim(value, `"`)
-		record.Value = value
 	default:
-		record.Value = strings.TrimSuffix(fields[4], ".")
-		if recordType == "A" || recordType == "AAAA" {
-			record.Value = fields[4]
-		}
+		return Record{}, fmt.Errorf("record type %d is unsupported", header.Rrtype)
 	}
 	return record, nil
+}
+
+func extractZoneSerial(data string) int64 {
+	parser := mdns.NewZoneParser(strings.NewReader(data), "", "")
+	for rr, ok := parser.Next(); ok; rr, ok = parser.Next() {
+		if soa, ok := rr.(*mdns.SOA); ok {
+			return int64(soa.Serial)
+		}
+	}
+	return 0
+}
+
+func nextZoneSerial(previous int64, now time.Time) int64 {
+	base, _ := strconv.ParseInt(now.Format("20060102")+"01", 10, 64)
+	if previous >= base {
+		return previous + 1
+	}
+	return base
 }
 
 func CollectServiceExternalIPs(ingress []string, externalIPs []string) []string {
