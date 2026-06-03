@@ -59,7 +59,7 @@ func (self Static) StaticInfo(http *gin.Context) {
 		"status":   status,
 		"proxyUrl": proxyUrl,
 		"zpkUrl":   zpkUrl,
-		"ticket":   ticket,
+		// "ticket":   ticket,
 	})
 }
 
