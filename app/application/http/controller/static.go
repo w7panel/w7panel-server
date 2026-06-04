@@ -34,8 +34,8 @@ func (self Static) StaticInfo(http *gin.Context) {
 	// 通过 releaseName 查找 AppGroup，获取 zpkUrl 和 ticket 信息，并缓存 ticket
 	zpkUrl := ""
 	ticket := ""
-	proxyUrl := ""
-	if releaseName != "" {
+	proxyUrl := "/ui/microapp/" + identifie + "/" + version + "/index.html"
+	if releaseName != "" && releaseName != "default" {
 		sdk := k8s.NewK8sClient().Sdk
 		group, err := appgroup.GetAppgroupUseSdk(releaseName, "default", sdk)
 		if err == nil {
@@ -53,6 +53,9 @@ func (self Static) StaticInfo(http *gin.Context) {
 				proxyUrl = fmt.Sprintf("/panel-api/v1/static/proxy/%s/%s/%s/frontend/index.html", zpkUrlEncoded, identifie, version)
 			}
 		}
+	}
+	if status == appgroup.DOWNLOAD_SUCCESS {
+		proxyUrl = "/ui/microapp/" + identifie + "/" + version + "/index.html"
 	}
 
 	self.JsonResponseWithoutError(http, gin.H{
