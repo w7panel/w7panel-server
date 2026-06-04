@@ -288,9 +288,9 @@ func (u *k3kUser) GetMenu() string {
 	// }
 	name, ok := u.Annotations[W7_MENU]
 	if ok {
-		if console.IsFree() {
-			name = strings.ReplaceAll(name, "system-manage", "system-manage-free") //替换为不存在的多租户管理菜单
-		}
+		// if console.IsFree() { //去掉 必须企业版的限制
+		// 	name = strings.ReplaceAll(name, "system-manage", "system-manage-free") //替换为不存在的多租户管理菜单
+		// }
 		return name
 	}
 	return ""
