@@ -1,0 +1,34 @@
+apiVersion: w7panel.w7.com/v1alpha1
+kind: Permission
+metadata:
+  name: w7panel.permission.normal
+  namespace: default
+  labels:
+    type: permission
+    typemode: custom
+    w7.cc/role: normal
+  annotations:
+    title: 测试权限
+spec:
+  role: normal
+  builtin: false
+  inherits: normal
+  title: 测试权限
+  menu:
+    - app/*
+    - storage/*
+  api:
+    - path: /panel-api/v1/app*
+      verbs:
+        - GET
+        - POST
+    - path: /panel-api/v1/storage*
+      verbs:
+        - GET
+  features:
+    debug: false
+    webshell: false
+    fileeditor: false
+  domainWhitelist:
+    - localhost
+    - 127.0.0.1

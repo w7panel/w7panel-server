@@ -49,9 +49,8 @@ w7panel-*.tgz
 /publish.sh
 publish.sh
 pub.sh
-<<<<<<< HEAD
 build.sh
 .cache
 /.cache
-=======
->>>>>>> dev-v1
+.gocache
+/.gocache
