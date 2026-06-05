@@ -12,6 +12,7 @@ func TestRenderAndParseZone(t *testing.T) {
 		{Name: "www", Type: "A", TTL: 60, Value: "2.2.2.2"},
 		{Name: "www", Type: "AAAA", TTL: 120, Value: "2001:db8::1"},
 		{Name: "@", Type: "MX", TTL: 300, Value: "mail.example.com", MXPriority: 20},
+		{Name: "@", Type: "NS", TTL: 300, Value: "ns1.example.net"},
 		{Name: "txt", Type: "TXT", TTL: 60, Value: "hello world"},
 		{Name: "cdn", Type: "CNAME", TTL: 60, Value: "target.example.net"},
 	}
@@ -31,6 +32,9 @@ func TestRenderAndParseZone(t *testing.T) {
 	}
 	if !strings.Contains(data, "@ 300 IN MX 20 mail.example.com.") {
 		t.Fatalf("expected MX answer, got %s", data)
+	}
+	if !strings.Contains(data, "@ 300 IN NS ns1.example.net.") {
+		t.Fatalf("expected NS answer, got %s", data)
 	}
 	if strings.Contains(data, "template ") {
 		t.Fatalf("did not expect template plugin output, got %s", data)

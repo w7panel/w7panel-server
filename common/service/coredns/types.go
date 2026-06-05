@@ -334,6 +334,10 @@ func validateRecordValue(domain string, record Record) error {
 		if _, err := NormalizeDomain(record.Value); err != nil {
 			return errors.New("MX value must be a domain")
 		}
+	case "NS":
+		if _, err := NormalizeDomain(record.Value); err != nil {
+			return errors.New("NS value must be a domain")
+		}
 	default:
 		return fmt.Errorf("record type %q is unsupported", record.Type)
 	}
@@ -351,6 +355,8 @@ func renderZoneRecord(record Record) string {
 		return fmt.Sprintf("%s %d IN CNAME %s.", name, record.TTL, strings.TrimSuffix(record.Value, "."))
 	case "MX":
 		return fmt.Sprintf("%s %d IN MX %d %s.", name, record.TTL, record.MXPriority, strings.TrimSuffix(record.Value, "."))
+	case "NS":
+		return fmt.Sprintf("%s %d IN NS %s.", name, record.TTL, strings.TrimSuffix(record.Value, "."))
 	case "TXT":
 		return fmt.Sprintf("%s %d IN TXT %s", name, record.TTL, strconv.Quote(record.Value))
 	default:
@@ -434,6 +440,9 @@ func recordFromRR(domain string, rr mdns.RR) (Record, error) {
 		record.Type = "MX"
 		record.MXPriority = int(item.Preference)
 		record.Value = strings.TrimSuffix(strings.ToLower(item.Mx), ".")
+	case *mdns.NS:
+		record.Type = "NS"
+		record.Value = strings.TrimSuffix(strings.ToLower(item.Ns), ".")
 	case *mdns.TXT:
 		record.Type = "TXT"
 		if len(item.Txt) == 0 {
