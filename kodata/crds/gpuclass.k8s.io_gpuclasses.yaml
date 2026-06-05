@@ -4,6 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
+    api-approved.kubernetes.io: "https://www.w7.cc"
   name: gpuclasses.gpuclass.k8s.io
 spec:
   group: gpuclass.k8s.io
