@@ -16,8 +16,8 @@
        
         - name: upzip
           script: cd ./kodata/ && unzip -o ./kui.zip
-        - name: unzipwebdav
-          script: cd ./kodata/plugin && unzip -o ./codeblitz.zip
+        # - name: unzipwebdav
+        #   script: cd ./kodata/plugin && unzip -o ./codeblitz.zip
         - name: logo
           script: mv ./kodata/logo.png ./kodata/assets/logo.png
         - name: login
@@ -46,8 +46,8 @@ v1.1.*:
        
         - name: upzip
           script: cd ./kodata/ && unzip -o ./kui.zip
-        - name: unzipwebdav
-          script: cd ./kodata/plugin && unzip -o ./codeblitz.zip
+        # - name: unzipwebdav
+        #   script: cd ./kodata/plugin && unzip -o ./codeblitz.zip
         - name: logo
           script: mv ./kodata/logo.png ./kodata/assets/logo.png
         - name: login
