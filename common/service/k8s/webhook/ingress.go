@@ -24,7 +24,6 @@ import (
 func (m *ResourceMutator) handleIngress(ctx context.Context, req admission.Request) admission.Response {
 	// slog.Info("处理 Ingress admission 请求")
 
-	defer handlerIngressSync(req, m.decoder, m.client)
 	ingress := &networkingv1.Ingress{}
 	// 判断是否Delete 请求
 	delete := false
@@ -40,13 +39,25 @@ func (m *ResourceMutator) handleIngress(ctx context.Context, req admission.Reque
 	}
 	// 解码请求中的 Ingress 资源
 
-	if helper.IsChildAgent() {
-		defer k3k.SyncHttpAfter(ingress, "sync-ingress")
-	}
 	if delete {
+		if helper.IsChildAgent() {
+			defer k3k.SyncHttpAfter(ingress, "sync-ingress")
+		}
+		defer handlerIngressSync(req, m.decoder, m.client)
 		defer m.handleIngressDelete(m.client, ingress.DeepCopy())
 		return admission.Allowed("删除请求")
 	}
+
+	if req.Operation == "CREATE" || req.Operation == "UPDATE" {
+		if err := validateIngressHostUniqueAcrossNamespaces(ctx, m.client, ingress); err != nil {
+			return admission.Denied(err.Error())
+		}
+	}
+
+	if helper.IsChildAgent() {
+		defer k3k.SyncHttpAfter(ingress, "sync-ingress")
+	}
+	defer handlerIngressSync(req, m.decoder, m.client)
 
 	ann := ingress.Annotations
 	if ann == nil {
@@ -161,6 +172,50 @@ func isSecretReferencedByOtherIngress(clientset client.Client, deletedIngress *n
 	}
 
 	return false
+}
+
+func validateIngressHostUniqueAcrossNamespaces(ctx context.Context, clientset client.Client, current *networkingv1.Ingress) error {
+	hosts := ingressRuleHosts(current)
+	if len(hosts) == 0 {
+		return nil
+	}
+
+	ingresses := &networkingv1.IngressList{}
+	if err := clientset.List(ctx, ingresses); err != nil {
+		slog.Error("Failed to list Ingresses", "error", err)
+		return fmt.Errorf("检查 Ingress 域名是否重复失败: %w", err)
+	}
+
+	for _, ingress := range ingresses.Items {
+		if ingress.Namespace == current.Namespace {
+			continue
+		}
+
+		for _, rule := range ingress.Spec.Rules {
+			host := normalizeIngressHost(rule.Host)
+			if _, exists := hosts[host]; exists {
+				return fmt.Errorf("域名 %s 已在命名空间 %s 的 Ingress %s 中存在", rule.Host, ingress.Namespace, ingress.Name)
+			}
+		}
+	}
+
+	return nil
+}
+
+func ingressRuleHosts(ingress *networkingv1.Ingress) map[string]struct{} {
+	hosts := make(map[string]struct{})
+	for _, rule := range ingress.Spec.Rules {
+		host := normalizeIngressHost(rule.Host)
+		if host == "" {
+			continue
+		}
+		hosts[host] = struct{}{}
+	}
+	return hosts
+}
+
+func normalizeIngressHost(host string) string {
+	return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
 }
 
 // 解析白名单数据
