@@ -291,9 +291,9 @@ func (self Auth) GetInitUser(http *gin.Context) {
 		maps["canInitUser"] = "false"
 	}
 
-	k3kconfig, err := client.ClientSet.CoreV1().ConfigMaps("kube-system").Get(http, "k3k.config", v1.GetOptions{})
+	dataMap, err := client.GetConfigCRDData(http, k8s.K3kConfigGVR, k8s.K3kConfigName)
 	if err == nil {
-		maps["allowConsoleRegister"] = k3kconfig.Data["allowConsoleRegister"]
+		maps["allowConsoleRegister"] = dataMap["allowConsoleRegister"]
 	}
 	self.JsonResponseWithoutError(http, maps)
 	return

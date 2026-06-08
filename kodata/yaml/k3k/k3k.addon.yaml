@@ -47,10 +47,10 @@ roleRef:
 
 ---
 
-kind: ConfigMap
-apiVersion: v1
+kind: K3sConfig
+apiVersion: w7panel.w7.com/v1alpha1
 metadata:
     name: k3s.config
-    namespace: kube-system
-data:
-    k3s.mode: '4'
+spec:
+    data:
+        k3s.mode: '4'

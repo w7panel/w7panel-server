@@ -60,14 +60,14 @@ func (self Site) Beian2(http *gin.Context) {
 
 func (self Site) K3kConfig(http *gin.Context) {
 	sdk := k8s.NewK8sClient()
-	configmap, err := sdk.ClientSet.CoreV1().ConfigMaps("kube-system").Get(http, "k3k.config", metav1.GetOptions{})
+	dataMap, err := sdk.GetConfigCRDData(http, k8s.K3kConfigGVR, k8s.K3kConfigName)
 	if err != nil {
 		self.JsonSuccessResponse(http)
 		return
 	}
 
 	response := gin.H{}
-	if data, ok := configmap.Data["indexpage"]; ok {
+	if data, ok := dataMap["indexpage"]; ok {
 		response["indexpage"] = data
 	}
 
@@ -93,9 +93,9 @@ func (self Site) InitUser(http *gin.Context) {
 		response["captchaEnabled"] = "true"
 	}
 
-	k3kconfig, err := sdk.ClientSet.CoreV1().ConfigMaps("kube-system").Get(http, "k3k.config", metav1.GetOptions{})
+	dataMap, err := sdk.GetConfigCRDData(http, k8s.K3kConfigGVR, k8s.K3kConfigName)
 	if err == nil {
-		if data, ok := k3kconfig.Data["allowConsoleRegister"]; ok {
+		if data, ok := dataMap["allowConsoleRegister"]; ok {
 			response["allowConsoleRegister"] = data
 		}
 	}

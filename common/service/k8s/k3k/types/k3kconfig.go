@@ -21,8 +21,12 @@ func NewK3kConfigBySecret(secret *corev1.Secret) *K3kConfigSetting {
 	}
 }
 func NewK3kConfigByConfigmap(cm *corev1.ConfigMap) *K3kConfigSetting {
+	return NewK3kConfigByData(cm.Data)
+}
+
+func NewK3kConfigByData(data map[string]string) *K3kConfigSetting {
 	return &K3kConfigSetting{
-		AllowConsoleRegister: string(cm.Data["allowConsoleRegister"]) == "true",
-		DefaultPolicyName:    string(cm.Data["defaultPolicyName"]),
+		AllowConsoleRegister: data["allowConsoleRegister"] == "true",
+		DefaultPolicyName:    data["defaultPolicyName"],
 	}
 }
