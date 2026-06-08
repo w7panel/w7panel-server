@@ -25,6 +25,8 @@ type Static struct {
 	controller.Abstract
 }
 
+const frontendSourceHeader = "X-Frontend-Source"
+
 func (self Static) StaticInfo(http *gin.Context) {
 	identifie := http.Param("identifie")
 	version := http.Query("version")
@@ -132,6 +134,7 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 		if localPath == "." {
 			localPath = "index.html"
 		}
+		ctx.Header(frontendSourceHeader, "local")
 		ctx.File(filepath.Join(microappPath, identifie, version, localPath))
 		return
 	}
@@ -204,10 +207,12 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 	}
 	proxy.ModifyResponse = func(res *http.Response) error {
 		res.Header.Del("Access-Control-Allow-Origin")
+		res.Header.Set(frontendSourceHeader, "proxy")
 		return nil
 	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		slog.Error("前端资源代理错误", "error", err, "path", r.URL.Path)
+		w.Header().Set(frontendSourceHeader, "proxy")
 		w.WriteHeader(http.StatusBadGateway)
 		_, _ = w.Write([]byte(fmt.Sprintf(`{"code":502,"error":"%s"}`, err.Error())))
 	}
