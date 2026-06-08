@@ -134,7 +134,7 @@ metadata:
 spec:
     data:
         allowConsoleRegister: "true"
-        defaultPolicyName: "yibqvzoz"
+        defaultPermissionName: "yibqvzoz"
 
 */
 //	func (k *K3kClient) TokenToK3kUser(token string) (*k3kUser, error) {
