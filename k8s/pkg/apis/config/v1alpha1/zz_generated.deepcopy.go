@@ -194,3 +194,68 @@ func (in *LicenseSpec) DeepCopy() *LicenseSpec {
 	in.DeepCopyInto(out)
 	return out
 }
+
+func (in *OverSellingConfig) DeepCopyInto(out *OverSellingConfig) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	out.Spec = in.Spec
+}
+
+func (in *OverSellingConfig) DeepCopy() *OverSellingConfig {
+	if in == nil {
+		return nil
+	}
+	out := new(OverSellingConfig)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *OverSellingConfig) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *OverSellingConfigList) DeepCopyInto(out *OverSellingConfigList) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]OverSellingConfig, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+}
+
+func (in *OverSellingConfigList) DeepCopy() *OverSellingConfigList {
+	if in == nil {
+		return nil
+	}
+	out := new(OverSellingConfigList)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *OverSellingConfigList) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *OverSellingConfigSpec) DeepCopyInto(out *OverSellingConfigSpec) {
+	*out = *in
+}
+
+func (in *OverSellingConfigSpec) DeepCopy() *OverSellingConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(OverSellingConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
