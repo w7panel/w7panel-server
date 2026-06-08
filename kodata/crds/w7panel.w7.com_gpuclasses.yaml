@@ -5,9 +5,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
     api-approved.kubernetes.io: "https://www.w7.cc"
-  name: gpuclasses.gpuclass.k8s.io
+  name: gpuclasses.w7panel.w7.com
 spec:
-  group: gpuclass.k8s.io
+  group: w7panel.w7.com
   names:
     kind: GpuClass
     listKind: GpuClassList

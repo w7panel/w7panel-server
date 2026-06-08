@@ -529,7 +529,7 @@ func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) {
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "MicroApp",
-			APIVersion: "microapp.w7.cc/v1alpha1",
+			APIVersion: "w7panel.w7.com/v1alpha1",
 		},
 	}
 	err = sigClient.Delete(d.sdk.Ctx, mc, &sigclient.DeleteOptions{})

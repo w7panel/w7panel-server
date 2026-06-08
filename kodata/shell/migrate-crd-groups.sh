@@ -1,0 +1,54 @@
+#!/bin/sh
+set -e
+
+KUBECTL="${KUBECTL:-kubectl}"
+NEW_GROUP="w7panel.w7.com"
+NEW_VERSION="v1alpha1"
+
+migrate_resource() {
+    old_resource="$1"
+    new_resource="$2"
+    api_version="${NEW_GROUP}/${NEW_VERSION}"
+
+    if ! $KUBECTL get crd "${old_resource}" >/dev/null 2>&1; then
+        echo "skip ${old_resource}: old CRD not found"
+        return 0
+    fi
+
+    if ! $KUBECTL get crd "${new_resource}" >/dev/null 2>&1; then
+        echo "skip ${old_resource}: new CRD ${new_resource} not found"
+        return 1
+    fi
+
+    namespaces="$($KUBECTL get "${old_resource}" -A -o json | jq -r '.items[]?.metadata.namespace' | sort -u)"
+    if [ -z "${namespaces}" ]; then
+        echo "skip ${old_resource}: no objects"
+        return 0
+    fi
+
+    for namespace in ${namespaces}; do
+        echo "migrate ${old_resource} namespace/${namespace} -> ${api_version}"
+        $KUBECTL get "${old_resource}" -n "${namespace}" -o json \
+            | jq --arg apiVersion "${api_version}" '{
+                apiVersion: "v1",
+                kind: "List",
+                items: (.items | map(
+                    .apiVersion = $apiVersion
+                    | del(
+                        .metadata.uid,
+                        .metadata.resourceVersion,
+                        .metadata.generation,
+                        .metadata.creationTimestamp,
+                        .metadata.managedFields,
+                        .metadata.selfLink,
+                        .metadata.annotations."kubectl.kubernetes.io/last-applied-configuration"
+                    )
+                ))
+            }' \
+            | $KUBECTL apply -f -
+    done
+}
+
+migrate_resource "microapps.microapp.w7.cc" "microapps.w7panel.w7.com"
+migrate_resource "gpuclasses.gpuclass.k8s.io" "gpuclasses.w7panel.w7.com"
+migrate_resource "buildimages.buildimage.w7.cc" "buildimages.w7panel.w7.com"

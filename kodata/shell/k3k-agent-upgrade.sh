@@ -122,6 +122,7 @@ EOF
 
 # "microapp升级过需要更新crd"
 kubectl apply -f $KO_DATA_PATH/crds --server-side
+sh $KO_DATA_PATH/shell/migrate-crd-groups.sh
 
 # echo "升级站点管理"
 # w7panel sitemanager-upgrade --version=1.0.26 --identifie=w7_php --is-agent=true
@@ -130,9 +131,6 @@ kubectl apply -f $KO_DATA_PATH/crds --server-side
 # w7panel sitemanager-upgrade --version=1.0.26 --identifie=w7_python --is-agent=true
 # w7panel sitemanager-upgrade --version=1.0.25 --identifie=w7_sitemanager --is-agent=true
 # add k3s.config
-
-echo "删除旧的microapp"
-kubectl -n default delete microapp -l microapp.w7.cc/from=root | echo "clear root microapp"
 
 kubectl get jobs -n default -o json \
   | jq -r '.items[]

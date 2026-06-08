@@ -30,7 +30,7 @@ type GpuclassV1alpha1Interface interface {
 	GpuClassesGetter
 }
 
-// GpuclassV1alpha1Client is used to interact with features provided by the gpuclass.k8s.io group.
+// GpuclassV1alpha1Client is used to interact with features provided by the w7panel.w7.com group.
 type GpuclassV1alpha1Client struct {
 	restClient rest.Interface
 }

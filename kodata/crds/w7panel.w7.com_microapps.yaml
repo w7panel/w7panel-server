@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: microapps.microapp.w7.cc
+  name: microapps.w7panel.w7.com
 spec:
-  group: microapp.w7.cc
+  group: w7panel.w7.com
   names:
     kind: MicroApp
     listKind: MicroAppList

@@ -30,7 +30,7 @@ import (
 // apply configuration type exists for the given GroupVersionKind.
 func ForKind(kind schema.GroupVersionKind) interface{} {
 	switch kind {
-	// Group=microapp.w7.cc, Version=v1alpha1
+	// Group=w7panel.w7.com, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithKind("Bindings"):
 		return &microappv1alpha1.BindingsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Menu"):

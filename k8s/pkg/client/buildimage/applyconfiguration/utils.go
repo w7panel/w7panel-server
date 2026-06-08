@@ -30,7 +30,7 @@ import (
 // apply configuration type exists for the given GroupVersionKind.
 func ForKind(kind schema.GroupVersionKind) interface{} {
 	switch kind {
-	// Group=buildimage.w7.cc, Version=v1alpha1
+	// Group=w7panel.w7.com, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithKind("Auth"):
 		return &buildimagev1alpha1.AuthApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("BuildImage"):

@@ -115,6 +115,7 @@ fi
 
 info "部署CRDs资源..."
 kubectl --kubeconfig=${KUBECONFIG_PATH} apply -f $KO_DATA_PATH/crds --server-side 
+KUBECTL="kubectl --kubeconfig=${KUBECONFIG_PATH}" sh $KO_DATA_PATH/shell/migrate-crd-groups.sh
 #&& kubectl --kubeconfig=${KUBECONFIG_PATH} apply -f $KO_DATA_PATH/crds-kubeblocks --server-side
 
 info "检查并创建默认用户..."
