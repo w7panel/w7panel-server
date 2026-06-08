@@ -1,0 +1,36 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: k3sconfigs.w7panel.w7.com
+spec:
+  group: w7panel.w7.com
+  names:
+    kind: K3sConfig
+    listKind: K3sConfigList
+    plural: k3sconfigs
+    singular: k3sconfig
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            properties:
+              data:
+                type: object
+                additionalProperties:
+                  type: string
+            required:
+            - data
+    served: true
+    storage: true

@@ -224,9 +224,17 @@ data:
     default: ${DEFAULT_VOLUME_NAME}
 EOF
 
-info "配置k3s.config configmap..."
-kubectl --kubeconfig=${KUBECONFIG_PATH} -n kube-system create configmap k3s.config --from-literal=k3s.mode=${K3S_MODE} --dry-run=client -o yaml | kubectl --kubeconfig=${KUBECONFIG_PATH} apply -f -
-success "k3s.config configmap配置完成"
+info "配置k3s.config crd..."
+kubectl --kubeconfig=${KUBECONFIG_PATH} apply -f - <<EOF
+kind: K3sConfig
+apiVersion: w7panel.w7.com/v1alpha1
+metadata:
+    name: k3s.config
+spec:
+    data:
+        k3s.mode: "${K3S_MODE}"
+EOF
+success "k3s.config crd配置完成"
 
 
 # 检查并删除主集群networkpolicy k3k-s24（如果存在）

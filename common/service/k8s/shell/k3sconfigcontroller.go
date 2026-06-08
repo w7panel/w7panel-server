@@ -13,8 +13,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	applyv1 "k8s.io/client-go/applyconfigurations/core/v1"
+	dynamicinformer "k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	listerv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -137,6 +139,7 @@ func WaitForNamedCacheSync(controllerName string, stopCh <-chan struct{}, cacheS
 
 func (s *k3sConfigController) Start() error {
 	informer := s.WatchK3sRegistry()
+	k3sConfigInformer := s.WatchK3sConfigInformer()
 	nodeInformer := s.WatchNodeInformer()
 	secretInformer := s.WatchSecretInformer()
 	nodeInformer.GetIndexer().List()
@@ -144,7 +147,8 @@ func (s *k3sConfigController) Start() error {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	s.KubeInformerFactory.Start(stopCh)
-	if !WaitForNamedCacheSync("shellcontroller", stopCh, informer.HasSynced, nodeInformer.HasSynced, secretInformer.HasSynced) {
+	go k3sConfigInformer.Run(stopCh)
+	if !WaitForNamedCacheSync("shellcontroller", stopCh, informer.HasSynced, k3sConfigInformer.HasSynced, nodeInformer.HasSynced, secretInformer.HasSynced) {
 		slog.Debug("Failed to sync cache")
 		return nil
 	}
@@ -273,12 +277,6 @@ func (s *k3sConfigController) initK3sConfig(node *v1.Node) error {
 	if k3sConfig.IsNotFirstNode() {
 		return nil
 	}
-	configmap := &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "k3s.config",
-			Namespace: "kube-system",
-		},
-	}
 	data := map[string]string{
 		"k3s.cluster-init":       k3sConfig.IsClusterInitString(),
 		"k3s.datastore-endpoint": k3sConfig.DbUrl(),
@@ -290,15 +288,10 @@ func (s *k3sConfigController) initK3sConfig(node *v1.Node) error {
 		"data-hash": "init",
 	}
 	slog.Debug("k3s config", "data", data)
-	applyconfig, err := applyv1.ExtractConfigMap(configmap, "k8s-offline")
+	config := k8s.NewConfigCRD("K3sConfig", k8s.K3sConfigName, labels, data)
+	_, err := k8sClient.DynamicClient().Resource(k8s.K3sConfigGVR).Apply(k8sClient.Ctx, k8s.K3sConfigName, config, metav1.ApplyOptions{FieldManager: "k8s-offline", Force: true})
 	if err != nil {
-		slog.Error("extract configmap k3s.config  error", "err", err)
-		return err
-	}
-	applyconfig = applyconfig.WithData(data).WithLabels(labels)
-	_, err = k8sClient.ClientSet.CoreV1().ConfigMaps("kube-system").Apply(k8sClient.Ctx, applyconfig, metav1.ApplyOptions{FieldManager: "k8s-offline", Force: true})
-	if err != nil {
-		slog.Error("create configmap k3s.config error", "err", err)
+		slog.Error("create k3s.config crd error", "err", err)
 		return err
 	}
 	return nil
@@ -320,12 +313,32 @@ func (s *k3sConfigController) WatchK3sRegistry() cache.SharedIndexInformer {
 					slog.Debug("update registries")
 					s.handleRegistry(configmap, nodes)
 				}
-				if configmap.Name == "k3s.config" && configmap.Namespace == "kube-system" {
-					slog.Debug("update k3s config")
-					s.handleK3sConfig(configmap, nodes)
-				}
 
 			}
+		},
+	})
+	return informer
+}
+
+func (s *k3sConfigController) WatchK3sConfigInformer() cache.SharedIndexInformer {
+	factory := dynamicinformer.NewFilteredDynamicInformer(s.Sdk.DynamicClient(), k8s.K3sConfigGVR, metav1.NamespaceAll, 0, cache.Indexers{}, nil)
+	informer := factory.Informer()
+	nodes, err := s.Sdk.ClientSet.CoreV1().Nodes().List(s.Ctx, metav1.ListOptions{})
+	if err != nil {
+		slog.Error("get nodes error", "err", err)
+	}
+	informer.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			config := newObj.(*unstructured.Unstructured)
+			oldConfig := oldObj.(*unstructured.Unstructured)
+			if config.GetName() != k8s.K3sConfigName {
+				return
+			}
+			if config.GetLabels()["data-hash"] == oldConfig.GetLabels()["data-hash"] || config.GetLabels()["data-hash"] == "init" {
+				return
+			}
+			slog.Debug("update k3s config")
+			s.handleK3sConfig(k8s.ConfigCRDData(config), nodes)
 		},
 	})
 	return informer
@@ -355,22 +368,22 @@ func (s *k3sConfigController) handleRegistry(config *v1.ConfigMap, nodes *v1.Nod
 	return err
 }
 
-func (s *k3sConfigController) handleK3sConfig(config *v1.ConfigMap, nodes *v1.NodeList) error {
+func (s *k3sConfigController) handleK3sConfig(data map[string]string, nodes *v1.NodeList) error {
 
 	for _, node := range nodes.Items {
 		if isControlNode(&node) {
 			k3sConfig := NewK3sConfigByNode(&node)
 			change := false
-			if config.Data["k3s.cluster-init"] == "true" && !k3sConfig.IsClusterInit() {
+			if data["k3s.cluster-init"] == "true" && !k3sConfig.IsClusterInit() {
 				k3sConfig.k3sConfigYaml["cluster-init"] = "true"
 				change = true
 			}
-			if config.Data["k3s.datastore-endpoint"] != "" && !k3sConfig.IsOutDB() && !k3sConfig.IsClusterInit() {
-				k3sConfig.k3sConfigYaml["datastore-endpoint"] = config.Data["k3s.datastore-endpoint"]
+			if data["k3s.datastore-endpoint"] != "" && !k3sConfig.IsOutDB() && !k3sConfig.IsClusterInit() {
+				k3sConfig.k3sConfigYaml["datastore-endpoint"] = data["k3s.datastore-endpoint"]
 				change = true
 			}
 			// if config.Data["k3s.tls-san"] != "" { //可能会覆盖之前的配置，暂时不启用
-			ips := strings.Split(config.Data["k3s.tls-san"], ",")
+			ips := strings.Split(data["k3s.tls-san"], ",")
 			if len(ips) > 0 {
 				k3sConfig.k3sConfigYaml["tls-san"] = ips
 			} else {
