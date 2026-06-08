@@ -34,6 +34,11 @@ migrate_resource() {
                 kind: "List",
                 items: (.items | map(
                     .apiVersion = $apiVersion
+                    | if .metadata.finalizers then
+                        .metadata.finalizers = (.metadata.finalizers | map(
+                            if startswith("appgroup.w7.cc/") then sub("^appgroup\\.w7\\.cc/"; "w7panel.w7.com/") else . end
+                        ))
+                    else . end
                     | del(
                         .metadata.uid,
                         .metadata.resourceVersion,
@@ -50,5 +55,6 @@ migrate_resource() {
 }
 
 migrate_resource "microapps.microapp.w7.cc" "microapps.w7panel.w7.com"
+migrate_resource "appgroups.appgroup.w7.cc" "appgroups.w7panel.w7.com"
 migrate_resource "gpuclasses.gpuclass.k8s.io" "gpuclasses.w7panel.w7.com"
 migrate_resource "buildimages.buildimage.w7.cc" "buildimages.w7panel.w7.com"

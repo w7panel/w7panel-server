@@ -152,6 +152,8 @@ func (m *ResourceMutator) Handle(ctx context.Context, req admission.Request) adm
 		return m.handlePvc(ctx, req)
 	case "ApiClient":
 		return m.handleApiClient(ctx, req)
+	case "MicroApp":
+		return m.handleMicroApp(ctx, req)
 	default:
 		return admission.Allowed("不需要修改的资源类型")
 	}

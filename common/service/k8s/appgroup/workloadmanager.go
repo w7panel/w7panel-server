@@ -365,7 +365,7 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 	}
 	// 如果没有删除 且 没有finalizer 则添加finalizer
 	// if group.DeletionTimestamp == nil && (group.Finalizers == nil || len(group.Finalizers) == 0) {
-	// 	group.Finalizers = []string{"appgroup.w7.cc/finalizer"}
+	// 	group.Finalizers = []string{"w7panel.w7.com/finalizer"}
 	// 	_, err := d.groupApi.UpdateAppGroup(group.Namespace, group)
 	// 	if err != nil {
 	// 		slog.Error("update group error", "error", err)

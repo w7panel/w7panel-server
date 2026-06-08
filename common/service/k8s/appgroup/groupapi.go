@@ -26,7 +26,7 @@ func GetAppgroupUseSdk(name, namespace string, sdk *k8s.Sdk) (*appv1.AppGroup, e
 func GetAppgroup(name, namespace string, client sigclient.Client) (*appv1.AppGroup, error) {
 	group := &appv1.AppGroup{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "appgroup.w7.cc/v1alpha1",
+			APIVersion: "w7panel.w7.com/v1alpha1",
 			Kind:       "AppGroup",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -191,7 +191,7 @@ func (a *AppGroupApi) GetAppGroupWrapper(namespace string, name string, spec app
 				ObjectMeta: metav1.ObjectMeta{
 					Name:       name,
 					Namespace:  namespace,
-					Finalizers: []string{"appgroup.w7.cc/finalizers"},
+					Finalizers: []string{"w7panel.w7.com/finalizers"},
 				},
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "AppGroup",

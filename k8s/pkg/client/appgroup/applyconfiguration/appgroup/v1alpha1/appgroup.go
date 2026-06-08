@@ -39,7 +39,7 @@ func AppGroup(name, namespace string) *AppGroupApplyConfiguration {
 	b.WithName(name)
 	b.WithNamespace(namespace)
 	b.WithKind("AppGroup")
-	b.WithAPIVersion("appgroup.w7.cc/v1alpha1")
+	b.WithAPIVersion("w7panel.w7.com/v1alpha1")
 	return b
 }
 

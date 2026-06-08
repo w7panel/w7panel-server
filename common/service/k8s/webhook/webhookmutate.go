@@ -67,6 +67,14 @@ func getAgentOperations() []admissionregistrationv1.RuleWithOperations {
 func getAgentCrdOperations() []admissionregistrationv1.RuleWithOperations {
 	return []admissionregistrationv1.RuleWithOperations{
 		{
+			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
+			Rule: admissionregistrationv1.Rule{
+				APIGroups:   []string{"microapp.w7.cc"},
+				APIVersions: []string{"v1alpha1"},
+				Resources:   []string{"microapps"},
+			},
+		},
+		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
 			Rule: admissionregistrationv1.Rule{
 				APIGroups:   []string{"networking.higress.io"},
@@ -182,6 +190,14 @@ func getDefaultOperations() []admissionregistrationv1.RuleWithOperations {
 
 func getDefaultCrdOperations() []admissionregistrationv1.RuleWithOperations {
 	return []admissionregistrationv1.RuleWithOperations{
+		{
+			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
+			Rule: admissionregistrationv1.Rule{
+				APIGroups:   []string{"microapp.w7.cc"},
+				APIVersions: []string{"v1alpha1"},
+				Resources:   []string{"microapps"},
+			},
+		},
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
 			Rule: admissionregistrationv1.Rule{
