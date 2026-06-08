@@ -129,3 +129,68 @@ func (in *K3sConfigList) DeepCopyObject() runtime.Object {
 	}
 	return nil
 }
+
+func (in *License) DeepCopyInto(out *License) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	out.Spec = in.Spec
+}
+
+func (in *License) DeepCopy() *License {
+	if in == nil {
+		return nil
+	}
+	out := new(License)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *License) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *LicenseList) DeepCopyInto(out *LicenseList) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]License, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+}
+
+func (in *LicenseList) DeepCopy() *LicenseList {
+	if in == nil {
+		return nil
+	}
+	out := new(LicenseList)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *LicenseList) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *LicenseSpec) DeepCopyInto(out *LicenseSpec) {
+	*out = *in
+}
+
+func (in *LicenseSpec) DeepCopy() *LicenseSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(LicenseSpec)
+	in.DeepCopyInto(out)
+	return out
+}

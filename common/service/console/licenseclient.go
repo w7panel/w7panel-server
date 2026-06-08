@@ -2,6 +2,7 @@ package console
 
 import (
 	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"log/slog"
 
@@ -9,8 +10,8 @@ import (
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type LicenseClient struct {
@@ -38,10 +39,29 @@ func NewLicenseClient(api config.W7ConfigRepositoryInterface, sdk *k8s.Sdk) *Lic
 }
 
 func (api *LicenseClient) GetLicense() (*License, error) {
+	obj, err := api.sdk.GetConfigCRD(api.sdk.Ctx, k8s.LicenseGVR, k8s.LicenseName)
+	if err == nil {
+		return licenseFromCRDSpec(k8s.ParseLicenseCRDSpec(obj))
+	}
+	if !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+
 	secret, err := api.sdk.GetLicense()
 	if err != nil {
 		return nil, err
 	}
+	license, err := licenseFromSecret(secret)
+	if err != nil {
+		return nil, err
+	}
+	if err := api.SetLicense(license); err != nil {
+		return nil, err
+	}
+	return license, nil
+}
+
+func licenseFromSecret(secret *corev1.Secret) (*License, error) {
 	var x509Certificate *x509.Certificate = nil
 	if len(secret.Data["license"]) > 0 {
 		cert, err := helper.ParseX509(secret.Data["license"])
@@ -57,6 +77,39 @@ func (api *LicenseClient) GetLicense() (*License, error) {
 	}, nil
 }
 
+func licenseFromCRDSpec(spec k8s.LicenseCRDSpec) (*License, error) {
+	var x509Certificate *x509.Certificate = nil
+	if spec.License != "" {
+		certData, err := base64.StdEncoding.DecodeString(spec.License)
+		if err != nil {
+			return nil, err
+		}
+		cert, err := helper.ParseX509(certData)
+		if err != nil {
+			return nil, err
+		}
+		x509Certificate = cert
+	}
+	return &License{
+		AppId:         spec.AppId,
+		AppSecret:     spec.AppSecret,
+		License:       x509Certificate,
+		FounderSaName: spec.FounderSaName,
+	}, nil
+}
+
+func licenseCRDSpec(license *License) k8s.LicenseCRDSpec {
+	spec := k8s.LicenseCRDSpec{
+		AppId:         license.AppId,
+		AppSecret:     license.AppSecret,
+		FounderSaName: license.FounderSaName,
+	}
+	if license.License != nil {
+		spec.License = base64.StdEncoding.EncodeToString(license.License.Raw)
+	}
+	return spec
+}
+
 func (api *LicenseClient) SetLicense(license *License) error {
 	return api.setLicenseClean(license, false)
 }
@@ -70,30 +123,12 @@ func (api *LicenseClient) CleanLicense() error {
 }
 
 func (api *LicenseClient) setLicenseClean(license *License, cleanCert bool) error {
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "license",
-			Namespace: "kube-system",
-		},
-		Data: map[string][]byte{},
+	spec := licenseCRDSpec(license)
+	if cleanCert {
+		spec.License = ""
 	}
-
-	sigCLient, err := api.sdk.ToSigClient()
-	if err != nil {
-		return err
-	}
-	_, err = controllerutil.CreateOrPatch(api.sdk.Ctx, sigCLient, secret, func() error {
-		secret.Data["appId"] = []byte(license.AppId)
-		secret.Data["appSecret"] = []byte(license.AppSecret)
-		secret.Data["founderSaName"] = []byte(license.FounderSaName)
-		if license.License != nil {
-			secret.Data["license"] = license.License.Raw
-		}
-		if cleanCert {
-			delete(secret.Data, "license")
-		}
-		return nil
-	})
+	obj := k8s.NewLicenseCRD(k8s.LicenseName, spec)
+	_, err := api.sdk.DynamicClient().Resource(k8s.LicenseGVR).Apply(api.sdk.Ctx, k8s.LicenseName, obj, metav1.ApplyOptions{FieldManager: "w7panel", Force: true})
 	return err
 }
 

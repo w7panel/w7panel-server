@@ -13,12 +13,21 @@ const (
 	ConfigCRDVersion = "v1alpha1"
 	K3kConfigName    = "k3k.config"
 	K3sConfigName    = "k3s.config"
+	LicenseName      = "license"
 )
 
 var (
 	K3kConfigGVR = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "k3kconfigs"}
 	K3sConfigGVR = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "k3sconfigs"}
+	LicenseGVR   = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "licenses"}
 )
+
+type LicenseCRDSpec struct {
+	AppId         string
+	AppSecret     string
+	FounderSaName string
+	License       string
+}
 
 func ConfigCRDData(obj *unstructured.Unstructured) map[string]string {
 	data, _, _ := unstructured.NestedStringMap(obj.Object, "spec", "data")
@@ -38,6 +47,33 @@ func NewConfigCRD(kind, name string, labels map[string]string, data map[string]s
 		"data": data,
 	}
 	return obj
+}
+
+func NewLicenseCRD(name string, spec LicenseCRDSpec) *unstructured.Unstructured {
+	obj := &unstructured.Unstructured{}
+	obj.SetAPIVersion(ConfigCRDGroup + "/" + ConfigCRDVersion)
+	obj.SetKind("License")
+	obj.SetName(name)
+	obj.Object["spec"] = map[string]interface{}{
+		"appId":         spec.AppId,
+		"appSecret":     spec.AppSecret,
+		"founderSaName": spec.FounderSaName,
+		"license":       spec.License,
+	}
+	return obj
+}
+
+func ParseLicenseCRDSpec(obj *unstructured.Unstructured) LicenseCRDSpec {
+	appId, _, _ := unstructured.NestedString(obj.Object, "spec", "appId")
+	appSecret, _, _ := unstructured.NestedString(obj.Object, "spec", "appSecret")
+	founderSaName, _, _ := unstructured.NestedString(obj.Object, "spec", "founderSaName")
+	license, _, _ := unstructured.NestedString(obj.Object, "spec", "license")
+	return LicenseCRDSpec{
+		AppId:         appId,
+		AppSecret:     appSecret,
+		FounderSaName: founderSaName,
+		License:       license,
+	}
 }
 
 func (self *Sdk) GetConfigCRD(ctx context.Context, gvr schema.GroupVersionResource, name string) (*unstructured.Unstructured, error) {
