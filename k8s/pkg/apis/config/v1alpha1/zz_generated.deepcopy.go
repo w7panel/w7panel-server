@@ -259,3 +259,203 @@ func (in *OverSellingConfigSpec) DeepCopy() *OverSellingConfigSpec {
 	in.DeepCopyInto(out)
 	return out
 }
+
+func (in *FilingConfig) DeepCopyInto(out *FilingConfig) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	out.Spec = in.Spec
+}
+
+func (in *FilingConfig) DeepCopy() *FilingConfig {
+	if in == nil {
+		return nil
+	}
+	out := new(FilingConfig)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *FilingConfig) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *FilingConfigList) DeepCopyInto(out *FilingConfigList) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]FilingConfig, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+}
+
+func (in *FilingConfigList) DeepCopy() *FilingConfigList {
+	if in == nil {
+		return nil
+	}
+	out := new(FilingConfigList)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *FilingConfigList) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *FilingConfigSpec) DeepCopyInto(out *FilingConfigSpec) {
+	*out = *in
+}
+
+func (in *FilingConfigSpec) DeepCopy() *FilingConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(FilingConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *DomainParseConfig) DeepCopyInto(out *DomainParseConfig) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	in.Spec.DeepCopyInto(&out.Spec)
+}
+
+func (in *DomainParseConfig) DeepCopy() *DomainParseConfig {
+	if in == nil {
+		return nil
+	}
+	out := new(DomainParseConfig)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *DomainParseConfig) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *DomainParseConfigList) DeepCopyInto(out *DomainParseConfigList) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]DomainParseConfig, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+}
+
+func (in *DomainParseConfigList) DeepCopy() *DomainParseConfigList {
+	if in == nil {
+		return nil
+	}
+	out := new(DomainParseConfigList)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *DomainParseConfigList) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *DomainParseConfigSpec) DeepCopyInto(out *DomainParseConfigSpec) {
+	*out = *in
+	if in.IPs != nil {
+		in, out := &in.IPs, &out.IPs
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+}
+
+func (in *DomainParseConfigSpec) DeepCopy() *DomainParseConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(DomainParseConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *ContactConfig) DeepCopyInto(out *ContactConfig) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	out.Spec = in.Spec
+}
+
+func (in *ContactConfig) DeepCopy() *ContactConfig {
+	if in == nil {
+		return nil
+	}
+	out := new(ContactConfig)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *ContactConfig) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *ContactConfigList) DeepCopyInto(out *ContactConfigList) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]ContactConfig, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+}
+
+func (in *ContactConfigList) DeepCopy() *ContactConfigList {
+	if in == nil {
+		return nil
+	}
+	out := new(ContactConfigList)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *ContactConfigList) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *ContactConfigSpec) DeepCopyInto(out *ContactConfigSpec) {
+	*out = *in
+}
+
+func (in *ContactConfigSpec) DeepCopy() *ContactConfigSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(ContactConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
