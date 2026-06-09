@@ -23,6 +23,33 @@ type OverSellingConfigSpec struct {
 	BandWidthNum int32 `json:"bandwidthNum"`
 }
 
+type FilingConfigSpec struct {
+	IcpNumber string `json:"icpnumber,omitempty"`
+	Number    string `json:"number,omitempty"`
+	Location  string `json:"location,omitempty"`
+	License   string `json:"license,omitempty"`
+	Tbol      string `json:"tbol,omitempty"`
+}
+
+type DomainParseConfigSpec struct {
+	Type  string   `json:"type"`
+	IPs   []string `json:"ips,omitempty"`
+	Cname string   `json:"cname,omitempty"`
+}
+
+type ContactConfigSpec struct {
+	Type     string `json:"type"`
+	Link     string `json:"link,omitempty"`
+	Text     string `json:"text,omitempty"`
+	Name     string `json:"name,omitempty"`
+	ShowName bool   `json:"showName,omitempty"`
+	SelIcon  string `json:"selicon,omitempty"`
+	Icon     string `json:"icon,omitempty"`
+	Qrcode   string `json:"qrcode,omitempty"`
+	Style    string `json:"style,omitempty"`
+	Index    int32  `json:"index,omitempty"`
+}
+
 // +genclient
 // +genclient:nonNamespaced
 // +kubebuilder:resource:path=k3kconfigs,scope=Cluster
@@ -93,4 +120,58 @@ type OverSellingConfigList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []OverSellingConfig `json:"items"`
+}
+
+// +genclient
+// +genclient:nonNamespaced
+// +kubebuilder:resource:path=filingconfigs,scope=Cluster
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type FilingConfig struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              FilingConfigSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type FilingConfigList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []FilingConfig `json:"items"`
+}
+
+// +genclient
+// +genclient:nonNamespaced
+// +kubebuilder:resource:path=domainparseconfigs,scope=Cluster
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type DomainParseConfig struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              DomainParseConfigSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type DomainParseConfigList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []DomainParseConfig `json:"items"`
+}
+
+// +genclient
+// +genclient:nonNamespaced
+// +kubebuilder:resource:path=contactconfigs,scope=Cluster
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type ContactConfig struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              ContactConfigSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type ContactConfigList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []ContactConfig `json:"items"`
 }

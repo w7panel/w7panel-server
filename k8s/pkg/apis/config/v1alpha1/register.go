@@ -32,6 +32,12 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&LicenseList{},
 		&OverSellingConfig{},
 		&OverSellingConfigList{},
+		&FilingConfig{},
+		&FilingConfigList{},
+		&DomainParseConfig{},
+		&DomainParseConfigList{},
+		&ContactConfig{},
+		&ContactConfigList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
