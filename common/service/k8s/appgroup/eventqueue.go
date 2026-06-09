@@ -161,7 +161,7 @@ func (c *EventQueue) OnEvent(obj interface{}, eventType string, isInit bool) {
 	case *v1alpha1.AppGroup:
 		typeMeta = metav1.TypeMeta{
 			Kind:       "AppGroup",
-			APIVersion: "appgroup.w7.cc/v1alpha1",
+			APIVersion: "w7panel.w7.com/v1alpha1",
 		}
 		c.queue.Add(NewK8sResourceEvent(typeMeta, v.ObjectMeta, eventType, isInit).ToString())
 	case *corev1.Event:

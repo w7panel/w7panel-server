@@ -56,7 +56,7 @@ func DoRegisterByUid(sdk *k8s.Sdk, uid int) (*corev1.ServiceAccount, error) {
 	if err != nil {
 		return nil, err
 	}
-	if kconfig.AllowConsoleRegister && kconfig.DefaultPolicyName != "" {
+	if kconfig.AllowConsoleRegister && kconfig.DefaultPermissionName != "" {
 		register := NewRegister(client, sdk)
 		return register.RegisterUid(uid, kconfig)
 	} else {

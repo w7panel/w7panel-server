@@ -16,58 +16,56 @@ type Site struct {
 
 func (self Site) Beian(http *gin.Context) {
 	sdk := k8s.NewK8sClient()
-	configmap, err := sdk.ClientSet.CoreV1().ConfigMaps("default").Get(http, "beian", metav1.GetOptions{})
+	obj, err := sdk.GetConfigCRD(http.Request.Context(), k8s.FilingConfigGVR, k8s.FilingConfigName)
 	if err != nil {
 		self.JsonSuccessResponse(http)
 		return
 	}
 
-	response := gin.H{}
-	if data, ok := configmap.Data["icpnumber"]; ok {
-		response["icpnumber"] = data
-	}
-	if data, ok := configmap.Data["number"]; ok {
-		response["number"] = data
-	}
-	if data, ok := configmap.Data["location"]; ok {
-		response["location"] = data
-	}
-
-	self.JsonResponseWithoutError(http, response)
+	self.JsonResponseWithoutError(http, filingConfigResponse(k8s.ParseFilingConfigCRDSpec(obj)))
 }
 
 func (self Site) Beian2(http *gin.Context) {
 	sdk := k8s.NewK8sClientInner()
-	configmap, err := sdk.ClientSet.CoreV1().ConfigMaps("default").Get(http, "beian", metav1.GetOptions{})
+	obj, err := sdk.GetConfigCRD(http.Request.Context(), k8s.FilingConfigGVR, k8s.FilingConfigName)
 	if err != nil {
 		self.JsonSuccessResponse(http)
 		return
 	}
 
-	response := gin.H{}
-	if data, ok := configmap.Data["icpnumber"]; ok {
-		response["icpnumber"] = data
-	}
-	if data, ok := configmap.Data["number"]; ok {
-		response["number"] = data
-	}
-	if data, ok := configmap.Data["location"]; ok {
-		response["location"] = data
-	}
+	self.JsonResponseWithoutError(http, filingConfigResponse(k8s.ParseFilingConfigCRDSpec(obj)))
+}
 
-	self.JsonResponseWithoutError(http, response)
+func filingConfigResponse(spec k8s.FilingConfigCRDSpec) gin.H {
+	response := gin.H{}
+	if spec.IcpNumber != "" {
+		response["icpnumber"] = spec.IcpNumber
+	}
+	if spec.Number != "" {
+		response["number"] = spec.Number
+	}
+	if spec.Location != "" {
+		response["location"] = spec.Location
+	}
+	if spec.License != "" {
+		response["license"] = spec.License
+	}
+	if spec.Tbol != "" {
+		response["tbol"] = spec.Tbol
+	}
+	return response
 }
 
 func (self Site) K3kConfig(http *gin.Context) {
 	sdk := k8s.NewK8sClient()
-	configmap, err := sdk.ClientSet.CoreV1().ConfigMaps("kube-system").Get(http, "k3k.config", metav1.GetOptions{})
+	dataMap, err := sdk.GetConfigCRDData(http, k8s.K3kConfigGVR, k8s.K3kConfigName)
 	if err != nil {
 		self.JsonSuccessResponse(http)
 		return
 	}
 
 	response := gin.H{}
-	if data, ok := configmap.Data["indexpage"]; ok {
+	if data, ok := dataMap["indexpage"]; ok {
 		response["indexpage"] = data
 	}
 
@@ -93,9 +91,9 @@ func (self Site) InitUser(http *gin.Context) {
 		response["captchaEnabled"] = "true"
 	}
 
-	k3kconfig, err := sdk.ClientSet.CoreV1().ConfigMaps("kube-system").Get(http, "k3k.config", metav1.GetOptions{})
+	dataMap, err := sdk.GetConfigCRDData(http, k8s.K3kConfigGVR, k8s.K3kConfigName)
 	if err == nil {
-		if data, ok := k3kconfig.Data["allowConsoleRegister"]; ok {
+		if data, ok := dataMap["allowConsoleRegister"]; ok {
 			response["allowConsoleRegister"] = data
 		}
 	}
@@ -106,9 +104,9 @@ func (self Site) InitUser(http *gin.Context) {
 func (self Site) Lianxi(http *gin.Context) {
 	sdk := k8s.NewK8sClient()
 
-	list, err := sdk.ClientSet.CoreV1().ConfigMaps(sdk.GetNamespace()).List(http, metav1.ListOptions{LabelSelector: "type=contactus"})
+	list, err := sdk.DynamicClient().Resource(k8s.ContactConfigGVR).List(http.Request.Context(), metav1.ListOptions{})
 	if err != nil {
-		self.JsonResponseWithoutError(http, corev1.ConfigMapList{})
+		self.JsonResponseWithoutError(http, gin.H{"items": []gin.H{}})
 		return
 	}
 	self.JsonResponseWithoutError(http, list)

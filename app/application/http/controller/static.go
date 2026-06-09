@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
+	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
@@ -21,6 +24,8 @@ import (
 type Static struct {
 	controller.Abstract
 }
+
+const frontendSourceHeader = "X-Frontend-Source"
 
 func (self Static) StaticInfo(http *gin.Context) {
 	identifie := http.Param("identifie")
@@ -47,10 +52,9 @@ func (self Static) StaticInfo(http *gin.Context) {
 			if ticket != "" {
 				helper.Set("frontend-ticket-"+identifie, ticket, time.Hour*2)
 			}
-			// 拼好 proxy 地址 zpkUrl base64url 编码后放入 path
+			// 缓存 zpkUrl 供 FrontendProxy 使用
 			if zpkUrl != "" {
-				zpkUrlEncoded := base64.RawURLEncoding.EncodeToString([]byte(zpkUrl))
-				proxyUrl = fmt.Sprintf("/panel-api/v1/static/proxy/%s/%s/%s/frontend/index.html", zpkUrlEncoded, identifie, version)
+				helper.Set("frontend-zpk-url-"+identifie, zpkUrl, time.Hour*2)
 			}
 		}
 	}
@@ -103,8 +107,9 @@ func (self Static) Download(http *gin.Context) {
 }
 
 // FrontendProxy 代理前端静态资源请求到远程制品库
-// zpkUrl 从 path 参数 base64url 解码取得，ticket 从缓存获取
-// URL: /panel-api/v1/static/:zpkUrl/:identifie/:version/frontend/*path
+// zpkUrl 和 ticket 从缓存获取
+// URL: /ui/microapp/:identifie/:version/*path
+// URL: /panel-api/v1/static/proxy/:zpkUrl/:identifie/:version/frontend/*path
 // 代理到: {zpkUrl}/zpk/respo/attach/frontend/{identifie}/{version}/{path}?ticket={ticket}
 func (self Static) FrontendProxy(ctx *gin.Context) {
 	zpkUrlEncoded := ctx.Param("zpkUrl")
@@ -112,8 +117,8 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 	version := ctx.Param("version")
 	path := ctx.Param("path")
 
-	if zpkUrlEncoded == "" || identifie == "" || version == "" {
-		self.JsonResponseWithServerError(ctx, fmt.Errorf("zpkUrl, identifie and version are required"))
+	if identifie == "" || version == "" {
+		self.JsonResponseWithServerError(ctx, fmt.Errorf("identifie and version are required"))
 		return
 	}
 	if path == "" {
@@ -123,14 +128,34 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 		path = "/" + path
 	}
 
-	// 从 path 解码 zpkUrl
-	zpkUrlBytes, err := base64.RawURLEncoding.DecodeString(zpkUrlEncoded)
-	if err != nil {
-		slog.Error("解码zpkUrl失败", "zpkUrlEncoded", zpkUrlEncoded, "error", err)
-		self.JsonResponseWithServerError(ctx, err)
+	if appgroup.DownStaticStatus(identifie, version, "") == appgroup.DOWNLOAD_SUCCESS {
+		microappPath := facade.Config.GetString("static.microapp_path")
+		localPath := strings.TrimLeft(filepath.Clean(path), string(os.PathSeparator))
+		if localPath == "." {
+			localPath = "index.html"
+		}
+		ctx.Header(frontendSourceHeader, "local")
+		ctx.File(filepath.Join(microappPath, identifie, version, localPath))
 		return
 	}
-	zpkUrl := strings.TrimRight(string(zpkUrlBytes), "/")
+
+	// 从缓存获取 zpkUrl，兼容旧路径中携带 base64url zpkUrl 的方式
+	zpkUrl := ""
+	if val, ok := helper.Get("frontend-zpk-url-" + identifie); ok {
+		if cachedZpkUrl, ok := val.(string); ok {
+			zpkUrl = cachedZpkUrl
+		}
+	}
+	if zpkUrl == "" && zpkUrlEncoded != "" {
+		zpkUrlBytes, err := base64.RawURLEncoding.DecodeString(zpkUrlEncoded)
+		if err != nil {
+			slog.Error("解码zpkUrl失败", "zpkUrlEncoded", zpkUrlEncoded, "error", err)
+			self.JsonResponseWithServerError(ctx, err)
+			return
+		}
+		zpkUrl = string(zpkUrlBytes)
+	}
+	zpkUrl = strings.TrimRight(zpkUrl, "/")
 	if zpkUrl == "" {
 		slog.Error("zpkUrl为空")
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "zpkUrl is empty"})
@@ -182,10 +207,12 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 	}
 	proxy.ModifyResponse = func(res *http.Response) error {
 		res.Header.Del("Access-Control-Allow-Origin")
+		res.Header.Set(frontendSourceHeader, "proxy")
 		return nil
 	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		slog.Error("前端资源代理错误", "error", err, "path", r.URL.Path)
+		w.Header().Set(frontendSourceHeader, "proxy")
 		w.WriteHeader(http.StatusBadGateway)
 		_, _ = w.Write([]byte(fmt.Sprintf(`{"code":502,"error":"%s"}`, err.Error())))
 	}

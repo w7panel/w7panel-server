@@ -39,7 +39,7 @@ func BuildImage(name, namespace string) *BuildImageApplyConfiguration {
 	b.WithName(name)
 	b.WithNamespace(namespace)
 	b.WithKind("BuildImage")
-	b.WithAPIVersion("buildimage.w7.cc/v1alpha1")
+	b.WithAPIVersion("w7panel.w7.com/v1alpha1")
 	return b
 }
 

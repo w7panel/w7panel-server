@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"time"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -209,38 +208,18 @@ func (c *ResourceClient) getResource() (*Resource, error) {
 }
 
 func (c *ResourceClient) GetSellingConfig() (OverSellingConfig, error) {
-	configmap, err := c.sdk.ClientSet.CoreV1().ConfigMaps("kube-system").Get(c.sdk.Ctx, "k3k.overselling.config", metav1.GetOptions{})
+	obj, err := c.sdk.GetConfigCRD(c.sdk.Ctx, k8s.OverSellingConfigGVR, k8s.OverSellingConfigName)
 	if err != nil {
 		return OverSellingConfig{}, err
 	}
 
-	cpu, err := strconv.ParseInt(configmap.Data["cpu"], 10, 32)
-	if err != nil {
-		return OverSellingConfig{}, err
-	}
-	memory, err := strconv.ParseInt(configmap.Data["memory"], 10, 32)
-	if err != nil {
-		return OverSellingConfig{}, err
-	}
-	storage, err := strconv.ParseInt(configmap.Data["storage"], 10, 32)
-	if err != nil {
-		return OverSellingConfig{}, err
-	}
-	bandwidth, err := strconv.ParseInt(configmap.Data["bandwidth"], 10, 32)
-	if err != nil {
-		return OverSellingConfig{}, err
-	}
-	bandwidthNum, err := strconv.ParseInt(configmap.Data["bandwidthNum"], 10, 32)
-	if err != nil {
-		return OverSellingConfig{}, err
-	}
-
+	spec := k8s.ParseOverSellingConfigCRDSpec(obj)
 	return OverSellingConfig{
-		CPU:          int32(cpu),
-		Memory:       int32(memory),
-		Storage:      int32(storage),
-		BandWidth:    int32(bandwidth),
-		BandWidthNum: int32(bandwidthNum),
+		CPU:          spec.CPU,
+		Memory:       spec.Memory,
+		Storage:      spec.Storage,
+		BandWidth:    spec.BandWidth,
+		BandWidthNum: spec.BandWidthNum,
 	}, nil
 }
 

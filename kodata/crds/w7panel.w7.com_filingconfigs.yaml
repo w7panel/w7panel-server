@@ -1,0 +1,40 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: filingconfigs.w7panel.w7.com
+spec:
+  group: w7panel.w7.com
+  names:
+    kind: FilingConfig
+    listKind: FilingConfigList
+    plural: filingconfigs
+    singular: filingconfig
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            properties:
+              icpnumber:
+                type: string
+              number:
+                type: string
+              location:
+                type: string
+              license:
+                type: string
+              tbol:
+                type: string
+    served: true
+    storage: true

@@ -235,7 +235,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/procfs v0.17.0 // indirect
+	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.59.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
@@ -266,9 +266,8 @@ require (
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.38.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.38.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.38.0 // indirect
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
@@ -283,14 +282,14 @@ require (
 	golang.org/x/term v0.42.0 // indirect
 	golang.org/x/tools/godoc v0.1.0-deprecated // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/grpc v1.79.3 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	istio.io/gogo-genproto v0.0.0-20211115195057-0e34bdd2be67 // indirect
-	k8s.io/apiextensions-apiserver v0.35.4 // indirect
-	k8s.io/apiserver v0.35.4 // indirect
-	k8s.io/component-base v0.35.4 // indirect
+	k8s.io/apiextensions-apiserver v0.36.0 // indirect
+	k8s.io/apiserver v0.36.0 // indirect
+	k8s.io/component-base v0.36.0 // indirect
 	k8s.io/component-helpers v0.35.3 // indirect
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5 // indirect
 	lukechampine.com/blake3 v1.4.1 // indirect
@@ -333,7 +332,7 @@ require (
 	github.com/opencontainers/runtime-spec v1.3.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common v0.67.4
+	github.com/prometheus/common v0.67.5
 	github.com/rancher/k3k v0.3.5
 	github.com/shopspring/decimal v1.4.0
 	github.com/sirupsen/logrus v1.9.4
@@ -346,7 +345,7 @@ require (
 	go.mozilla.org/hawk v0.0.0-20210729190827-599314684e0d
 	go.yaml.in/yaml/v4 v4.0.0-rc.3
 	golang.org/x/time v0.14.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217
+	google.golang.org/genproto/googleapis/api v0.0.0-20260128011058-8636f8732409
 	gopkg.in/yaml.v2 v2.4.0
 	istio.io/api v0.0.0-20211122181927-8da52c66ff23
 	k8s.io/api v0.36.1

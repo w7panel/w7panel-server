@@ -39,10 +39,10 @@ func (self Auth) LoginBySign(http *gin.Context) {
 
 func (self Auth) login(http *gin.Context, verifyCaptcha bool) {
 	type ParamsValidate struct {
-		Username string `form:"username" binding:"required"`
-		Password string `form:"password" binding:"required"`
-		Point    string `form:"point"`
-		Key      string `form:"key"`
+		Username string `form:"username" json:"username" binding:"required"`
+		Password string `form:"password" json:"password" binding:"required"`
+		Point    string `form:"point" json:"point"`
+		Key      string `form:"key" json:"key"`
 	}
 	loginMethod := "password"
 	params := ParamsValidate{}
@@ -83,9 +83,9 @@ func (self Auth) login(http *gin.Context, verifyCaptcha bool) {
 
 func (self Auth) Register(http *gin.Context) {
 	type ParamsValidate struct {
-		Username   string `form:"username" binding:"required"`
-		Password   string `form:"password" binding:"required"`
-		PolicyName string `form:"policyName" binding:"required"`
+		Username   string `form:"username" json:"username" binding:"required"`
+		Password   string `form:"password" json:"password" binding:"required"`
+		PolicyName string `form:"policyName" json:"policyName" binding:"required"`
 	}
 	params := ParamsValidate{}
 	if !self.Validate(http, &params) {
@@ -104,7 +104,7 @@ func (self Auth) Register(http *gin.Context) {
 func (self Auth) ConsoleLogin(http *gin.Context) {
 	type ParamsValidate struct {
 		Code       string `form:"code" binding:"required"`
-		PolicyName string `form:"policyName"`
+		PolicyName string `form:"policyName" json:"policyName"`
 	}
 	params := ParamsValidate{}
 	if !self.Validate(http, &params) {
@@ -250,8 +250,8 @@ func (self Auth) InitUser(http *gin.Context) {
 
 	releaseName := facade.Config.GetString("app.helm_release_name")
 	type ParamsValidate struct {
-		Username string `form:"username" binding:"required"`
-		Password string `form:"password" binding:"required"`
+		Username string `form:"username" json:"username" binding:"required"`
+		Password string `form:"password" json:"password" binding:"required"`
 	}
 
 	params := ParamsValidate{}
@@ -291,9 +291,9 @@ func (self Auth) GetInitUser(http *gin.Context) {
 		maps["canInitUser"] = "false"
 	}
 
-	k3kconfig, err := client.ClientSet.CoreV1().ConfigMaps("kube-system").Get(http, "k3k.config", v1.GetOptions{})
+	dataMap, err := client.GetConfigCRDData(http, k8s.K3kConfigGVR, k8s.K3kConfigName)
 	if err == nil {
-		maps["allowConsoleRegister"] = k3kconfig.Data["allowConsoleRegister"]
+		maps["allowConsoleRegister"] = dataMap["allowConsoleRegister"]
 	}
 	self.JsonResponseWithoutError(http, maps)
 	return
@@ -311,9 +311,9 @@ func (self Auth) GetInitUser(http *gin.Context) {
 func (self Auth) ResetPassword(http *gin.Context) {
 
 	type ParamsValidate struct {
-		Username    string `form:"username" binding:"required"`
-		Password    string `form:"password" binding:"required"`
-		NewPassword string `form:"newPassword" binding:"required"`
+		Username    string `form:"username" json:"username" binding:"required"`
+		Password    string `form:"password" json:"password" binding:"required"`
+		NewPassword string `form:"newPassword" json:"newPassword" binding:"required"`
 	}
 
 	params := ParamsValidate{}
@@ -345,8 +345,8 @@ func (self Auth) ResetPassword(http *gin.Context) {
 func (self Auth) ResetPasswordCurrent(http *gin.Context) {
 
 	type ParamsValidate struct {
-		Password    string `form:"password"`
-		NewPassword string `form:"newPassword" binding:"required"`
+		Password    string `form:"password" json:"password"`
+		NewPassword string `form:"newPassword" json:"newPassword" binding:"required"`
 	}
 
 	params := ParamsValidate{}

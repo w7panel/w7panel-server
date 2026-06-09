@@ -48,12 +48,14 @@ func (m *ResourceMutator) handleIngress(ctx context.Context, req admission.Reque
 		return admission.Allowed("删除请求")
 	}
 
-	if req.Operation == "CREATE" || req.Operation == "UPDATE" {
-		if err := validateIngressHostUniqueAcrossNamespaces(ctx, m.client, ingress); err != nil {
-			return admission.Denied(err.Error())
-		}
+	conflict, err := findIngressHostConflict(ctx, m.client, ingress)
+	if err != nil {
+		slog.Error("ingress webhook list ingress error", "error", err)
+		return admission.Errored(http.StatusInternalServerError, err)
 	}
-
+	if conflict != "" {
+		return admission.Denied(conflict)
+	}
 	if helper.IsChildAgent() {
 		defer k3k.SyncHttpAfter(ingress, "sync-ingress")
 	}
@@ -82,6 +84,45 @@ func (m *ResourceMutator) handleIngress(ctx context.Context, req admission.Reque
 	}
 
 	return admission.Allowed("所有域名都在白名单中")
+}
+
+func findIngressHostConflict(ctx context.Context, c client.Client, current *networkingv1.Ingress) (string, error) {
+	hosts := ingressRuleHosts(current)
+	if len(hosts) == 0 {
+		return "", nil
+	}
+
+	ingresses := &networkingv1.IngressList{}
+	if err := c.List(ctx, ingresses); err != nil {
+		return "", err
+	}
+
+	for _, ingress := range ingresses.Items {
+		if ingress.Namespace == current.Namespace {
+			continue
+		}
+		for _, rule := range ingress.Spec.Rules {
+			if rule.Host == "" {
+				continue
+			}
+			if _, ok := hosts[rule.Host]; ok {
+				return fmt.Sprintf("host %s 已被命名空间 %s 下的 Ingress %s 使用", rule.Host, ingress.Namespace, ingress.Name), nil
+			}
+		}
+	}
+
+	return "", nil
+}
+
+func ingressRuleHosts(ingress *networkingv1.Ingress) map[string]struct{} {
+	hosts := map[string]struct{}{}
+	for _, rule := range ingress.Spec.Rules {
+		if rule.Host == "" {
+			continue
+		}
+		hosts[rule.Host] = struct{}{}
+	}
+	return hosts
 }
 
 func (m *ResourceMutator) handleIngressDelete(client client.Client, ingress *networkingv1.Ingress) {
@@ -172,46 +213,6 @@ func isSecretReferencedByOtherIngress(clientset client.Client, deletedIngress *n
 	}
 
 	return false
-}
-
-func validateIngressHostUniqueAcrossNamespaces(ctx context.Context, clientset client.Client, current *networkingv1.Ingress) error {
-	hosts := ingressRuleHosts(current)
-	if len(hosts) == 0 {
-		return nil
-	}
-
-	ingresses := &networkingv1.IngressList{}
-	if err := clientset.List(ctx, ingresses); err != nil {
-		slog.Error("Failed to list Ingresses", "error", err)
-		return fmt.Errorf("检查 Ingress 域名是否重复失败: %w", err)
-	}
-
-	for _, ingress := range ingresses.Items {
-		if ingress.Namespace == current.Namespace {
-			continue
-		}
-
-		for _, rule := range ingress.Spec.Rules {
-			host := normalizeIngressHost(rule.Host)
-			if _, exists := hosts[host]; exists {
-				return fmt.Errorf("域名 %s 已在命名空间 %s 的 Ingress %s 中存在", rule.Host, ingress.Namespace, ingress.Name)
-			}
-		}
-	}
-
-	return nil
-}
-
-func ingressRuleHosts(ingress *networkingv1.Ingress) map[string]struct{} {
-	hosts := make(map[string]struct{})
-	for _, rule := range ingress.Spec.Rules {
-		host := normalizeIngressHost(rule.Host)
-		if host == "" {
-			continue
-		}
-		hosts[host] = struct{}{}
-	}
-	return hosts
 }
 
 func normalizeIngressHost(host string) string {

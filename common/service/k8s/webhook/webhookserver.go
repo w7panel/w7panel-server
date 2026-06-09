@@ -124,6 +124,8 @@ func (m *ResourceMutator) Handle(ctx context.Context, req admission.Request) adm
 		return m.handleSecret(ctx, req)
 	case "ConfigMap":
 		return m.handleConfigmap(ctx, req)
+	case "OverSellingConfig":
+		return m.handleOverSellingConfig(ctx, req)
 	case "McpBridge":
 		return m.handleMcpBridge(ctx, req)
 	case "Node":
@@ -152,6 +154,8 @@ func (m *ResourceMutator) Handle(ctx context.Context, req admission.Request) adm
 		return m.handlePvc(ctx, req)
 	case "ApiClient":
 		return m.handleApiClient(ctx, req)
+	case "MicroApp":
+		return m.handleMicroApp(ctx, req)
 	default:
 		return admission.Allowed("不需要修改的资源类型")
 	}

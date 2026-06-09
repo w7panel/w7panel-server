@@ -38,7 +38,7 @@ func MicroApp(name, namespace string) *MicroAppApplyConfiguration {
 	b.WithName(name)
 	b.WithNamespace(namespace)
 	b.WithKind("MicroApp")
-	b.WithAPIVersion("microapp.w7.cc/v1alpha1")
+	b.WithAPIVersion("w7panel.w7.com/v1alpha1")
 	return b
 }
 

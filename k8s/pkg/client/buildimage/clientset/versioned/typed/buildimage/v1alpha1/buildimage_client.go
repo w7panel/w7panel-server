@@ -30,7 +30,7 @@ type BuildimageV1alpha1Interface interface {
 	BuildImagesGetter
 }
 
-// BuildimageV1alpha1Client is used to interact with features provided by the buildimage.w7.cc group.
+// BuildimageV1alpha1Client is used to interact with features provided by the w7panel.w7.com group.
 type BuildimageV1alpha1Client struct {
 	restClient rest.Interface
 }

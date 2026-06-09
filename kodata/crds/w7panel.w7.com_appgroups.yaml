@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: appgroups.appgroup.w7.cc
+  name: appgroups.w7panel.w7.com
 spec:
-  group: appgroup.w7.cc
+  group: w7panel.w7.com
   names:
     kind: AppGroup
     listKind: AppGroupList
