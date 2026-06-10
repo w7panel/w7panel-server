@@ -216,10 +216,59 @@ func (r *RoleBinding) CreateSuperUserRoleBinding(ctx context.Context, sa *v1.Ser
 	return nil
 }
 
+func (r *RoleBinding) CreatePermissionRoleBinding(ctx context.Context, sa *v1.ServiceAccount, role string) error {
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("w7panel-permission-rb-%s", sa.Name),
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      sa.Name,
+				Namespace: sa.Namespace,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			Kind:     "ClusterRole",
+			Name:     role,
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+	}
+
+	if err := r.Create(ctx, clusterRoleBinding); err != nil {
+		if errors.IsAlreadyExists(err) {
+			if err := r.Delete(ctx, &rbacv1.ClusterRoleBinding{ObjectMeta: clusterRoleBinding.ObjectMeta}); err != nil && !errors.IsNotFound(err) {
+				return fmt.Errorf("failed to delete stale permission ClusterRoleBinding: %v", err)
+			}
+			if err := r.Create(ctx, clusterRoleBinding); err != nil {
+				return fmt.Errorf("failed to recreate permission ClusterRoleBinding: %v", err)
+			}
+		} else {
+			return fmt.Errorf("failed to create permission ClusterRoleBinding: %v", err)
+		}
+	}
+
+	return nil
+}
+
+func (r *RoleBinding) DeletePermissionRoleBinding(ctx context.Context, sa *v1.ServiceAccount) error {
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("w7panel-permission-rb-%s", sa.Name),
+		},
+	}
+
+	if err := r.Delete(ctx, clusterRoleBinding); err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete permission ClusterRoleBinding: %v", err)
+	}
+
+	return nil
+}
+
 func (r *RoleBinding) DeleteSuperUserRoleBinding(ctx context.Context, sa *v1.ServiceAccount, role string) error {
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("w7panel-rb-%s-%s", role, sa.Name),
+			Name: fmt.Sprintf("w7panel-rb-%s", sa.Name),
 		},
 	}
 

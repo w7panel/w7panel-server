@@ -10,6 +10,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/console"
 	console2 "github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	permissionservice "github.com/w7panel/w7panel/common/service/permission"
 
 	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
@@ -126,11 +127,18 @@ func RefreshK3kUser(user *types.K3kUser, rootSdk *k8s.Sdk, update bool) (*types.
 	// oldSa := user.ServiceAccount.DeepCopy()
 	w7configRepo := config.NewW7ConfigRepository(rootSdk)
 	if !user.IsCustomPermission() {
-		menuConfig, err := rootSdk.ClientSet.CoreV1().ConfigMaps(user.GetNamespace()).Get(rootSdk.Ctx, user.GetMenuName(), metav1.GetOptions{})
-		if err != nil {
-			slog.Error("GetMenuConfig error", "error", err)
-		}
+		permissionConfig, err := permissionservice.Get(rootSdk.Ctx, rootSdk, user.GetMenuName())
 		if err == nil {
+			permissionservice.ApplyToServiceAccount(user.ServiceAccount, permissionConfig)
+		}
+		if err != nil {
+			slog.Error("GetPermission error", "error", err)
+		}
+		menuConfig, cmErr := rootSdk.ClientSet.CoreV1().ConfigMaps(user.GetNamespace()).Get(rootSdk.Ctx, user.GetMenuName(), metav1.GetOptions{})
+		if cmErr != nil && err != nil {
+			slog.Error("GetMenuConfig error", "error", cmErr)
+		}
+		if err != nil && cmErr == nil {
 			user.ReplaceMenu(menuConfig)
 		}
 	}

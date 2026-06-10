@@ -38,6 +38,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&DomainParseConfigList{},
 		&ContactConfig{},
 		&ContactConfigList{},
+		&Permission{},
+		&PermissionList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)

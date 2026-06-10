@@ -57,8 +57,8 @@ echo "create权限 不使用apply"
 # kubectl get configmap k3k.permission.founder >/dev/null 2>&1 || kubectl apply -f $KO_DATA_PATH/yaml/k3k.permission.founder.yaml --server-side
 kubectl create -f $KO_DATA_PATH/yaml/permission || echo "已存在"
 
-# 创始人直接替换
-kubectl apply -f $KO_DATA_PATH/yaml/permission/k3k.permission.founder.yaml
+# 系统内置权限直接替换，自定义权限不在该目录中
+kubectl apply -f $KO_DATA_PATH/yaml/permission
 
 # echo "升级站点管理"
 # w7panel sitemanager-upgrade --version=1.0.24 --identifie=w7_php --is-agent=false
@@ -88,8 +88,8 @@ w7panel uninstall-store-panel
 echo "新版metrics"
 w7panel metrics:upgrade
 
-# echo "升级权限菜单" # cvm版本 去掉
-# w7panel qx-upgrade
+echo "升级权限菜单"
+w7panel qx-upgrade
 
 echo "域名解析配置"
 w7panel domain-config

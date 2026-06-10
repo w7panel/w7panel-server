@@ -3,6 +3,7 @@
 package v1alpha1
 
 import (
+	rbacv1 "k8s.io/api/rbac/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -256,6 +257,115 @@ func (in *OverSellingConfigSpec) DeepCopy() *OverSellingConfigSpec {
 		return nil
 	}
 	out := new(OverSellingConfigSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *Permission) DeepCopyInto(out *Permission) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	in.Spec.DeepCopyInto(&out.Spec)
+}
+
+func (in *Permission) DeepCopy() *Permission {
+	if in == nil {
+		return nil
+	}
+	out := new(Permission)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *Permission) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *PermissionFeatures) DeepCopyInto(out *PermissionFeatures) {
+	*out = *in
+}
+
+func (in *PermissionFeatures) DeepCopy() *PermissionFeatures {
+	if in == nil {
+		return nil
+	}
+	out := new(PermissionFeatures)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *PermissionList) DeepCopyInto(out *PermissionList) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]Permission, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+}
+
+func (in *PermissionList) DeepCopy() *PermissionList {
+	if in == nil {
+		return nil
+	}
+	out := new(PermissionList)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *PermissionList) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *PermissionSpec) DeepCopyInto(out *PermissionSpec) {
+	*out = *in
+	if in.Menu != nil {
+		in, out := &in.Menu, &out.Menu
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.API != nil {
+		in, out := &in.API, &out.API
+		*out = make(map[string][]string, len(*in))
+		for key, val := range *in {
+			if val == nil {
+				(*out)[key] = nil
+				continue
+			}
+			outVal := make([]string, len(val))
+			copy(outVal, val)
+			(*out)[key] = outVal
+		}
+	}
+	out.Features = in.Features
+	if in.DomainWhiteList != nil {
+		in, out := &in.DomainWhiteList, &out.DomainWhiteList
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.RBACRules != nil {
+		in, out := &in.RBACRules, &out.RBACRules
+		*out = make([]rbacv1.PolicyRule, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+}
+
+func (in *PermissionSpec) DeepCopy() *PermissionSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(PermissionSpec)
 	in.DeepCopyInto(out)
 	return out
 }

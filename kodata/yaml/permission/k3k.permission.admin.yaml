@@ -1,0 +1,81 @@
+apiVersion: w7panel.w7.com/v1alpha1
+kind: Permission
+metadata:
+  name: k3k.permission.admin
+  labels:
+    typemode: in
+spec:
+  title: 管理员
+  type: builtin
+  role: admin
+  menu:
+  - cluster/*
+  - app/*
+  - storage/*
+  - zpk
+  - system/cloud
+  - system/license
+  - system/audit
+  - usermanage/*
+  - sitemanage/*
+  - cluster-nodes-add
+  - cluster-nodes-registries
+  - cluster-nodes-gpu
+  - cluster-nodes-memory
+  - app-apps-add
+  - app-apps-edit
+  - app-apps-delete
+  - app-cronjob-add
+  - app-cronjob-edit
+  - app-cronjob-delete
+  - app-rvproxy-add
+  - app-rvproxy-edit
+  - app-rvproxy-delete
+  - app-dblist-add
+  - app-dblist-delete
+  - storage-node-add
+  - storage-node-edit
+  - storage-node-delete
+  api:
+    '*':
+    - '*'
+    /panel-api/v1/auth/reset-password:
+    - '*'
+    /panel-api/v1/auth/init-user:
+    - '*'
+  features:
+    debug: true
+    fileeditor: true
+    webshell: true
+  rbacRules:
+  - apiGroups:
+    - '*'
+    resources:
+    - '*'
+    verbs:
+    - '*'
+  - apiGroups:
+    - apiextensions.k8s.io
+    resources:
+    - customresourcedefinitions
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ''
+    resources:
+    - namespaces
+    - serviceaccounts
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - w7panel.w7.com
+    resources:
+    - '*'
+    verbs:
+    - get
+    - list
+    - watch
