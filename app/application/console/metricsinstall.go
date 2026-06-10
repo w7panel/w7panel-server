@@ -99,8 +99,8 @@ func (c MetricsInstall) Handle(cmd *cobra.Command, args []string) {
 			slog.Error("helm install error", slog.String("error", errstr))
 			os.Exit(1)
 		}
-		if err == nil {
-			print(successstr)
+		if successstr != "" {
+			slog.Info("helm install success", slog.String("output", successstr))
 		}
 
 	}
@@ -132,6 +132,8 @@ func (c MetricsInstall) Apply(baseDir, file string) error {
 		slog.Error("kubectl apply error", slog.String("error", estr))
 		return err
 	}
-	print(sstr)
+	if sstr != "" {
+		slog.Info("kubectl apply success", slog.String("output", sstr))
+	}
 	return nil
 }

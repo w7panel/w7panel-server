@@ -14,6 +14,5 @@ func TestCheckX(t *testing.T) {
 	upgradeCheck := NewUpgradeCheck(sdk)
 	upgradeCheck.WithCDToken(token)
 	upgradeCheck.Check("default", "w7-pros-28693-gte7p7a84d")
-	// t.print(result)
 
 }

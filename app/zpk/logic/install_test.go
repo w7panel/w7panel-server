@@ -339,7 +339,6 @@ func getConsoleApps() *types.Package {
 	if err != nil {
 		panic(err)
 	}
-	// print(manifestPackage.Manifest.RequireSite())
 	// return nil
 
 	preInstall, err := repo.PreInstall("5723")

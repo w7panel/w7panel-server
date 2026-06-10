@@ -271,7 +271,6 @@ func (p *ManifestPackage) PutKv(kv EnvKv) {
 			p.Manifest.Platform.Container.StartParams[i].ValuesText = kv.Value
 		}
 	}
-	// print(p.Manifest.Platform.Container.StartParams)
 }
 
 func (p *ManifestPackage) PutEnvs(kv []EnvKv) {
