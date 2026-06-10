@@ -194,39 +194,6 @@ func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Cont
 	return
 }
 
-func (self Auth) RefreshToken(http *gin.Context) {
-	type ParamsValidate struct {
-		Namespace string `form:"namespace" binding:"required"`
-	}
-	params := ParamsValidate{}
-	if !self.Validate(http, &params) {
-		return
-	}
-	oldToken := http.MustGet("k8s_token").(string)
-	oldTokenObj := k8s.NewK8sToken(oldToken)
-	saName, _ := k8s.GetTokenSaName(oldToken)
-	if saName == "" {
-		self.JsonResponseWithError(http, fmt.Errorf("not sa name"), 500)
-		return
-	}
-	seconds := facade.Config.GetInt64("app.login_seconds")
-	ans, err := oldTokenObj.GetAudience()
-	if err != nil {
-		self.JsonResponseWithError(http, err, 500)
-		return
-	}
-	token, err := k8s.NewK8sClient().CreateTokenRequest(saName, seconds, ans)
-	if err != nil {
-		self.JsonResponseWithError(http, err, 500)
-		return
-	}
-	self.JsonResponseWithoutError(http, gin.H{
-		"token":  token,
-		"expire": time.Now().Add(time.Duration(seconds) * time.Second).Unix(),
-	})
-	return
-}
-
 func (self Auth) RefreshToken2(http *gin.Context) {
 	type ParamsValidate struct {
 		Token string `form:"refreshToken" binding:"required"`
@@ -276,30 +243,6 @@ func (self Auth) InitUser(http *gin.Context) {
 	client.ClientSet.CoreV1().ConfigMaps(client.GetNamespace()).Delete(http, configMapName, metav1.DeleteOptions{})
 	self.JsonSuccessResponse(http)
 
-}
-
-// kubectl create configmap offlineui-init-user --from-literal=a=b
-func (self Auth) GetInitUser(http *gin.Context) {
-	releaseName := facade.Config.GetString("app.helm_release_name")
-	client := k8s.NewK8sClient()
-	_, err := client.ClientSet.CoreV1().ConfigMaps(client.GetNamespace()).Get(http, releaseName+"-init-user", v1.GetOptions{})
-	maps := make(map[string]string)
-	maps["canInitUser"] = "true"
-	maps["allowConsoleRegister"] = "false"
-	maps["captchaEnabled"] = "false"
-	if facade.Config.GetBool("captcha.enabled") {
-		maps["captchaEnabled"] = "true"
-	}
-	if err != nil {
-		maps["canInitUser"] = "false"
-	}
-
-	k3kconfig, err := client.ClientSet.CoreV1().ConfigMaps("kube-system").Get(http, "k3k.config", v1.GetOptions{})
-	if err == nil {
-		maps["allowConsoleRegister"] = k3kconfig.Data["allowConsoleRegister"]
-	}
-	self.JsonResponseWithoutError(http, maps)
-	return
 }
 
 /*

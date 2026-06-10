@@ -501,18 +501,6 @@ func IsValidEnvVarName(name string) bool {
 	return envVarNameRegex.MatchString(name)
 }
 
-func GetNodeInnertIp(node *v1.Node) (string, error) {
-	// if true {
-	// 	return "218.23.2.55", nil
-	// }
-	for _, addr := range node.Status.Addresses {
-		if addr.Type == v1.NodeInternalIP {
-			return addr.Address, nil
-		}
-	}
-	return "", nil
-}
-
 func Runsh(name string, arg ...string) (string, string, error) {
 	cmd := exec.Command(name, arg...)
 

@@ -27,13 +27,6 @@ func init() {
 	regisry = reg
 }
 
-// Version 返回 Registry API 版本
-func (self Registry) Version(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{
-		"schemas": []string{"https://docs.docker.com/spec/api/v2/"},
-	})
-}
-
 // Catalog 返回镜像列表
 func (self Registry) Handler(ctx *gin.Context) {
 	if regisry != nil {

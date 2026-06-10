@@ -333,10 +333,6 @@ func (self Zpk) Install(http *gin.Context) {
 	self.JsonResponse(http, result, nil, 200)
 
 }
-func (self Zpk) BuildJobFail(http *gin.Context) {
-
-}
-
 func (self Zpk) BuildImageSuccess(http *gin.Context) {
 
 	type ParamsValidate struct {
@@ -408,29 +404,6 @@ func (self Zpk) BuildImageSuccess(http *gin.Context) {
 		AppsV1().
 		Deployments(params.Namespace).
 		Patch(client.Ctx, params.DeploymentName, k8stypes.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonSuccessResponse(http)
-}
-
-func (self Zpk) Test(http *gin.Context) {
-
-	type ParamsValidate struct {
-		Namespace string `form:"namespace" binding:"required"`
-	}
-	params := ParamsValidate{}
-	if !self.Validate(http, &params) {
-		return
-	}
-	client, err := k8s.NewK8sClient().Channel(http.MustGet("k8s_token").(string))
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	helmApi := k8s.NewHelm(client)
-	err = helmApi.IsReachable(params.Namespace)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return

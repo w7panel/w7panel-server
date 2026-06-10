@@ -199,22 +199,6 @@ func (self Console) ThirdPartyCDToken(gin *gin.Context) {
 	// self.JsonSuccessResponse(gin)
 }
 
-func (self Console) Kubeconfig(gin *gin.Context) {
-
-	sdk, err := k8s.NewK8sClient().Channel(gin.MustGet("k8s_token").(string))
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-	kubeconfig, err := sdk.ToKubeconfig("")
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-	self.JsonResponseWithoutError(gin, kubeconfig)
-
-}
-
 func (self Console) ImportCert(gin *gin.Context) {
 	type ParamsValidate struct {
 		Cert string `form:"cert" binding:"required"`

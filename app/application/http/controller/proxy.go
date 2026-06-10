@@ -91,32 +91,6 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 	}
 }
 
-func (self Proxy) ProxyDebug(gin *gin.Context) {
-	result := make(map[string]interface{})
-	result["fullPath"] = gin.FullPath()
-	result["path"] = gin.Request.URL.Path
-	result["query"] = gin.Request.URL.Query()
-	result["header"] = gin.Request.Header
-	result["host"] = gin.Request.Host
-	result["joinPath"] = gin.Request.URL.JoinPath("/").RequestURI()
-	gin.JSON(http.StatusOK, result)
-}
-
-func (self Proxy) Proxy(gin *gin.Context) {
-	proxyUrl := gin.GetHeader("proxy-url")
-	if proxyUrl == "" {
-		proxyUrl = "https://zpk.w7.cc"
-		// self.JsonResponseWithServerError(gin, errors.New("proxy-url is required"))
-		// return
-	}
-
-	var path = gin.Param("path")
-	if path == "" {
-		path = "/"
-	}
-
-	self.proxyUrl(gin, proxyUrl, path)
-}
 func (self Proxy) ProxyNoAuthService(gin *gin.Context) {
 	self.ProxyService(gin)
 }
