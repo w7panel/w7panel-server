@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	ut "github.com/go-playground/universal-translator"
-	"github.com/go-playground/validator/v10"
 	consoleShell "github.com/w7panel/w7panel/app/application/console"
 	controller2 "github.com/w7panel/w7panel/app/application/http/controller"
 	"github.com/w7panel/w7panel/common/helper"
@@ -16,12 +14,11 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	appctl "github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/w7panel/w7panel/common/service/k8s/core"
-	gpustack "github.com/w7panel/w7panel/common/service/k8s/gpu/gpustack"
+	"github.com/w7panel/w7panel/common/service/k8s/gpu/gpustack"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	"github.com/w7panel/w7panel/common/service/k8s/mcp"
 	"github.com/w7panel/w7panel/common/service/k8s/shell"
-	"github.com/w7panel/w7panel/common/service/s3"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
@@ -31,7 +28,6 @@ type Provider struct {
 }
 
 func (p Provider) Register(httpServer *httpserver.Server, console console.Console) {
-
 	console.RegisterCommand(new(consoleShell.Goshell))
 	console.RegisterCommand(new(consoleShell.K8sCheckResource))
 	console.RegisterCommand(new(consoleShell.IngressUpgrade))
@@ -41,7 +37,7 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(consoleShell.Build))               //临时测试
 	console.RegisterCommand(new(consoleShell.BeianCheck))          //备案检查
 	console.RegisterCommand(new(consoleShell.TestUploadChunk))     // 测试分片上传功能
-	p.RegisterValidateRule()
+
 	p.RegisterHttpRoutes(httpServer)
 	console2.SetConsoleApi(facade.GetConfig().GetString("app.console_base_url"))
 	if helper.IsLocalMock() {
@@ -89,36 +85,6 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	// go k3k.SyncAgentIngress()
 	go higress.LoadBkConfig()
 
-}
-
-func (p Provider) RegisterValidateRule() {
-	if v, ok := facade.GetValidator().Engine().(*validator.Validate); ok {
-		v.RegisterValidation("id", func(fl validator.FieldLevel) bool {
-			if id, ok := fl.Field().Interface().(uint); ok {
-				if id > 0 {
-					return true
-				}
-			}
-
-			return false
-		})
-
-		v.RegisterValidation("page", func(fl validator.FieldLevel) bool {
-			if page, ok := fl.Field().Interface().(uint); ok {
-				if page > 0 {
-					return true
-				}
-			}
-
-			return false
-		})
-		v.RegisterTranslation("page", facade.GetTranslator(), func(ut ut.Translator) error {
-			return ut.Add("page", "{0} 格式错误", true) // see universal-translator for details
-		}, func(ut ut.Translator, fe validator.FieldError) string {
-			t, _ := ut.T("page", fe.Field())
-			return t
-		})
-	}
 }
 
 func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
@@ -269,10 +235,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		}
 
 	})
-}
-
-func (p Provider) RegisterS3Server(server *httpserver.Server) {
-	s3.Init(facade.Config.GetString("s3.base_dir"))
 }
 
 func (p Provider) cleanS3() {

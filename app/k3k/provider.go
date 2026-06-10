@@ -22,16 +22,13 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(consoleShell.K3kOrderReturnCheckOne)) //处理有退款记录的用户one
 	console.RegisterCommand(new(consoleShell.Weihu))                  //维护模式下的job
 	p.RegisterHttpRoutes(httpServer)
-	// if facade.Config.GetBool("k3k.watch") {
-	// 	go k3kapi.Watch()
-	// }
+
 	if helper.IsChildAgent() {
 		go k3k.SyncMicroApp()
 	}
 }
 
 func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
-
 	server.RegisterRouters(func(engine *gin.Engine) {
 		k3kGroup := engine.Group("/panel-api/v1/k3k") //.Use(middleware.Cors{}.Process)
 		{

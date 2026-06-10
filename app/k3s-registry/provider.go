@@ -4,15 +4,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/app/k3s-registry/http/controller"
 	"github.com/w7panel/w7panel/common/middleware"
-	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
 )
 
 type Provider struct{}
 
-func (p Provider) Register(httpServer *httpserver.Server, console console.Console) {
-	p.RegisterHttpRoutes(httpServer) //
+func (p Provider) Register(httpServer *httpserver.Server) {
+	p.RegisterHttpRoutes(httpServer)
 
 }
 

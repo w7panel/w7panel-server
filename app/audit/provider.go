@@ -2,16 +2,15 @@ package audit
 
 import (
 	"github.com/gin-gonic/gin"
-	controller "github.com/w7panel/w7panel/app/audit/http/controller"
+	"github.com/w7panel/w7panel/app/audit/http/controller"
 	"github.com/w7panel/w7panel/common/middleware"
-	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
 )
 
 type Provider struct {
 }
 
-func (p Provider) Register(httpServer *httpserver.Server, console console.Console) {
+func (p Provider) Register(httpServer *httpserver.Server) {
 	p.RegisterHttpRoutes(httpServer)
 }
 

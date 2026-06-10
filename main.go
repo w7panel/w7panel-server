@@ -156,11 +156,11 @@ func main() {
 
 	new(application.Provider).Register(httpServer, newApp.GetConsole())
 	new(auth.Provider).Register(httpServer, newApp.GetConsole())
-	new(auditapp.Provider).Register(httpServer, newApp.GetConsole())
+	new(auditapp.Provider).Register(httpServer)
 	new(metrics2.Provider).Register(httpServer, newApp.GetConsole())
 	new(zpk.Provider).Register(httpServer, newApp.GetConsole())
 	new(k3k.Provider).Register(httpServer, newApp.GetConsole())
-	new(k3sregistry.Provider).Register(httpServer, newApp.GetConsole())
+	new(k3sregistry.Provider).Register(httpServer)
 
 	// NoRoute 必须在所有 Provider 注册之后
 	httpServer.RegisterRouters(
