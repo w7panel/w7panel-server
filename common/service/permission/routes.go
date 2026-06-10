@@ -9,10 +9,11 @@ import (
 )
 
 type APIRoute struct {
-	Method string `json:"method"`
-	Path   string `json:"path"`
-	Verb   string `json:"verb"`
-	Title  string `json:"title"`
+	Method      string `json:"method"`
+	Path        string `json:"path"`
+	Verb        string `json:"verb"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
 }
 
 func RoutesFromGin(routes gin.RoutesInfo) []APIRoute {
@@ -29,11 +30,14 @@ func RoutesFromGin(routes gin.RoutesInfo) []APIRoute {
 		if verb == "" {
 			continue
 		}
+		path := normalizeGinRoutePath(route.Path)
+		description := routeDescription(route.Method, route.Path, path)
 		item := APIRoute{
-			Method: route.Method,
-			Path:   normalizeGinRoutePath(route.Path),
-			Verb:   verb,
-			Title:  routeTitle(route.Method, route.Path),
+			Method:      route.Method,
+			Path:        path,
+			Verb:        verb,
+			Title:       description,
+			Description: description,
 		}
 		key := item.Method + " " + item.Path
 		if seen[key] {
@@ -51,8 +55,11 @@ func RoutesFromGin(routes gin.RoutesInfo) []APIRoute {
 	return result
 }
 
-func routeTitle(method, path string) string {
-	if title := auditservice.LookupRouteDescription(method, path); title != "" {
+func routeDescription(method, rawPath string, normalizedPath string) string {
+	if title := auditservice.LookupRouteDescription(method, rawPath); title != "" {
+		return title
+	}
+	if title := auditservice.LookupRouteDescription(method, normalizedPath); title != "" {
 		return title
 	}
 	return auditservice.MethodDescription(method)
