@@ -10,6 +10,7 @@ import (
 	k3kController "github.com/w7panel/w7panel/app/k3k/http/controller"
 	"github.com/w7panel/w7panel/common/middleware"
 	console2 "github.com/w7panel/w7panel/common/service/console"
+	permissionservice "github.com/w7panel/w7panel/common/service/permission"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
@@ -80,6 +81,12 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			// 不需要创始人权限
 			localApiGroup.GET("/console/code/:code", middleware.Auth{}.Process, controller2.Console{}.ProxyCouponCode)
 			localApiGroup.Any("/console/proxy/*path", middleware.NewAuth("founder").Process, controller2.Console{}.Proxy)
+			localApiGroup.GET("/permissions/routes", middleware.Auth{}.Process, func(ctx *gin.Context) {
+				ctx.JSON(200, gin.H{
+					"code": 200,
+					"data": permissionservice.RoutesFromGin(engine.Routes()),
+				})
+			})
 
 			localApiGroup.POST("/console/register-to-console", middleware.Auth{}.Process, controller2.Console{}.RegisterToConsole) //不能proxy 需要root kubeconfig
 			//不能proxy 需要root kubeconfig
