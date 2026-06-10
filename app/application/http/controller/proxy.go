@@ -84,7 +84,6 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 		http.Request.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	// 处理请求 - K8sResponseFilter middleware handles filtering
 	err = client.Proxy(http.Request, http.Writer)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
