@@ -22,7 +22,6 @@ type shellOption struct {
 	subPid  string
 }
 
-// ./runtime/main cluster:register --thirdPartyCDToken=ywA2N3ImkVo0tPOn --registerCluster=true --offlineUrl=http://118.25.145.25:9090 --apiServerUrl=https://118.25.145.25:6443
 var shOp = shellOption{}
 
 func (c Goshell) GetName() string {
@@ -30,7 +29,6 @@ func (c Goshell) GetName() string {
 }
 
 func (c Goshell) Configure(cmd *cobra.Command) {
-	// username password register
 	cmd.Flags().StringVar(&shOp.cmd, "cmd", "", "动作")
 	cmd.Flags().StringVar(&shOp.srcPath, "srcPath", "", "原始路径")
 	cmd.Flags().StringVar(&shOp.toPath, "toPath", "", "目标路径")
@@ -54,5 +52,4 @@ func (c Goshell) Handle(cmd *cobra.Command, args []string) {
 	if err != nil {
 		slog.Error("执行失败", "error", err)
 	}
-	// slog.Info("执行完成" + args[0])
 }

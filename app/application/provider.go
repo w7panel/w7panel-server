@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	consoleShell "github.com/w7panel/w7panel/app/application/console"
 	controller2 "github.com/w7panel/w7panel/app/application/http/controller"
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/middleware"
 	console2 "github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -34,17 +33,13 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(consoleShell.MetricsInstall))
 	console.RegisterCommand(new(consoleShell.UninstallStorePanel)) //删除商店安装的面板
 	console.RegisterCommand(new(consoleShell.DomainParseConfig))   //域名解析
-	console.RegisterCommand(new(consoleShell.Build))               //临时测试
-	console.RegisterCommand(new(consoleShell.BeianCheck))          //备案检查
-	console.RegisterCommand(new(consoleShell.TestUploadChunk))     // 测试分片上传功能
+	console.RegisterCommand(new(consoleShell.Build))
+	console.RegisterCommand(new(consoleShell.BeianCheck))      //备案检查
+	console.RegisterCommand(new(consoleShell.TestUploadChunk)) // 测试分片上传功能
 
 	p.RegisterHttpRoutes(httpServer)
 	console2.SetConsoleApi(facade.GetConfig().GetString("app.console_base_url"))
-	if helper.IsLocalMock() {
-		// console2.SetConsoleApi("http://172.16.1.116:9004")
-	}
 
-	// p.CRD() //upgrade.sh 中处理
 	if facade.GetConfig().GetBool("longhorn.watch") {
 
 		go longhorn.OnStart()
@@ -54,11 +49,6 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 		go shell.ShellWatch()
 	}
 
-	// if facade.GetConfig().GetBool("higress.watch") {
-
-	// 	go higress.Watch()
-	// }
-	// go converter.ConvertOpenApiToSchema()
 	if facade.GetConfig().GetBool("clean.enabled") {
 
 		go p.cleanS3()
@@ -82,7 +72,6 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	}
 
 	go k8s.CheckLogo()
-	// go k3k.SyncAgentIngress()
 	go higress.LoadBkConfig()
 
 }
@@ -124,12 +113,10 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.PUT("/mountfiles", middleware.Auth{}.Process, controller2.Pid{}.UpdateMountFile)                                    //更新挂载文件列表                                      // 获取工作负载挂载文件
 			localApiGroup.DELETE("/mountfiles", middleware.Auth{}.Process, controller2.Pid{}.DeleteMountFile)                                 //删除挂载文件
 			localApiGroup.PUT("/mountfiles/chmod", middleware.Auth{}.Process, controller2.Pid{}.ChmodMountFile)                               //修改挂载文件权限
-			// localApiGroup.GET("/pwd", middleware.Auth{}.Process, controller2.PodExec{}.GetPid)             //获取所在pod和pid
-			localApiGroup.GET("/nodepid", middleware.Auth{}.Process, controller2.PodExec{}.GetNodePid) //获取所在pod和pid
+			localApiGroup.GET("/nodepid", middleware.Auth{}.Process, controller2.PodExec{}.GetNodePid)                                        //获取所在pod和pid
 
-			localApiGroup.POST("/yaml", middleware.Auth{}.Process, controller2.Yaml{}.ApplyYamlOld) // 直接提交yaml
-			localApiGroup.PUT("/rollback", middleware.Auth{}.Process, controller2.Yaml{}.Rollback)  // 回滚资源
-			// localApiGroup.POST("/kcompose", middleware.Auth{}.Process, controller2.Yaml{}.ApplyDockerCompose)   // 直接提交yaml
+			localApiGroup.POST("/yaml", middleware.Auth{}.Process, controller2.Yaml{}.ApplyYamlOld)                // 直接提交yaml
+			localApiGroup.PUT("/rollback", middleware.Auth{}.Process, controller2.Yaml{}.Rollback)                 // 回滚资源
 			localApiGroup.POST("/kcompose", middleware.Auth{}.Process, controller2.Yaml{}.ConvertDockerComposeOld) // 转化kompose
 			localApiGroup.POST("/pinyin", middleware.Auth{}.Process, controller2.Util{}.Pinyin)                    // pinyin
 			localApiGroup.GET("/dnsip", middleware.Auth{}.Process, controller2.Util{}.DnsIp)
@@ -153,7 +140,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			localApiGroup.Any("/proxy-url/", controller2.Proxy{}.ProxyAddr)
 
-			//获取需要删除的副本
 			localApiGroup.GET("/longhorn/need-delete-replica", middleware.Auth{}.Process, controller2.Longhorn{}.GetNeedDeleteReplicas)
 			localApiGroup.GET("/longhorn/volumes/status", middleware.Auth{}.Process, controller2.Longhorn{}.GetVolumesStatus)
 			localApiGroup.POST("/longhorn/install", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.Install)
@@ -163,8 +149,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/longhorn/volumes/:volumeName/trim-filesystem", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.TrimFilesystem)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-delete", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotDelete)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-purge", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotPurge)
-			// localApiGroup.GET("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGc)
-			// localApiGroup.POST("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGcToggle)
 			localApiGroup.GET("/kubeblocks/installjobyaml", middleware.Auth{}.Process, controller2.KubeBlocks{}.InstallJobYaml)
 			localApiGroup.POST("/kubeblocks/install", middleware.Auth{}.Process, controller2.KubeBlocks{}.Install)
 			localApiGroup.GET("/static/:identifie/status", middleware.Auth{}.Process, controller2.Static{}.StaticInfo)
@@ -182,9 +166,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			gpuGroup.GET("/node/devices", controller2.Gpu{}.NodesDevices)
 			gpuGroup.POST("/gpustack/worker", controller2.Gpu{}.CreateGpuStackWorker)
 		}
-		// engine.Handle("GET", "/panel-api/v1/files/webdav-agent/:pid/agent/etc/passwd", middleware.Auth{}.Process, middleware.CacheResponseWithExpire(time.Minute*5), controller2.Webdav{}.HandlePid)
 		for _, method := range webdavMethods {
-			// engine.Handle(method, "/panel-api/v1/files/webdav/*path", middleware.Auth{}.Process, controller2.Webdav{}.Handle)
 			engine.Handle(method, "/panel-api/v1/files/webdav-agent/:pid/subagent/:subpid/agent/*path", middleware.Auth{}.Process, controller2.Webdav{}.HandlePidSubPid)
 
 			engine.Handle(method, "/panel-api/v1/files/webdav-agent/:pid/agent/*path", middleware.Auth{}.Process, controller2.Webdav{}.HandlePid)
@@ -244,9 +226,6 @@ func (p Provider) cleanS3() {
 
 	for {
 		select {
-		// default:
-		// 	slog.Info("Mrunning", runtime.NumGoroutine())
-		// 	time.Sleep(1 * time.Second)
 		case <-quit:
 			ticker.Stop()
 			return

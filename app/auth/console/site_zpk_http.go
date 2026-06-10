@@ -9,7 +9,6 @@ import (
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 )
 
-// username password register
 type SiteZpkHttp struct {
 	console2.Abstract
 }
@@ -25,7 +24,6 @@ type siteZpkHttpOption struct {
 	InstallId     string `json:"installId"`
 }
 
-// ./runtime/main site:register-zpk --thirdPartyCDToken=qEINzTKqtPUYKi7f --siteIdentifie=test.txt --host=w7job.test.w7.com --releaseName=app-nfohievs0w --appName=w7-pros-28692-app-nfohievs0w --namespace=default
 var siteroZpkHttp = siteZpkHttpOption{}
 
 func (c SiteZpkHttp) GetName() string {
@@ -51,7 +49,6 @@ func (c SiteZpkHttp) Handle(cmd *cobra.Command, args []string) {
 	c.registerSite()
 }
 
-// 检查TLS握手是否成功
 func (c SiteZpkHttp) registerSite() {
 	req := helper.RetryHttpClient().R()
 	mapdata := make(map[string]string)

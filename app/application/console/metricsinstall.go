@@ -21,7 +21,6 @@ type installOption struct {
 	namespace  string
 }
 
-// ./runtime/main cluster:register --thirdPartyCDToken=ywA2N3ImkVo0tPOn --registerCluster=true --offlineUrl=http://118.25.145.25:9090 --apiServerUrl=https://118.25.145.25:6443
 var inOp = installOption{}
 
 func (c MetricsInstall) GetName() string {
@@ -29,10 +28,8 @@ func (c MetricsInstall) GetName() string {
 }
 
 func (c MetricsInstall) Configure(cmd *cobra.Command) {
-	// username password register
 	cmd.Flags().StringVar(&inOp.vmHelmname, "metricsHelmname", "vm-operator", "安装的name")
 	cmd.Flags().StringVar(&inOp.namespace, "namespace", "vm-operator", "安装vm operator的命名空间")
-	// cmd.Flags().StringVar(&inOp.pid, "pid", "", "pid")
 }
 
 func (c MetricsInstall) GetDescription() string {

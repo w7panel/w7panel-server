@@ -21,7 +21,6 @@ type shellOption struct {
 	saName string
 }
 
-// ./runtime/main cluster:register --thirdPartyCDToken=ywA2N3ImkVo0tPOn --registerCluster=true --offlineUrl=http://118.25.145.25:9090 --apiServerUrl=https://118.25.145.25:6443
 var shOp = shellOption{}
 
 // go run main.go k3k-return-check-one --sa=console-303483
@@ -40,12 +39,6 @@ func (c K3kOrderReturnCheckOne) GetDescription() string {
 func (c K3kOrderReturnCheckOne) Handle(cmd *cobra.Command, args []string) {
 
 	sdk := k8s.NewK8sClient()
-	// sigClient, err := sdk.ToSigClient()
-	// if err != nil {
-	// 	slog.Error("Failed to create sigclient", "error", err)
-	// 	return
-	// }
-
 	sa, err := sdk.ClientSet.CoreV1().ServiceAccounts("default").Get(sdk.Ctx, shOp.saName, v1.GetOptions{})
 	if err != nil {
 		slog.Error("Failed to list configmaps", "error", err)
@@ -66,9 +59,6 @@ func fixReturn(sa *corev1.ServiceAccount, orderApi *order.K3kOrderApi) error {
 	k3kUser := types.NewK3kUser(sa)
 	if !k3kUser.IsClusterUser() {
 		return errors.New("not cluster user")
-	}
-	if !k3kUser.IsClusterReady() {
-		// return errors.New("cluster not ready")
 	}
 	if k3kUser.HasProcessReturnOrder() {
 		slog.Info("has process return order", "name", sa.Name)

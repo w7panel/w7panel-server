@@ -6,7 +6,6 @@ import (
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 )
 
-// username password register
 type Unzip struct {
 	console2.Abstract
 }
@@ -17,7 +16,6 @@ type unzipOption struct {
 	decodeGBk  bool
 }
 
-// ./runtime/main cluster:register --thirdPartyCDToken=ywA2N3ImkVo0tPOn --registerCluster=true --offlineUrl=http://118.25.145.25:9090 --apiServerUrl=https://118.25.145.25:6443
 var unzipOp = unzipOption{}
 
 func (c Unzip) GetName() string {
@@ -25,7 +23,6 @@ func (c Unzip) GetName() string {
 }
 
 func (c Unzip) Configure(cmd *cobra.Command) {
-	// username password register
 	cmd.Flags().StringVar(&unzipOp.zipPath, "zipPath", "", "zip文件路径")
 	cmd.Flags().StringVar(&unzipOp.targetPath, "targetPath", "", "目标路径")
 	cmd.Flags().BoolVar(&unzipOp.decodeGBk, "decodeGBK", false, "是否解码GBK编码")

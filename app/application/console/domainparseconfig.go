@@ -17,15 +17,8 @@ type DomainParseConfig struct {
 	console2.Abstract
 }
 
-// ./runtime/main cluster:register --thirdPartyCDToken=ywA2N3ImkVo0tPOn --registerCluster=true --offlineUrl=http://118.25.145.25:9090 --apiServerUrl=https://118.25.145.25:6443
-
 func (c DomainParseConfig) GetName() string {
 	return "domain-config"
-}
-
-func (c DomainParseConfig) Configure(cmd *cobra.Command) {
-	// username password register
-
 }
 
 func (c DomainParseConfig) GetDescription() string {

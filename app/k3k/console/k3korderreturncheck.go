@@ -20,10 +20,6 @@ func (c K3kOrderReturnCheck) GetName() string {
 	return "k3k-return-check"
 }
 
-func (c K3kOrderReturnCheck) Configure(cmd *cobra.Command) {
-
-}
-
 func (c K3kOrderReturnCheck) GetDescription() string {
 	return "退款记录除了里"
 }
@@ -31,12 +27,6 @@ func (c K3kOrderReturnCheck) GetDescription() string {
 func (c K3kOrderReturnCheck) Handle(cmd *cobra.Command, args []string) {
 
 	sdk := k8s.NewK8sClient()
-	// sigClient, err := sdk.ToSigClient()
-	// if err != nil {
-	// 	slog.Error("Failed to create sigclient", "error", err)
-	// 	return
-	// }
-
 	serviceAccounts, err := sdk.ClientSet.CoreV1().ServiceAccounts("default").List(context.Background(), v1.ListOptions{})
 	if err != nil {
 		slog.Error("Failed to list configmaps", "error", err)
