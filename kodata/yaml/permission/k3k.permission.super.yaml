@@ -1,13 +1,13 @@
 apiVersion: w7panel.w7.com/v1alpha1
 kind: Permission
 metadata:
-  name: k3k.permission.admin
+  name: k3k.permission.super
   labels:
     typemode: in
 spec:
   title: 管理员
   type: builtin
-  role: admin
+  role: super
   menu:
   - cluster/*
   - app/*

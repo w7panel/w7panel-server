@@ -20,7 +20,7 @@ import (
 
 const (
 	FounderPermissionName = "k3k.permission.founder"
-	AdminPermissionName   = "k3k.permission.admin"
+	SuperPermissionName   = "k3k.permission.super"
 	NormalPermissionName  = "k3k.permission.normal"
 )
 
@@ -117,8 +117,8 @@ func permissionNameForRole(role string) string {
 	switch role {
 	case "founder":
 		return FounderPermissionName
-	case "admin", "super":
-		return AdminPermissionName
+	case "super":
+		return SuperPermissionName
 	default:
 		return NormalPermissionName
 	}

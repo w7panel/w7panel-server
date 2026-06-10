@@ -156,17 +156,16 @@ func configMapToPermission(cm *corev1.ConfigMap) *configv1alpha1.Permission {
 	if cm.Name == permissionservice.FounderPermissionName {
 		role = "founder"
 	}
-	if cm.Name == "k3k.permission.super" || cm.Name == permissionservice.AdminPermissionName {
-		name = permissionservice.AdminPermissionName
-		role = "admin"
+	if cm.Name == permissionservice.SuperPermissionName {
+		role = "super"
 	}
 	if cm.Name == permissionservice.NormalPermissionName {
 		role = "normal"
 	}
 	if cm.Labels["typemode"] != "in" {
 		parentPermission = permissionservice.NormalPermissionName
-		if role == "admin" || role == "super" {
-			parentPermission = permissionservice.AdminPermissionName
+		if role == "super" {
+			parentPermission = permissionservice.SuperPermissionName
 		}
 		if role == "founder" {
 			parentPermission = permissionservice.FounderPermissionName
