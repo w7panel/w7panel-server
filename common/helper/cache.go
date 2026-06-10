@@ -111,13 +111,6 @@ func (c *MemoryCache) Clear() {
 	c.items = make(map[string]*CacheItem)
 }
 
-// Count returns the number of items in the cache (including expired ones)
-func (c *MemoryCache) Count() int {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return len(c.items)
-}
-
 // cleanupExpired periodically removes expired items from the cache
 func (c *MemoryCache) cleanupExpired() {
 	ticker := time.NewTicker(1 * time.Minute)

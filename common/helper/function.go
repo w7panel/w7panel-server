@@ -59,45 +59,9 @@ var clusterD = "cluster.local"
 
 const K3K_AGENT_PREFIX = "w7panel-k3k-agent"
 
-func ChangeClusterDns(domain string) {
-	clusterD = domain
-}
-
 func ClusterDomain(name, namespace string) string {
 	return fmt.Sprintf("%s.%s.svc.%s", name, namespace, clusterD)
 }
-
-func GetCurUsrHomeDir() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-	return homeDir
-}
-
-func GetAppHomeDir() string {
-	homeDir := GetCurUsrHomeDir()
-
-	appDir := homeDir + "/w7_k8s"
-	CreateDirIfNotExist(appDir, os.ModePerm)
-
-	return appDir + "/"
-}
-
-// func CreateZipFromDir(source, target string) error {
-// 	version := module.Version{
-// 		Path:    "github.com/w7panel/w7panel",
-// 		Version: "v0.1.2",
-// 	}
-// 	//判断target 是否存在
-
-// 	file, err := os.OpenFile(target, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return zip.CreateFromDir(file, version, source)
-// }
 
 // RandomString generates a random string of the specified length
 func RandomString(length int) string {
@@ -181,20 +145,6 @@ func YamlParse(data []byte) (map[string]interface{}, error) {
 	return yamlData, nil
 }
 
-func RunCmdBinsh(args ...string) (string, error) {
-	// Bug 修复：将 args 作为切片传递给 exec.Command
-	cmd := exec.Command("/bin/sh", args...)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err != nil {
-		return stderr.String(), err
-	}
-
-	return stdout.String(), nil
-}
-
 // nsenter -t 1 --mount --uts --ipc --net --pid -- /bin/bash
 func RunNcenterBinsh(shell string) (string, error) {
 	// Bug 修复：将 args 作为切片传递给 exec.Command
@@ -248,10 +198,6 @@ func WriteK3sConfig(config []byte) error {
 	return WriteFileAtomic(filePath, config)
 }
 
-func ReadK3sEnvFile(filePath string) ([]byte, error) {
-	return os.ReadFile(filePath)
-}
-
 func NvidiaReadyFileExites() bool {
 	string, ok := os.LookupEnv("GPU_MOCK")
 	if ok && string == "true" {
@@ -298,59 +244,6 @@ func WriteFileAtomic(filePath string, data []byte) error {
 	}
 
 	return nil
-}
-
-func ValidateCertificate(certData []byte, host string) (bool, error) {
-	// 解码 PEM 格式的证书
-	block, _ := pem.Decode(certData)
-	if block == nil || block.Type != "CERTIFICATE" {
-		return false, fmt.Errorf("无效的 PEM 格式证书")
-	}
-
-	// 解析证书
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return false, fmt.Errorf("解析证书失败: %v", err)
-	}
-
-	// 检查证书是否过期
-	now := time.Now()
-	if now.Before(cert.NotBefore) {
-		return false, fmt.Errorf("证书尚未生效")
-	}
-	if now.After(cert.NotAfter) {
-		return false, fmt.Errorf("证书已过期")
-	}
-
-	// 验证证书链（可选）
-	// 如果需要验证证书链，可以使用 x509.VerifyOptions
-	// opts := x509.VerifyOptions{
-	// 	CurrentTime: now,
-	// }
-	// if _, err := cert.Verify(opts); err != nil {
-	// 	return false, fmt.Errorf("证书链验证失败: %v", err)
-	// }
-	if !IsDomainInCertificate(cert, host) {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func IsDomainInCertificate(cert *x509.Certificate, domain string) bool {
-	// 检查 Subject Alternative Name (SAN)
-	for _, san := range cert.DNSNames {
-		if strings.EqualFold(san, domain) {
-			return true
-		}
-	}
-
-	// 检查 Common Name (CN)
-	if strings.EqualFold(cert.Subject.CommonName, domain) {
-		return true
-	}
-
-	return false
 }
 
 func CreateDatabase(host, port, username, password, dbName string) error {
@@ -889,26 +782,6 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	return resp, err
 }
 
-// 计算两个字符串切片的交集
-func Intersection(a, b []string) []string {
-	// 创建一个 map 来存储第一个切片的元素
-	set := make(map[string]bool)
-	for _, item := range a {
-		set[item] = true
-	}
-
-	var result []string
-	// 检查第二个切片的元素是否存在于 map 中
-	for _, item := range b {
-		if set[item] {
-			result = append(result, item)
-			// 避免重复，如果切片中有重复元素
-			set[item] = false
-		}
-	}
-	return result
-}
-
 // 计算两个字符串切片的差集
 func Difference(a, b []string) []string {
 	set := make(map[string]bool)
@@ -956,22 +829,6 @@ func ParseResourceLimit(str string) resource.Quantity {
 
 func ParseFloat64(str string) float64 {
 	val, err := strconv.ParseFloat(str, 64)
-	if err != nil {
-		return 0
-	}
-	return val
-}
-
-func StringToInt64(str string) int64 {
-	val, err := strconv.ParseInt(str, 10, 64)
-	if err != nil {
-		return 0
-	}
-	return val
-}
-
-func StringToFloat64(str string) float64 {
-	val, err := strconv.ParseFloat(str, 10)
 	if err != nil {
 		return 0
 	}
@@ -1111,14 +968,6 @@ func BoolToString(b bool) string {
 		return "true"
 	}
 	return "false"
-}
-
-func ToJsonNoErr(b interface{}) string {
-	json, err := localJson.Marshal(b)
-	if err != nil {
-		return ""
-	}
-	return string(json)
 }
 
 func ToJson(b interface{}) (string, error) {

@@ -2,38 +2,12 @@ package helper
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
 	"golang.org/x/sys/unix"
 )
-
-func CreateDirIfNotExist(dirName string, perm os.FileMode) {
-	if _, err := os.Stat(dirName); os.IsNotExist(err) {
-		err := os.MkdirAll(dirName, perm)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
-func FileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
-func EnsureDirExists(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		return fmt.Errorf("stat %s failed: %w", path, err)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("%s is not a directory", path)
-	}
-	return nil
-}
 
 func CopyRecursive(src, dst string) error {
 	srcInfo, err := os.Stat(src)

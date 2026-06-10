@@ -8,8 +8,6 @@ import (
 	"log/slog"
 	stdhttp "net/http"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/w7panel/w7panel/app/application"
 	"github.com/w7panel/w7panel/app/application/http/controller"
@@ -19,7 +17,6 @@ import (
 	k3sregistry "github.com/w7panel/w7panel/app/k3s-registry"
 	metricsapp "github.com/w7panel/w7panel/app/metrics"
 	"github.com/w7panel/w7panel/app/zpk"
-	commonhelper "github.com/w7panel/w7panel/common/helper"
 	commonmiddleware "github.com/w7panel/w7panel/common/middleware"
 	"github.com/w7panel/w7panel/common/service/k8s"
 
@@ -68,21 +65,7 @@ func pyroscope2() {
 	}
 }
 
-func init() {
-	const PR_SET_CHILD_SUBREAPER = 36
-	_, _, errno := syscall.Syscall6(syscall.SYS_PRCTL, PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0, 0)
-	if errno != 0 {
-		slog.Warn("Failed to set child subreaper", "error", errno)
-	} else {
-		slog.Info("set child subreaper successfully")
-	}
-
-	signal.Ignore(syscall.SIGCHLD)
-	slog.Info("SIGCHLD ignored for auto child process reaping")
-}
-
 func main() {
-	os.Setenv("APP_DIR", commonhelper.GetAppHomeDir())
 	maxprocs.Set(maxprocs.Logger(nil))
 
 	newApp := app.NewApp(app.Option{
@@ -119,7 +102,6 @@ func main() {
 
 	httpServer := new(http.Provider).Register(newApp.GetConfig(), newApp.GetConsole(), newApp.GetServerManager()).Export()
 	httpServer.Use(middleware.GetPanicHandlerMiddleware()).Use(commonmiddleware.HostCheck{}.Process)
-
 	httpServer.RegisterRouters(func(engine *gin.Engine) {
 		engine.Use(commonmiddleware.Cors{}.Process)
 		engine.Use(commonmiddleware.Audit{}.Process)
@@ -151,13 +133,13 @@ func main() {
 		router.StaticFileFS("/micro.html", "micro.html", stdhttp.FS(Asset))
 		router.StaticFileFS("/logo.png", "logo.png", stdhttp.FS(Asset))
 	})
-
 	httpServer.RegisterRouters(
 		func(engine *gin.Engine) {
 			engine.Any("/k8s-proxy/*path",
 				commonmiddleware.Auth{}.Process,
 				commonmiddleware.K8sFilter{}.Process,
 				controller.Proxy{}.ProxyK8s)
+			engine.NoRoute(commonmiddleware.Html{}.Process)
 		},
 	)
 
@@ -168,13 +150,6 @@ func main() {
 	new(zpk.Provider).Register(httpServer, newApp.GetConsole())
 	new(k3k.Provider).Register(httpServer, newApp.GetConsole())
 	new(k3sregistry.Provider).Register(httpServer)
-
-	// NoRoute 必须在所有 Provider 注册之后
-	httpServer.RegisterRouters(
-		func(engine *gin.Engine) {
-			engine.NoRoute(commonmiddleware.Html{}.Process)
-		},
-	)
 
 	newApp.RunConsole()
 }
