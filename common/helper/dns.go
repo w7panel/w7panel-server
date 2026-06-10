@@ -43,17 +43,7 @@ func DNSGetRecord(domain string, recordType string) ([]DNSRecord, error) {
 	}
 }
 
-// queryARecords 查询域名的A记录
-// 参数:
-//
-//	ctx context.Context - 上下文
-//	resolver *net.Resolver - DNS解析器
-//	domain string - 要查询的域名
-//
-// 返回:
-//
-//	[]DNSRecord - 查询到的A记录列表
-//	error - 错误信息
+// queryARecords 查询域名的 A 记录。
 func queryARecords(ctx context.Context, resolver *net.Resolver, domain string) ([]DNSRecord, error) {
 	var records []DNSRecord
 	ips, err := resolver.LookupIPAddr(ctx, domain)
@@ -72,17 +62,7 @@ func queryARecords(ctx context.Context, resolver *net.Resolver, domain string) (
 	return records, nil
 }
 
-// queryAAAARecords 查询域名的AAAA记录
-// 参数:
-//
-//	ctx context.Context - 上下文
-//	resolver *net.Resolver - DNS解析器
-//	domain string - 要查询的域名
-//
-// 返回:
-//
-//	[]DNSRecord - 查询到的AAAA记录列表
-//	error - 错误信息
+// queryAAAARecords 查询域名的 AAAA 记录。
 func queryAAAARecords(ctx context.Context, resolver *net.Resolver, domain string) ([]DNSRecord, error) {
 	var records []DNSRecord
 	ips, err := resolver.LookupIPAddr(ctx, domain)
@@ -101,17 +81,7 @@ func queryAAAARecords(ctx context.Context, resolver *net.Resolver, domain string
 	return records, nil
 }
 
-// queryCNAMERecord 查询域名的CNAME记录
-// 参数:
-//
-//	ctx context.Context - 上下文
-//	resolver *net.Resolver - DNS解析器
-//	domain string - 要查询的域名
-//
-// 返回:
-//
-//	[]DNSRecord - 查询到的CNAME记录
-//	error - 错误信息
+// queryCNAMERecord 查询域名的 CNAME 记录。
 func queryCNAMERecord(ctx context.Context, resolver *net.Resolver, domain string) ([]DNSRecord, error) {
 	cname, err := resolver.LookupCNAME(ctx, domain)
 	if err != nil {
@@ -124,17 +94,7 @@ func queryCNAMERecord(ctx context.Context, resolver *net.Resolver, domain string
 	}}, nil
 }
 
-// queryMXRecords 查询域名的MX记录
-// 参数:
-//
-//	ctx context.Context - 上下文
-//	resolver *net.Resolver - DNS解析器
-//	domain string - 要查询的域名
-//
-// 返回:
-//
-//	[]DNSRecord - 查询到的MX记录列表
-//	error - 错误信息
+// queryMXRecords 查询域名的 MX 记录。
 func queryMXRecords(ctx context.Context, resolver *net.Resolver, domain string) ([]DNSRecord, error) {
 	var records []DNSRecord
 	mxs, err := resolver.LookupMX(ctx, domain)
@@ -152,17 +112,7 @@ func queryMXRecords(ctx context.Context, resolver *net.Resolver, domain string) 
 	return records, nil
 }
 
-// queryTXTRecords 查询域名的TXT记录
-// 参数:
-//
-//	ctx context.Context - 上下文
-//	resolver *net.Resolver - DNS解析器
-//	domain string - 要查询的域名
-//
-// 返回:
-//
-//	[]DNSRecord - 查询到的TXT记录列表
-//	error - 错误信息
+// queryTXTRecords 查询域名的 TXT 记录。
 func queryTXTRecords(ctx context.Context, resolver *net.Resolver, domain string) ([]DNSRecord, error) {
 	var records []DNSRecord
 	txts, err := resolver.LookupTXT(ctx, domain)
@@ -179,17 +129,7 @@ func queryTXTRecords(ctx context.Context, resolver *net.Resolver, domain string)
 	return records, nil
 }
 
-// queryNSRecords 查询域名的NS记录
-// 参数:
-//
-//	ctx context.Context - 上下文
-//	resolver *net.Resolver - DNS解析器
-//	domain string - 要查询的域名
-//
-// 返回:
-//
-//	[]DNSRecord - 查询到的NS记录列表
-//	error - 错误信息
+// queryNSRecords 查询域名的 NS 记录。
 func queryNSRecords(ctx context.Context, resolver *net.Resolver, domain string) ([]DNSRecord, error) {
 	var records []DNSRecord
 	nss, err := resolver.LookupNS(ctx, domain)

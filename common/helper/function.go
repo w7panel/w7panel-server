@@ -395,8 +395,6 @@ func Unzip(src, dest string, decodeGBk bool) error {
 		if IsGBKCoding([]byte(fname)) {
 			fname2, err := DecodeGBK((f.Name))
 			if err == nil {
-				// fmt.Println(err)
-				// return err
 				fname = fname2
 			}
 
@@ -422,8 +420,6 @@ func Unzip(src, dest string, decodeGBk bool) error {
 		}
 		defer rc.Close()
 
-		// print(string(cccc([]byte("你好世界"))))
-		// print(fpath + "\n")
 		// 创建目标文件
 		out, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 		if err != nil {
@@ -638,16 +634,8 @@ func Runsh(name string, arg ...string) (string, string, error) {
 	// 执行命令
 	err := cmd.Run()
 	if err != nil {
-		// slog.Info("Command failed with error: %s\n", err)
-		// print(errOut.String())
-		// fmt.Print(errOut.String())
-		// fmt.Printf("Command failed with error: %s\n", err)
-		// fmt.Printf("Error output:\n%s\n", errOut.String())
 		return "", errOut.String(), err
 	}
-	// fmt.Print(out.String())
-	// slog.Info("Command failed with error: %s\n", out.String())
-	// print(out.String())
 	return out.String(), errOut.String(), nil
 }
 
@@ -1009,8 +997,6 @@ func IpCity(ipaddr string) (string, error) {
 
 	searcher, err := xdb.NewWithFileOnly(version, dbPath)
 	if err != nil {
-		// slog.Error("Failed to create searcher", "error", err)
-		// fmt.Printf("failed to create searcher: %s\n", err.Error())
 		return "", err
 	}
 
@@ -1019,7 +1005,6 @@ func IpCity(ipaddr string) (string, error) {
 	region, err := searcher.SearchByStr(ipaddr)
 	if err != nil {
 		slog.Error("Failed to search IP address", "error", err)
-		// fmt.Printf("failed to search ip: %s\n", err.Error())
 		return "", err
 	}
 	if region != "" {
