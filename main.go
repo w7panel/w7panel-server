@@ -139,7 +139,6 @@ func main() {
 				commonmiddleware.Auth{}.Process,
 				commonmiddleware.K8sFilter{}.Process,
 				controller.Proxy{}.ProxyK8s)
-			engine.NoRoute(commonmiddleware.Html{}.Process)
 		},
 	)
 
@@ -150,6 +149,10 @@ func main() {
 	new(zpk.Provider).Register(httpServer, newApp.GetConsole())
 	new(k3k.Provider).Register(httpServer, newApp.GetConsole())
 	new(k3sregistry.Provider).Register(httpServer)
+
+	httpServer.RegisterRouters(func(engine *gin.Engine) {
+		engine.NoRoute(commonmiddleware.Html{}.Process)
+	})
 
 	newApp.RunConsole()
 }
