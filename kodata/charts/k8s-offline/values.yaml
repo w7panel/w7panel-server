@@ -184,7 +184,7 @@ static:
 gpustack:
   watch: true
 log:
-  level: "error"
+  level: "info"
 k3k:
   watch: true
   runtimedir: "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io"
@@ -236,5 +236,3 @@ cronjob:
   volumes: []
   volumeMounts: []
   annotations: {}
-
-  

@@ -93,6 +93,7 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 | `KO_DATA_PATH` | ./kodata | 静态资源路径 |
 | `KUBECONFIG` | ./kubeconfig.yaml | K8S 配置 |
 | `W7PANEL_OFFLINE_HTTP_SERVER_PORT` | 8080 | HTTP 端口 |
+| `DISABLE_LOG` | false | 关闭全部日志输出 |
 
 ## 主要功能
 
