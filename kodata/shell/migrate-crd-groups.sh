@@ -27,12 +27,16 @@ migrate_resource() {
     fi
 
     for namespace in ${namespaces}; do
-        echo "migrate ${old_resource} namespace/${namespace} -> ${api_version}"
-        $KUBECTL get "${old_resource}" -n "${namespace}" -o json \
-            | jq --arg apiVersion "${api_version}" '{
-                apiVersion: "v1",
-                kind: "List",
-                items: (.items | map(
+        names="$($KUBECTL get "${old_resource}" -n "${namespace}" -o json | jq -r '.items[]?.metadata.name')"
+        for name in ${names}; do
+            if $KUBECTL get "${new_resource}" "${name}" -n "${namespace}" >/dev/null 2>&1; then
+                echo "skip ${old_resource} namespace/${namespace}/${name}: ${new_resource} already exists"
+                continue
+            fi
+
+            echo "migrate ${old_resource} namespace/${namespace}/${name} -> ${api_version}"
+            $KUBECTL get "${old_resource}" "${name}" -n "${namespace}" -o json \
+                | jq --arg apiVersion "${api_version}" '
                     .apiVersion = $apiVersion
                     | if .metadata.finalizers then
                         .metadata.finalizers = (.metadata.finalizers | map(
@@ -48,9 +52,9 @@ migrate_resource() {
                         .metadata.selfLink,
                         .metadata.annotations."kubectl.kubernetes.io/last-applied-configuration"
                     )
-                ))
-            }' \
-            | $KUBECTL apply -f -
+                ' \
+                | $KUBECTL apply -f -
+        done
     done
 }
 
