@@ -31,7 +31,7 @@ services:
 	// sdk := NewSdk("", "", "", "", "", "")
 	// kompose.WithSdk(sdk)
 	result, err := ConvertToK8sYaml(dockerComposerYaml)
-	print(result)
+	assert.Empty(t, result)
 	assert.NotNil(t, err)
 }
 

@@ -2,7 +2,6 @@ package appgroup
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/w7panel/w7panel/common/helper"
@@ -309,13 +308,13 @@ func (w *AppController) WatchIngressEvents() cache.SharedIndexInformer {
 				if secretName != "" {
 					// 检查是否有其他 Ingress 引用了该 Secret
 					if isSecretReferencedByOtherIngress(clientset, ingress, secretName) {
-						fmt.Printf("Secret %s/%s is still referenced by other Ingresses, skipping deletion\n", ingress.Namespace, secretName)
+						slog.Info("secret is still referenced by other ingresses, skipping deletion", "namespace", ingress.Namespace, "secret", secretName)
 						continue
 					}
 					// 删除 Secret
 					err := clientset.CoreV1().Secrets(ingress.Namespace).Delete(context.TODO(), secretName, metav1.DeleteOptions{})
 					if err != nil {
-						fmt.Printf("Failed to delete Secret %s/%s: %v\n", ingress.Namespace, secretName, err)
+						slog.Warn("failed to delete secret", "namespace", ingress.Namespace, "secret", secretName, "err", err)
 					}
 				}
 			}
@@ -331,7 +330,7 @@ func (w *AppController) WatchIngressEvents() cache.SharedIndexInformer {
 func isSecretReferencedByOtherIngress(clientset *kubernetes.Clientset, deletedIngress *networkingv1.Ingress, secretName string) bool {
 	ingresses, err := clientset.NetworkingV1().Ingresses(deletedIngress.Namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		fmt.Printf("Failed to list Ingresses: %v\n", err)
+		slog.Warn("failed to list ingresses", "namespace", deletedIngress.Namespace, "err", err)
 		return false
 	}
 

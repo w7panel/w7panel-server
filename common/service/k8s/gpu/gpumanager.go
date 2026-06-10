@@ -318,7 +318,6 @@ spec:
     toolkit.env[1].value: /run/k3s/containerd/containerd.sock
     toolkit.env[2].name: CONTAINERD_RUNTIME_CLASS
     toolkit.env[2].value: nvidia`
-	print(yaml)
 	if driverVerison != "" {
 		yaml = yaml + `    driver.version: "` + driverVerison + `"`
 	}
@@ -350,7 +349,6 @@ spec:
     devicePlugin.runtimeClassName: "` + runtimeClassName + `"
     devicePlugin.passDeviceSpecsEnabled: "false"`
 
-	print(yaml)
 	err := g.sdk.ApplyBytes([]byte(yaml), *k8s.NewApplyOptions("kube-system"))
 	if err != nil {
 		slog.Error("gpu operator error", "err", err)

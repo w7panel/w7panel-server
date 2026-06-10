@@ -37,8 +37,11 @@ func TestSdk_ApplyYaml(t *testing.T) {
 		Yamlbytes []byte
 		options   ApplyOptions
 	}
-	file, _ := os.MkdirTemp("", "kompose")
-	print(file)
+	file, err := os.MkdirTemp("", "kompose")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(file)
 
 	// file.WriteString("test")
 	bytes, err := os.ReadFile("/cloudide/workspace/k8s-offline/test.txt")
@@ -163,7 +166,6 @@ func TestSdk_ApplyRaw(t *testing.T) {
 				t.Error(err)
 			}
 			if err := self.ApplyBytes(tt.args.data, tt.args.options); (err != nil) != tt.args.wantErr {
-				panic(err)
 				t.Errorf("Sdk.ApplyRaw() error = %v, wantErr %v", err, tt.args.wantErr)
 			}
 		})
@@ -195,7 +197,12 @@ func TestSdk_ToKubeconfig(t *testing.T) {
 				return
 			}
 			yaml, err := helper.K8sObjToYaml(got)
-			print(string(yaml))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(yaml) == 0 {
+				t.Fatal("expected kubeconfig yaml")
+			}
 		})
 	}
 }
@@ -212,10 +219,15 @@ func TestSdk_GetApiServerUrl(t *testing.T) {
 func TestSdk_GetApiConfigmap(t *testing.T) {
 	sdk := NewK8sClient()
 	api, err := sdk.ClientSet.CoreV1().ConfigMaps("default").Get(context.TODO(), "registries123", metav1.GetOptions{})
-	os.WriteFile("/tmp/test.yaml", []byte(api.Data["default.cnf"]), 0644)
-	print(api.Data["default-cnf"])
 	if err != nil {
 		t.Error(err)
+		return
+	}
+	if err := os.WriteFile("/tmp/test.yaml", []byte(api.Data["default.cnf"]), 0644); err != nil {
+		t.Error(err)
+	}
+	if api.Data["default-cnf"] == "" {
+		t.Error("default-cnf is empty")
 	}
 	t.Log(api)
 }
