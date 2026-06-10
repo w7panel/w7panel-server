@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -48,6 +49,24 @@ type ContactConfigSpec struct {
 	Qrcode   string `json:"qrcode,omitempty"`
 	Style    string `json:"style,omitempty"`
 	Index    int32  `json:"index,omitempty"`
+}
+
+type PermissionFeatures struct {
+	Debug      bool `json:"debug,omitempty"`
+	Webshell   bool `json:"webshell,omitempty"`
+	Fileeditor bool `json:"fileeditor,omitempty"`
+}
+
+type PermissionSpec struct {
+	Title            string              `json:"title,omitempty"`
+	Type             string              `json:"type,omitempty"`
+	Role             string              `json:"role,omitempty"`
+	ParentPermission string              `json:"parentPermission,omitempty"`
+	Menu             []string            `json:"menu,omitempty"`
+	API              map[string][]string `json:"api,omitempty"`
+	Features         PermissionFeatures  `json:"features,omitempty"`
+	DomainWhiteList  []string            `json:"domainWhiteList,omitempty"`
+	RBACRules        []rbacv1.PolicyRule `json:"rbacRules,omitempty"`
 }
 
 // +genclient
@@ -174,4 +193,22 @@ type ContactConfigList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []ContactConfig `json:"items"`
+}
+
+// +genclient
+// +genclient:nonNamespaced
+// +kubebuilder:resource:path=permissions,scope=Cluster
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type Permission struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              PermissionSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type PermissionList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []Permission `json:"items"`
 }

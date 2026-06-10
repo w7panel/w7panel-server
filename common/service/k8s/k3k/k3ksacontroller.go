@@ -11,6 +11,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/sa"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	permissionservice "github.com/w7panel/w7panel/common/service/permission"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -33,6 +34,7 @@ func setupServiceAccountController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
 		deleteRc:    sa.NewDeleteResource(client, k3kClient, limitClient),
 		limitClient: limitClient,
 		storage:     storage,
+		sdk:         sdk,
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
@@ -49,6 +51,7 @@ type K3kServiceAccountController struct {
 	deleteRc    *sa.DeleteResource
 	limitClient *sa.Limitrangeclient
 	storage     *sa.Storage
+	sdk         *k8s.Sdk
 }
 
 func (r *K3kServiceAccountController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -111,6 +114,20 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 	}
 	k3ktypes.SetSaVersion(sa.Name, sa.Annotations[k3ktypes.K3K_LOCK_VERSION])
+	permissionRole, err := permissionservice.RBACRoleNameForServiceAccount(ctx, r.sdk, sa)
+	if err != nil {
+		logger.Error(err, "Failed to resolve permission RBAC role")
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
+	if permissionRole != "" {
+		if err := r.rolebinding.CreatePermissionRoleBinding(ctx, sa, permissionRole); err != nil {
+			logger.Error(err, "Failed to sync permission role binding")
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+	} else if err := r.rolebinding.DeletePermissionRoleBinding(ctx, sa); err != nil {
+		logger.Error(err, "Failed to delete permission role binding")
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
 	role := k3kUser.GetRole()
 	if role == "super" || role == "founder" {
 		err := r.rolebinding.CreateSuperUserRoleBinding(ctx, sa, helper.ServiceAccountName())
@@ -120,7 +137,7 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 		}
 		return ctrl.Result{}, nil
 	}
-	err := r.rolebinding.DeleteSuperUserRoleBinding(ctx, sa, helper.ServiceAccountName())
+	err = r.rolebinding.DeleteSuperUserRoleBinding(ctx, sa, helper.ServiceAccountName())
 	if err != nil {
 		logger.Error(err, "Failed to delete offline cluster role binding")
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
