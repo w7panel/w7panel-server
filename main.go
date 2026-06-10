@@ -6,7 +6,7 @@ import (
 	"io"
 	"log"
 	"log/slog"
-	http2 "net/http"
+	stdhttp "net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,10 +17,10 @@ import (
 	"github.com/w7panel/w7panel/app/auth"
 	"github.com/w7panel/w7panel/app/k3k"
 	k3sregistry "github.com/w7panel/w7panel/app/k3s-registry"
-	metrics2 "github.com/w7panel/w7panel/app/metrics"
+	metricsapp "github.com/w7panel/w7panel/app/metrics"
 	"github.com/w7panel/w7panel/app/zpk"
-	helper2 "github.com/w7panel/w7panel/common/helper"
-	middleware2 "github.com/w7panel/w7panel/common/middleware"
+	commonhelper "github.com/w7panel/w7panel/common/helper"
+	commonmiddleware "github.com/w7panel/w7panel/common/middleware"
 	"github.com/w7panel/w7panel/common/service/k8s"
 
 	"github.com/gin-contrib/gzip"
@@ -29,7 +29,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	app "github.com/we7coreteam/w7-rangine-go/v2/src"
-	"github.com/we7coreteam/w7-rangine-go/v2/src/core/helper"
+	corehelper "github.com/we7coreteam/w7-rangine-go/v2/src/core/helper"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/response"
@@ -82,15 +82,15 @@ func init() {
 }
 
 func main() {
-	os.Setenv("APP_DIR", helper2.GetAppHomeDir())
+	os.Setenv("APP_DIR", commonhelper.GetAppHomeDir())
 	maxprocs.Set(maxprocs.Logger(nil))
 
 	newApp := app.NewApp(app.Option{
 		DefaultConfigLoader: func(config *viper.Viper) {
 			config.SetConfigType("yaml")
-			err := config.MergeConfig(bytes.NewReader(helper.ParseConfigContentEnv(ConfigFileContent)))
+			err := config.MergeConfig(bytes.NewReader(corehelper.ParseConfigContentEnv(ConfigFileContent)))
 			if err != nil {
-				panic(err)
+				log.Fatalf("failed to load config: %v", err)
 			}
 		},
 	})
@@ -110,16 +110,23 @@ func main() {
 	}
 
 	single := k8s.NewK8sClient()
-	go single.GetSdk().CreateServiceAccountSecret(single.GetSdk().GetServiceAccountName())
+	go func() {
+		_, err := single.GetSdk().CreateServiceAccountSecret(single.GetSdk().GetServiceAccountName())
+		if err != nil {
+			slog.Warn("failed to create service account secret", "error", err)
+		}
+	}()
 
 	httpServer := new(http.Provider).Register(newApp.GetConfig(), newApp.GetConsole(), newApp.GetServerManager()).Export()
-	httpServer.Use(middleware.GetPanicHandlerMiddleware()).Use(middleware2.HostCheck{}.Process)
+	httpServer.Use(middleware.GetPanicHandlerMiddleware()).Use(commonmiddleware.HostCheck{}.Process)
 
 	httpServer.RegisterRouters(func(engine *gin.Engine) {
-		engine.Use(middleware2.Cors{}.Process)
-		engine.Use(middleware2.Audit{}.Process)
+		engine.Use(commonmiddleware.Cors{}.Process)
+		engine.Use(commonmiddleware.Audit{}.Process)
 		microappPath := facade.Config.GetString("static.microapp_path")
-		os.MkdirAll(microappPath, 0755)
+		if err := os.MkdirAll(microappPath, 0755); err != nil {
+			slog.Error("failed to create microapp static directory", "path", microappPath, "error", err)
+		}
 
 		router := engine.Group("").
 			Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedExtensions([]string{".pdf", ".mp4"}))).
@@ -137,19 +144,19 @@ func main() {
 		router.Static("/ui/wasm", staticPath+"/wasm")
 		router.Static("/ui/yaml", staticPath+"/yaml")
 
-		router.StaticFileFS("/index.html", "index.html", http2.FS(Asset))
-		router.StaticFileFS("/k3s-agent.sh", "k3s-agent.sh", http2.FS(Asset))
-		router.StaticFileFS("/k3s-server.sh", "k3s-server.sh", http2.FS(Asset))
-		router.StaticFileFS("/favicon.ico", "icon.jpg", http2.FS(Asset))
-		router.StaticFileFS("/micro.html", "micro.html", http2.FS(Asset))
-		router.StaticFileFS("/logo.png", "logo.png", http2.FS(Asset))
+		router.StaticFileFS("/index.html", "index.html", stdhttp.FS(Asset))
+		router.StaticFileFS("/k3s-agent.sh", "k3s-agent.sh", stdhttp.FS(Asset))
+		router.StaticFileFS("/k3s-server.sh", "k3s-server.sh", stdhttp.FS(Asset))
+		router.StaticFileFS("/favicon.ico", "icon.jpg", stdhttp.FS(Asset))
+		router.StaticFileFS("/micro.html", "micro.html", stdhttp.FS(Asset))
+		router.StaticFileFS("/logo.png", "logo.png", stdhttp.FS(Asset))
 	})
 
 	httpServer.RegisterRouters(
 		func(engine *gin.Engine) {
 			engine.Any("/k8s-proxy/*path",
-				middleware2.Auth{}.Process,
-				middleware2.K8sFilter{}.Process,
+				commonmiddleware.Auth{}.Process,
+				commonmiddleware.K8sFilter{}.Process,
 				controller.Proxy{}.ProxyK8s)
 		},
 	)
@@ -157,7 +164,7 @@ func main() {
 	new(application.Provider).Register(httpServer, newApp.GetConsole())
 	new(auth.Provider).Register(httpServer, newApp.GetConsole())
 	new(auditapp.Provider).Register(httpServer)
-	new(metrics2.Provider).Register(httpServer, newApp.GetConsole())
+	new(metricsapp.Provider).Register(httpServer, newApp.GetConsole())
 	new(zpk.Provider).Register(httpServer, newApp.GetConsole())
 	new(k3k.Provider).Register(httpServer, newApp.GetConsole())
 	new(k3sregistry.Provider).Register(httpServer)
@@ -165,7 +172,7 @@ func main() {
 	// NoRoute 必须在所有 Provider 注册之后
 	httpServer.RegisterRouters(
 		func(engine *gin.Engine) {
-			engine.NoRoute(middleware2.Html{}.Process)
+			engine.NoRoute(commonmiddleware.Html{}.Process)
 		},
 	)
 

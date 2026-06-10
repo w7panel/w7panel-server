@@ -24,15 +24,6 @@ import (
 )
 
 func TestSdk_ApplyYaml(t *testing.T) {
-	type fields struct {
-		restConfig         *rest.Config
-		ClientSet          *kubernetes.Clientset
-		Ctx                context.Context
-		Namespace          string
-		serviceAccountName string
-		DynamicClient      *dynamic.DynamicClient
-		RestMapper         meta.RESTMapper
-	}
 	type args struct {
 		Yamlbytes []byte
 		options   ApplyOptions
@@ -86,7 +77,6 @@ func TestSdk_GetRestMapping(t *testing.T) {
 		want    *meta.RESTMapping
 		wantErr bool
 	}{
-		// TODO: Add test cases.
 		{
 			name:    "test",
 			args:    args{apiVersion: "v1", kind: "Pod"},

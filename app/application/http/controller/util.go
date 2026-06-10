@@ -177,11 +177,7 @@ func (self Util) Captcha(http *gin.Context) {
 
 }
 
-/*
-*
-
-	验证是否可以连接数据库
-*/
+// DbConnTest validates database connectivity.
 func (self Util) DbConnTest(http *gin.Context) {
 	type ParamsValidate struct {
 		Dsn string `form:"dsn" binding:"required"`

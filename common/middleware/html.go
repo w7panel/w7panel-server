@@ -20,14 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-/*
-*
-提示词:
-common/middleware/html.go 根据header 中是否有microapp_变量名 必须如microapp_name microapp_do  给index.html注入
-
-	js对象
-	w7_microapp: {name: xxx, do:xxxx, leftmenu: true,breadcrumb: false ,needlogin:false}
-*/
 type Html struct {
 	middleware.Abstract
 }

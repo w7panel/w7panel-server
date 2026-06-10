@@ -4,25 +4,16 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/w7panel/w7panel/common/service/k8s/kompose"
-
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
-
-	// "github.com/go-openapi/spec"
+	"github.com/w7panel/w7panel/common/service/k8s/kompose"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
-	// "github.com/chrusty/openapi2jsonschema/internal/schemaconverter"
-	// "github.com/chrusty/openapi2jsonschema/internal/schemaconverter/types"
 )
 
 type Yaml struct {
 	controller.Abstract
 }
 
-/*
-*
-yaml crud
-*/
 func (self Yaml) ApplyYamlOld(http *gin.Context) {
 	r := http.Request
 	body, err := io.ReadAll(r.Body)
@@ -170,10 +161,6 @@ func (self Yaml) ApplyDockerCompose(http *gin.Context) {
 	self.JsonSuccessResponse(http)
 }
 
-/*
-*
-回滚
-*/
 func (self Yaml) Rollback(http *gin.Context) {
 	type ParamsValidate struct {
 		Namespace  string `form:"namespace" binding:"required"`
@@ -214,10 +201,6 @@ func (self Yaml) Rollback(http *gin.Context) {
 
 }
 
-/*
-*
-{".well-known/openid-configuration":{},"api":{},"api/v1":{},"apis":{},"apis/admissionregistration.k8s.io":{},"apis/admissionregistration.k8s.io/v1":{},"apis/apiextensions.k8s.io":{},"apis/apiextensions.k8s.io/v1":{},"apis/apiregistration.k8s.io":{},"apis/apiregistration.k8s.io/v1":{},"apis/apps":{},"apis/apps/v1":{},"apis/authentication.k8s.io":{},"apis/authentication.k8s.io/v1":{},"apis/authorization.k8s.io":{},"apis/authorization.k8s.io/v1":{},"apis/autoscaling":{},"apis/autoscaling/v1":{},"apis/autoscaling/v2":{},"apis/batch":{},"apis/batch/v1":{},"apis/certificates.k8s.io":{},"apis/certificates.k8s.io/v1":{},"apis/coordination.k8s.io":{},"apis/coordination.k8s.io/v1":{},"apis/discovery.k8s.io":{},"apis/discovery.k8s.io/v1":{},"apis/events.k8s.io":{},"apis/events.k8s.io/v1":{},"apis/extensions.higress.io/v1alpha1":{},"apis/flowcontrol.apiserver.k8s.io":{},"apis/flowcontrol.apiserver.k8s.io/v1":{},"apis/flowcontrol.apiserver.k8s.io/v1beta3":{},"apis/helm.cattle.io/v1":{},"apis/k3s.cattle.io/v1":{},"apis/longhorn.io/v1beta1":{},"apis/longhorn.io/v1beta2":{},"apis/metrics.k8s.io":{},"apis/metrics.k8s.io/v1beta1":{},"apis/networking.higress.io/v1":{},"apis/networking.istio.io/v1alpha3":{},"apis/networking.k8s.io":{},"apis/networking.k8s.io/v1":{},"apis/node.k8s.io":{},"apis/node.k8s.io/v1":{},"apis/policy":{},"apis/policy/v1":{},"apis/rbac.authorization.k8s.io":{},"apis/rbac.authorization.k8s.io/v1":{},"apis/scheduling.k8s.io":{},"apis/scheduling.k8s.io/v1":{},"apis/storage.k8s.io":{},"apis/storage.k8s.io/v1":{},"apis/traefik.containo.us/v1alpha1":{},"apis/traefik.io/v1alpha1":{},"logs":{},"openid/v1/jwks":{},"version":{}}
-*/
 func (self Yaml) OpenApi(http *gin.Context) {
 	type ParamsValidate struct {
 		Kind       string `form:"kind" binding:"required"`

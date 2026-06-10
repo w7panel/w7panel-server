@@ -103,12 +103,6 @@ func (self Proxy) ProxyDebug(gin *gin.Context) {
 	gin.JSON(http.StatusOK, result)
 }
 
-/*
-*
-
-	@Description: 转发请求
-	proxyUrl: 代理地址
-*/
 func (self Proxy) Proxy(gin *gin.Context) {
 	proxyUrl := gin.GetHeader("proxy-url")
 	if proxyUrl == "" {
