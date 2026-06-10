@@ -125,7 +125,7 @@ var routeDescriptions = map[string]string{
 	"POST /panel-api/v1/zpk/buildimage/cronjob": "创建镜像构建定时 Job",
 }
 
-func lookupRouteDescription(method string, route string) string {
+func LookupRouteDescription(method string, route string) string {
 	if route == "" {
 		return ""
 	}
@@ -136,7 +136,7 @@ func lookupRouteDescription(method string, route string) string {
 	return routeDescriptions["* "+route]
 }
 
-func methodDescription(method string) string {
+func MethodDescription(method string) string {
 	switch strings.ToUpper(method) {
 	case "GET":
 		return "查询"

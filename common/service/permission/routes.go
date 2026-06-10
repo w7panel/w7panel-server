@@ -5,12 +5,14 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	auditservice "github.com/w7panel/w7panel/common/service/audit"
 )
 
 type APIRoute struct {
 	Method string `json:"method"`
 	Path   string `json:"path"`
 	Verb   string `json:"verb"`
+	Title  string `json:"title"`
 }
 
 func RoutesFromGin(routes gin.RoutesInfo) []APIRoute {
@@ -31,6 +33,7 @@ func RoutesFromGin(routes gin.RoutesInfo) []APIRoute {
 			Method: route.Method,
 			Path:   normalizeGinRoutePath(route.Path),
 			Verb:   verb,
+			Title:  routeTitle(route.Method, route.Path),
 		}
 		key := item.Method + " " + item.Path
 		if seen[key] {
@@ -46,6 +49,13 @@ func RoutesFromGin(routes gin.RoutesInfo) []APIRoute {
 		return result[i].Path < result[j].Path
 	})
 	return result
+}
+
+func routeTitle(method, path string) string {
+	if title := auditservice.LookupRouteDescription(method, path); title != "" {
+		return title
+	}
+	return auditservice.MethodDescription(method)
 }
 
 func normalizeGinRoutePath(path string) string {

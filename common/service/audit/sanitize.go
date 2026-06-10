@@ -54,14 +54,14 @@ func buildOperationMessage(ctx *gin.Context) string {
 	if route == "" {
 		route = ctx.Request.URL.Path
 	}
-	if description := lookupRouteDescription(method, route); description != "" {
+	if description := LookupRouteDescription(method, route); description != "" {
 		return description
 	}
 	return fallbackOperationMessage(method, route)
 }
 
 func fallbackOperationMessage(method string, route string) string {
-	action := methodDescription(method)
+	action := MethodDescription(method)
 	if strings.TrimSpace(route) == "" {
 		return action
 	}
