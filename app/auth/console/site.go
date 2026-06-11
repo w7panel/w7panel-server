@@ -27,7 +27,6 @@ type siteOption struct {
 }
 
 var sitero = siteOption{}
-var stopCh = make(chan struct{})
 
 func (c Site) GetName() string {
 	return "site:register"

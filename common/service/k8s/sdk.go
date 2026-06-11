@@ -65,7 +65,6 @@ import (
 )
 
 const namespaceFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
-const tokenFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 const K3K_MENU_FOUNDER = `
 ["cluster","cluster-panel","cluster-resource","app","app-apps","app-apps-add","app-apps-edit","app-apps-delete","app-cronjob","app-cronjob-add","app-cronjob-edit","app-cronjob-delete","app-rvproxy","app-rvproxy-add","app-rvproxy-edit","app-rvproxy-delete","app-dblist","app-dblist-add","app-dblist-delete","app-gpustack","storage","storage-node","storage-node-add","storage-node-edit","storage-node-delete","storage-zone","zpk","system","system-cloud","system-order-center","system-cost-center","cluster-nodes","cluster-nodes-add","cluster-nodes-registries","cluster-nodes-gpu","cluster-nodes-memory","system-whitelist","system-manage","system-user","system-usergroup","system-permission","system-quota"]
 `

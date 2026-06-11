@@ -299,12 +299,6 @@ func TestFindClientFallsBackToStore(t *testing.T) {
 	}
 }
 
-func TestSecretNameForClientIDUsesOIDCSuffix(t *testing.T) {
-	if got, want := secretNameForClientID("oidc-demo"), "oidc-demo-oidc"; got != want {
-		t.Fatalf("unexpected secret name: got %q want %q", got, want)
-	}
-}
-
 func TestCreateAuthRequestLifecycle(t *testing.T) {
 	server := newTestServer(&fakeDynamicClientStore{})
 	req, err := server.CreateAuthRequest(context.Background(), &zitadeloidc.AuthRequest{

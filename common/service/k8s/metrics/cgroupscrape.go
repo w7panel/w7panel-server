@@ -19,11 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-var lastMetrics *stats.Metrics
-var lastTime time.Time
-
-var cpuCount int
-
 var storage *cgroupStorage
 
 func init() {
@@ -117,8 +112,4 @@ func collectMetrics() (corev1.ResourceList, *stats.Metrics, error) {
 	}
 	storage.prev = storage.last
 	return rs, stat, err
-}
-
-func collectCgroupMetrics(client sigclient.Client) error {
-	return nil
 }

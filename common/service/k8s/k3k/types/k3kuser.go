@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -22,8 +21,6 @@ import (
 type K3kUser struct {
 	*k3kUser
 }
-
-var once sync.Once
 
 type k3kUser struct {
 	*v1.ServiceAccount

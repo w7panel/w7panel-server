@@ -2,11 +2,8 @@ package metrics
 
 import (
 	"fmt"
-	"log"
 	"log/slog"
-	"net/http"
 	"strings"
-	"time"
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
@@ -151,25 +148,6 @@ func (n *NodeScrape) Parse(metricsData string) (map[string]*dto.MetricFamily, er
 	metrics, err := parser.TextToMetricFamilies(strings.NewReader(metricsData))
 	if err != nil {
 		slog.Error("Error parsing metrics: %v", "err", err)
-	}
-	return metrics, err
-}
-func parseMetrics(ip, port string) (map[string]*dto.MetricFamily, error) {
-	http.DefaultClient.Timeout = 10 * time.Second
-	response, err := http.Get(fmt.Sprintf("http://%s:%s/metrics", ip, port))
-	if err != nil {
-		log.Fatalf("Error fetching metrics: %v", err)
-		return nil, err
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		log.Fatalf("Error fetching metrics: %v", err)
-		return nil, err
-	}
-	parser := expfmt.TextParser{}
-	metrics, err := parser.TextToMetricFamilies(response.Body)
-	if err != nil {
-		log.Fatalf("Error parsing metrics: %v", err)
 	}
 	return metrics, err
 }

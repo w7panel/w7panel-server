@@ -5,7 +5,6 @@ import (
 
 	v2client "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/namespaces"
-	"github.com/distribution/reference"
 	"github.com/w7panel/w7panel/common/helper"
 )
 
@@ -38,16 +37,6 @@ func CreateClient() (*v2client.Client, error) {
 	return client, err
 }
 
-func containerRoot() string {
-	if helper.IsChildAgent() || helper.IsAgent() {
-		return k3sContainerRoot
-	}
-	if helper.IsLocalMock() || helper.IsDebug() {
-		return debugcontainerdRoot
-	}
-	return ""
-}
-
 func ContainerAddr() string {
 	if helper.IsLocalMock() || helper.IsDebug() {
 		return debugcontainerdAddr
@@ -58,8 +47,4 @@ func ContainerAddr() string {
 
 	return ""
 
-}
-
-func parseRef(ref string) (reference.Reference, error) {
-	return reference.Parse(ref)
 }

@@ -225,22 +225,6 @@ func (l *volumeReplicaCompose) GetVolumeReplicas() volumeReplicaList {
 	return result
 }
 
-func createPv(volumeName string, pvName string, scName string) error {
-	if scName == "" {
-		scName = "longhorn"
-	}
-	json := fmt.Sprintf(`{"fsType": "ext4", "pvName": "%s", "storageClassName": "`+scName+`"}`, pvName)
-	return longhornVolumeApiAction(volumeName, "pvCreate", json)
-}
-
-func createPvc(volumeName string, pvcName string, namespace string) error {
-	if namespace == "" {
-		namespace = "default"
-	}
-	json := fmt.Sprintf(`{"pvcName": "%s", "namespace": "%s"}`, pvcName, namespace)
-	return longhornVolumeApiAction(volumeName, "pvcCreate", json)
-}
-
 // containsAll checks if slice a contains all elements of slice b
 
 func updateVolumeReplicaCountApi(name string, count int) error {

@@ -202,34 +202,8 @@ func clientFromSecret(secret *corev1.Secret) Client {
 	}
 }
 
-func secretFromClient(namespace string, client Client) *corev1.Secret {
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretNameForClientID(client.ClientID),
-			Namespace: namespace,
-			Labels: map[string]string{
-				"w7.cc/oidc-client": "true",
-			},
-		},
-		Type: corev1.SecretTypeOpaque,
-		Data: map[string][]byte{
-			"client_id":                  []byte(client.ClientID),
-			"client_name":                []byte(client.Name),
-			"client_secret":              []byte(client.ClientSecret),
-			"redirect_uris":              []byte(strings.Join(client.RedirectURIs, "\n")),
-			"allow_any_redirect_uri":     []byte(boolString(client.AllowAnyRedirectURI)),
-			"scopes":                     []byte(strings.Join(client.Scopes, " ")),
-			"token_endpoint_auth_method": []byte(client.TokenEndpointAuthMode),
-		},
-	}
-}
-
 func resourceNameForClientID(clientID string) string {
 	return clientID
-}
-
-func secretNameForClientID(clientID string) string {
-	return resourceNameForClientID(clientID) + "-oidc"
 }
 
 func clientToResponse(client Client) *DynamicClientResponse {
@@ -249,11 +223,4 @@ func clientToResponse(client Client) *DynamicClientResponse {
 
 func parseBool(data []byte) bool {
 	return strings.EqualFold(string(data), "true")
-}
-
-func boolString(v bool) string {
-	if v {
-		return "true"
-	}
-	return "false"
 }
