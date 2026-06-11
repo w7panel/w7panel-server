@@ -59,13 +59,6 @@ func (self K3k) ReInitCluster(http *gin.Context) {
 	self.JsonSuccessResponse(http) //不需要初始化集群
 }
 
-func (self K3k) DomainWhiteList(http *gin.Context) {
-
-	sdk := k8s.NewK8sClient().Sdk //白名单强制使用root sdk
-	http.Request.Header.Del("Authorization")
-	sdk.Proxy(http.Request, http.Writer)
-}
-
 /*
 *
 

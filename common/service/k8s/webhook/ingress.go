@@ -132,7 +132,7 @@ func (m *ResourceMutator) handleIngressDelete(client client.Client, ingress *net
 		if secretName != "" {
 			// 检查是否有其他 Ingress 引用了该 Secret
 			if isSecretReferencedByOtherIngress(client, ingress, secretName) {
-				fmt.Printf("Secret %s/%s is still referenced by other Ingresses, skipping deletion\n", ingress.Namespace, secretName)
+				slog.Info("secret is still referenced by other ingresses, skipping deletion", "namespace", ingress.Namespace, "secret", secretName)
 				continue
 			}
 			delSecret := &corev1.Secret{

@@ -328,10 +328,7 @@ func (c *ConsoleCdClient) CreateLicenseSiteZpk(urlValues map[string]string) (*Li
 	return result, nil
 }
 
-/*
-refreshToken 并且["refresh" => true] 是否是true
-*/
-
+// TokenRefreshResponse is returned by the console token refresh API.
 type TokenRefreshResponse struct {
 	Refresh bool   `json:"refresh"`
 	Message string `json:"message"`

@@ -4,7 +4,6 @@ package helper
 import (
 	"crypto/rsa"
 	"encoding/base64"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -83,7 +82,9 @@ func TestExtractSingleFileFromTgz(t *testing.T) {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 	ddd := (string(data))
-	print(ddd)
+	if ddd == "" {
+		t.Fatal("Expected extracted file content")
+	}
 }
 
 func TestCert(t *testing.T) {
@@ -120,7 +121,9 @@ TPZdYzQi8u0pZBe5xDNTpkT9
 		t.Fatalf("Expected no error, got %v", err)
 	}
 	base64data := string(data)
-	print(base64data)
+	if base64data == "" {
+		t.Fatal("Expected encrypted data")
+	}
 
 	sign := `DuauPWuoED3i20UQMJiV2rnv5A+zxfwF6oVvwUKCh4UF5lVClIXPt6D+gdpOqZG8PvOK5SfTHtXAA8ZqmFJJynuHUNCtq+mWgR+P7TJb0joJrMdRAcNPrCvYS9XveKX8TsBXHfUcsyWMZz8uyRrrU7S7aLAChL2l4rRNPmie8ufovmWxRStWKtyspz7+zDebmUhfIhnLxaFdyhYH9gQcmRD/v99ZOi77arpu6pSQ7SO8WCTw71fhGTjWsfHb0hoUpvwbQL6EejDVKFAfOKIGTKOoCcZ90SaYWxJb3m0v8Kw5XoV1kVavg7aXaQkRhC18V1zFWu/vLUlstXoz3cYERQ==`
 	sign2, err := base64.StdEncoding.DecodeString(sign)
@@ -139,13 +142,16 @@ func TestStringArr(t *testing.T) {
 		"tls-san": []string{"127.0.0.1"},
 	}
 	data, ok := k3kconfigYaml["tls-san"]
-	if ok {
-		if slice, ok1 := data.([]string); ok1 {
-			fmt.Println(slice)
-			// return slice
-		}
+	if !ok {
+		t.Fatal("Expected tls-san value")
 	}
-	fmt.Println(data)
+	slice, ok := data.([]string)
+	if !ok {
+		t.Fatalf("Expected []string, got %T", data)
+	}
+	if len(slice) != 1 || slice[0] != "127.0.0.1" {
+		t.Fatalf("Unexpected tls-san value: %v", slice)
+	}
 }
 
 func TestDifference(t *testing.T) {
@@ -225,11 +231,10 @@ func TestImageDigest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
-	print(sha256)
+	if sha256 == "" {
+		t.Fatal("Expected image digest")
+	}
 }
-
-
-
 
 func TestIpCity(t *testing.T) {
 	os.Setenv("KO_DATA_PATH", "../../kodata")
@@ -237,5 +242,7 @@ func TestIpCity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
-	print(result)
+	if result == "" {
+		t.Fatal("Expected IP city result")
+	}
 }

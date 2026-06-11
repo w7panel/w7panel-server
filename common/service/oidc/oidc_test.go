@@ -265,8 +265,8 @@ func TestUpdateAndDeleteDynamicClient(t *testing.T) {
 func TestNormalizeClientIDProducesRFC1123SafeValue(t *testing.T) {
 	tests := map[string]string{
 		"oidc_lepdtcdfvtnblji-": "oidc-lepdtcdfvtnblji",
-		"-OIDC__Demo--":        "oidc-demo",
-		"...":                  "oidc",
+		"-OIDC__Demo--":         "oidc-demo",
+		"...":                   "oidc",
 	}
 
 	for input, want := range tests {

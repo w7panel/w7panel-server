@@ -191,39 +191,6 @@ func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Cont
 	return
 }
 
-func (self Auth) RefreshToken(http *gin.Context) {
-	type ParamsValidate struct {
-		Namespace string `form:"namespace" binding:"required"`
-	}
-	params := ParamsValidate{}
-	if !self.Validate(http, &params) {
-		return
-	}
-	oldToken := http.MustGet("k8s_token").(string)
-	oldTokenObj := k8s.NewK8sToken(oldToken)
-	saName, _ := k8s.GetTokenSaName(oldToken)
-	if saName == "" {
-		self.JsonResponseWithError(http, fmt.Errorf("not sa name"), 500)
-		return
-	}
-	seconds := facade.Config.GetInt64("app.login_seconds")
-	ans, err := oldTokenObj.GetAudience()
-	if err != nil {
-		self.JsonResponseWithError(http, err, 500)
-		return
-	}
-	token, err := k8s.NewK8sClient().CreateTokenRequest(saName, seconds, ans)
-	if err != nil {
-		self.JsonResponseWithError(http, err, 500)
-		return
-	}
-	self.JsonResponseWithoutError(http, gin.H{
-		"token":  token,
-		"expire": time.Now().Add(time.Duration(seconds) * time.Second).Unix(),
-	})
-	return
-}
-
 func (self Auth) RefreshToken2(http *gin.Context) {
 	type ParamsValidate struct {
 		Token string `form:"refreshToken" binding:"required"`

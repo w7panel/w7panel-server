@@ -99,21 +99,18 @@ func GetScheme() *runtime.Scheme {
 	return scheme
 }
 
-// LoggingRoundTripper 是一个自定义的 http.RoundTripper，用于打印请求和响应的详细信息。
+// LoggingRoundTripper 是一个自定义的 http.RoundTripper，用于记录请求和响应的详细信息。
 type LoggingRoundTripper struct {
 	Proxied http.RoundTripper
 }
 
 // RoundTrip 实现 http.RoundTripper 接口。
 func (lrt LoggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	// 打印请求信息
-	fmt.Printf("Request URL: %s %s\n", req.Method, req.URL)
-	fmt.Println("Request Headers:")
+	requestHeaders := make(map[string][]string, len(req.Header))
 	for key, values := range req.Header {
-		for _, value := range values {
-			fmt.Printf("  %s: %s\n", key, value)
-		}
+		requestHeaders[key] = append([]string(nil), values...)
 	}
+	attrs := []any{"method", req.Method, "url", req.URL.String(), "headers", requestHeaders}
 
 	if req.Body != nil {
 		bodyBytes, err := io.ReadAll(req.Body)
@@ -121,24 +118,20 @@ func (lrt LoggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, err
 			return nil, err
 		}
 		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-		fmt.Println("Request Body:")
-		fmt.Println(string(bodyBytes))
+		attrs = append(attrs, "body", string(bodyBytes))
 	}
+	slog.Debug("k8s request", attrs...)
 
-	// 发送请求
 	resp, err := lrt.Proxied.RoundTrip(req)
 	if err != nil {
 		return nil, err
 	}
 
-	// 打印响应信息
-	fmt.Printf("Response Status: %s\n", resp.Status)
-	fmt.Println("Response Headers:")
+	responseHeaders := make(map[string][]string, len(resp.Header))
 	for key, values := range resp.Header {
-		for _, value := range values {
-			fmt.Printf("  %s: %s\n", key, value)
-		}
+		responseHeaders[key] = append([]string(nil), values...)
 	}
+	slog.Debug("k8s response", "status", resp.Status, "headers", responseHeaders)
 
 	return resp, nil
 }
@@ -315,8 +308,7 @@ func NewK8sClientInner() *Sdk {
 	}
 	sdk, err := newForClientConfig(clientConfig, kubeConfigNamespace)
 	if err != nil {
-		fmt.Println("kubeconfig" + kubePath)
-		// slog.Warn("new k8s client error", "err", err)
+		slog.Error("new k8s client error", "kubeconfig", kubePath, "err", err)
 		panic(err)
 	}
 	sdk.clientConfig = clientConfig

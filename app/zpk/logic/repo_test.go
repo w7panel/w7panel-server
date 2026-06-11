@@ -19,7 +19,6 @@ func TestLoadPackage(t *testing.T) {
 		want    *zpktypes.ManifestPackage
 		wantErr bool
 	}{
-		// TODO: Add test cases.
 		{
 			name: "test",
 			args: args{

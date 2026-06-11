@@ -36,12 +36,9 @@ func (c HelmCheckCmd) GetName() string {
 }
 
 func (c HelmCheckCmd) Configure(cmd *cobra.Command) {
-	// username password register
 	cmd.Flags().StringVar(&helmCOp.version, "version", "", "version")
 	cmd.Flags().StringVar(&helmCOp.releaseName, "releaseName", "", "安装的名称")
 	cmd.Flags().StringVar(&helmCOp.namespace, "namespace", "", "namespace")
-
-	// cmd.MarkFlagRequired("identifie")
 }
 
 // go run main.go helm-check --version=1.16.0 --releaseName=w7-zpkv2 --namespace=default

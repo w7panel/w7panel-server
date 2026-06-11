@@ -94,7 +94,7 @@ RUN curl -fsSL https://kubeblocks.io/installer/install_cli.sh | bash -s v1.0.1
 
 CMD ["bash"]
 
-#docker buildx build --platform linux/amd64,linux/arm64 -t ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui . -f ./ubuntu.Dockerfile --push
+#docker buildx build --platform linux/amd64,linux/arm64 -t ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui . -f ./dev-tools/ubuntu.Dockerfile --push
 
 
 

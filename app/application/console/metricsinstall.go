@@ -21,7 +21,6 @@ type installOption struct {
 	namespace  string
 }
 
-// ./runtime/main cluster:register --thirdPartyCDToken=ywA2N3ImkVo0tPOn --registerCluster=true --offlineUrl=http://118.25.145.25:9090 --apiServerUrl=https://118.25.145.25:6443
 var inOp = installOption{}
 
 func (c MetricsInstall) GetName() string {
@@ -29,10 +28,8 @@ func (c MetricsInstall) GetName() string {
 }
 
 func (c MetricsInstall) Configure(cmd *cobra.Command) {
-	// username password register
 	cmd.Flags().StringVar(&inOp.vmHelmname, "metricsHelmname", "vm-operator", "安装的name")
 	cmd.Flags().StringVar(&inOp.namespace, "namespace", "vm-operator", "安装vm operator的命名空间")
-	// cmd.Flags().StringVar(&inOp.pid, "pid", "", "pid")
 }
 
 func (c MetricsInstall) GetDescription() string {
@@ -102,8 +99,8 @@ func (c MetricsInstall) Handle(cmd *cobra.Command, args []string) {
 			slog.Error("helm install error", slog.String("error", errstr))
 			os.Exit(1)
 		}
-		if err == nil {
-			print(successstr)
+		if successstr != "" {
+			slog.Info("helm install success", slog.String("output", successstr))
 		}
 
 	}
@@ -135,6 +132,8 @@ func (c MetricsInstall) Apply(baseDir, file string) error {
 		slog.Error("kubectl apply error", slog.String("error", estr))
 		return err
 	}
-	print(sstr)
+	if sstr != "" {
+		slog.Info("kubectl apply success", slog.String("output", sstr))
+	}
 	return nil
 }

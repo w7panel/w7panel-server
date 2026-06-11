@@ -21,10 +21,6 @@ func (c K3kOrderReturnCheck) GetName() string {
 	return "k3k-return-check"
 }
 
-func (c K3kOrderReturnCheck) Configure(cmd *cobra.Command) {
-
-}
-
 func (c K3kOrderReturnCheck) GetDescription() string {
 	return "退款记录"
 }

@@ -8,7 +8,6 @@
 - **Gin** - Web 框架
 - **w7-rangine-go** - 应用框架
 - **Kubernetes** - 容器编排
-- **SQLite** - 嵌入式数据库
 
 ## 项目结构
 
@@ -28,7 +27,6 @@ w7panel/
 │   ├── helper/                  # 通用工具函数
 │   ├── middleware/              # HTTP 中间件
 │   └── service/                 # Kubernetes、Helm、镜像仓库等公共服务
-├── database/                    # 数据库生成和模型配置
 ├── dev-tools/                   # 开发、构建、测试和代码生成工具
 │   ├── .cnb.yml                 # CNB 构建流水线配置
 │   ├── hack/                    # 代码生成等开发辅助脚本
@@ -51,12 +49,20 @@ w7panel/
 └── main.go                      # 服务启动入口
 ```
 
+## 开发约定
+
+- 第三方依赖包统一通过 Go Modules 管理，新增依赖使用 `go get` 并提交 `go.mod`、`go.sum` 的变更。
+- 禁止将第三方依赖源码复制到本项目目录下使用；确需修改第三方代码时，应优先通过上游 PR、fork 后使用 `replace` 或独立模块方式处理。
+- 涉及操作系统、CPU 架构或容器运行时差异的代码，必须使用 Go build tag 隔离平台相关实现，避免影响其他平台编译。
+- Linux-only 能力应放在 `//go:build linux` 文件中，并提供必要的非 Linux stub 或降级实现，保证本项目在非 Linux 开发环境下可编译。
+- 开发、调试、构建、代码生成和一次性维护脚本统一放在 `dev-tools/` 下，不要散落在业务目录或项目根目录。
+- `kodata/` 只存放运行时需要随程序分发的静态资源、Chart、CRD、脚本和模板，禁止放置本地构建产物、临时文件、缓存文件或开发工具输出。
+
 ## 快速开始
 
 ### 环境要求
 
 - Go 1.26+
-- Node.js 18+ (用于前端构建)
 - Kubernetes 集群
 
 ### 开发模式

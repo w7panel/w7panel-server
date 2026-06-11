@@ -39,7 +39,6 @@ func (c HelmCmd) GetName() string {
 }
 
 func (c HelmCmd) Configure(cmd *cobra.Command) {
-	// username password register
 	cmd.Flags().StringVar(&helmOp.version, "version", "", "version")
 	cmd.Flags().StringVar(&helmOp.releaseName, "releaseName", "", "安装的名称")
 	cmd.Flags().StringVar(&helmOp.repository, "repository", "", "helm仓库地址")
@@ -49,13 +48,9 @@ func (c HelmCmd) Configure(cmd *cobra.Command) {
 	cmd.Flags().StringArrayVar(&helmOp.setJson, "set-json", []string{}, "set-json参数")
 	cmd.Flags().StringVar(&helmOp.zipUrl, "zipUrl", "", "zip包地址")
 	cmd.Flags().BoolVar(&helmOp.atomic, "atomic", false, "原子安装")
-	// cmd.Flags().StringVar(&helmOp.Identifie, "identifie", "", "应用标识")
 	cmd.Flags().StringToStringVar(&helmOp.annotations, "anno", map[string]string{}, "annotations参数")
 	cmd.Flags().StringToStringVar(&helmOp.labels, "labels", map[string]string{}, "labels参数")
-	// cmd.MarkFlagRequired("cmd")
-	// cmd.MarkFlagRequired("repository")
 	cmd.MarkFlagRequired("releaseName")
-	// cmd.MarkFlagRequired("identifie")
 }
 
 func (c HelmCmd) Handle(cmd *cobra.Command, args []string) {

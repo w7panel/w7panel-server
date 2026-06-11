@@ -41,23 +41,3 @@ func DBConnTest(dsn string) (bool, error) {
 
 	return true, nil
 }
-
-// func main() {
-// 	// 示例 PostgreSQL DSN
-// 	postgresDSN := "postgres://myuser:mypassword@10.0.2.15:5432/mydb"
-// 	success, err := testDSN(postgresDSN)
-// 	if err != nil {
-// 		fmt.Printf("PostgreSQL DSN test failed: %v\n", err)
-// 	} else {
-// 		fmt.Printf("PostgreSQL DSN test succeeded: %v\n", success)
-// 	}
-
-// 	// 示例 MySQL DSN
-// 	mysqlDSN := "mysql://root:123456@172.16.1.13:3306/we7_addons?charset=utf8mb4"
-// 	success, err = testDSN(mysqlDSN)
-// 	if err != nil {
-// 		fmt.Printf("MySQL DSN test failed: %v\n", err)
-// 	} else {
-// 		fmt.Printf("MySQL DSN test succeeded: %v\n", success)
-// 	}
-// }

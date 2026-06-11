@@ -22,7 +22,6 @@ type shellOption struct {
 	namespace string
 }
 
-// ./runtime/main cluster:register --thirdPartyCDToken=ywA2N3ImkVo0tPOn --registerCluster=true --offlineUrl=http://118.25.145.25:9090 --apiServerUrl=https://118.25.145.25:6443
 var shOp = shellOption{}
 
 // go run main.go k3k-return-check-one --sa=console-303483

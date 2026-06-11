@@ -3,7 +3,6 @@ package kompose
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -18,7 +17,6 @@ type writer struct {
 }
 
 func (w *writer) Write(p []byte) (int, error) {
-	fmt.Println(string(p))
 	w.err = errors.New(string(p))
 	return 0, nil
 }
