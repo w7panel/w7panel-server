@@ -23,20 +23,6 @@ type K8sResourceEvent struct {
 	IsInit            bool   `json:"isInit"`
 }
 
-//	func NewK8sResourceEvent(apiVerion, kind string, name, namespace, eventType string, isInit bool) *K8sResourceEvent {
-//		return &K8sResourceEvent{
-//			TypeMeta: metav1.TypeMeta{
-//				Kind:       kind,
-//				APIVersion: apiVerion,
-//			},
-//			ObjectMeta: metav1.ObjectMeta{
-//				Name:      name,
-//				Namespace: namespace,
-//			},
-//			EventType: eventType,
-//			IsInit:    isInit,
-//		}
-//	}
 func NewK8sResourceEvent(typemeta metav1.TypeMeta, objMeta metav1.ObjectMeta, eventType string, isInit bool) *K8sResourceEvent {
 	return &K8sResourceEvent{
 		TypeMeta:   typemeta,

@@ -45,34 +45,6 @@ func Prepare(sdk *k8s.Sdk) error {
 	return nil
 }
 
-// func WebHookSetupManager(sdk *k8s.Sdk) (webhook.Server, error) {
-// 	if err := ensureCertificates(sdk.GetNamespace()); err != nil {
-// 		return nil, err
-// 	}
-// 	caBound, err := os.ReadFile("/tmp/k8s-webhook-server/serving-certs/tls.crt")
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	// sdk := k8s.NewK8sClient().Sdk
-// 	mutete := NewWebHookMutate(sdk)
-// 	err = mutete.CreateOrUpdate(caBound, svcName, sdk.GetNamespace())
-// 	if err != nil {
-// 		slog.Error("create or update webhook failed")
-// 		return nil, err
-// 	}
-// 	hookServer := webhook.NewServer(webhook.Options{
-// 		Host:    "0.0.0.0",
-// 		Port:    9443,
-// 		CertDir: certDir,
-// 		// CertFile: "/tmp/k8s-webhook-server/serving-certs/tls.crt",
-// 		// KeyFile:  "/tmp/k8s-webhook-server/serving-certs/tls.key",
-// 		//CertFile: "./tmp/k8s-webhook-server/serving-certs/tls.crt",
-// 		//KeyFile:  "./tmp/k8s-webhook-server/serving-certs/tls.key",
-// 	})
-
-// 	return hookServer, nil
-// }
-
 // ResourceMutator 处理各种资源的 webhook
 type ResourceMutator struct {
 	decoder admission.Decoder

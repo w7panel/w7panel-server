@@ -15,11 +15,6 @@ type pid struct {
 	virtualNamespace string
 }
 
-// var pidCache *helper.MemoryCache
-
-//	func init() {
-//		pidCache = helper.NewMemoryCache()
-//	}
 func NewPid(token string) (*pid, error) {
 	tokenObj := k8s.NewK8sToken(token)
 	var client *k8s.Sdk
@@ -52,10 +47,6 @@ func NewPidTest(saName string) (*pid, error) {
 	}
 	return &pid{rootSdk: root.Sdk, clientSdk: client, isVirtual: isVirtual, virtualNamespace: "k3k-" + saName}, nil
 }
-
-// func cacheKey(pod *corev1.Pod) string {
-// 	return helper.Set(cacheKey(pod), pod.Status.PodIP)
-// }
 
 // 不能在子集群执行
 func (p *pid) Handle(param PidParam) (*PidResult, error) {

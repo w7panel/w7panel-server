@@ -341,7 +341,6 @@ require (
 	github.com/we7coreteam/w7-rangine-go/v2 v2.0.2
 	github.com/zitadel/oidc/v3 v3.47.5
 	go.eigsys.de/gin-cachecontrol/v2 v2.3.0
-	go.mozilla.org/hawk v0.0.0-20210729190827-599314684e0d
 	go.yaml.in/yaml/v4 v4.0.0-rc.3
 	golang.org/x/time v0.14.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20260128011058-8636f8732409

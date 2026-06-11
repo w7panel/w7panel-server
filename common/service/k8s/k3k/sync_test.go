@@ -85,13 +85,3 @@ func TestSyncChild(t *testing.T) {
 }
 
 //who8-fan-b2-sz-w7-com-tls-secret
-
-// func TestCnf(t *testing.T) {
-// 	map1 := make(map[string]interface{})
-// 	err := yaml.Unmarshal([]byte(k3kregCnf), map1)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-
-// 	t.Log(map1)
-// }

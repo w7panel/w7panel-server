@@ -84,11 +84,6 @@ func (u *k3kUser) IsClusterLabelReady() bool {
 	return u.Labels[K3K_CLUSTER_STATUS] == K3K_STATUS_USER_READY
 }
 
-// func (u *k3kUser) IsK3kUser() bool {
-// 	return false //去掉 cluster用户
-// 	// return u.Labels[K3K_USER_MODE] == "cluster"
-// }
-
 func (u *k3kUser) IsClusterUser() bool {
 	return false
 }
@@ -663,13 +658,6 @@ func (u *k3kUser) GetUnitPrice() (decimal.Decimal, error) {
 	return compute.GetUnitPrice(), nil
 }
 
-//	func (u *k3kUser) GetBaseHour() (int64, error) {
-//		if u.lqr == nil {
-//			return 0, fmt.Errorf("limit range not set")
-//		}
-//		return u.lqr.GetHour(), nil
-//	}
-//
 // 首次购买默认赠送天数
 func (u *k3kUser) GetBaseDay() (float64, error) {
 	if u.lqr == nil {

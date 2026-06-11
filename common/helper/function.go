@@ -912,16 +912,6 @@ func After2SecondRun(f func()) {
 	time.AfterFunc(time.Second*2, f)
 }
 
-// func CheckLogo() error {
-// 	sdk := k8s.NewK8sClient()
-// 	configMap, err := sdk.ClientSet.CoreV1().ConfigMaps("kube-system").Get(context.TODO(), "logo.config", metav1.GetOptions{})
-// 	if err != nil {
-// 		slog.Error("Failed to get logo config", "error", err)
-// 		return err
-// 	}
-// 	return WriteLogo(configMap)
-// }
-
 func WriteLogo(configMap *v1.ConfigMap) error {
 	if configMap.Namespace == "kube-system" && configMap.Name == "k3k.logo.config" {
 		kodata, ok := os.LookupEnv("KO_DATA_PATH")

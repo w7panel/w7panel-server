@@ -171,24 +171,6 @@ func (s *k3sConfigController) WatchSecretInformer() cache.SharedIndexInformer {
 	return informer
 }
 
-// func (s *k3sConfigController) WatchConfigmapInformer() cache.SharedIndexInformer {
-// informer := s.KubeInformerFactory.Core().V1().ConfigMaps().Informer()
-// informer.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{
-// 	AddFunc: func(obj interface{}, isInit bool) {
-// 		s.handleK3kConfig(obj.(*v1.ConfigMap))
-// 	},
-// 	UpdateFunc: func(oldObj, newObj interface{}) {
-// 		// slog.Debug("update secret")
-// 		slog.Debug("update secret")
-// 		s.handleK3kConfig(newObj.(*v1.ConfigMap))
-// 	},
-// 	DeleteFunc: func(obj interface{}) {
-// 		s.deleteK3kConfig(obj.(*v1.ConfigMap))
-// 	},
-// })
-// return informer
-// }
-
 func (s *k3sConfigController) WatchDaemonset() cache.SharedIndexInformer {
 	informer := s.KubeInformerFactory.Apps().V1().DaemonSets().Informer()
 	informer.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{

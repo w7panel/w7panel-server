@@ -12,10 +12,6 @@ import (
 
 var bfck = false
 
-// func init() {
-// 	go LoadBkConfig()
-// }
-
 // 是否需要备案检测
 func NeedCheckBeian() bool {
 	return false //子集群pod 获取不到备案信息

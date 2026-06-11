@@ -1004,8 +1004,6 @@ go.eigsys.de/gin-cachecontrol/v2 v2.3.0/go.mod h1:KUxGovzzfDv1B38s6WLs5IHjlGnMPQ
 go.etcd.io/bbolt v1.3.5/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
 go.mongodb.org/mongo-driver/v2 v2.5.0 h1:yXUhImUjjAInNcpTcAlPHiT7bIXhshCTL3jVBkF3xaE=
 go.mongodb.org/mongo-driver/v2 v2.5.0/go.mod h1:yOI9kBsufol30iFsl1slpdq1I0eHPzybRWdyYUs8K/0=
-go.mozilla.org/hawk v0.0.0-20210729190827-599314684e0d h1:fkNURug66tUy2gCyat66Q2m/7Gj6pzi8MH1l9235sh0=
-go.mozilla.org/hawk v0.0.0-20210729190827-599314684e0d/go.mod h1:RZvPaNqtmZkuAkES/uuqcDmi0u7y4aLNOZ8wWAwU4FA=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
 go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=

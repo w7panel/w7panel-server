@@ -19,8 +19,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-// const k3kFinalizerName = "k3k.sa/finalizer"
-
 type DeleteResource struct {
 	client.Client
 	k3kClient        *k3ktypes.K3kClient

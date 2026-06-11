@@ -17,8 +17,6 @@ import (
 
 var consoleApi = "https://console.w7.cc"
 
-// var consoleApi = "http://172.16.1.116:9004"
-
 type AppSecret struct {
 	AppId     string `json:"app_id"`
 	AppSecret string `json:"app_secret"`

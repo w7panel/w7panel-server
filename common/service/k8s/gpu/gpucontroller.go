@@ -56,10 +56,6 @@ func NewGpuController(sdk *k8s.Sdk) (*GpuController, error) {
 	}, nil
 }
 
-// func (g *GpuController) Init() error {
-
-// }
-
 func (g *GpuController) Start() error {
 	job := g.WatchJob()
 	gpuclass := g.WatchGpuClass()

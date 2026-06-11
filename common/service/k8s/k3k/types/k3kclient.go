@@ -137,21 +137,3 @@ spec:
         defaultPermissionName: "yibqvzoz"
 
 */
-//	func (k *K3kClient) TokenToK3kUser(token string) (*k3kUser, error) {
-//		k8stoken := k8s.NewK8sToken(token)
-//		saName, err := k8stoken.GetSaName()
-//		if err != nil {
-//			return nil, err
-//		}
-//		sa, err := k.sdk.GetServiceAccount(k.sdk.GetNamespace(), saName)
-//		if err != nil {
-//			return nil, err
-//		}
-//		kuser := NewK3kUser(sa)
-//		return kuser, nil
-//	}
-// func Extract(ctx context.Context, client client.Client, cluster *v1alpha1.Cluster, hostServerIP string) (*clientcmdapi.Config, error) {
-// 	cfg := kubeconfig.New()
-// 	kubeconfig, err := cfg.Generate(ctx, client, cluster, hostServerIP)
-// 	return kubeconfig, err
-// }

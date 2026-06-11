@@ -86,14 +86,6 @@ func (c *K3kCost) ToJsonString() (string, error) {
 	return string(result), nil
 }
 
-// func (c *K3kCost) NeedBuy() bool {
-// 	return c.BuyMode == "buy"
-// }
-
-// func (c *K3kCost) IsGive() bool {
-// 	return c.BuyMode == "give"
-// }
-
 type innercost struct {
 	// BuyMode   string            `json:"buymode"`
 	Cpu       Float64OrString   `json:"cpu"`

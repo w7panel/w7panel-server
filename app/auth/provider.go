@@ -75,7 +75,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/console/verify-cert", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.VerifyCert)
 			localApiGroup.POST("/console/import-cert-console", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.ImportCertConsole)
 			localApiGroup.POST("/console/register-zpk-site" /* middleware.ConsoleSignature{}.Process */, controller2.Site{}.RegisterZpkSite)
-			// registerHawkTestRoute(localApiGroup, middleware.Hawk{}.Process)
 		}
 
 		engine.POST("/panel-api/v1/code", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCode)
