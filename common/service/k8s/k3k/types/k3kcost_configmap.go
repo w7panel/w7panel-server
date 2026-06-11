@@ -3,50 +3,39 @@ package types
 import (
 	"errors"
 	"log/slog"
-	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type param map[string]string
 type Params []param
 
-type K3kClusterPolicy struct {
-	*v1alpha1.VirtualClusterPolicy
-	cost       *K3kCost
-	limitRange *LimitRangeQuota
-	limitOnce  sync.Once
-	onceCost   sync.Once
+type K3kCostConfigMap struct {
+	*corev1.ConfigMap
+	cost      *K3kCost
+	limitOnce sync.Once
+	onceCost  sync.Once
 }
 
-func NewK3kClusterPolicy(v *v1alpha1.VirtualClusterPolicy) *K3kClusterPolicy {
-	return &K3kClusterPolicy{
-		VirtualClusterPolicy: v,
+func NewK3kCostConfigMap(v *corev1.ConfigMap) *K3kCostConfigMap {
+	return &K3kCostConfigMap{
+		ConfigMap: v,
 	}
 }
 
-func (v *K3kClusterPolicy) GetCost() *K3kCost {
+func (v *K3kCostConfigMap) GetCost() *K3kCost {
 	// 返回K3kGroup的名称
 	v.onceCost.Do(func() {
 		v.cost = v.getCost()
 	})
 	return v.cost
 }
-func (v *K3kClusterPolicy) GetLimitRange() *LimitRangeQuota {
-	v.limitOnce.Do(func() {
-		v.limitRange = v.getLimitRange()
-	})
-	return v.limitRange
-}
 
-func (v *K3kClusterPolicy) getCost() *K3kCost {
-	costConfig := v.Annotations[W7_COST]
-	if costConfig == "" {
-		return nil
-	}
-	cost, err := CreateCostFromString(costConfig)
+func (v *K3kCostConfigMap) getCost() *K3kCost {
+
+	cost, err := ConfigMapToCost(v.ConfigMap)
 	if err != nil {
 		slog.Error("parse cost config error", "error", err)
 		return nil
@@ -54,24 +43,11 @@ func (v *K3kClusterPolicy) getCost() *K3kCost {
 	return cost
 }
 
-func (v *K3kClusterPolicy) getLimitRange() *LimitRangeQuota {
-	jstr, ok := v.Annotations[W7_QUOTA_LIMIT]
-	if ok {
-		lqr2, err := NewLimitRangeQuata(jstr)
-		if err != nil {
-			slog.Error("parse quota limit error", "error", err)
-			return nil
-		}
-		return lqr2
-	}
-	return nil
+func (v *K3kCostConfigMap) CanPublish() bool {
+	return v.cost != nil
 }
 
-func (v *K3kClusterPolicy) CanPublish() bool {
-	return v.cost != nil && v.limitRange != nil
-}
-
-func (u *K3kClusterPolicy) GetOrderCompute() (*K3kOrderCompute, error) {
+func (u *K3kCostConfigMap) GetOrderCompute() (*K3kOrderCompute, error) {
 	if u.getCost() == nil {
 		return nil, errors.New("当前用户未配置费用套餐，无法购买")
 	}
@@ -79,32 +55,7 @@ func (u *K3kClusterPolicy) GetOrderCompute() (*K3kOrderCompute, error) {
 	return NewK3kOrderComputeWithCost(u.getCost()), nil
 }
 
-func (b *K3kClusterPolicy) ToPublishShopParams(name string) map[string]string {
-
-	compute, err := b.GetOrderCompute()
-	if err != nil {
-		return nil
-	}
-	price := compute.GetOriginPrice()
-
-	quantity := b.GetLimitRange().Quantity
-	quantityStr := strconv.Itoa(int(quantity))
-
-	return map[string]string{
-		"cpu":       strconv.FormatInt(compute.Cpu, 10),
-		"memory":    strconv.FormatInt(compute.Memory, 10),
-		"storage":   strconv.FormatInt(compute.Storage, 10),
-		"bandwidth": strconv.FormatInt(compute.Bandwidth, 10),
-		// "buymode":   b.GetCost().BuyMode,
-		"unit":      b.GetLimitRange().Unit,
-		"quantity":  quantityStr,
-		"price":     price.String(),
-		"groupName": name,
-		// "groupTitle":
-	}
-}
-
-func (b *K3kClusterPolicy) ToPublishShopParams2(name string) (map[string]interface{}, error) {
+func (b *K3kCostConfigMap) ToPublishShopParams2(name string) (map[string]interface{}, error) {
 	items, err := b.ToPackageItemsParams(true)
 	if err != nil {
 		return nil, err
@@ -123,7 +74,7 @@ func (b *K3kClusterPolicy) ToPublishShopParams2(name string) (map[string]interfa
 	}, nil
 }
 
-func (b *K3kClusterPolicy) ToPackageItemsParams(onlyOnline bool) (Params, error) {
+func (b *K3kCostConfigMap) ToPackageItemsParams(onlyOnline bool) (Params, error) {
 
 	params := Params{}
 	city := b.Annotations["city"]

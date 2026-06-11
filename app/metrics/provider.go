@@ -28,6 +28,9 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	server.RegisterRouters(func(engine *gin.Engine) {
 		engine.GET("/panel-api/v1/metrics/usage/normal", middleware.Auth{}.Process, controller2.Metrics{}.Usage)
 		engine.GET("/panel-api/v1/metrics/usage/disk", middleware.Auth{}.Process, controller2.Metrics{}.UsageDisk)
+		// 救援模式cvm 使用
+		engine.GET("/panel-api/v1/metrics/usage/cvm/:namespace/name/:name/normal", middleware.Auth{}.Process, controller2.Metrics{}.UsageCvm)
+		engine.GET("/panel-api/v1/metrics/usage/cvm/:namespace/name/:name/disk", middleware.Auth{}.Process, controller2.Metrics{}.UsageDiskCvm)
 
 		engine.GET("/panel-api/v1/metrics/installed", middleware.Auth{}.Process, controller2.Metrics{}.VmOperatorInstalled)
 		engine.GET("/panel-api/v1/metrics/state", middleware.Auth{}.Process, controller2.Metrics{}.MetricsState)

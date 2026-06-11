@@ -5,15 +5,13 @@ import (
 
 	"github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 
 	// _ "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -25,22 +23,6 @@ func NewK3kClient(client client.Client) *K3kClient {
 	return &K3kClient{
 		k3kClient: client,
 	}
-}
-
-func (k *K3kClient) Create(k3kUser *K3kUser) error {
-
-	job := ToK3kJob(k3kUser)
-	err := k.k3kClient.Create(context.Background(), job)
-	if err != nil {
-		return err
-	}
-	k3kUser.Running(job.Name)
-	err = k.k3kClient.Update(context.Background(), k3kUser.ServiceAccount)
-	if err != nil {
-		return err
-	}
-	return nil
-
 }
 
 func (k *K3kClient) Delete(user *K3kUser) error {
@@ -116,23 +98,6 @@ func (k *K3kClient) GetPolicyByName(name string) (*v1alpha1.VirtualClusterPolicy
 	return policy, err
 }
 
-func (k *K3kClient) GetKubeConfig(user *K3kUser) (*clientcmdapi.Config, error) {
-	kubeconfig, err := k8s.GetK3kKubeConfig(k.k3kClient, user.ToK3kConfig())
-	return kubeconfig, err
-}
-
-func (k *K3kClient) GetKubeConfigYaml(user *K3kUser) ([]byte, error) {
-	kubeconfig, err := k.GetKubeConfig(user)
-	if err != nil {
-		return nil, err
-	}
-	kubeconfigData, err := clientcmd.Write(*kubeconfig)
-	if err != nil {
-		return nil, err
-	}
-	return kubeconfigData, err
-}
-
 func (k *K3kClient) GetCluster(user *K3kUser) (*v1alpha1.Cluster, error) {
 	cluster := &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
@@ -150,27 +115,26 @@ func (k *K3kClient) GetCluster(user *K3kUser) (*v1alpha1.Cluster, error) {
 	}
 	return cluster, err
 }
-func (k *K3kClient) GetK3kConfig() (*K3kConfig, error) {
+func (k *K3kClient) GetK3kConfigSetting() (*K3kConfigSetting, error) {
 
-	configmap := &corev1.ConfigMap{}
-	err := k.k3kClient.Get(context.Background(), types.NamespacedName{Namespace: "kube-system", Name: "k3k.config"}, configmap)
+	config := &configv1alpha1.K3kConfig{}
+	err := k.k3kClient.Get(context.Background(), types.NamespacedName{Name: k8s.K3kConfigName}, config)
 	if err != nil {
 		return nil, err
 	}
-	secretConfig := NewK3kConfigByConfigmap(configmap)
+	secretConfig := NewK3kConfigByData(config.Spec.Data)
 	return secretConfig, err
 }
 
 /**
-kind: ConfigMap
-apiVersion: v1
+kind: K3kConfig
+apiVersion: w7panel.w7.com/v1alpha1
 metadata:
     name: k3k.config
-    namespace: kube-system
-type: Opaque
-data:
-    allowConsoleRegister: "true"
-    defaultPolicyName: "yibqvzoz"
+spec:
+    data:
+        allowConsoleRegister: "true"
+        defaultPermissionName: "yibqvzoz"
 
 */
 //	func (k *K3kClient) TokenToK3kUser(token string) (*k3kUser, error) {

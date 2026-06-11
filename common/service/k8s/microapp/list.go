@@ -78,6 +78,8 @@ func ListInfo(t string, name string) (*microapp.MicroApp, error) {
 	}
 	microapp, err := loadMicroApp(clientSdk, name)
 	if err != nil {
+
+		//找不到 获取没有权限读取
 		if k8serrors.IsNotFound(err) || k8serrors.IsForbidden(err) {
 			rootMicroapp, err := loadMicroApp(rootSdk, name)
 			if err != nil {
@@ -97,7 +99,15 @@ func filterMicroapp(item *microapp.MicroApp, role string) {
 	}
 	item.Labels["microapp.w7.cc/from"] = "root"
 	item.Name = item.Name + "-root"
+	if role == "founder" {
+		return
+	}
+	// item.Labels["microapp.w7.cc/from"] = "root"
+	// item.Name = item.Name + "-root"
 	item.Spec.Bindings = lo.Filter(item.Spec.Bindings, func(bindings microapp.Bindings, index int) bool {
+		if role == "super" { //super 管理员可以看到所有角色
+			return bindings.Name != "founder"
+		}
 		return bindings.Name == role
 	})
 	newRole := item.Spec.ConfigV2.Props.RoleConfig[role]

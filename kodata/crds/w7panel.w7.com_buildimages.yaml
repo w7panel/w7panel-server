@@ -3,11 +3,10 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.1
-    api-approved.kubernetes.io: "https://www.w7.cc"
-  name: buildimages.buildimage.w7.cc
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: buildimages.w7panel.w7.com
 spec:
-  group: buildimage.w7.cc
+  group: w7panel.w7.com
   names:
     kind: BuildImage
     listKind: BuildImageList

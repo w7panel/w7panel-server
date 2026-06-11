@@ -1,0 +1,53 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: contactconfigs.w7panel.w7.com
+spec:
+  group: w7panel.w7.com
+  names:
+    kind: ContactConfig
+    listKind: ContactConfigList
+    plural: contactconfigs
+    singular: contactconfig
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            properties:
+              type:
+                type: string
+              link:
+                type: string
+              text:
+                type: string
+              name:
+                type: string
+              showName:
+                type: boolean
+              selicon:
+                type: string
+              icon:
+                type: string
+              qrcode:
+                type: string
+              style:
+                type: string
+              index:
+                type: integer
+                format: int32
+            required:
+            - type
+    served: true
+    storage: true

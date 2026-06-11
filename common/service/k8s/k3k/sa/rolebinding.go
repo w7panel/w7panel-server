@@ -46,6 +46,11 @@ func (r *RoleBinding) createRoleAndBinding(ctx context.Context, name string, nam
 				Resources: []string{"pods"}, // 只包含命名空间级别的资源
 				Verbs:     []string{"get", "list", "watch"},
 			},
+			{
+				APIGroups: []string{"ckm.w7.cc"},
+				Resources: []string{"cvms", "cvmconsoleorders", "costs"}, // cvm 只读
+				Verbs:     []string{"get", "list", "watch"},
+			},
 		},
 	}
 
@@ -177,11 +182,11 @@ func (r *RoleBinding) CreateRole(ctx context.Context, sa *v1.ServiceAccount, k3k
 	return nil
 }
 
-func (r *RoleBinding) CreateNormalUserRoleBinding(ctx context.Context, sa *v1.ServiceAccount, role string) error {
+func (r *RoleBinding) CreateSuperUserRoleBinding(ctx context.Context, sa *v1.ServiceAccount, role string) error {
 
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "w7panel-rb-" + role,
+			Name: fmt.Sprintf("w7panel-rb-%s", sa.Name),
 		},
 		Subjects: []rbacv1.Subject{
 			{
@@ -206,6 +211,20 @@ func (r *RoleBinding) CreateNormalUserRoleBinding(ctx context.Context, sa *v1.Se
 		} else {
 			return fmt.Errorf("failed to create ClusterRoleBinding: %v", err)
 		}
+	}
+
+	return nil
+}
+
+func (r *RoleBinding) DeleteSuperUserRoleBinding(ctx context.Context, sa *v1.ServiceAccount, role string) error {
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("w7panel-rb-%s-%s", role, sa.Name),
+		},
+	}
+
+	if err := r.Delete(ctx, clusterRoleBinding); err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete ClusterRoleBinding: %v", err)
 	}
 
 	return nil

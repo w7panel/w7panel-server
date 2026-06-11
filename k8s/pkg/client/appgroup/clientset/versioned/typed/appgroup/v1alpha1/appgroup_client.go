@@ -30,7 +30,7 @@ type AppgroupV1alpha1Interface interface {
 	AppGroupsGetter
 }
 
-// AppgroupV1alpha1Client is used to interact with features provided by the appgroup.w7.cc group.
+// AppgroupV1alpha1Client is used to interact with features provided by the w7panel.w7.com group.
 type AppgroupV1alpha1Client struct {
 	restClient rest.Interface
 }

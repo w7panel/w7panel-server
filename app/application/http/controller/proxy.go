@@ -49,19 +49,11 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 	if local == "true" || local == "1" {
 		forceLocal = true
 	}
-	useRootSdk := false
-	if strings.HasPrefix(http.Request.URL.Path, "/api/v1/namespaces/default/configmaps/domain-parse") && http.Request.Method == "GET" {
-		// forceLocal = true
-		useRootSdk = true
-	}
 	// 创建 K8s 客户端
 	client, err := k8s.NewK8sClient().ChannelLocal(token, forceLocal)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
-	}
-	if useRootSdk {
-		client = k8s.NewK8sClient().Sdk
 	}
 
 	// 检查并修改 http.Request 中的 Authorization 头部

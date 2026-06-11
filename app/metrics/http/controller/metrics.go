@@ -26,7 +26,7 @@ func (self Metrics) VmOperatorInstalled(http *gin.Context) {
 	rootSdk := k8s.NewK8sClient() //不能.Sdk
 	namespace := "w7-system"
 	releaseName := "vm-operator"
-	isVirtual := k8stoken.IsVirtual()
+	isVirtual := k8stoken.IsK3kCluster()
 	sdk := rootSdk.Sdk
 	result := &MetricsInstall{
 		BaseUrl:   "/k8s-proxy/v1/namespaces/w7-system/services/vmsingle-vm-operator-k8s-offline-metrics-single:8429/proxy/",
@@ -118,13 +118,39 @@ func (self Metrics) MetricsState(http *gin.Context) {
 
 func (self Metrics) Usage(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
-	user, err := k3k.TokenToK3kUser(token)
+	k8sToken := k8s.NewK8sToken(token)
+
+	uage := metrics.NewK3kUsage(k8s.NewK8sClient().Sdk)
+	cpu, memory, cputotal, memorytotal, err := uage.GetResourceUsage(k8sToken)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	response := gin.H{
+		"cpu": gin.H{
+			"usage": cpu.MilliValue(),
+			"total": cputotal.MilliValue(),
+		},
+		"memory": gin.H{
+			"usage": memory.Value(),
+			"total": memorytotal.Value(),
+		},
+	}
+	self.JsonResponseWithoutError(http, response)
+}
+
+func (self Metrics) UsageCvm(http *gin.Context) {
+	token := http.MustGet("k8s_token").(string)
+	name := http.Param("name")
+	namespace := http.Param("namespace")
+
 	uage := metrics.NewK3kUsage(k8s.NewK8sClient().Sdk)
-	cpu, memory, cputotal, memorytotal, err := uage.GetResourceUsage(user)
+	cvm, err := k3k.TokenToCkm(http, token, namespace, name)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	cpu, memory, cputotal, memorytotal, err := uage.GetResourceCvmUsage(cvm)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
@@ -144,13 +170,41 @@ func (self Metrics) Usage(http *gin.Context) {
 
 func (self Metrics) UsageDisk(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
-	user, err := k3k.TokenToK3kUser(token)
+
+	uage := metrics.NewK3kUsage(k8s.NewK8sClient().Sdk)
+	usage, total, err := uage.GetResourceDiskUsage(k8s.NewK8sToken(token))
+	if err != nil {
+		response := gin.H{
+			"disk": gin.H{
+				"usage": usage,
+				"total": total,
+			},
+		}
+		self.JsonResponseWithoutError(http, response)
+		return
+	}
+	response := gin.H{
+		"disk": gin.H{
+			"usage": usage,
+			"total": total,
+		},
+	}
+	self.JsonResponseWithoutError(http, response)
+}
+
+func (self Metrics) UsageDiskCvm(http *gin.Context) {
+	token := http.MustGet("k8s_token").(string)
+
+	uage := metrics.NewK3kUsage(k8s.NewK8sClient().Sdk)
+	name := http.Param("name")
+	namespace := http.Param("namespace")
+
+	cvm, err := k3k.TokenToCkm(http, token, namespace, name)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	uage := metrics.NewK3kUsage(k8s.NewK8sClient().Sdk)
-	usage, total, err := uage.GetResourceDiskUsage(user)
+	usage, total, err := uage.GetResourceCvmDiskUsage(cvm)
 	if err != nil {
 		response := gin.H{
 			"disk": gin.H{

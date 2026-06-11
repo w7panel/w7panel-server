@@ -4,68 +4,23 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
-	"github.com/w7panel/w7panel/common/service/k8s"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type K3kVirtualClusterPolicyController struct {
-	client.Client
-	Scheme *runtime.Scheme
-	Sdk    *k8s.Sdk
-}
-
-func setupPolicyController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
-	r := &K3kVirtualClusterPolicyController{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Sdk:    sdk,
-	}
-
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.VirtualClusterPolicy{}).
-		Complete(r)
-}
-
-// 使用webhook 处理
-// Reconcile for Job controller
-func (r *K3kVirtualClusterPolicyController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	return ctrl.Result{}, nil
-}
-
-func PublishToShop(ctx context.Context, client client.Client, k3kpolicy *v1alpha1.VirtualClusterPolicy) error {
+func PublishToShop(ctx context.Context, client client.Client, k3kpolicy *corev1.ConfigMap) error {
 	if console.GetCurrentLicense() == nil {
 		slog.Error("no license to publish")
 		return nil
 	}
 	slog.Error("publish to shop")
 
-	group := k3ktypes.NewK3kClusterPolicy(k3kpolicy)
+	group := k3ktypes.NewK3kCostConfigMap(k3kpolicy)
 	if !group.CanPublish() {
 		// return nil
-	}
-	if k3kpolicy.Annotations["w7.cc/cost-name"] != "" {
-		configmap := &corev1.ConfigMap{}
-		err := client.Get(ctx, types.NamespacedName{Namespace: "default", Name: k3kpolicy.Annotations["w7.cc/cost-name"]}, configmap)
-		if err != nil {
-			return err
-		}
-		cost, err := k3ktypes.ConfigMapToCost(configmap)
-		if err != nil {
-			return err
-		}
-		json, err := cost.ToJsonString()
-		if err != nil {
-			return err
-		}
-		k3kpolicy.Annotations["w7.cc/cost"] = json
 	}
 
 	urlValues, err := group.ToPublishShopParams2(k3kpolicy.Name)
@@ -97,7 +52,7 @@ func PublishToShop(ctx context.Context, client client.Client, k3kpolicy *v1alpha
 
 }
 
-func DeleteFromShop(k3kpolicy *v1alpha1.VirtualClusterPolicy) error {
+func DeleteFromShop(k3kpolicy *corev1.ConfigMap) error {
 	if console.GetCurrentLicense() == nil {
 		slog.Error("no license")
 		return nil
@@ -120,7 +75,7 @@ func DeleteFromShop(k3kpolicy *v1alpha1.VirtualClusterPolicy) error {
 
 }
 
-func CheckPublish(ctx context.Context, r client.Client, k3kpolicy *v1alpha1.VirtualClusterPolicy) error {
+func CheckPublish(ctx context.Context, r client.Client, k3kpolicy *corev1.ConfigMap) error {
 
 	// cfg := &corev1.ConfigMap{}
 	// if err := r.Get(ctx, types.NamespacedName{Namespace: "kube-system", Name: "k3k.config"}, cfg); err != nil {

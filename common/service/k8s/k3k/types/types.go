@@ -48,7 +48,7 @@ const K3kFinalizerName = "k3k.sa/finalizer"
 const (
 	K3K_CLUSTER_MODE_VIRTUAL = "virtual"
 	K3K_CLUSTER_MODE_SHARED  = "shared"
-	K3K_USER_MODE            = "w7.cc/user-mode"        //用户模式
+	K3K_USER_MODE            = "w7.cc/user-mode"        //用户模式 founder cluster normal 即将废弃
 	W7_WH_MODE               = "w7.cc/weihu"            //维护模式
 	W7_WH_JOB                = "w7.cc/weihu-job"        //维护模式
 	W7_WH_JOB_STATUS         = "w7.cc/weihu-job-status" //维护job status
@@ -79,6 +79,7 @@ const (
 	W7_ACCESS_TOKEN            = "w7.cc/access-token"        //访问令牌
 	W7_DOMAIN_WHITE_LIST       = "w7.cc/domain-white-list"   //域名白名单
 	W7_DEMO_USER               = "w7.cc/demo-user"           //演示用户
+	W7_CVM_USER                = "w7.cc/cvm-user"            //是否支持cvm购买
 	W7_SYS_STORAGE_PVC_NAME    = "w7.cc/sys-pvc-name"        //系统存储PVC名称
 	W7_RETURN_ORDER_INFO       = "w7.cc/return-order-info"   //需要退款处理的订单信息
 	W7_BASE_ORDER_SN           = "w7.cc/base-order-sn"       //基础订单号
@@ -94,9 +95,10 @@ const (
 	W7_COST_NAME          = "w7.cc/cost-name"          //费用套餐
 	W7_USER_MODE          = "w7.cc/user-mode"          //用户模式 cluster founder normal
 	W7_OVER_MODE          = "w7.cc/over-mode"          //资源状态 wait(等待检测) no-resource(无资源) success(检测通过)
-	W7_OVER_RESOURCE      = "w7.cc/over-resource"      //资源状态 wait(等待检测) no-resource(无资源) success(检测通过)
+	W7_OVER_RESOURCE      = "w7.cc/over-resource"      //
 	W7_OVER_BASE_RESOURCE = "w7.cc/over-base-resource" //首次购买资源
 	W7_LOGIN_TIME         = "w7.cc/login-time"
+	W7_CVM_NAME           = "w7.cc/cvm-name" //当前请求中cvm名称
 )
 
 const Bandwidth v1.ResourceName = "bandwidth"

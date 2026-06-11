@@ -995,7 +995,7 @@ func ToMicroApp(p K8sResourceInterface) *microapp.MicroApp {
 	}
 	obj := microapp.MicroApp{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "microapp.w7.cc/v1alpha1",
+			APIVersion: "w7panel.w7.com/v1alpha1",
 			Kind:       "MicroApp",
 		},
 		ObjectMeta: metav1.ObjectMeta{

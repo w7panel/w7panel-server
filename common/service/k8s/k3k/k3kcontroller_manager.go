@@ -40,7 +40,7 @@ func SetupK3kControllers(mgr ctrl.Manager) error {
 			types.SetSaVersion(sa.Name, saVersion)
 		}
 		var policyList = &v1alpha1.VirtualClusterPolicyList{}
-		err = sigClient.List(context.Background(), saList)
+		err = sigClient.List(context.Background(), policyList)
 		if err != nil {
 			slog.Error("failed to list virtual cluster policy", "error", err)
 			return err
@@ -72,10 +72,15 @@ func SetupK3kControllers(mgr ctrl.Manager) error {
 	// 	return err
 	// }
 
-	if err := setupJobController(mgr, sdk); err != nil {
-		slog.Error("failed to setup job controller", "error", err)
-		return err
-	}
+	// if err := setupJobController(mgr, sdk); err != nil {
+	// 	slog.Error("failed to setup job controller", "error", err)
+	// 	return err
+	// }
+
+	// if err := setupCvmClusterController(mgr, sdk); err != nil {
+	// 	slog.Error("failed to setup cvm cluster controller", "error", err)
+	// 	return err
+	// }
 
 	return nil
 }

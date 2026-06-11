@@ -72,6 +72,7 @@ func RecordOperation(ctx *gin.Context, start time.Time) {
 		return
 	}
 	status := ctx.Writer.Status()
+	message := buildOperationMessage(ctx)
 	log := OperationLog{
 		Time:       start,
 		AuditType:  TypeOperation,
@@ -81,13 +82,14 @@ func RecordOperation(ctx *gin.Context, start time.Time) {
 		Method:     ctx.Request.Method,
 		Path:       ctx.Request.URL.Path,
 		Route:      ctx.FullPath(),
+		RouteDesc:  message,
 		Params:     sanitizeParams(ctx.Params),
 		StatusCode: status,
 		Success:    status < 400,
 		DurationMs: time.Since(start).Milliseconds(),
 		IP:         clientIP(ctx),
 		UserAgent:  ctx.Request.UserAgent(),
-		Message:    buildOperationMessage(ctx),
+		Message:    message,
 	}
 	go safeWriteOperation(log)
 }

@@ -30,7 +30,7 @@ type MicroappV1alpha1Interface interface {
 	MicroAppsGetter
 }
 
-// MicroappV1alpha1Client is used to interact with features provided by the microapp.w7.cc group.
+// MicroappV1alpha1Client is used to interact with features provided by the w7panel.w7.com group.
 type MicroappV1alpha1Client struct {
 	restClient rest.Interface
 }

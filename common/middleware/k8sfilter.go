@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
 )
 
@@ -78,37 +77,4 @@ func (self K8sFilter) Process(ctx *gin.Context) {
 	ctx.Next()
 	// self.sync(namespace, resource, name, ctx, k3kConfig, k3ktoken) helm安装就取不到数据
 
-}
-
-func (K8sFilter) sync(namespace string, resource string, name string, ctx *gin.Context, k3kConfig *k8s.K3kConfig, k3ktoken *k8s.K8sToken) bool {
-	if namespace == "" || resource == "" || name == "" {
-		return true
-	}
-
-	go doSync(ctx, name, namespace, k3kConfig, k3ktoken, resource)
-	return false
-}
-
-func doSync(ctx *gin.Context, name string, namespace string, k3kConfig *k8s.K3kConfig, k3ktoken *k8s.K8sToken, resource string) {
-	if ctx.Request.Method == "POST" || ctx.Request.Method == "PUT" || ctx.Request.Method == "DELETE" || ctx.Request.Method == "PATCH" {
-		k3kSync := &k3k.K3kSync{
-			VirtualName:      name,
-			VirtualNamespace: namespace,
-			K3kName:          k3kConfig.Name,
-			K3kNamespace:     k3kConfig.Namespace,
-			K3kMode:          k3ktoken.K3kMode(),
-		}
-		if resource == "ingresses" {
-			k3k.SyncIngress(k3kSync)
-		}
-		if resource == "configmaps" {
-			k3k.SyncConfigmap(k3kSync)
-		}
-		if resource == "secret" {
-			k3k.SyncSecret(k3kSync)
-		}
-		if resource == "mcpbridges" && k3ktoken.IsShared() {
-			k3k.SyncMcpBridge(k3kSync)
-		}
-	}
 }

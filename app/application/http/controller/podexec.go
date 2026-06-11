@@ -15,8 +15,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/pid"
 	"github.com/w7panel/w7panel/common/service/k8s/remotecommand"
-	"github.com/w7panel/w7panel/common/service/k8s/shell"
 	"github.com/w7panel/w7panel/common/service/k8s/terminal"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
@@ -485,7 +485,8 @@ func (self PodExec) GetNodePid(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	pid, err := shell.GetPid(agentPod, pod.Status.ContainerStatuses[0].ContainerID, true, sdk)
+	pid, err := pid.GetContainerPid(agentPod, agentPod, pod.Status.ContainerStatuses[0].ContainerID, true, sdk)
+	// pid, err := shell.GetPid(agentPod, pod.Status.ContainerStatuses[0].ContainerID, true, sdk)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return

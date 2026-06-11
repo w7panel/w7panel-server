@@ -1,4 +1,4 @@
-apiVersion: gpuclass.k8s.io/v1alpha1
+apiVersion: w7panel.w7.com/v1alpha1
 kind: GpuClass
 metadata:
   annotations:

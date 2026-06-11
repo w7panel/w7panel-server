@@ -9,7 +9,8 @@ import (
 type ApiClient struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              ApiClientSpec `json:"spec"`
+	Spec              ApiClientSpec   `json:"spec"`
+	Status            ApiClientStatus `json:"status,omitempty"`
 }
 
 type ApiClientSpec struct {
@@ -17,6 +18,10 @@ type ApiClientSpec struct {
 	ClientID     string `json:"clientId,omitempty"`
 	ClientName   string `json:"clientName,omitempty"`
 	ClientSecret string `json:"clientSecret,omitempty"`
+}
+
+type ApiClientStatus struct {
+	LastAccessedAt *metav1.Time `json:"lastAccessedAt,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

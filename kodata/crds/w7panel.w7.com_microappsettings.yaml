@@ -4,7 +4,6 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-    api-approved.kubernetes.io: "https://www.w7.cc"
   name: microappsettings.w7panel.w7.com
 spec:
   group: w7panel.w7.com
@@ -37,76 +36,76 @@ spec:
           metadata:
             type: object
           spec:
-            description: 微应用站点设置的具体配置。
+            description: Spec 是微应用站点设置的具体配置。
             properties:
               general:
-                description: 通用站点设置。
+                description: General 是通用站点设置。
                 properties:
                   filing:
-                    description: 备案相关设置。
+                    description: Filing 是备案相关设置。
                     properties:
                       electronicBusinessLicense:
-                        description: 电子执照信息。
+                        description: ElectronicBusinessLicense 是电子执照信息。
                         type: string
                       icp:
-                        description: ICP备案信息。
+                        description: ICP 是 ICP 备案信息。
                         type: string
                       publicSecurityNetworkFiling:
-                        description: 联网备案信息。
+                        description: PublicSecurityNetworkFiling 是联网备案信息。
                         type: string
                       valueAddedTelecomBusinessLicense:
-                        description: 增值电信业务经营许可证信息。
+                        description: ValueAddedTelecomBusinessLicense 是增值电信业务经营许可证信息。
                         type: string
                     type: object
                   siteDescription:
-                    description: 站点描述。
+                    description: SiteDescription 是站点描述。
                     type: string
                   siteLogo:
-                    description: 站点LOGO引用的ConfigMap。
+                    description: SiteLogo 是站点 LOGO 引用的 ConfigMap。
                     properties:
                       key:
-                        description: 被引用的ConfigMap键名。
+                        description: Key 是被引用的 ConfigMap 键名。
                         type: string
                       name:
-                        description: 被引用的ConfigMap名称。
+                        description: Name 是被引用的 ConfigMap 名称。
                         type: string
                     type: object
                   siteName:
-                    description: 站点名称。
+                    description: SiteName 是站点名称。
                     type: string
                 type: object
               login:
-                description: 登录设置。
+                description: Login 是登录设置。
                 properties:
                   loginMode:
-                    description: 登录方式。
+                    description: LoginMode 表示登录方式。
                     type: string
                   protocolConfig:
-                    description: 注册协议与隐私协议配置。
+                    description: ProtocolConfig 是注册协议与隐私协议配置。
                     properties:
                       privacyPolicy:
-                        description: 隐私协议内容引用的ConfigMap。
+                        description: PrivacyPolicy 是隐私协议内容引用的 ConfigMap。
                         properties:
                           key:
-                            description: 被引用的ConfigMap键名。
+                            description: Key 是被引用的 ConfigMap 键名。
                             type: string
                           name:
-                            description: 被引用的ConfigMap名称。
+                            description: Name 是被引用的 ConfigMap 名称。
                             type: string
                         type: object
                       userAgreement:
-                        description: 用户注册协议内容引用的ConfigMap。
+                        description: UserAgreement 是用户注册协议内容引用的 ConfigMap。
                         properties:
                           key:
-                            description: 被引用的ConfigMap键名。
+                            description: Key 是被引用的 ConfigMap 键名。
                             type: string
                           name:
-                            description: 被引用的ConfigMap名称。
+                            description: Name 是被引用的 ConfigMap 名称。
                             type: string
                         type: object
                     type: object
                   registrationEnabled:
-                    description: 是否开启注册。
+                    description: RegistrationEnabled 表示是否开启注册。
                     type: boolean
                 type: object
             required:

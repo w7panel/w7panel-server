@@ -8,7 +8,6 @@ import (
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -25,9 +24,8 @@ func (c DomainParseConfig) GetDescription() string {
 	return "fix domain config"
 }
 
-// Handle 处理域名解析配置命令，获取当前IP地址并创建或更新default命名空间下的domain-parse ConfigMap
-// 如果ConfigMap不存在，则创建包含当前IP地址的新ConfigMap
-// 如果ConfigMap已存在，则不执行任何操作
+// Handle 处理域名解析配置命令，获取当前IP地址并创建 domain-parse CRD
+// 如果 CRD 已存在，则不执行任何操作
 func (c DomainParseConfig) Handle(cmd *cobra.Command, args []string) {
 	ip, err := helper.MyIp()
 	if err != nil {
@@ -35,24 +33,17 @@ func (c DomainParseConfig) Handle(cmd *cobra.Command, args []string) {
 		return
 	}
 	sdk := k8s.NewK8sClient()
-	_, err = sdk.ClientSet.CoreV1().ConfigMaps("default").Get(context.Background(), "domain-parse", metav1.GetOptions{})
+	_, err = sdk.GetConfigCRD(context.Background(), k8s.DomainParseConfigGVR, k8s.DomainParseConfigName)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			configmap := &corev1.ConfigMap{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "ConfigMap",
-					APIVersion: "v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "domain-parse",
-				},
-				Data: map[string]string{
-					"cname": "",
-					"ips":   ip,
-					"type":  "A",
-				},
+			config := k8s.NewDomainParseConfigCRD(k8s.DomainParseConfigName, k8s.DomainParseConfigCRDSpec{
+				Type: "A",
+				IPs:  []string{ip},
+			})
+			_, err = sdk.DynamicClient().Resource(k8s.DomainParseConfigGVR).Create(context.Background(), config, metav1.CreateOptions{})
+			if err != nil {
+				slog.Error("Failed to create domain parse config", "error", err)
 			}
-			sdk.ClientSet.CoreV1().ConfigMaps("default").Create(context.Background(), configmap, metav1.CreateOptions{})
 		}
 	}
 }

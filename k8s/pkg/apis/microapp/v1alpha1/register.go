@@ -6,7 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-var SchemeGroupVersion = schema.GroupVersion{Group: "microapp.w7.cc", Version: "v1alpha1"}
+var SchemeGroupVersion = schema.GroupVersion{Group: "w7panel.w7.com", Version: "v1alpha1"}
 
 var (
 	// TODO: move SchemeBuilder with zz_generated.deepcopy.go to k8s.io/api.

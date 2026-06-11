@@ -438,15 +438,20 @@ func WaitForNamedCacheSync(controllerName string, stopCh <-chan struct{}, cacheS
 
 // 镜像地址
 func SelfImage() string {
+	baseImage, version := SelfImageInfo()
+	return baseImage + ":" + version
+}
+
+func SelfImageInfo() (string, string) {
 	version, ok := os.LookupEnv("HELM_VERSION")
 	if !ok {
 		version = "1.0.123"
 	}
-	baseImage, ok1 := os.LookupEnv("IMAGE_REPO")
-	if !ok1 {
-		baseImage = "ccr.ccs.tencentyun.com/afan-public/w7panel"
+	baseImage, ok := os.LookupEnv("IMAGE_REPO")
+	if !ok {
+		baseImage = "ccr.ccs.tencentyun.com/afan-public/w7panel1"
 	}
-	return baseImage + ":" + version
+	return baseImage, version
 }
 
 func ExtractSingleFileFromTgz(url, fileName string) ([]byte, error) {
@@ -601,6 +606,9 @@ func GetK3kServer0Name(name string) string {
 
 func GetK3kServer0ContainerName(name string) string {
 	return "k3k-" + name + "-server"
+}
+func GetVirtualIngressServiceName(ns, name string) string {
+	return ns + "-" + name + "-service-w7"
 }
 
 func GetApiServerHost(k3kNamespce string) string {
@@ -1046,4 +1054,8 @@ func RetryFullSuccess(fn func() error, retry int, sleep time.Duration) error {
 		time.Sleep(sleep)
 	}
 	return lasterr
+}
+
+func IsMockPay() bool {
+	return os.Getenv("MOCK_PAY") == "true"
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -132,7 +133,7 @@ func (k *K3kOrderApi) CreateBaseResourceOrder(baseResource *types.BuyBaseResourc
 		slog.Error("lock coupon code error", "code", conponCode, "err", err)
 		return nil, errors.New("lock coupon code error")
 	}
-	result, err := k.createOrder(baseResource.BaseConfigName, user, params, BASE_BUY)
+	result, err := k.createOrderUser(baseResource.BaseConfigName, user, params, BASE_BUY)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +167,7 @@ func (k *K3kOrderApi) CreateRenewOrder(baseResource *types.BuyRenewResource, use
 		slog.Error("lock coupon code error", "code", conponCode, "err", err)
 		return nil, errors.New("lock coupon code error")
 	}
-	result, err := k.createOrder(baseResource.BaseConfigName, user, params, RENEW_BUY)
+	result, err := k.createOrderUser(baseResource.BaseConfigName, user, params, RENEW_BUY)
 	if err != nil {
 		return nil, err
 	}
@@ -227,10 +228,10 @@ func (k *K3kOrderApi) CreateExpandOrder(baseResource *types.BuyExpandResource, u
 	params["memory"] = strconv.FormatInt(int64(buyRs.Memory), 10)
 	params["storage"] = strconv.FormatInt(int64(buyRs.Storage), 10)
 	params["bandwidth"] = strconv.FormatInt(int64(buyRs.Bandwidth), 10)
-	return k.createOrder(baseResource.BaseConfigName, user, params, EXPAND_BUY)
+	return k.createOrderUser(baseResource.BaseConfigName, user, params, EXPAND_BUY)
 }
 
-func (k *K3kOrderApi) createOrder(baseConfigName string, user *types.K3kUser, params map[string]string, buyMode string) (*console.PayResult, error) {
+func (k *K3kOrderApi) createOrderUser(baseConfigName string, user *types.K3kUser, params map[string]string, buyMode string) (*console.PayResult, error) {
 	license := console.GetCurrentLicense()
 	if license == nil {
 		return nil, fmt.Errorf("免费版不支持购买")
@@ -312,6 +313,9 @@ func (k *K3kOrderApi) NotifyOrder(user *types.K3kUser, sn string) error {
 	if err != nil {
 		slog.Warn("获取订单信息失败", "orderSn", sn, "error", err)
 	}
+	if orderInfo.CvmName != "" {
+		//return k.NotifyCvmOrder(user, orderInfo.CvmName, sn)
+	}
 
 	_, err = controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, user.ServiceAccount, func() error {
 		k.mu.Lock()
@@ -377,67 +381,18 @@ func (k *K3kOrderApi) FindLastReturnOrder(user *types.K3kUser) (*console.LastRet
 	return k.consoleSdkClient.FindLastReturnOrder(w7config.ClusterId, user.Name)
 }
 
-// 软事务 先记录下要更改的记录，然后标记处理完成
-func (k *K3kOrderApi) ProcessReturnOrder(user *types.K3kUser) error {
-	if !user.IsClusterUser() {
-		return nil
+func (k *K3kOrderApi) FindLastReturnCvmOrder(cvm *cvmv1alpha1.Ckm) (*console.LastReturnOrder, error) {
+	license := console.GetCurrentLicense()
+	if license == nil {
+		return nil, fmt.Errorf("免费版不支持购买")
 	}
-
-	if user.HasProcessReturnOrder() {
-		returnOrder, err := user.GetLockReturnK3kOrder()
-		if err != nil {
-			return err
-		}
-		order, err := k.consoleSdkClient.FindK3kOrder(user.Name, returnOrder.OrderSn)
-		if err != nil {
-			return err
-		}
-		if order.ReturnAt == "" {
-			_, err := k.consoleSdkClient.ReturnOrderFinish(user.Name, returnOrder.OrderSn)
-			if err != nil {
-				return err
-			}
-		}
-		_, err = controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, user.ServiceAccount, func() error {
-			k.mu.Lock()
-			defer k.mu.Unlock()
-			user.ProcessReturnK3kOrder()
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	return nil
-}
-
-// 软事务 先记录下要更改的记录，然后标记处理完成
-func (k *K3kOrderApi) ProcessReturnLastOrder(user *types.K3kUser, process bool) error {
-	if !user.IsClusterUser() {
-		return nil
-	}
-	returnOrder, err := k.FindLastReturnOrder(user)
+	baseConfigName := license.FounderSaName
+	// w7respo := k.w7respo
+	w7config, err := k.w7respo.Get(baseConfigName)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	slog.Error("处理return订单", "orderSn", returnOrder.K3kOrder.OrderSn)
-	//先锁定数据
-	if returnOrder.HasOrder {
-		_, err := controllerutil.CreateOrPatch(k.sdk.Ctx, k.client, user.ServiceAccount, func() error {
-			k.mu.Lock()
-			defer k.mu.Unlock()
-			user.LockReturnK3kOrder(returnOrder.K3kOrder) //锁定要处理的资源
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	}
-	if process {
-		return k.ProcessReturnOrder(user)
-	}
-	return nil
+	return k.consoleSdkClient.FindLastReturnCvmOrder(w7config.ClusterId, cvm.GetK3kName(), cvm.Name)
 }
 
 func (k *K3kOrderApi) CheckCanBuy(user *types.K3kUser) error {
@@ -451,20 +406,6 @@ func (k *K3kOrderApi) CheckCanBuy(user *types.K3kUser) error {
 	return nil
 }
 
-func createOrder(user *types.K3kUser, mainConfig *config.W7Config, currentConfig *config.W7Config, productId int32, params map[string]string, client *console.SdkClient) (order *console.PayResult, err error) {
-	values := url.Values{}
-	values.Set("productId", strconv.Itoa(int(productId)))
-	values.Set("clusterId", mainConfig.ClusterId)
-	values.Set("k3kName", user.Name)
-	values.Set("appid", client.License.AppId)
-	for k, v := range params {
-		values.Add(k, v)
-	}
-	// return client.CreatePanelOrder(values) //sdk 导致获取的用户id 是appid 站点的bbsuid
-	apiClient := console.NewConsoleCdClient(currentConfig.ThirdpartyCDToken)
-	return apiClient.CreatePanelOrder(values)
-
-}
 func CreateBaseResourceOrder(baseResource *types.BuyBaseResource, user *types.K3kUser) (*console.PayResult, error) {
 	sdk := k8s.NewK8sClient().Sdk
 	orderApi, err := NewK3kOrderApi(sdk)

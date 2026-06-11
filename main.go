@@ -121,7 +121,7 @@ func main() {
 		router.Static("/longhorn", staticPath+"/longhorn")
 		router.Static("/charts", staticPath+"/charts")
 		router.Static("/schema", staticPath+"/schema")
-		routerNocache.Static("/microapp", microappPath)
+		routerNocache.GET("/microapp/:identifie/:version/*path", controller.Static{}.FrontendProxy)
 		router.Static("/ui/plugin", staticPath+"/plugin")
 		router.Static("/ui/wasm", staticPath+"/wasm")
 		router.Static("/ui/yaml", staticPath+"/yaml")

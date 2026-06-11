@@ -67,6 +67,14 @@ func getAgentOperations() []admissionregistrationv1.RuleWithOperations {
 func getAgentCrdOperations() []admissionregistrationv1.RuleWithOperations {
 	return []admissionregistrationv1.RuleWithOperations{
 		{
+			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
+			Rule: admissionregistrationv1.Rule{
+				APIGroups:   []string{"microapp.w7.cc"},
+				APIVersions: []string{"v1alpha1"},
+				Resources:   []string{"microapps"},
+			},
+		},
+		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
 			Rule: admissionregistrationv1.Rule{
 				APIGroups:   []string{"networking.higress.io"},
@@ -185,6 +193,14 @@ func getDefaultCrdOperations() []admissionregistrationv1.RuleWithOperations {
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
 			Rule: admissionregistrationv1.Rule{
+				APIGroups:   []string{"microapp.w7.cc"},
+				APIVersions: []string{"v1alpha1"},
+				Resources:   []string{"microapps"},
+			},
+		},
+		{
+			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
+			Rule: admissionregistrationv1.Rule{
 				APIGroups:   []string{"k3k.io"},
 				APIVersions: []string{"v1alpha1"},
 				Resources:   []string{"virtualclusterpolicies", "clusters"},
@@ -221,6 +237,14 @@ func getDefaultCrdOperations() []admissionregistrationv1.RuleWithOperations {
 				APIGroups:   []string{"apps.kubeblocks.io"},
 				APIVersions: []string{"v1alpha1"},
 				Resources:   []string{"clusters"},
+			},
+		},
+		{
+			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
+			Rule: admissionregistrationv1.Rule{
+				APIGroups:   []string{"w7panel.w7.com"},
+				APIVersions: []string{"v1alpha1"},
+				Resources:   []string{"apiclients"},
 			},
 		},
 	}

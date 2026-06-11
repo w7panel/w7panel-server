@@ -39,19 +39,15 @@ func (self Auth) LoginBySign(http *gin.Context) {
 
 func (self Auth) login(http *gin.Context, verifyCaptcha bool) {
 	type ParamsValidate struct {
-		Username string `form:"username" binding:"required"`
-		Password string `form:"password" binding:"required"`
-		Point    string `form:"point"`
-		Key      string `form:"key"`
+		Username string `form:"username" json:"username" binding:"required"`
+		Password string `form:"password" json:"password" binding:"required"`
+		Point    string `form:"point" json:"point"`
+		Key      string `form:"key" json:"key"`
 	}
-
+	loginMethod := "password"
 	params := ParamsValidate{}
 	if !self.Validate(http, &params) {
 		return
-	}
-	loginMethod := "password"
-	if !verifyCaptcha {
-		loginMethod = "sign"
 	}
 	if verifyCaptcha && facade.Config.GetBool("captcha.enabled") {
 		if params.Point == "" || params.Key == "" {
@@ -82,14 +78,14 @@ func (self Auth) login(http *gin.Context, verifyCaptcha bool) {
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	self.dologin(client.Sdk, sa, http, true, loginMethod)
+	self.dologin(client.Sdk, sa, http, true, "")
 }
 
 func (self Auth) Register(http *gin.Context) {
 	type ParamsValidate struct {
-		Username   string `form:"username" binding:"required"`
-		Password   string `form:"password" binding:"required"`
-		PolicyName string `form:"policyName" binding:"required"`
+		Username   string `form:"username" json:"username" binding:"required"`
+		Password   string `form:"password" json:"password" binding:"required"`
+		PolicyName string `form:"policyName" json:"policyName" binding:"required"`
 	}
 	params := ParamsValidate{}
 	if !self.Validate(http, &params) {
@@ -108,7 +104,7 @@ func (self Auth) Register(http *gin.Context) {
 func (self Auth) ConsoleLogin(http *gin.Context) {
 	type ParamsValidate struct {
 		Code       string `form:"code" binding:"required"`
-		PolicyName string `form:"policyName"`
+		PolicyName string `form:"policyName" json:"policyName"`
 	}
 	params := ParamsValidate{}
 	if !self.Validate(http, &params) {
@@ -148,7 +144,7 @@ func (self Auth) ConsoleLogin(http *gin.Context) {
 			return
 		}
 
-		self.dologin(sdk, sa, http, false, "oauth")
+		self.dologin(sdk, sa, http, false, "")
 		return
 	}
 	saName := w7config.Name
@@ -164,13 +160,14 @@ func (self Auth) ConsoleLogin(http *gin.Context) {
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	self.dologin(sdk, sa, http, true, "oauth")
+	self.dologin(sdk, sa, http, true, "")
 
 }
 
-func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Context, updateK3kUser bool, loginMethod string) {
+func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Context, updateK3kUser bool, ckmName string) {
 	seconds := facade.Config.GetInt64("app.login_seconds")
-	token, isK3kUser, err := k3k.LoginByServiceAccount(sdk, sa, seconds, updateK3kUser)
+	token, isK3kUser, err := k3k.LoginByServiceAccount(sdk, sa, seconds, updateK3kUser, ckmName)
+	loginMethod := "password"
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			err = errors.New("用户不存在")
@@ -182,7 +179,7 @@ func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Cont
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	rs := service.GetRefreshToken(sa.Name)
+	rs := service.GetRefreshToken(sa.Name, ckmName)
 	auditservice.RecordLoginSuccess(http, sa.Name, loginMethod, sa)
 	self.JsonResponseWithoutError(http, gin.H{
 		"token":         token,
@@ -202,7 +199,7 @@ func (self Auth) RefreshToken2(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
-	userName, err := service.FindUsernameByToken(params.Token)
+	userName, cvmName, err := service.FindUsernameByToken(params.Token)
 	if err != nil {
 		self.JsonResponseWithError(http, err, 500)
 		return
@@ -213,15 +210,15 @@ func (self Auth) RefreshToken2(http *gin.Context) {
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	self.dologin(sdk, sa, http, true, "refresh_token")
+	self.dologin(sdk, sa, http, true, cvmName)
 }
 
 func (self Auth) InitUser(http *gin.Context) {
 
 	releaseName := facade.Config.GetString("app.helm_release_name")
 	type ParamsValidate struct {
-		Username string `form:"username" binding:"required"`
-		Password string `form:"password" binding:"required"`
+		Username string `form:"username" json:"username" binding:"required"`
+		Password string `form:"password" json:"password" binding:"required"`
 	}
 
 	params := ParamsValidate{}
@@ -245,6 +242,30 @@ func (self Auth) InitUser(http *gin.Context) {
 
 }
 
+// kubectl create configmap offlineui-init-user --from-literal=a=b
+func (self Auth) GetInitUser(http *gin.Context) {
+	releaseName := facade.Config.GetString("app.helm_release_name")
+	client := k8s.NewK8sClient()
+	_, err := client.ClientSet.CoreV1().ConfigMaps(client.GetNamespace()).Get(http, releaseName+"-init-user", v1.GetOptions{})
+	maps := make(map[string]string)
+	maps["canInitUser"] = "true"
+	maps["allowConsoleRegister"] = "false"
+	maps["captchaEnabled"] = "false"
+	if facade.Config.GetBool("captcha.enabled") {
+		maps["captchaEnabled"] = "true"
+	}
+	if err != nil {
+		maps["canInitUser"] = "false"
+	}
+
+	dataMap, err := client.GetConfigCRDData(http, k8s.K3kConfigGVR, k8s.K3kConfigName)
+	if err == nil {
+		maps["allowConsoleRegister"] = dataMap["allowConsoleRegister"]
+	}
+	self.JsonResponseWithoutError(http, maps)
+	return
+}
+
 /*
 *
 获取用户信息
@@ -257,9 +278,9 @@ func (self Auth) InitUser(http *gin.Context) {
 func (self Auth) ResetPassword(http *gin.Context) {
 
 	type ParamsValidate struct {
-		Username    string `form:"username" binding:"required"`
-		Password    string `form:"password" binding:"required"`
-		NewPassword string `form:"newPassword" binding:"required"`
+		Username    string `form:"username" json:"username" binding:"required"`
+		Password    string `form:"password" json:"password" binding:"required"`
+		NewPassword string `form:"newPassword" json:"newPassword" binding:"required"`
 	}
 
 	params := ParamsValidate{}
@@ -291,8 +312,8 @@ func (self Auth) ResetPassword(http *gin.Context) {
 func (self Auth) ResetPasswordCurrent(http *gin.Context) {
 
 	type ParamsValidate struct {
-		Password    string `form:"password"`
-		NewPassword string `form:"newPassword" binding:"required"`
+		Password    string `form:"password" json:"password"`
+		NewPassword string `form:"newPassword" json:"newPassword" binding:"required"`
 	}
 
 	params := ParamsValidate{}

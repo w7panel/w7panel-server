@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	consoleShell "github.com/w7panel/w7panel/app/application/console"
 	controller2 "github.com/w7panel/w7panel/app/application/http/controller"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/middleware"
 	console2 "github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -21,6 +23,9 @@ import (
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Provider struct {
@@ -39,6 +44,12 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 
 	p.RegisterHttpRoutes(httpServer)
 	console2.SetConsoleApi(facade.GetConfig().GetString("app.console_base_url"))
+	if helper.IsLocalMock() {
+		// console2.SetConsoleApi("http://172.16.1.116:9004")
+	}
+	if err := p.syncSelfImageConfigMap(); err != nil {
+		slog.Error("同步自有镜像配置失败", "error", err)
+	}
 
 	if facade.GetConfig().GetBool("longhorn.watch") {
 
@@ -76,6 +87,54 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 
 }
 
+func (p Provider) syncSelfImageConfigMap() error {
+	const (
+		namespace = "kube-system"
+		name      = "w7panel-server"
+	)
+
+	repo, version := helper.SelfImageInfo()
+	sdk := k8s.NewK8sClient()
+	configMaps := sdk.ClientSet.CoreV1().ConfigMaps(namespace)
+	ctx := context.Background()
+
+	configMap, err := configMaps.Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+
+		_, err = configMaps.Create(ctx, &corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ConfigMap",
+				APIVersion: "v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Data: map[string]string{
+				"imageRepo":    repo,
+				"imageVersion": version,
+			},
+		}, metav1.CreateOptions{})
+		return err
+	}
+
+	if configMap.Data == nil {
+		configMap.Data = map[string]string{}
+	}
+
+	if configMap.Data["imageRepo"] == repo && configMap.Data["imageVersion"] == version {
+		return nil
+	}
+
+	configMap.Data["imageRepo"] = repo
+	configMap.Data["imageVersion"] = version
+	_, err = configMaps.Update(ctx, configMap, metav1.UpdateOptions{})
+	return err
+}
+
 func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	webdavMethods := []string{"PROPFIND", "PROPPATCH", "MKCOL", "COPY", "MOVE", "LOCK", "UNLOCK", "LINK", "UNLINK", "GET", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH", "POST"}
 	server.RegisterRouters(func(engine *gin.Engine) {
@@ -92,6 +151,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			apiGroup.DELETE("/helm/releases/:name", middleware.Auth{}.Process, controller2.Helm{}.UnInstall)
 			apiGroup.PUT("/helm/releases/:name/reuse", middleware.Auth{}.Process, controller2.Helm{}.ReUseValues)
 			apiGroup.GET("/app-info", controller2.Helm{}.AppInfo)
+			apiGroup.GET("/test401", controller2.Helm{}.Test401)
 
 		}
 
@@ -121,6 +181,15 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/pinyin", middleware.Auth{}.Process, controller2.Util{}.Pinyin)                    // pinyin
 			localApiGroup.GET("/dnsip", middleware.Auth{}.Process, controller2.Util{}.DnsIp)
 			localApiGroup.GET("/dns-cname", middleware.Auth{}.Process, controller2.Util{}.DnsCName)
+			localApiGroup.GET("/dns/zones", middleware.Auth{}.Process, controller2.DNS{}.Zones)
+			localApiGroup.POST("/dns/zones", middleware.Auth{}.Process, controller2.DNS{}.CreateZone)
+			localApiGroup.DELETE("/dns/zones/:domain", middleware.Auth{}.Process, controller2.DNS{}.DeleteZone)
+			localApiGroup.GET("/dns/zones/:domain/records", middleware.Auth{}.Process, controller2.DNS{}.Records)
+			localApiGroup.POST("/dns/zones/:domain/records", middleware.Auth{}.Process, controller2.DNS{}.CreateRecord)
+			localApiGroup.PUT("/dns/zones/:domain/records/:id", middleware.Auth{}.Process, controller2.DNS{}.UpdateRecord)
+			localApiGroup.DELETE("/dns/zones/:domain/records/:id", middleware.Auth{}.Process, controller2.DNS{}.DeleteRecord)
+			localApiGroup.GET("/dns/server", middleware.Auth{}.Process, controller2.DNS{}.Server)
+			localApiGroup.PUT("/dns/server", middleware.Auth{}.Process, controller2.DNS{}.UpdateServer)
 			localApiGroup.GET("/myip", middleware.Auth{}.Process, controller2.Util{}.MyIp)
 			localApiGroup.POST("/db-conn-test", middleware.Auth{}.Process, controller2.Util{}.DbConnTest) // 数据库连接测试
 			localApiGroup.POST("/ping-etcd", middleware.Auth{}.Process, controller2.Util{}.PintEtcd)      // etcd连接测试
@@ -149,10 +218,15 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/longhorn/volumes/:volumeName/trim-filesystem", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.TrimFilesystem)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-delete", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotDelete)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-purge", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotPurge)
-			localApiGroup.GET("/kubeblocks/installjobyaml", middleware.Auth{}.Process, controller2.KubeBlocks{}.InstallJobYaml)
-			localApiGroup.POST("/kubeblocks/install", middleware.Auth{}.Process, controller2.KubeBlocks{}.Install)
+			// localApiGroup.GET("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGc)
+			// localApiGroup.POST("/k3s/env/gogc", middleware.Auth{}.Process, controller2.K3s{}.GoGcToggle)
+			// localApiGroup.GET("/kubeblocks/installjobyaml", middleware.Auth{}.Process, controller2.KubeBlocks{}.InstallJobYaml)
+			// localApiGroup.POST("/kubeblocks/install", middleware.Auth{}.Process, controller2.KubeBlocks{}.Install)
+
 			localApiGroup.GET("/static/:identifie/status", middleware.Auth{}.Process, controller2.Static{}.StaticInfo)
 			localApiGroup.POST("/static/:namespace/download/:name", middleware.Auth{}.Process, controller2.Static{}.Download)
+			// 前端静态资源回源代理：本地未下载时从远程制品库拉取
+			localApiGroup.GET("/static/proxy/:zpkUrl/:identifie/:version/frontend/*path", controller2.Static{}.FrontendProxy)
 
 		}
 		gpuGroup := engine.Group("/panel-api/v1/gpu").Use(middleware.Auth{}.Process, middleware.Proxy{}.Process)
@@ -174,7 +248,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		}
 		// /etc/passwd 缓存
 
-		// 新版 API - 代理到服务
+		// 新版 API - 代理到服务 //TODO 没有权限校验的代理接口，需要加auth middleware
 		engine.Any("/panel-api/v1/namespaces/:namespace/services/:name/proxy-no/*path", middleware.ProxyNoAuth{}.Process, controller2.Proxy{}.ProxyNoAuthService)
 
 		engine.POST("/panel-api/v1/files/compress-agent/:pid/compress", middleware.Auth{}.Process, controller2.CompressAgent{}.Compress)

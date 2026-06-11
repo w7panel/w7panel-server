@@ -85,7 +85,7 @@ kube::codegen::gen_client \
     --output-pkg "${THIS_PKG}/k8s/pkg/client/microapp" \
     --boilerplate "${BOILERPLATE}" \
     --one-input-api "microapp" \
-    "${SCRIPT_ROOT}/k8s/pkg/apis"     
+    "${SCRIPT_ROOT}/k8s/pkg/apis"
 
 kube::codegen::gen_client \
     --with-watch \
@@ -94,13 +94,4 @@ kube::codegen::gen_client \
     --output-pkg "${THIS_PKG}/k8s/pkg/client/buildimage" \
     --boilerplate "${BOILERPLATE}" \
     --one-input-api "buildimage" \
-    "${SCRIPT_ROOT}/k8s/pkg/apis"  
-
-kube::codegen::gen_client \
-    --with-watch \
-    --with-applyconfig \
-    --output-dir "${SCRIPT_ROOT}/k8s/pkg/client/microappsetting" \
-    --output-pkg "${THIS_PKG}/k8s/pkg/client/microappsetting" \
-    --boilerplate "${BOILERPLATE}" \
-    --one-input-api "microappsetting" \
     "${SCRIPT_ROOT}/k8s/pkg/apis"

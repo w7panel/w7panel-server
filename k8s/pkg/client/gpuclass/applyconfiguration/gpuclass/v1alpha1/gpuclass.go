@@ -42,7 +42,7 @@ func GpuClass(name, namespace string) *GpuClassApplyConfiguration {
 	b.WithName(name)
 	b.WithNamespace(namespace)
 	b.WithKind("GpuClass")
-	b.WithAPIVersion("gpuclass.k8s.io/v1alpha1")
+	b.WithAPIVersion("w7panel.w7.com/v1alpha1")
 	return b
 }
 

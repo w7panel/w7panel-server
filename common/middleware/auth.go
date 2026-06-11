@@ -29,6 +29,8 @@ func NewAuth(role string) Auth {
 	return auth
 }
 
+// var test401 = false
+
 func (self Auth) Process(ctx *gin.Context) {
 
 	// LOCAL_MOCK 模式下绕过认证（用于本地开发测试）
@@ -39,6 +41,17 @@ func (self Auth) Process(ctx *gin.Context) {
 		ctx.Next()
 		return
 	}
+	// if ctx.Query("test401") == "1" {
+	// 	test401 = true
+	// }
+	// if test401 {
+	// 	test401 = false
+	// 	ctx.AbortWithStatusJSON(401, gin.H{
+	// 		"code": 401,
+	// 		"msg":  "请登录",
+	// 	})
+	// 	return
+	// }
 
 	// 判断是否accept application/json
 	// if !strings.Contains(ctx.Request.Header.Get("Accept"), "application/json") && ctx.Request.Method == "GET" && ctx.Request.URL.Path != "/" {

@@ -73,34 +73,67 @@ func QueryOperationLogs(ctx context.Context, params QueryParams, current UserCon
 func (q *VictoriaLogsQuery) Query(ctx context.Context, auditType string, params QueryParams, current UserContext) (QueryResult, error) {
 	normalizeQueryParams(&params)
 	query := buildLogsQL(auditType, params, current)
-	values := url.Values{}
-	values.Set("query", query)
-	values.Set("limit", strconv.Itoa(params.PageSize))
-	values.Set("offset", strconv.Itoa((params.Page-1)*params.PageSize))
-	endpoint := q.baseURL + "/select/logsql/query?" + values.Encode()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	offset := (params.Page - 1) * params.PageSize
+	list, err := q.queryLogEntries(ctx, query, params.PageSize, offset)
 	if err != nil {
 		return QueryResult{}, err
 	}
-	resp, err := q.client.Do(req)
+	total, err := q.queryLogCount(ctx, query)
 	if err != nil {
 		return QueryResult{}, err
+	}
+	return QueryResult{
+		List:     list,
+		Total:    total,
+		Page:     params.Page,
+		PageSize: params.PageSize,
+	}, nil
+}
+
+func (q *VictoriaLogsQuery) queryLogEntries(ctx context.Context, query string, limit int, offset int) ([]map[string]any, error) {
+	values := url.Values{}
+	values.Set("query", buildEntriesQuery(query, limit, offset))
+	endpoint := q.baseURL + "/select/logsql/query?" + values.Encode()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := q.client.Do(req)
+	if err != nil {
+		return nil, err
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
 	if err != nil {
-		return QueryResult{}, err
+		return nil, err
 	}
 	if resp.StatusCode >= http.StatusMultipleChoices {
-		return QueryResult{}, fmt.Errorf("victorialogs query failed: status=%d body=%s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return nil, fmt.Errorf("victorialogs query failed: status=%d body=%s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
-	list := decodeQueryBody(body)
-	return QueryResult{
-		List:     list,
-		Total:    len(list),
-		Page:     params.Page,
-		PageSize: params.PageSize,
-	}, nil
+	return decodeQueryBody(body), nil
+}
+
+func (q *VictoriaLogsQuery) queryLogCount(ctx context.Context, query string) (int, error) {
+	values := url.Values{}
+	values.Set("query", query+" | stats count() as total")
+	endpoint := q.baseURL + "/select/logsql/query?" + values.Encode()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return 0, err
+	}
+	resp, err := q.client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+	if err != nil {
+		return 0, err
+	}
+	if resp.StatusCode >= http.StatusMultipleChoices {
+		return 0, fmt.Errorf("victorialogs count query failed: status=%d body=%s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	return decodeTotalCount(body), nil
 }
 
 func normalizeQueryParams(params *QueryParams) {
@@ -113,6 +146,10 @@ func normalizeQueryParams(params *QueryParams) {
 	if params.PageSize > 200 {
 		params.PageSize = 200
 	}
+}
+
+func buildEntriesQuery(query string, limit int, offset int) string {
+	return fmt.Sprintf("%s | sort by (_time desc) | offset %d | limit %d", query, offset, limit)
 }
 
 func buildLogsQL(auditType string, params QueryParams, current UserContext) string {
@@ -191,4 +228,34 @@ func anyArrayToMapArray(data []any) []map[string]any {
 		}
 	}
 	return result
+}
+
+func decodeTotalCount(body []byte) int {
+	for _, item := range decodeQueryBody(body) {
+		for _, key := range []string{"total", "logs_total", "count"} {
+			if total, ok := intFromAny(item[key]); ok {
+				return total
+			}
+		}
+	}
+	return 0
+}
+
+func intFromAny(value any) (int, bool) {
+	switch v := value.(type) {
+	case int:
+		return v, true
+	case int64:
+		return int(v), true
+	case float64:
+		return int(v), true
+	case json.Number:
+		n, err := v.Int64()
+		return int(n), err == nil
+	case string:
+		n, err := strconv.Atoi(v)
+		return n, err == nil
+	default:
+		return 0, false
+	}
 }

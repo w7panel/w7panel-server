@@ -29,7 +29,7 @@ func (self Proxy) Process(gin *gin.Context) {
 			return
 		}
 		path := gin.Request.URL.String()
-		agentHost := config.GetK3kAgentInnerIngressHost()
+		agentHost := config.GetK3kAgentName()
 		// proxyUrl := "http://" + config.GetVirtualIngressServiceName()
 		proxyUrl := "http://" + config.GetK3kAgentLbHost()
 		auth := gin.Request.Header.Get("Authorization")

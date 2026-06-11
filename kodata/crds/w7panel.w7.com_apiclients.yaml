@@ -46,6 +46,12 @@ spec:
               enabled:
                 type: boolean
             type: object
+          status:
+            properties:
+              lastAccessedAt:
+                format: date-time
+                type: string
+            type: object
         required:
         - spec
         type: object

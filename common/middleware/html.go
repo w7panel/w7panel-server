@@ -84,6 +84,13 @@ func buildMicroAppConfig(ctx *gin.Context) (map[string]any, bool) {
 
 		found = true
 		value := values[0]
+		if field == "do" {
+			if !strings.HasPrefix(value, "#") {
+				value = "#" + value
+				config["do"] = value
+				continue
+			}
+		}
 
 		switch field {
 		case "leftmenu", "breadcrumb", "needlogin":

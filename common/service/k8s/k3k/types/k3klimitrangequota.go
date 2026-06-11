@@ -27,6 +27,7 @@ type Rangehard struct {
 	Hard         Hard   `json:"hard,omitempty"`
 }
 
+// declare cvm版本废弃
 // "{\"storageclass\":\"disk1\",\"hard\":{\"cpu\":2,\"memory\":4,\"requests.storage":\"10\",\"bandwidth\":100}}"
 // 1.0.101 版本后，str字段中 不再有单位
 func NewLimitRangeQuata(str string) (*LimitRangeQuota, error) {

@@ -41,6 +41,8 @@ mcp:
   watch: ${MCP_WATCH-false}
 k3k:
   watch: ${K3K_WATCH-false}
+cvm:
+  enabled: ${CVM_ENABLED-false}   
 server:
   http:
     host: ${W7PANEL_HTTP_SERVER_HOST-0.0.0.0}
@@ -110,7 +112,7 @@ metrics:
   enabled: ${METRIC_ENABLED-false} # 是否开启指标采集
 logs:
   enabled: ${LOGS_ENABLED-true}
-  base_url: ${LOGS_BASE_URL-http://vlsingle-w7panel-logs.default.svc:9428}
+  base_url: ${LOGS_BASE_URL-http://vlsingle-w7panel-metrics.default.svc:9428}
   timeout: ${LOGS_TIMEOUT-5s}
   batch_size: ${LOGS_BATCH_SIZE-1}
 s3:

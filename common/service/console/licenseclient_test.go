@@ -25,7 +25,8 @@ func TestLicenseClient_CreateLicenseSite(t *testing.T) {
 	sdk := k8s.NewK8sClientInner()
 	repo := config.NewW7ConfigRepository(sdk)
 	client := NewLicenseClient(repo, sdk)
-	client.SetLicense(&License{AppId: "500475", AppSecret: "3c08d42f2ff07cd420c9f1d5d1a56cc0", FounderSaName: "admin"})
+	client.CleanLicense()
+	// client.SetLicense(&License{AppId: "500475", AppSecret: "3c08d42f2ff07cd420c9f1d5d1a56cc0", FounderSaName: "admin"})
 	// license, err := client.CreateLicenseSite("admin", true)
 	// if err != nil {
 	// t.Error(err)
