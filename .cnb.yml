@@ -57,7 +57,6 @@ v1.1.*:
             cd /tmp/w7panel-ui
             npm install
             npm run build
-            find "${CNB_BUILD_WORKSPACE}/kodata" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
             cp -a dist/. "${CNB_BUILD_WORKSPACE}/kodata/"
         # - name: unzipwebdav
         #   script: cd ./kodata/plugin && unzip -o ./codeblitz.zip
