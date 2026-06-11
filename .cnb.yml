@@ -50,7 +50,6 @@ v1.1.*:
        
         - name: build-ui
           image: node:20
-          if: 'case "$CNB_BRANCH" in 1.1.*) exit 0 ;; *) exit 1 ;; esac'
           script: |
             set -eu
             rm -rf /tmp/w7panel-ui
@@ -60,8 +59,8 @@ v1.1.*:
             npm run build
             find "${CNB_BUILD_WORKSPACE}/kodata" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
             cp -a dist/. "${CNB_BUILD_WORKSPACE}/kodata/"
-        - name: unzipwebdav
-          script: cd ./kodata/plugin && unzip -o ./codeblitz.zip
+        # - name: unzipwebdav
+        #   script: cd ./kodata/plugin && unzip -o ./codeblitz.zip
         - name: logo
           script: mv ./kodata/logo.png ./kodata/assets/logo.png
         - name: login
