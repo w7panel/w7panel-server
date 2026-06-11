@@ -12,7 +12,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 
 	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	corev1 "k8s.io/api/core/v1"
@@ -197,15 +196,6 @@ func NeedRelogin(token *k8s.K8sToken) bool {
 		return true
 	}
 	return false
-}
-
-func getServiceAccountResource(sa *corev1.ServiceAccount) *overselling.Resource {
-	user := k3ktypes.NewK3kUser(sa)
-	lqr := user.GetLimitRange()
-	if lqr != nil {
-		return lqr.GetHardResource()
-	}
-	return overselling.EmptyResource()
 }
 
 func RefreshK3kPolicy(policy *v1alpha1.VirtualClusterPolicy, rootSdk *k8s.Sdk, update bool) error {

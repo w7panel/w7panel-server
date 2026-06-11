@@ -213,36 +213,3 @@ func isSecretReferencedByOtherIngress(clientset client.Client, deletedIngress *n
 
 	return false
 }
-
-func normalizeIngressHost(host string) string {
-	return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
-}
-
-// 解析白名单数据
-
-// 检查域名是否在白名单中
-func isDomainInWhiteList(host string, whiteList []DomainWhiteListItem) bool {
-	whiteListCount := len(whiteList)
-	disableCount := 0
-	for _, item := range whiteList {
-		// 跳过禁用的项
-		if item.Disabled {
-			disableCount++
-			continue
-		}
-
-		// 检查域名是否匹配
-		if item.Prefix == "*." {
-			// 检查域名是否是白名单域名的子域名
-			if strings.HasSuffix(host, "."+item.Domain) || host == item.Domain {
-				return true
-			}
-		} else {
-			// 精确匹配
-			if host == item.Domain {
-				return true
-			}
-		}
-	}
-	return disableCount == whiteListCount
-}

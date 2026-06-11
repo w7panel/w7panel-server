@@ -1,7 +1,10 @@
 package webhook
 
 import (
+	"context"
+	"encoding/json"
 	"log/slog"
+	"net/http"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
@@ -10,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // not use in webhook

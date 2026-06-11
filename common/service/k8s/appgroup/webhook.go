@@ -61,11 +61,6 @@ func getUrl(ingress *networkingv1.Ingress) string {
 	return scheme + ingress.Spec.Rules[0].Host
 }
 
-//	func patchAppgroup(client sigclient.Client, group *v1alpha1.AppGroup, applyFunc func() error) {
-//		controllerutil.CreateOrPatch(client, group, func() error {
-//			return applyFunc()
-//		})
-//	}
 func OnAddIngress(client sigclient.Client, ingress *networkingv1.Ingress) {
 	group, err := getappgroup(client, ingress)
 	if err != nil {

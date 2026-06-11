@@ -105,11 +105,3 @@ func (self Yaml) Rollback(http *gin.Context) {
 	http.JSON(200, gin.H{"message": result})
 
 }
-
-// func extractSchema(openAPISchema *openapi_v2.Document, schemaName string) *spec.Schema {
-// 	definitions := openAPISchema.Paths.Definitions
-// 	if schema, ok := definitions[schemaName]; ok {
-// 		return &schema
-// 	}
-// 	return nil
-// }

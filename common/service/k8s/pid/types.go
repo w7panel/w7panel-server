@@ -6,16 +6,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var pidCache = make(map[string]string)
-
-func cachePutPid(containerId string, pid string) {
-	pidCache[containerId] = pid
-}
-
-func cacheGetPid(containerId string) string {
-	return pidCache[containerId]
-}
-
 type PidParam struct {
 	Namespace            string `form:"namespace" binding:"required"`
 	HostIp               string `form:"HostIp" binding:"required"`

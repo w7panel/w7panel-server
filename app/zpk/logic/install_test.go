@@ -419,33 +419,6 @@ func TestConsoleApp(t *testing.T) {
 	}
 }
 
-func getServiceLbApp() types.Package {
-	//playedu
-	uri := "https://zpk.w7.cc/respo/info/k8s_offline"
-	manifestPackage, err := LoadPackage(uri)
-	if err != nil {
-		panic(err)
-	}
-	optionMain := types.InstallOption{
-		Identifie: "k8s_offline",
-		PvcName:   "longflow-ai",
-		EnvKv: []types.EnvKv{
-			{Name: "image.tag", Value: "v2.1.0"},
-		},
-	}
-	// option2 := types.InstallOption{
-	// 	Identifie: "ai_ollamaapi",
-	// 	PvcName:   "longflow-ai",
-	// 	EnvKv: []types.EnvKv{
-	// 		{Name: "image.tag", Value: "v2.1.0"},
-	// 	},
-	// }
-	options := []types.InstallOption{optionMain}
-
-	var apps = types.NewPackage(manifestPackage, options, "ai-ollamaui", "install-id", "default", "ollama.cc", "ollama", "traefik")
-	return apps
-
-}
 func getWordpress() *types.Package {
 	//playedu
 	uri := "https://zpk.w7.cc/respo/info/w7_wordpress"

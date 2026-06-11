@@ -89,13 +89,6 @@ func NewResourceMutator(client client.Client, sdk *k8s.Sdk) *ResourceMutator {
 	}
 }
 
-// DomainWhiteListItem 表示白名单中的一个域名项
-type DomainWhiteListItem struct {
-	Prefix   string `json:"prefix"`
-	Domain   string `json:"domain"`
-	Disabled bool   `json:"disabled"`
-}
-
 /*
 *
 [2025-08-20 02:36:16.770]       [ERROR] default user info 处理 admission 请求   {"user": {"username":"system:serviceaccount:default:admin","uid":"9a7aedab-a56b-4742-af51-ff22b2dc8d6d","groups":["system:serviceaccounts","system:serviceaccounts:default","system:authenticated"],"extra":{"authentication.kubernetes.io/credential-id":["JTI=543f2783-1bf9-4b3d-b5ed-ced864a24ad2"]}}}
