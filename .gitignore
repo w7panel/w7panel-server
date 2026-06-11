@@ -54,3 +54,6 @@ build.sh
 /.cache
 .gocache
 /.gocache
+.agents
+/.agents
+/skills-lock.json
