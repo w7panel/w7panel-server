@@ -14,7 +14,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type K3k struct {
@@ -286,29 +285,4 @@ func (self K3k) SyncMicroApp(http *gin.Context) {
 	microapp.Sync(params.K3kName, params.K3kNamespace, params.CkmName)
 	self.JsonSuccessResponse(http)
 	return
-}
-
-func (self K3k) ResizeSysStorage(http *gin.Context) {
-	type ParamsValidate struct {
-		Size int `form:"size"`
-	}
-	params := ParamsValidate{}
-	if !self.Validate(http, &params) {
-		return
-	}
-	token := http.MustGet("k8s_token").(string)
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	resizeTo := resource.MustParse(fmt.Sprintf("%dGi", params.Size))
-	err = k3k.Resize(user, resizeTo)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonSuccessResponse(http)
-	return
-
 }

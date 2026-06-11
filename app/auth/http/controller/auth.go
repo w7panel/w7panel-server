@@ -242,30 +242,6 @@ func (self Auth) InitUser(http *gin.Context) {
 
 }
 
-// kubectl create configmap offlineui-init-user --from-literal=a=b
-func (self Auth) GetInitUser(http *gin.Context) {
-	releaseName := facade.Config.GetString("app.helm_release_name")
-	client := k8s.NewK8sClient()
-	_, err := client.ClientSet.CoreV1().ConfigMaps(client.GetNamespace()).Get(http, releaseName+"-init-user", v1.GetOptions{})
-	maps := make(map[string]string)
-	maps["canInitUser"] = "true"
-	maps["allowConsoleRegister"] = "false"
-	maps["captchaEnabled"] = "false"
-	if facade.Config.GetBool("captcha.enabled") {
-		maps["captchaEnabled"] = "true"
-	}
-	if err != nil {
-		maps["canInitUser"] = "false"
-	}
-
-	dataMap, err := client.GetConfigCRDData(http, k8s.K3kConfigGVR, k8s.K3kConfigName)
-	if err == nil {
-		maps["allowConsoleRegister"] = dataMap["allowConsoleRegister"]
-	}
-	self.JsonResponseWithoutError(http, maps)
-	return
-}
-
 /*
 *
 获取用户信息
