@@ -979,5 +979,5 @@ func (b *PackageApp) GetPanelRegistryServerHost() string {
 }
 
 func (b *PackageApp) OnlyStatic() bool {
-	return b.Manifest.Type == "front"
+	return b.Manifest.Application.Type == "front"
 }
