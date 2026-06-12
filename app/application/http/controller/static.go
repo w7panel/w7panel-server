@@ -8,6 +8,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	netpath "path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -130,12 +131,18 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 
 	if appgroup.DownStaticStatus(identifie, version, "") == appgroup.DOWNLOAD_SUCCESS {
 		microappPath := facade.Config.GetString("static.microapp_path")
-		localPath := strings.TrimLeft(filepath.Clean(path), string(os.PathSeparator))
-		if localPath == "." {
-			localPath = "index.html"
+		localFile, found, err := resolveMicroappLocalFile(microappPath, identifie, version, path)
+		if err != nil {
+			slog.Warn("invalid microapp local file request", "identifie", identifie, "version", version, "path", path, "error", err)
+			ctx.String(http.StatusBadRequest, "invalid microapp path")
+			return
+		}
+		if !found {
+			ctx.String(http.StatusNotFound, "microapp file not found")
+			return
 		}
 		ctx.Header(frontendSourceHeader, "local")
-		ctx.File(filepath.Join(microappPath, identifie, version, localPath))
+		ctx.File(localFile)
 		return
 	}
 
@@ -224,4 +231,65 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 	}()
 
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)
+}
+
+func resolveMicroappLocalFile(microappPath, identifie, version, requestPath string) (string, bool, error) {
+	baseDir := filepath.Join(microappPath, identifie, version)
+	localPath, err := cleanMicroappRequestPath(requestPath)
+	if err != nil {
+		return "", false, err
+	}
+	if localPath == "" {
+		localPath = "index.html"
+	}
+
+	target, err := joinMicroappLocalPath(baseDir, localPath)
+	if err != nil {
+		return "", false, err
+	}
+	if !microappFileExists(target) {
+		return "", false, nil
+	}
+
+	return target, true, nil
+}
+
+func cleanMicroappRequestPath(requestPath string) (string, error) {
+	for _, segment := range strings.Split(strings.ReplaceAll(requestPath, "\\", "/"), "/") {
+		if segment == ".." {
+			return "", fmt.Errorf("path contains parent directory segment")
+		}
+	}
+	cleanPath := netpath.Clean("/" + requestPath)
+	return strings.TrimPrefix(cleanPath, "/"), nil
+}
+
+func joinMicroappLocalPath(baseDir, localPath string) (string, error) {
+	if strings.Contains(localPath, "\x00") {
+		return "", fmt.Errorf("path contains NUL byte")
+	}
+
+	target := filepath.Join(baseDir, filepath.FromSlash(localPath))
+	baseAbs, err := filepath.Abs(baseDir)
+	if err != nil {
+		return "", err
+	}
+	targetAbs, err := filepath.Abs(target)
+	if err != nil {
+		return "", err
+	}
+	rel, err := filepath.Rel(baseAbs, targetAbs)
+	if err != nil {
+		return "", err
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("path escapes microapp directory")
+	}
+
+	return targetAbs, nil
+}
+
+func microappFileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }
