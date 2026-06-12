@@ -181,6 +181,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/pinyin", middleware.Auth{}.Process, controller2.Util{}.Pinyin)                    // pinyin
 			localApiGroup.GET("/dnsip", middleware.Auth{}.Process, controller2.Util{}.DnsIp)
 			localApiGroup.GET("/dns-cname", middleware.Auth{}.Process, controller2.Util{}.DnsCName)
+			localApiGroup.GET("/dns/info", middleware.Auth{}.Process, controller2.DNS{}.Info)
 			localApiGroup.GET("/dns/zones", middleware.Auth{}.Process, controller2.DNS{}.Zones)
 			localApiGroup.POST("/dns/zones", middleware.Auth{}.Process, controller2.DNS{}.CreateZone)
 			localApiGroup.DELETE("/dns/zones/:domain", middleware.Auth{}.Process, controller2.DNS{}.DeleteZone)

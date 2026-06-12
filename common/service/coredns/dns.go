@@ -11,6 +11,7 @@ import (
 	"github.com/coredns/caddy"
 	"github.com/coredns/caddy/caddyfile"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"golang.org/x/mod/semver"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -136,6 +137,27 @@ func (s *Service) CreateZone(ctx context.Context, domain string) (Zone, error) {
 		return Zone{}, err
 	}
 	return Zone{Domain: domain}, nil
+}
+
+func (s *Service) Info(ctx context.Context) (Info, error) {
+	info := Info{FileFallthroughMinVersion: CoreDNSMinVersion}
+	deployment, err := s.clientSet.AppsV1().Deployments(CoreDNSNamespace).Get(ctx, CoreDNSName, metav1.GetOptions{})
+	if err != nil {
+		return info, err
+	}
+	info.Image = string(deployment.Spec.Template.Spec.Containers[0].Image)
+	if info.Image != "" {
+		parts := strings.Split(info.Image, ":")
+		info.Version = parts[len(parts)-1]
+		if !strings.HasPrefix(info.Version, "v") {
+			info.Version = "v" + info.Version
+		}
+	}
+	info.FileFallthroughSupported = semver.Compare(info.Version, CoreDNSMinVersion) >= 0
+	if !info.FileFallthroughSupported {
+		info.FileFallthroughMessage = CoreDNSFallthroughUnsupportedMessage
+	}
+	return info, nil
 }
 
 func (s *Service) DeleteZone(ctx context.Context, domain string) error {

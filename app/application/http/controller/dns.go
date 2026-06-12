@@ -21,6 +21,15 @@ func (d DNS) Zones(ctx *gin.Context) {
 	d.JsonResponseWithoutError(ctx, zones)
 }
 
+func (d DNS) Info(ctx *gin.Context) {
+	info, err := coredns.NewService().Info(ctx.Request.Context())
+	if err != nil {
+		d.JsonResponseWithServerError(ctx, err)
+		return
+	}
+	d.JsonResponseWithoutError(ctx, info)
+}
+
 func (d DNS) CreateZone(ctx *gin.Context) {
 	type request struct {
 		Domain string `json:"domain" binding:"required"`
