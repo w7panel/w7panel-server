@@ -48,12 +48,10 @@ func (m *ResourceMutator) handlePod(ctx context.Context, req admission.Request) 
 	// 	}
 	// }
 	if helper.IsLxcfsEnabled() {
-		//https://github.com/ymping/lxcfs-admission-webhook/blob/main/cmd/volume.go
-		pod.Spec.Volumes = append(pod.Spec.Volumes, volumesTemplate...)
-		for i := range pod.Spec.Containers {
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, volumeMountsTemplate...)
-		}
-		modified = true
+		modified = injectLxcfs(pod)
+	}
+	if isLxcfsAnnotationEnabled(pod) {
+		modified = injectLxcfs(pod) || modified
 	}
 	if !modified {
 		return admission.Allowed("Pod cpu memory 无需配置")
@@ -65,6 +63,51 @@ func (m *ResourceMutator) handlePod(ctx context.Context, req admission.Request) 
 
 	// 返回修改后的资源
 	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
+}
+
+func isLxcfsAnnotationEnabled(pod *corev1.Pod) bool {
+	if pod.Annotations == nil {
+		return false
+	}
+	return pod.Annotations["w7.cc/lxcfs"] == "true"
+}
+
+func injectLxcfs(pod *corev1.Pod) bool {
+	modified := false
+	// https://github.com/ymping/lxcfs-admission-webhook/blob/main/cmd/volume.go
+	for _, volume := range volumesTemplate {
+		if !hasVolume(pod.Spec.Volumes, volume.Name) {
+			pod.Spec.Volumes = append(pod.Spec.Volumes, volume)
+			modified = true
+		}
+	}
+	for i := range pod.Spec.Containers {
+		for _, volumeMount := range volumeMountsTemplate {
+			if !hasVolumeMount(pod.Spec.Containers[i].VolumeMounts, volumeMount.Name, volumeMount.MountPath) {
+				pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, volumeMount)
+				modified = true
+			}
+		}
+	}
+	return modified
+}
+
+func hasVolume(volumes []corev1.Volume, name string) bool {
+	for _, volume := range volumes {
+		if volume.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func hasVolumeMount(volumeMounts []corev1.VolumeMount, name string, mountPath string) bool {
+	for _, volumeMount := range volumeMounts {
+		if volumeMount.Name == name || volumeMount.MountPath == mountPath {
+			return true
+		}
+	}
+	return false
 }
 
 var volumeMountsTemplate = []corev1.VolumeMount{

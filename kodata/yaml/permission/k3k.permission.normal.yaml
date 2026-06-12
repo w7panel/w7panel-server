@@ -9,7 +9,7 @@ metadata:
         typemode : in
     annotations:
         title: 普通用户
-        # w7.cc/domain-white-list: '[]'
+        #w7.cc/domain-white-list: '[]'
 data:
     debug: "false"
     fileeditor: "false"
