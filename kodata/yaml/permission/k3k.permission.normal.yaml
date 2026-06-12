@@ -14,5 +14,5 @@ data:
     debug: "false"
     fileeditor: "false"
     menu: >-
-        ["cluster","cluster-panel","cluster-resource","app","app-apps","app-apps-add","app-apps-edit","app-apps-delete","app-cronjob","app-cronjob-add","app-cronjob-edit","app-cronjob-delete","app-rvproxy","app-rvproxy-add","app-rvproxy-edit","app-rvproxy-delete","app-dblist","app-dblist-add","app-dblist-delete","app-gpustack","storage","storage-node","storage-node-add","storage-node-edit","storage-node-delete","storage-zone","system-order-center","system-cost-center","system-license"]
+        []
     webshell: "false"
