@@ -91,6 +91,7 @@ type K8sResourceInterface interface {
 	GetBackendUrl() string
 	GetFrontendUrl() string
 	GetMicroAppProps() map[string]string
+	OnlyStatic() bool // 只静态部署
 }
 
 type K8sResourceIngressInterface interface {
@@ -950,7 +951,7 @@ func ToAppGroup(p K8sResourceInterface, installResult []v1alpha1.DeployItem) *v1
 
 	aType := "zpk"
 	isHelm := false
-	if p.IsHelm() {
+	if p.IsHelm() || p.OnlyStatic() {
 		aType = "helm"
 		isHelm = true
 	}

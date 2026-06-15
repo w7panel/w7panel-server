@@ -61,7 +61,7 @@ v1.1.*:
         # - name: unzipwebdav
         #   script: cd ./kodata/plugin && unzip -o ./codeblitz.zip
         - name: logo
-          script: mv ./kodata/logo.png ./kodata/assets/logo.png
+          script: mv ./kodata/logo.png ./kodata/assets/logo.png && cp ./kodata/index.html ./kodata/panel.html
         - name: login
           script: /root/go/bin/ko login docker.cnb.cool -u cnb -p ${CNB_TOKEN}
         # - name: build-dev

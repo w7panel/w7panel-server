@@ -387,7 +387,7 @@ func (u *k3kUser) ToArray() map[string]string {
 		W7_QUOTA_LIMIT:            u.Annotations[W7_QUOTA_LIMIT],
 		W7_FILE_EDITTOR:           u.Annotations[W7_FILE_EDITTOR],
 		W7_WEB_SHELL:              u.Annotations[W7_WEB_SHELL],
-		W7_DOMAIN_WHITE_LIST:      u.Annotations[W7_DOMAIN_WHITE_LIST], // 白名单域名
+		W7_DOMAIN_WHITE_LIST:      u.GetDomainWhiteList(), // 白名单域名
 		W7_DEMO_USER:              u.Labels[W7_DEMO_USER],
 		W7_SYS_STORAGE_PVC_NAME:   u.GetClusterServer0PvcName(), // 系统存储PVC名称
 		W7_COST:                   u.Annotations[W7_COST],
@@ -550,6 +550,14 @@ func (u *k3kUser) GetConsoleId() string {
 	return u.Labels["w7.cc/console-id"]
 }
 
+func (u *k3kUser) GetDomainWhiteList() string {
+	value, ok := u.Annotations[W7_DOMAIN_WHITE_LIST]
+	if !ok || value == "" || value == "null" {
+		return "[]"
+	}
+	return value
+}
+
 // 自定义权限菜单
 func (u *k3kUser) IsCustomPermission() bool {
 	return u.Annotations["w7.cc/menu-name"] == ""
@@ -570,6 +578,10 @@ func (u *k3kUser) ReplaceMenu(menu *v1.ConfigMap) {
 	u.Annotations[W7_MENU] = menu.Data["menu"]
 	u.Annotations[W7_WEB_SHELL] = menu.Data["webshell"]
 	u.Annotations[W7_FILE_EDITTOR] = menu.Data["fileeditor"]
+	u.Annotations[W7_DOMAIN_WHITE_LIST] = "[]"
+	if value := menu.Annotations[W7_DOMAIN_WHITE_LIST]; value != "" && value != "null" {
+		u.Annotations[W7_DOMAIN_WHITE_LIST] = value
+	}
 	if menu.Labels[W7_ROLE] != "" {
 		u.Labels[W7_ROLE] = menu.Labels[W7_ROLE]
 	}

@@ -977,3 +977,7 @@ func (p *PackageApp) SupportMicroApp() bool {
 func (b *PackageApp) GetPanelRegistryServerHost() string {
 	return b.PanelRegistryServerHost
 }
+
+func (b *PackageApp) OnlyStatic() bool {
+	return b.Manifest.Application.Type == "front"
+}

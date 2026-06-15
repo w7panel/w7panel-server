@@ -9,7 +9,7 @@ metadata:
         typemode : in
     annotations:
         title: 创始人
-        # w7.cc/domain-white-list: '[]'
+        #w7.cc/domain-white-list: '[]'
         # "cluster-nodes-image-list" 镜像管理菜单
 data:
     debug: 'true'
