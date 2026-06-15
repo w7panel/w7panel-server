@@ -45,6 +45,11 @@ spec:
                 type: string
               enabled:
                 type: boolean
+              tokenType:
+                enum:
+                - temporary
+                - permanent
+                type: string
             type: object
           status:
             properties:

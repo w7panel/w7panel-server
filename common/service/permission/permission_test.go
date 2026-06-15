@@ -3,6 +3,9 @@ package permission
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
@@ -133,6 +136,24 @@ func TestIsBuiltin(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsBuiltin(tt.p); got != tt.want {
 				t.Fatalf("IsBuiltin() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuiltinAdminPermissionsDoNotGrantFounderWildcards(t *testing.T) {
+	for _, name := range []string{"k3k.permission.admin.yaml", "k3k.permission.super.yaml", "k3k.permission.api.yaml"} {
+		t.Run(name, func(t *testing.T) {
+			data, err := os.ReadFile(filepath.Join("..", "..", "..", "kodata", "yaml", "permission", name))
+			if err != nil {
+				t.Fatalf("read builtin permission: %v", err)
+			}
+			content := string(data)
+			if strings.Contains(content, "  api:\n    '*':\n    - '*'") {
+				t.Fatal("admin permission must not grant every panel API")
+			}
+			if strings.Contains(content, "  - apiGroups:\n    - '*'\n    resources:\n    - '*'\n    verbs:\n    - '*'") {
+				t.Fatal("admin permission must not grant founder-level Kubernetes RBAC")
 			}
 		})
 	}

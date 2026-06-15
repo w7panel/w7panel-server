@@ -130,3 +130,30 @@ func TestApiClientCacheMarkAccessedUpdatesStatusCache(t *testing.T) {
 		t.Fatalf("unexpected last accessed time: %v", client.Status.LastAccessedAt.Time)
 	}
 }
+
+func TestNormalizeTokenType(t *testing.T) {
+	if got := NormalizeTokenType(""); got != apiclientv1alpha1.TokenTypeTemporary {
+		t.Fatalf("empty token type = %q, want temporary", got)
+	}
+	if got := NormalizeTokenType(apiclientv1alpha1.TokenTypePermanent); got != apiclientv1alpha1.TokenTypePermanent {
+		t.Fatalf("permanent token type = %q, want permanent", got)
+	}
+	if IsValidTokenType("forever") {
+		t.Fatal("unexpected valid custom token type")
+	}
+}
+
+func TestPermanentTokenSecretNameIsStable(t *testing.T) {
+	first := permanentTokenSecretName("appid-demo")
+	second := permanentTokenSecretName("appid-demo")
+	third := permanentTokenSecretName("appid-other")
+	if first != second {
+		t.Fatal("expected stable permanent token secret name")
+	}
+	if first == third {
+		t.Fatal("expected different appid to use different permanent token secret name")
+	}
+	if len(first) > 63 {
+		t.Fatalf("secret name is too long: %s", first)
+	}
+}

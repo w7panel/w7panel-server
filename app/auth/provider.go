@@ -53,6 +53,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		localApiGroup := engine.Group("/panel-api/v1/auth").Use(middleware.Cors{}.Process)
 		{
 			localApiGroup.POST("/login", middleware.ConsoleSignature{}.Process, controller2.Auth{}.LoginBySign)
+			localApiGroup.POST("/api-token", controller2.APIToken{}.Exchange)
 			localApiGroup.POST("/register", controller2.Auth{}.Register)
 			localApiGroup.POST("/refresh-token2", controller2.Auth{}.RefreshToken2)
 			localApiGroup.POST("/init-user", controller2.Auth{}.InitUser)
@@ -67,7 +68,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.GET("/userinfo", middleware.Auth{}.Process, k3kController.K3k{}.Info)
 			// 不需要创始人权限
 			localApiGroup.GET("/console/code/:code", middleware.Auth{}.Process, controller2.Console{}.ProxyCouponCode)
-			localApiGroup.Any("/console/proxy/*path" /* middleware.NewAuth("founder").Process, */, controller2.Console{}.Proxy)
+			localApiGroup.Any("/console/proxy/*path", middleware.Auth{}.Process, controller2.Console{}.Proxy)
 			localApiGroup.GET("/permissions/routes", middleware.Auth{}.Process, func(ctx *gin.Context) {
 				ctx.JSON(200, gin.H{
 					"code": 200,

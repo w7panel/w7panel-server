@@ -22,6 +22,7 @@ const (
 	FounderPermissionName = "k3k.permission.founder"
 	SuperPermissionName   = "k3k.permission.super"
 	NormalPermissionName  = "k3k.permission.normal"
+	APIPermissionName     = "k3k.permission.api"
 )
 
 var permissionGVR = schema.GroupVersionResource{

@@ -1,50 +1,15 @@
 apiVersion: w7panel.w7.com/v1alpha1
 kind: Permission
 metadata:
-  name: k3k.permission.admin
+  name: k3k.permission.api
   labels:
     typemode: in
 spec:
-  title: 管理员
+  title: 对外 API
   type: builtin
-  role: admin
-  menu:
-  - cluster/*
-  - app/*
-  - storage/*
-  - zpk
-  - system/cloud
-  - system/license
-  - system/audit
-  - usermanage/*
-  - sitemanage/*
-  - cluster-nodes-add
-  - cluster-nodes-registries
-  - cluster-nodes-gpu
-  - cluster-nodes-memory
-  - app-apps-add
-  - app-apps-edit
-  - app-apps-delete
-  - app-cronjob-add
-  - app-cronjob-edit
-  - app-cronjob-delete
-  - app-rvproxy-add
-  - app-rvproxy-edit
-  - app-rvproxy-delete
-  - app-dblist-add
-  - app-dblist-delete
-  - storage-node-add
-  - storage-node-edit
-  - storage-node-delete
+  role: api
+  menu: []
   api:
-    /panel-api/v1/auth/console/*:
-    - '*'
-    /panel-api/v1/auth/permissions/routes:
-    - get
-    /panel-api/v1/auth/reset-password:
-    - create
-    /panel-api/v1/auth/reset-password-current:
-    - create
     /panel-api/v1/auth/userinfo:
     - get
     /panel-api/v1/auth/refresh-token2:
@@ -145,54 +110,6 @@ spec:
     - create
     /panel-api/v1/callback-url:
     - create
-    /panel-api/v1/auth/init-user:
-    - []
-    /panel-api/v1/k3k/init:
-    - []
-    /panel-api/v1/k3k/login:
-    - []
-    /panel-api/v1/k3k/sync-*:
-    - []
-    /panel-api/v1/k3k/order/notify:
-    - []
-    /panel-api/v1/idc-list:
-    - []
-    /panel-api/v1/noauth/*:
-    - []
-    /panel-api/v1/namespaces/*/services/*/proxy-no/*:
-    - []
-    /panel-api/v1/files/webdav-test/*:
-    - []
-    /panel-api/v1/app-info:
-    - []
-    /panel-api/v1/test401:
-    - []
-    /panel-api/v1/proxy-url/:
-    - []
-    /panel-api/v1/captcha:
-    - []
-    /panel-api/v1/verify-captcha:
-    - []
-    /panel-api/v1/zpk/oci/down/*:
-    - []
-    /panel-api/v1/zpk/build-image-success:
-    - []
-    /panel-api/v1/static/proxy/*:
-    - []
-    /panel-api/v1/auth/console/register-zpk-site:
-    - []
-    /panel-api/v1/auth/console/oauth:
-    - []
-    /panel-api/v1/auth/console/login:
-    - []
-    /panel-api/v1/login:
-    - []
-    /panel-api/v1/auth/login:
-    - []
-    /panel-api/v1/auth/register:
-    - []
-    /panel-api/v1/auth/console/code/*:
-    - '*'
   features:
     debug: true
     fileeditor: true
