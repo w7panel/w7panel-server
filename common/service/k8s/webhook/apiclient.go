@@ -25,6 +25,15 @@ func (m *ResourceMutator) handleApiClient(ctx context.Context, req admission.Req
 			if !k8sapiclient.IsValidTokenType(item.Spec.TokenType) {
 				return admission.Denied("tokenType must be temporary or permanent")
 			}
+			if item.Spec.TokenType == apiclientv1alpha1.TokenTypeTemporary && item.Spec.TemporaryTokenMinutes == nil {
+				defaultMinutes := k8sapiclient.DefaultTemporaryTokenMinutes
+				item.Spec.TemporaryTokenMinutes = &defaultMinutes
+			}
+			if item.Spec.TemporaryTokenMinutes != nil {
+				if *item.Spec.TemporaryTokenMinutes < k8sapiclient.MinTemporaryTokenMinutes || *item.Spec.TemporaryTokenMinutes > k8sapiclient.MaxTemporaryTokenMinutes {
+					return admission.Denied("temporaryTokenMinutes must be between 1 and 1440")
+				}
+			}
 			if req.Operation == "UPDATE" {
 				oldItem := &apiclientv1alpha1.ApiClient{}
 				if err := m.decoder.DecodeRaw(req.OldObject, oldItem); err == nil {

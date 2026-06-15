@@ -93,6 +93,11 @@ func (in *ApiClientSpec) DeepCopyInto(out *ApiClientSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.TemporaryTokenMinutes != nil {
+		in, out := &in.TemporaryTokenMinutes, &out.TemporaryTokenMinutes
+		*out = new(int64)
+		**out = **in
+	}
 	return
 }
 

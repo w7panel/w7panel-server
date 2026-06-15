@@ -19,8 +19,10 @@ import (
 )
 
 const (
-	TemporaryTokenSeconds      = int64(600)
-	permanentTokenSecretPrefix = "w7panel-api-token-"
+	DefaultTemporaryTokenMinutes = int64(10)
+	MinTemporaryTokenMinutes     = int64(1)
+	MaxTemporaryTokenMinutes     = int64(1440)
+	permanentTokenSecretPrefix   = "w7panel-api-token-"
 )
 
 var (
@@ -58,12 +60,13 @@ func ExchangeToken(ctx context.Context, namespace, appID, appSecret string) (*Ex
 	tokenType := NormalizeTokenType(client.Spec.TokenType)
 	switch tokenType {
 	case apiclientv1alpha1.TokenTypeTemporary:
-		token, err := sdk.CreateTokenRequest(permissionservice.APIPermissionName, TemporaryTokenSeconds, []string{})
+		expiresIn := TemporaryTokenSeconds(client.Spec.TemporaryTokenMinutes)
+		token, err := sdk.CreateTokenRequest(permissionservice.APIPermissionName, expiresIn, []string{})
 		if err != nil {
 			return nil, err
 		}
 		MarkAccessed(client.Namespace, client.Name, time.Now())
-		return &ExchangeTokenResult{Token: token, TokenType: tokenType, ExpiresIn: TemporaryTokenSeconds}, nil
+		return &ExchangeTokenResult{Token: token, TokenType: tokenType, ExpiresIn: expiresIn}, nil
 	case apiclientv1alpha1.TokenTypePermanent:
 		token, err := permanentToken(ctx, sdk, client)
 		if err != nil {
@@ -87,6 +90,23 @@ func NormalizeTokenType(tokenType string) string {
 
 func IsValidTokenType(tokenType string) bool {
 	return tokenType == apiclientv1alpha1.TokenTypeTemporary || tokenType == apiclientv1alpha1.TokenTypePermanent
+}
+
+func TemporaryTokenMinutes(minutes *int64) int64 {
+	if minutes == nil {
+		return DefaultTemporaryTokenMinutes
+	}
+	if *minutes < MinTemporaryTokenMinutes {
+		return MinTemporaryTokenMinutes
+	}
+	if *minutes > MaxTemporaryTokenMinutes {
+		return MaxTemporaryTokenMinutes
+	}
+	return *minutes
+}
+
+func TemporaryTokenSeconds(minutes *int64) int64 {
+	return TemporaryTokenMinutes(minutes) * 60
 }
 
 func loadApiClients(ctx context.Context, namespace string) ([]apiclientv1alpha1.ApiClient, error) {
