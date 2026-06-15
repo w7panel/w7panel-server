@@ -13,8 +13,10 @@ import (
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
+	"github.com/w7panel/w7panel/common/service/oidc"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
+	"github.com/zitadel/oidc/v3/pkg/op"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -309,11 +311,7 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 		self.JsonResponseWithServerError(gin, err)
 		return
 	}
-	// if role != "founder" && role != "admin" {
-	// 	self.JsonResponseWithServerError(gin, errors.New("无权限访问"))
-	// 	return
-	// }
-	// ZZZ
+
 	if microAppObj.IsFromRoot() || !k8sToken.IsK3kCluster() {
 		if helper.IsK3kVirtual() { //转发到子集群pod后 强制设置成founder
 			role = "founder"
@@ -323,7 +321,15 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 		if err == nil && replace != nil {
 			proxy.WithReplace(replace) //替换掉原有请求
 		}
-		revert, err := proxy.Proxy(gin, path)
+		proxyCtx := gin.Request.Context()
+		if server, err := oidc.GetServer(); err == nil && server != nil {
+			proxyCtx = server.ContextWithIssuer(proxyCtx, gin.Request)
+
+			isser := op.IssuerFromContext(proxyCtx)
+			slog.Info("Issuer", "issuer", isser)
+
+		}
+		revert, err := proxy.Proxy(proxyCtx, path)
 		if err != nil {
 			self.JsonResponseWithServerError(gin, err)
 			return

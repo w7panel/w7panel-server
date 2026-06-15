@@ -277,6 +277,13 @@ func (s *Server) Issuer(r *http.Request) string {
 	return s.provider.IssuerFromRequest(r)
 }
 
+func (s *Server) ContextWithIssuer(ctx context.Context, r *http.Request) context.Context {
+	if s == nil || r == nil {
+		return ctx
+	}
+	return op.ContextWithIssuer(ctx, s.Issuer(r))
+}
+
 func (s *Server) discoveryIssuer(r *http.Request) string {
 	issuer := s.Issuer(r)
 	parsedIssuer, err := url.Parse(issuer)
