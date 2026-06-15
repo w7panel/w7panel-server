@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	console2 "github.com/w7panel/w7panel/common/service/console"
@@ -196,25 +195,6 @@ func NeedRelogin(token *k8s.K8sToken) bool {
 		return true
 	}
 	return false
-}
-
-func RefreshK3kPolicy(policy *v1alpha1.VirtualClusterPolicy, rootSdk *k8s.Sdk, update bool) error {
-	if policy.Annotations == nil {
-		return nil
-	}
-	costName, ok := policy.Annotations["w7.cc/cost-name"]
-	if ok && costName != "" {
-		costConfig, err := rootSdk.ClientSet.CoreV1().ConfigMaps(policy.Namespace).Get(rootSdk.Ctx, costName, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		json, err := types.ConfigMapToCostString(costConfig)
-		if err != nil {
-			return err
-		}
-		policy.Annotations["w7.cc/cost"] = json
-	}
-	return nil
 }
 
 func GetCkm(ctx context.Context, sdk *k8s.Sdk, namespace, cvmName string) (*cvmv1alpha1.Ckm, error) {

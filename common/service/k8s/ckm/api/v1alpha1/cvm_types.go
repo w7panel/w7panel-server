@@ -5,9 +5,19 @@ import (
 	"time"
 
 	"github.com/aws/smithy-go/ptr"
-	k3kv1 "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/shopspring/decimal"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+type ClusterPhase string
+
+const (
+	ClusterPending      = ClusterPhase("Pending")
+	ClusterProvisioning = ClusterPhase("Provisioning")
+	ClusterReady        = ClusterPhase("Ready")
+	ClusterFailed       = ClusterPhase("Failed")
+	ClusterTerminating  = ClusterPhase("Terminating")
+	ClusterUnknown      = ClusterPhase("Unknown")
 )
 
 // 【微擎面板&集群云主机：云主机业务分离成独立应用】
@@ -44,7 +54,7 @@ const (
 	PhaseRecycleing = Phase("recycleing") //回收中
 	PhaseCreating   = Phase("creating")   //创建中
 
-	ClusterStopped = k3kv1.ClusterPhase("stopped") //暂停中
+	ClusterStopped = ClusterPhase("stopped") //暂停中
 )
 
 // +genclient
@@ -159,7 +169,7 @@ type Workload struct {
 
 type CkmStatus struct {
 	Phase                string             `json:"phase,omitempty"`
-	ClusterPhase         k3kv1.ClusterPhase `json:"clusterPhase,omitempty"`
+	ClusterPhase         ClusterPhase       `json:"clusterPhase,omitempty"`
 	EffectiveResource    *CkmResource       `json:"effectiveResource,omitempty"` // UserResource + PurchasedResource
 	Conditions           []metav1.Condition `json:"conditions,omitempty"`
 	IsExpired            *bool              `json:"isExpired,omitempty"`    //是否过期
@@ -242,10 +252,10 @@ func (u *Ckm) ComputeStatus() {
 			}
 		} else {
 			u.Status.Phase = string(PhaseCreating)
-			if u.Status.ClusterPhase == k3kv1.ClusterTerminating {
+			if u.Status.ClusterPhase == ClusterTerminating {
 				u.Status.Phase = string(PhaseRecycleing) //回收中
 			}
-			if u.Status.ClusterPhase == k3kv1.ClusterReady {
+			if u.Status.ClusterPhase == ClusterReady {
 				u.Status.Phase = string(PhaseReady) //有资源
 			}
 		}

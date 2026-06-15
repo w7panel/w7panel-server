@@ -18,7 +18,6 @@ import (
 	"github.com/gin-gonic/gin"
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	openapi_v2 "github.com/google/gnostic-models/openapiv2"
-	k3kv1alpha "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/w7panel/w7panel/common/helper"
 	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	higressextv1 "github.com/w7panel/w7panel/common/service/k8s/higress/client/pkg/apis/extensions/v1alpha1"
@@ -79,7 +78,7 @@ var (
 
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
-	_ = k3kv1alpha.AddToScheme(scheme)
+	// _ = k3kv1alpha.AddToScheme(scheme)
 	// _ = higressscheme.AddToScheme(scheme)
 	_ = higressnetworkingv1.AddToScheme(scheme)
 	_ = higressextv1.AddToScheme(scheme)

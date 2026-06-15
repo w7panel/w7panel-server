@@ -81,8 +81,8 @@ func (m *ResourceMutator) Handle(ctx context.Context, req admission.Request) adm
 		return m.handleDaemonset(ctx, req)
 	case "Ingress":
 		return m.handleIngress(ctx, req)
-	case "VirtualClusterPolicy":
-		return m.handleVirtualClusterPolicy(ctx, req)
+	// case "VirtualClusterPolicy":
+	// 	return m.handleVirtualClusterPolicy(ctx, req)
 	case "Pod":
 		return m.handlePod(ctx, req)
 	case "Secret":
@@ -109,9 +109,9 @@ func (m *ResourceMutator) Handle(ctx context.Context, req admission.Request) adm
 		if req.Kind.Group == "apps.kubeblocks.io" {
 			return m.handleKubeblocksCluster(ctx, req)
 		}
-		if req.Kind.Group == "k3k.io" {
-			return m.handleK3kCluster(ctx, req)
-		}
+		// if req.Kind.Group == "k3k.io" {
+		// 	return m.handleK3kCluster(ctx, req)
+		// }
 		return admission.Allowed("不需要修改的资源类型")
 	case "ServiceAccount":
 		return m.handleServiceAccount(ctx, req)
