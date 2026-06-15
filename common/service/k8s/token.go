@@ -139,6 +139,17 @@ func (t *K8sToken) GetSaName() (string, error) {
 	return sa, nil
 }
 
+func (t *K8sToken) GetUserName() (string, error) {
+	s, err := t.GetAudience()
+	if err != nil {
+		return "", err
+	}
+	if len(s) == 0 {
+		return "", errors.New("用户名为空")
+	}
+	return s[0], nil
+}
+
 func (t *K8sToken) GetAudience() (jwtv5.ClaimStrings, error) {
 	data, err := t.parseClaims()
 	if err != nil {
