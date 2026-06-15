@@ -6,7 +6,6 @@ import (
 
 	"github.com/w7panel/w7panel/common/service/k8s"
 
-	"github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	v1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -39,19 +38,7 @@ func SetupK3kControllers(mgr ctrl.Manager) error {
 			}
 			types.SetSaVersion(sa.Name, saVersion)
 		}
-		var policyList = &v1alpha1.VirtualClusterPolicyList{}
-		err = sigClient.List(context.Background(), policyList)
-		if err != nil {
-			slog.Error("failed to list virtual cluster policy", "error", err)
-			return err
-		}
-		for _, policy := range policyList.Items {
-			policyVersion, ok := policy.Annotations[types.K3K_LOCK_VERSION]
-			if !ok {
-				policyVersion = "1"
-			}
-			types.SetPolicyVersion(policy.Name, policyVersion)
-		}
+
 		return nil
 	}))
 

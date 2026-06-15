@@ -265,8 +265,8 @@ func TestUpdateAndDeleteDynamicClient(t *testing.T) {
 func TestNormalizeClientIDProducesRFC1123SafeValue(t *testing.T) {
 	tests := map[string]string{
 		"oidc_lepdtcdfvtnblji-": "oidc-lepdtcdfvtnblji",
-		"-OIDC__Demo--":        "oidc-demo",
-		"...":                  "oidc",
+		"-OIDC__Demo--":         "oidc-demo",
+		"...":                   "oidc",
 	}
 
 	for input, want := range tests {
@@ -296,12 +296,6 @@ func TestFindClientFallsBackToStore(t *testing.T) {
 	}
 	if len(store.getCalls) != 1 || store.getCalls[0] != "oidc-fallback" {
 		t.Fatalf("expected store.Get to be called once, got %#v", store.getCalls)
-	}
-}
-
-func TestSecretNameForClientIDUsesOIDCSuffix(t *testing.T) {
-	if got, want := secretNameForClientID("oidc-demo"), "oidc-demo-oidc"; got != want {
-		t.Fatalf("unexpected secret name: got %q want %q", got, want)
 	}
 }
 

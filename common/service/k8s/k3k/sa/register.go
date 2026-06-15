@@ -107,6 +107,7 @@ func (register *Register) RegisterUseConsole(accessToken *types.ConsoleOAuthAcce
 	userId := strconv.Itoa(userinfo.UserId)
 	anns := map[string]string{
 		types.W7_ACCESS_TOKEN: accessToken.ToString(),
+		"w7.cc/menu-name":     "k3k.permission.normal",
 	}
 	return register.doRegister("console-"+userId, userId, anns, false, k3kConfig.DefaultPermissionName)
 }

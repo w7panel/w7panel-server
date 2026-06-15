@@ -11,7 +11,6 @@ import (
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 )
 
-// username password register
 type CreateInnerDb struct {
 	console2.Abstract
 }
@@ -21,7 +20,6 @@ type dbOption struct {
 	Namespace string
 }
 
-// ./runtime/main site:register --thirdPartyCDToken=qEINzTKqtPUYKi7f --host=w7job.test.w7.com --releaseName=app-nfohievs0w --deploymentName=w7-pros-28692-app-nfohievs0w --namespace=default
 var dbro = dbOption{}
 
 func (c CreateInnerDb) GetName() string {
@@ -40,7 +38,6 @@ func (c CreateInnerDb) GetDescription() string {
 // go run main.go db:create-inner --database=xxx --namespace=default
 func (c CreateInnerDb) Handle(cmd *cobra.Command, args []string) {
 	sdk := k8s.NewK8sClientInner()
-	// sdk.GetDeployment()
 	list, err := sdk.GetDeploymentAppByIdentifie(dbro.Namespace, "w7-mysql")
 	if err != nil {
 		slog.Error("err find mysql deployment1", "err", err)

@@ -185,11 +185,3 @@ func (t *TerminalSession) SetContext(ctx context.Context) {
 func (t *TerminalSession) GetWriterBytes() []byte {
 	return t.writer.Bytes()
 }
-
-// func (t *TerminalSession) Resize(size remotecommand.TerminalSize) {
-// 	log.Println("k8s exec resize")
-// 	buf := make([]byte, 2)
-// 	binary.LittleEndian.PutUint16(buf, uint16(size.Height))
-// 	binary.LittleEndian.PutUint16(buf[2:], uint16(size.Width))
-// 	t.conn.WriteMessage(websocket.BinaryMessage, buf)
-// }

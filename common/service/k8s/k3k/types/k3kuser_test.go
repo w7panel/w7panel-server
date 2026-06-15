@@ -7,8 +7,54 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
+
+func TestGetDomainWhiteListDefault(t *testing.T) {
+	tests := []struct {
+		name        string
+		annotations map[string]string
+		want        string
+	}{
+		{
+			name:        "missing",
+			annotations: map[string]string{},
+			want:        "[]",
+		},
+		{
+			name:        "empty",
+			annotations: map[string]string{W7_DOMAIN_WHITE_LIST: ""},
+			want:        "[]",
+		},
+		{
+			name:        "null string",
+			annotations: map[string]string{W7_DOMAIN_WHITE_LIST: "null"},
+			want:        "[]",
+		},
+		{
+			name:        "configured",
+			annotations: map[string]string{W7_DOMAIN_WHITE_LIST: `["w7.cc"]`},
+			want:        `["w7.cc"]`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			user := NewK3kUser(&v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
+				Annotations: tt.annotations,
+				Labels:      map[string]string{},
+			}})
+
+			if got := user.GetDomainWhiteList(); got != tt.want {
+				t.Fatalf("GetDomainWhiteList() = %q, want %q", got, tt.want)
+			}
+			if got := user.ToArray()[W7_DOMAIN_WHITE_LIST]; got != tt.want {
+				t.Fatalf("ToArray()[%q] = %q, want %q", W7_DOMAIN_WHITE_LIST, got, tt.want)
+			}
+		})
+	}
+}
 
 func TestGetClusterStorageRequestSize(t *testing.T) {
 	sdk := k8s.NewK8sClient().Sdk

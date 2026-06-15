@@ -16,7 +16,6 @@ import (
 )
 
 var svcName = ""
-var svcHost = ""
 
 type WebhookConfig struct {
 	Name        string
@@ -48,8 +47,6 @@ func getHookName() string {
 func getHookCrdName() string {
 	return svcName + "-crd-webhook"
 }
-
-type void struct{}
 
 func getSa(client client.Client, sdk *k8s.Sdk, saName string) (*v1.ServiceAccount, error) {
 	sa := &v1.ServiceAccount{}

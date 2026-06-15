@@ -19,7 +19,6 @@ func TestClusterSummary_Summary(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	print(summary)
 	assert.NoError(t, err)
 	assert.Equal(t, int32(5), summary.GPUDeviceSharedNum)
 	assert.Equal(t, int32(1024), summary.GPUDeviceMemoryAllocated)

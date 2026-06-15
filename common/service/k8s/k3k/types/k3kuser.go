@@ -8,7 +8,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -23,8 +22,6 @@ import (
 type K3kUser struct {
 	*k3kUser
 }
-
-var once sync.Once
 
 type k3kUser struct {
 	*v1.ServiceAccount
@@ -86,11 +83,6 @@ func (u *k3kUser) IsClusterRecycle() bool {
 func (u *k3kUser) IsClusterLabelReady() bool {
 	return u.Labels[K3K_CLUSTER_STATUS] == K3K_STATUS_USER_READY
 }
-
-// func (u *k3kUser) IsK3kUser() bool {
-// 	return false //去掉 cluster用户
-// 	// return u.Labels[K3K_USER_MODE] == "cluster"
-// }
 
 func (u *k3kUser) IsClusterUser() bool {
 	return false
@@ -395,7 +387,7 @@ func (u *k3kUser) ToArray() map[string]string {
 		W7_QUOTA_LIMIT:            u.Annotations[W7_QUOTA_LIMIT],
 		W7_FILE_EDITTOR:           u.Annotations[W7_FILE_EDITTOR],
 		W7_WEB_SHELL:              u.Annotations[W7_WEB_SHELL],
-		W7_DOMAIN_WHITE_LIST:      u.Annotations[W7_DOMAIN_WHITE_LIST], // 白名单域名
+		W7_DOMAIN_WHITE_LIST:      u.GetDomainWhiteList(), // 白名单域名
 		W7_DEMO_USER:              u.Labels[W7_DEMO_USER],
 		W7_SYS_STORAGE_PVC_NAME:   u.GetClusterServer0PvcName(), // 系统存储PVC名称
 		W7_COST:                   u.Annotations[W7_COST],
@@ -558,6 +550,14 @@ func (u *k3kUser) GetConsoleId() string {
 	return u.Labels["w7.cc/console-id"]
 }
 
+func (u *k3kUser) GetDomainWhiteList() string {
+	value, ok := u.Annotations[W7_DOMAIN_WHITE_LIST]
+	if !ok || value == "" || value == "null" {
+		return "[]"
+	}
+	return value
+}
+
 // 自定义权限菜单
 func (u *k3kUser) IsCustomPermission() bool {
 	return u.Annotations["w7.cc/menu-name"] == ""
@@ -578,6 +578,10 @@ func (u *k3kUser) ReplaceMenu(menu *v1.ConfigMap) {
 	u.Annotations[W7_MENU] = menu.Data["menu"]
 	u.Annotations[W7_WEB_SHELL] = menu.Data["webshell"]
 	u.Annotations[W7_FILE_EDITTOR] = menu.Data["fileeditor"]
+	u.Annotations[W7_DOMAIN_WHITE_LIST] = "[]"
+	if value := menu.Annotations[W7_DOMAIN_WHITE_LIST]; value != "" && value != "null" {
+		u.Annotations[W7_DOMAIN_WHITE_LIST] = value
+	}
 	if menu.Labels[W7_ROLE] != "" {
 		u.Labels[W7_ROLE] = menu.Labels[W7_ROLE]
 	}
@@ -666,13 +670,6 @@ func (u *k3kUser) GetUnitPrice() (decimal.Decimal, error) {
 	return compute.GetUnitPrice(), nil
 }
 
-//	func (u *k3kUser) GetBaseHour() (int64, error) {
-//		if u.lqr == nil {
-//			return 0, fmt.Errorf("limit range not set")
-//		}
-//		return u.lqr.GetHour(), nil
-//	}
-//
 // 首次购买默认赠送天数
 func (u *k3kUser) GetBaseDay() (float64, error) {
 	if u.lqr == nil {

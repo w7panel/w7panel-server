@@ -92,10 +92,6 @@ func (self *repo) getConsoleUrl() string {
 	return self.baseConsoleUrl + "config?url=" + self.repoUrl
 }
 
-func (self *repo) getPreInstallUrl() string {
-	return self.baseConsoleUrl + "/pre-install" + "?url=" + self.repoUrl
-}
-
 func (self *repo) loadPackageFromConsole() (*types.ManifestPackage, error) {
 	self.IsConsole = true
 	consoleUrl := self.getConsoleUrl()

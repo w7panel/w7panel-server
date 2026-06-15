@@ -59,11 +59,6 @@ const (
 	W7_X = "w7-pros-28694"
 )
 
-type deployName struct {
-	Name      string
-	Namespace string
-}
-
 func getSuffix(releaseName string) string {
 	suffix := releaseName
 	rp := strings.Split(suffix, "-")

@@ -231,11 +231,7 @@ func (p *ManifestPackage) ToPackageAddConfig(releaseName string, requireLimit bo
 	return result
 }
 
-/*
-*
-
-	外部模块名称，不包括自己和子应用
-*/
+// GetOutModuleNames returns external module names, excluding self and child apps.
 func (p *ManifestPackage) GetOutModuleNames() []string {
 	result := p.Manifest.GetStartParamsModuleNames()
 	ignoreModule := []string{p.Manifest.Application.Identifie}
@@ -271,7 +267,6 @@ func (p *ManifestPackage) PutKv(kv EnvKv) {
 			p.Manifest.Platform.Container.StartParams[i].ValuesText = kv.Value
 		}
 	}
-	// print(p.Manifest.Platform.Container.StartParams)
 }
 
 func (p *ManifestPackage) PutEnvs(kv []EnvKv) {

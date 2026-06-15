@@ -35,7 +35,6 @@ func (c K8sCheckResource) GetName() string {
 }
 
 func (c K8sCheckResource) Configure(cmd *cobra.Command) {
-	// username password register
 	cmd.Flags().StringArrayVar(&resourceOp.resources, "resources", []string{}, "resources")
 	cmd.Flags().IntVar(&resourceOp.timeout, "timeout", 300, "默认300秒")
 }

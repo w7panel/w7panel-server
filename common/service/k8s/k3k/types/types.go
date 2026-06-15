@@ -3,7 +3,6 @@ package types
 import (
 	"time"
 
-	"github.com/patrickmn/go-cache"
 	"github.com/w7corp/sdk-open-cloud-go/service"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	v1 "k8s.io/api/core/v1"
@@ -179,8 +178,6 @@ func NeedRelogin(token *k8s.K8sToken) bool {
 	}
 	return false
 }
-
-var k3kcache *cache.Cache
 
 var K3kregCnf = `
 mirrors:

@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"os/exec"
+	"time"
 
 	"github.com/creack/pty"
 	"k8s.io/client-go/tools/remotecommand"
@@ -21,18 +22,22 @@ func NewLocalExecutor(cmd *exec.Cmd) *LocalExecutor {
 }
 
 func (e LocalExecutor) StreamWithContext(ctx context.Context, options remotecommand.StreamOptions) error {
+	command := ""
+	args := []string(nil)
+	if e.cmd != nil {
+		command = e.cmd.Path
+		args = e.cmd.Args
+	}
+
 	tty, err := pty.Start(e.cmd)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		//加write是避免退出时，tty没有关闭
-		tty.Write([]byte("exit"))
-		err := tty.Close()
-		if err != nil {
-			slog.Error("tty close error", "err", err)
-			return
-		}
+	defer tty.Close()
+
+	waitCh := make(chan error, 1)
+	go func() {
+		waitCh <- e.cmd.Wait()
 	}()
 
 	if options.Tty && options.TerminalSizeQueue != nil {
@@ -75,9 +80,22 @@ func (e LocalExecutor) StreamWithContext(ctx context.Context, options remotecomm
 	}()
 
 	select {
+	case err := <-waitCh:
+		return err
 	case <-ctx.Done():
 		if e.cmd.Process != nil {
-			e.cmd.Process.Kill()
+			if err := e.cmd.Process.Kill(); err != nil {
+				slog.Warn("kill local command failed", "command", command, "args", args, "pid", e.cmd.Process.Pid, "err", err)
+			}
+		}
+		_ = tty.Close()
+		select {
+		case err := <-waitCh:
+			if err != nil {
+				slog.Debug("local command exited after context cancellation", "command", command, "args", args, "err", err)
+			}
+		case <-time.After(5 * time.Second):
+			slog.Warn("timed out waiting for local command after kill", "command", command, "args", args)
 		}
 		return ctx.Err()
 	}

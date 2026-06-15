@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	ut "github.com/go-playground/universal-translator"
-	"github.com/go-playground/validator/v10"
 	consoleShell "github.com/w7panel/w7panel/app/application/console"
 	controller2 "github.com/w7panel/w7panel/app/application/http/controller"
 	"github.com/w7panel/w7panel/common/helper"
@@ -17,12 +15,11 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	appctl "github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/w7panel/w7panel/common/service/k8s/core"
-	gpustack "github.com/w7panel/w7panel/common/service/k8s/gpu/gpustack"
+	"github.com/w7panel/w7panel/common/service/k8s/gpu/gpustack"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	"github.com/w7panel/w7panel/common/service/k8s/mcp"
 	"github.com/w7panel/w7panel/common/service/k8s/shell"
-	"github.com/w7panel/w7panel/common/service/s3"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
@@ -35,17 +32,16 @@ type Provider struct {
 }
 
 func (p Provider) Register(httpServer *httpserver.Server, console console.Console) {
-
 	console.RegisterCommand(new(consoleShell.Goshell))
 	console.RegisterCommand(new(consoleShell.K8sCheckResource))
 	console.RegisterCommand(new(consoleShell.IngressUpgrade))
 	console.RegisterCommand(new(consoleShell.MetricsInstall))
 	console.RegisterCommand(new(consoleShell.UninstallStorePanel)) //删除商店安装的面板
 	console.RegisterCommand(new(consoleShell.DomainParseConfig))   //域名解析
-	console.RegisterCommand(new(consoleShell.Build))               //临时测试
-	console.RegisterCommand(new(consoleShell.BeianCheck))          //备案检查
-	console.RegisterCommand(new(consoleShell.TestUploadChunk))     // 测试分片上传功能
-	p.RegisterValidateRule()
+	console.RegisterCommand(new(consoleShell.Build))
+	console.RegisterCommand(new(consoleShell.BeianCheck))      //备案检查
+	console.RegisterCommand(new(consoleShell.TestUploadChunk)) // 测试分片上传功能
+
 	p.RegisterHttpRoutes(httpServer)
 	console2.SetConsoleApi(facade.GetConfig().GetString("app.console_base_url"))
 	if helper.IsLocalMock() {
@@ -55,7 +51,6 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 		slog.Error("同步自有镜像配置失败", "error", err)
 	}
 
-	// p.CRD() //upgrade.sh 中处理
 	if facade.GetConfig().GetBool("longhorn.watch") {
 
 		go longhorn.OnStart()
@@ -65,11 +60,6 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 		go shell.ShellWatch()
 	}
 
-	// if facade.GetConfig().GetBool("higress.watch") {
-
-	// 	go higress.Watch()
-	// }
-	// go converter.ConvertOpenApiToSchema()
 	if facade.GetConfig().GetBool("clean.enabled") {
 
 		go p.cleanS3()
@@ -93,7 +83,6 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	}
 
 	go k8s.CheckLogo()
-	// go k3k.SyncAgentIngress()
 	go higress.LoadBkConfig()
 
 }
@@ -146,36 +135,6 @@ func (p Provider) syncSelfImageConfigMap() error {
 	return err
 }
 
-func (p Provider) RegisterValidateRule() {
-	if v, ok := facade.GetValidator().Engine().(*validator.Validate); ok {
-		v.RegisterValidation("id", func(fl validator.FieldLevel) bool {
-			if id, ok := fl.Field().Interface().(uint); ok {
-				if id > 0 {
-					return true
-				}
-			}
-
-			return false
-		})
-
-		v.RegisterValidation("page", func(fl validator.FieldLevel) bool {
-			if page, ok := fl.Field().Interface().(uint); ok {
-				if page > 0 {
-					return true
-				}
-			}
-
-			return false
-		})
-		v.RegisterTranslation("page", facade.GetTranslator(), func(ut ut.Translator) error {
-			return ut.Add("page", "{0} 格式错误", true) // see universal-translator for details
-		}, func(ut ut.Translator, fe validator.FieldError) string {
-			t, _ := ut.T("page", fe.Field())
-			return t
-		})
-	}
-}
-
 func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	webdavMethods := []string{"PROPFIND", "PROPPATCH", "MKCOL", "COPY", "MOVE", "LOCK", "UNLOCK", "LINK", "UNLINK", "GET", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH", "POST"}
 	server.RegisterRouters(func(engine *gin.Engine) {
@@ -214,16 +173,15 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.PUT("/mountfiles", middleware.Auth{}.Process, controller2.Pid{}.UpdateMountFile)                                    //更新挂载文件列表                                      // 获取工作负载挂载文件
 			localApiGroup.DELETE("/mountfiles", middleware.Auth{}.Process, controller2.Pid{}.DeleteMountFile)                                 //删除挂载文件
 			localApiGroup.PUT("/mountfiles/chmod", middleware.Auth{}.Process, controller2.Pid{}.ChmodMountFile)                               //修改挂载文件权限
-			// localApiGroup.GET("/pwd", middleware.Auth{}.Process, controller2.PodExec{}.GetPid)             //获取所在pod和pid
-			localApiGroup.GET("/nodepid", middleware.Auth{}.Process, controller2.PodExec{}.GetNodePid) //获取所在pod和pid
+			localApiGroup.GET("/nodepid", middleware.Auth{}.Process, controller2.PodExec{}.GetNodePid)                                        //获取所在pod和pid
 
-			localApiGroup.POST("/yaml", middleware.Auth{}.Process, controller2.Yaml{}.ApplyYamlOld) // 直接提交yaml
-			localApiGroup.PUT("/rollback", middleware.Auth{}.Process, controller2.Yaml{}.Rollback)  // 回滚资源
-			// localApiGroup.POST("/kcompose", middleware.Auth{}.Process, controller2.Yaml{}.ApplyDockerCompose)   // 直接提交yaml
+			localApiGroup.POST("/yaml", middleware.Auth{}.Process, controller2.Yaml{}.ApplyYamlOld)                // 直接提交yaml
+			localApiGroup.PUT("/rollback", middleware.Auth{}.Process, controller2.Yaml{}.Rollback)                 // 回滚资源
 			localApiGroup.POST("/kcompose", middleware.Auth{}.Process, controller2.Yaml{}.ConvertDockerComposeOld) // 转化kompose
 			localApiGroup.POST("/pinyin", middleware.Auth{}.Process, controller2.Util{}.Pinyin)                    // pinyin
 			localApiGroup.GET("/dnsip", middleware.Auth{}.Process, controller2.Util{}.DnsIp)
 			localApiGroup.GET("/dns-cname", middleware.Auth{}.Process, controller2.Util{}.DnsCName)
+			localApiGroup.GET("/dns/info", middleware.Auth{}.Process, controller2.DNS{}.Info)
 			localApiGroup.GET("/dns/zones", middleware.Auth{}.Process, controller2.DNS{}.Zones)
 			localApiGroup.POST("/dns/zones", middleware.Auth{}.Process, controller2.DNS{}.CreateZone)
 			localApiGroup.DELETE("/dns/zones/:domain", middleware.Auth{}.Process, controller2.DNS{}.DeleteZone)
@@ -252,7 +210,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			localApiGroup.Any("/proxy-url/", controller2.Proxy{}.ProxyAddr)
 
-			//获取需要删除的副本
 			localApiGroup.GET("/longhorn/need-delete-replica", middleware.Auth{}.Process, controller2.Longhorn{}.GetNeedDeleteReplicas)
 			localApiGroup.GET("/longhorn/volumes/status", middleware.Auth{}.Process, controller2.Longhorn{}.GetVolumesStatus)
 			localApiGroup.POST("/longhorn/install", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.Install)
@@ -284,9 +241,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			gpuGroup.GET("/node/devices", controller2.Gpu{}.NodesDevices)
 			gpuGroup.POST("/gpustack/worker", controller2.Gpu{}.CreateGpuStackWorker)
 		}
-		// engine.Handle("GET", "/panel-api/v1/files/webdav-agent/:pid/agent/etc/passwd", middleware.Auth{}.Process, middleware.CacheResponseWithExpire(time.Minute*5), controller2.Webdav{}.HandlePid)
 		for _, method := range webdavMethods {
-			// engine.Handle(method, "/panel-api/v1/files/webdav/*path", middleware.Auth{}.Process, controller2.Webdav{}.Handle)
 			engine.Handle(method, "/panel-api/v1/files/webdav-agent/:pid/subagent/:subpid/agent/*path", middleware.Auth{}.Process, controller2.Webdav{}.HandlePidSubPid)
 
 			engine.Handle(method, "/panel-api/v1/files/webdav-agent/:pid/agent/*path", middleware.Auth{}.Process, controller2.Webdav{}.HandlePid)
@@ -339,10 +294,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	})
 }
 
-func (p Provider) RegisterS3Server(server *httpserver.Server) {
-	s3.Init(facade.Config.GetString("s3.base_dir"))
-}
-
 func (p Provider) cleanS3() {
 	sen := facade.Config.GetDuration("clean.interval")
 	ticker := time.NewTicker(sen)
@@ -350,9 +301,6 @@ func (p Provider) cleanS3() {
 
 	for {
 		select {
-		// default:
-		// 	slog.Info("Mrunning", runtime.NumGoroutine())
-		// 	time.Sleep(1 * time.Second)
 		case <-quit:
 			ticker.Stop()
 			return

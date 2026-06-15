@@ -14,7 +14,6 @@ import (
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 )
 
-// username password register
 type Site struct {
 	console2.Abstract
 }
@@ -27,9 +26,7 @@ type siteOption struct {
 	Namespace         string
 }
 
-// ./runtime/main site:register --thirdPartyCDToken=qEINzTKqtPUYKi7f --host=w7job.test.w7.com --releaseName=app-nfohievs0w --deploymentName=w7-pros-28692-app-nfohievs0w --namespace=default
 var sitero = siteOption{}
-var stopCh = make(chan struct{})
 
 func (c Site) GetName() string {
 	return "site:register"
@@ -40,7 +37,6 @@ func (c Site) Configure(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&sitero.Host, "host", "", "域名")
 	cmd.Flags().StringVar(&sitero.ReleaseName, "releaseName", "", "安装name")
 	cmd.Flags().StringVar(&sitero.DeploymentName, "deploymentName", "", "deployment名字")
-	// cmd.Flags().StringVar(&sitero.ContainerName, "containerName", "", "deployment名字")
 	cmd.Flags().StringVar(&sitero.Namespace, "namespace", "", "namespace")
 }
 

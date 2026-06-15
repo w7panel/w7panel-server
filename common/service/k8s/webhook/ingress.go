@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
@@ -132,7 +131,7 @@ func (m *ResourceMutator) handleIngressDelete(client client.Client, ingress *net
 		if secretName != "" {
 			// 检查是否有其他 Ingress 引用了该 Secret
 			if isSecretReferencedByOtherIngress(client, ingress, secretName) {
-				fmt.Printf("Secret %s/%s is still referenced by other Ingresses, skipping deletion\n", ingress.Namespace, secretName)
+				slog.Info("secret is still referenced by other ingresses, skipping deletion", "namespace", ingress.Namespace, "secret", secretName)
 				continue
 			}
 			delSecret := &corev1.Secret{
@@ -213,33 +212,4 @@ func isSecretReferencedByOtherIngress(clientset client.Client, deletedIngress *n
 	}
 
 	return false
-}
-
-// 解析白名单数据
-
-// 检查域名是否在白名单中
-func isDomainInWhiteList(host string, whiteList []DomainWhiteListItem) bool {
-	whiteListCount := len(whiteList)
-	disableCount := 0
-	for _, item := range whiteList {
-		// 跳过禁用的项
-		if item.Disabled {
-			disableCount++
-			continue
-		}
-
-		// 检查域名是否匹配
-		if item.Prefix == "*." {
-			// 检查域名是否是白名单域名的子域名
-			if strings.HasSuffix(host, "."+item.Domain) || host == item.Domain {
-				return true
-			}
-		} else {
-			// 精确匹配
-			if host == item.Domain {
-				return true
-			}
-		}
-	}
-	return disableCount == whiteListCount
 }

@@ -20,11 +20,7 @@ import (
 
 const (
 	FounderPermissionName = "k3k.permission.founder"
-<<<<<<< HEAD
-	AdminPermissionName   = "k3k.permission.admin"
-=======
 	SuperPermissionName   = "k3k.permission.super"
->>>>>>> a5aef1523b398fa3f98ec80133475e05e6c4a78f
 	NormalPermissionName  = "k3k.permission.normal"
 )
 
@@ -73,24 +69,12 @@ func ResolveForServiceAccount(ctx context.Context, sdk *k8s.Sdk, sa *corev1.Serv
 	name := annotations[k3ktypes.W7_MENU_NAME]
 	if name == "" {
 		if annotations[k3ktypes.W7_MENU] != "" || annotations["w7.cc/api"] != "" {
-<<<<<<< HEAD
 			return FromServiceAccount(sa), nil
-=======
-			p := FromServiceAccount(sa)
-			if len(p.Spec.API) == 0 {
-				_ = inheritAPIFromRole(ctx, sdk, saRole(sa), p)
-			}
-			return p, nil
->>>>>>> a5aef1523b398fa3f98ec80133475e05e6c4a78f
 		}
 		return nil, fmt.Errorf("serviceaccount %s 未关联权限", sa.Name)
 	}
 	p, err := Get(ctx, sdk, name)
 	if err == nil {
-<<<<<<< HEAD
-=======
-		_ = inheritAPIFromParent(ctx, sdk, p)
->>>>>>> a5aef1523b398fa3f98ec80133475e05e6c4a78f
 		return p, nil
 	}
 	if errors.IsNotFound(err) && name == FounderPermissionName {
@@ -99,61 +83,6 @@ func ResolveForServiceAccount(ctx context.Context, sdk *k8s.Sdk, sa *corev1.Serv
 	return nil, err
 }
 
-<<<<<<< HEAD
-=======
-func inheritAPIFromParent(ctx context.Context, sdk *k8s.Sdk, p *configv1alpha1.Permission) error {
-	if sdk == nil || p == nil || len(p.Spec.API) > 0 || p.Spec.ParentPermission == "" {
-		return nil
-	}
-	parent, err := Get(ctx, sdk, p.Spec.ParentPermission)
-	if err != nil {
-		return err
-	}
-	p.Spec.API = parent.Spec.API
-	return nil
-}
-
-func inheritAPIFromRole(ctx context.Context, sdk *k8s.Sdk, role string, p *configv1alpha1.Permission) error {
-	name := permissionNameForRole(role)
-	if name == "" || sdk == nil || p == nil || len(p.Spec.API) > 0 {
-		return nil
-	}
-	parent, err := Get(ctx, sdk, name)
-	if err != nil {
-		return err
-	}
-	p.Spec.API = parent.Spec.API
-	return nil
-}
-
-func permissionNameForRole(role string) string {
-	switch role {
-	case "founder":
-		return FounderPermissionName
-	case "super":
-		return SuperPermissionName
-	default:
-		return NormalPermissionName
-	}
-}
-
-func saRole(sa *corev1.ServiceAccount) string {
-	if sa == nil {
-		return "normal"
-	}
-	if role := sa.GetAnnotations()[k3ktypes.W7_ROLE]; role != "" {
-		return role
-	}
-	if role := sa.GetLabels()[k3ktypes.W7_ROLE]; role != "" {
-		return role
-	}
-	if mode := sa.GetLabels()["w7.cc/user-mode"]; mode != "" {
-		return mode
-	}
-	return "normal"
-}
-
->>>>>>> a5aef1523b398fa3f98ec80133475e05e6c4a78f
 func RBACRoleNameForServiceAccount(ctx context.Context, sdk *k8s.Sdk, sa *corev1.ServiceAccount) (string, error) {
 	name := sa.GetAnnotations()[k3ktypes.W7_MENU_NAME]
 	if name == "" {

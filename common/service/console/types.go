@@ -19,17 +19,6 @@ type CouponCode struct {
 	Code string `json:"code"`
 }
 
-/*
-*
-
-	'canBuy' => $canBuy,
-	                   'needCheckFinish' => true,
-	                   'needCheckAfter' => false,
-	                   'orderSn' => $k3kOrder->ip_order_sn,
-	                   'orderId' => $k3kOrder->ip_order_id,
-	                   "error" => "有未验收的订单，请先完成验收后再购买资源包",
-	                   "goBtn" => "去验收"
-*/
 type LastPaidOrder struct {
 	CanBuy          bool     `json: "canBuy"`
 	NeedCheckFinish bool     `json: "needCheckFinish"`

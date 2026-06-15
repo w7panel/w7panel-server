@@ -55,11 +55,8 @@ func TestPodExec_KubectlCp(t *testing.T) {
 			// err := copyOptions.Run()
 
 			if err != nil {
-				// print(err.Error() + "--------s")
-				panic(err)
-				t.Error(err)
+				t.Fatal(err)
 			}
-			// print(out.String() + "\n")
 		})
 	}
 }

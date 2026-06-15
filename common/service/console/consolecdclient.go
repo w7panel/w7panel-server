@@ -17,8 +17,6 @@ import (
 
 var consoleApi = "https://console.w7.cc"
 
-// var consoleApi = "http://172.16.1.116:9004"
-
 type AppSecret struct {
 	AppId     string `json:"app_id"`
 	AppSecret string `json:"app_secret"`
@@ -328,10 +326,7 @@ func (c *ConsoleCdClient) CreateLicenseSiteZpk(urlValues map[string]string) (*Li
 	return result, nil
 }
 
-/*
-refreshToken 并且["refresh" => true] 是否是true
-*/
-
+// TokenRefreshResponse is returned by the console token refresh API.
 type TokenRefreshResponse struct {
 	Refresh bool   `json:"refresh"`
 	Message string `json:"message"`

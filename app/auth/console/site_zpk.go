@@ -10,7 +10,6 @@ import (
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 )
 
-// username password register
 type SiteZpk struct {
 	console2.Abstract
 }
@@ -25,7 +24,6 @@ type siteZpkOption struct {
 	Namespace         string
 }
 
-// ./runtime/main site:register-zpk --thirdPartyCDToken=qEINzTKqtPUYKi7f --siteIdentifie=test.txt --host=w7job.test.w7.com --releaseName=app-nfohievs0w --appName=w7-pros-28692-app-nfohievs0w --namespace=default
 var siteroZpk = siteZpkOption{}
 
 func (c SiteZpk) GetName() string {
@@ -50,7 +48,6 @@ func (c SiteZpk) Handle(cmd *cobra.Command, args []string) {
 	c.registerSite()
 }
 
-// 检查TLS握手是否成功
 func (c SiteZpk) registerSite() {
 
 	slog.Info("证书验证成功，开始注册站点...")

@@ -85,13 +85,6 @@ func (c *OauthClient) GetUserInfo(code string) (*service.ResultAccessToken, *ser
 	return result, userInfo, nil
 }
 
-// func (c *OauthClient) UnBind() error {
-// 	config, _ := c.repo.Get()
-// 	config.AccessToken = ""
-// 	config.ExpireTime = 0
-// 	return c.repo.Set(config)
-// }
-
 func DefaultClient(debug bool) *w7.Client {
 	// debug = true
 	userAgent, ok := os.LookupEnv("USER_AGENT")

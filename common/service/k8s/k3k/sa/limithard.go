@@ -27,10 +27,6 @@ func NewLimitRangeWrapper(sa *v1.ServiceAccount) LimitHardWrapper {
 	return LimitHardWrapper{ServiceAccount: sa}
 }
 
-// func (l *LimitHardWrapper) GetNamespace() string {
-// 	return l.Namespace
-// }
-
 func (l *LimitHardWrapper) GetName() string {
 	return l.Name
 }

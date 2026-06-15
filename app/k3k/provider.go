@@ -16,22 +16,18 @@ type Provider struct {
 
 func (p Provider) Register(httpServer *httpserver.Server, console console.Console) {
 
-	console.RegisterCommand(new(consoleShell.ClusterUpgrade))
 	console.RegisterCommand(new(consoleShell.QxUpgrade))
 	console.RegisterCommand(new(consoleShell.K3kOrderReturnCheck))    //处理有退款记录的用户
 	console.RegisterCommand(new(consoleShell.K3kOrderReturnCheckOne)) //处理有退款记录的用户one
 
 	p.RegisterHttpRoutes(httpServer)
-	// if facade.Config.GetBool("k3k.watch") {
-	// 	go k3kapi.Watch()
-	// }
+
 	if helper.IsChildAgent() {
 		go k3k.SyncMicroApp()
 	}
 }
 
 func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
-
 	server.RegisterRouters(func(engine *gin.Engine) {
 		k3kGroup := engine.Group("/panel-api/v1/k3k") //.Use(middleware.Cors{}.Process)
 		{

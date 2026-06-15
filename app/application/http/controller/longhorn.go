@@ -173,11 +173,7 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 	self.JsonResponseWithoutError(http, result)
 }
 
-/*
-*
-
-	扩容卷
-*/
+// Attach attaches a Longhorn volume.
 func (self Longhorn) Attach(http *gin.Context) {
 	// {"hostId":"server1","disableFrontend":true,"AttachedBy":"","attacherType":"","AttachmentID":"longhorn-ui"}
 	type VolumeAttach struct {

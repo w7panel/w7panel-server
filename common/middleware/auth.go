@@ -22,15 +22,7 @@ var (
 
 type Auth struct {
 	middleware.Abstract
-	role string
 }
-
-func NewAuth(role string) Auth {
-	auth := Auth{role: role}
-	return auth
-}
-
-// var test401 = false
 
 func (self Auth) Process(ctx *gin.Context) {
 
@@ -42,25 +34,6 @@ func (self Auth) Process(ctx *gin.Context) {
 		ctx.Next()
 		return
 	}
-	// if ctx.Query("test401") == "1" {
-	// 	test401 = true
-	// }
-	// if test401 {
-	// 	test401 = false
-	// 	ctx.AbortWithStatusJSON(401, gin.H{
-	// 		"code": 401,
-	// 		"msg":  "请登录",
-	// 	})
-	// 	return
-	// }
-
-	// 判断是否accept application/json
-	// if !strings.Contains(ctx.Request.Header.Get("Accept"), "application/json") && ctx.Request.Method == "GET" && ctx.Request.URL.Path != "/" {
-	// 	indexHtml, _ := Asset.ReadFile("asset/index.html")
-	// 	ctx.Data(http2.StatusOK, "text/html; charset=UTF-8", indexHtml)
-	// 	return
-	// }
-	// slog.Info("auth middleware request url: ", ctx.Request.URL)
 
 	bearertoken := self.getToken(ctx)
 	if bearertoken == "" {
@@ -71,13 +44,6 @@ func (self Auth) Process(ctx *gin.Context) {
 		return
 	}
 	k8sToken := k8s.NewK8sToken(bearertoken)
-	if self.role != "" {
-		// if k8sToken.Role() != self.role {
-		// 	//没有权限请求
-		// 	ctx.AbortWithStatus(403)
-		// 	return
-		// }
-	}
 	if k8sToken.IsCacheToken() {
 		if saName, err := k8sToken.GetSaName(); err == nil {
 			ctx.Set("username", saName)

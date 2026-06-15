@@ -1,8 +1,9 @@
-# .cnb.yml
 1.1.*:
   tag_push:
     - env:
-        - IMAGE_REPOSITORY=ccr.ccs.tencentyun.com/afan-public/w7panel1
+        - KO_DEFAULTBASEIMAGE=ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui
+        - KO_DOCKER_REPO=ccr.ccs.tencentyun.com/afan-public/w7panel-dev
+        # export KO_DEFAULTBASEIMAGE=ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui && export KO_DOCKER_REPO=ccr.ccs.tencentyun.com/afan-public/w7panel 
       imports:
         - https://cnb.cool/i0358/mykey/-/blob/main/218.yml
         - https://cnb.cool/i0358/mykey/-/blob/main/tencent.yml
@@ -16,16 +17,17 @@
        
         - name: upzip
           script: cd ./kodata/ && unzip -o ./kui.zip
-        # - name: unzipwebdav
-        #   script: cd ./kodata/plugin && unzip -o ./codeblitz.zip
+        - name: unzipwebdav
+          script: cd ./kodata/plugin && unzip -o ./codeblitz.zip
         - name: logo
           script: mv ./kodata/logo.png ./kodata/assets/logo.png
         - name: login
-          script: /root/go/bin/ko login ccr.ccs.tencentyun.com -u ${TENCENT_DOCKER_USERNAME} -p ${TENCENT_DOCKER_PASSWORD}
-
+          script: /root/go/bin/ko login docker.cnb.cool -u cnb -p ${CNB_TOKEN}
+        # - name: build-dev
+        #   script: export KO_DOCKER_REPO=ccr.ccs.tencentyun.com/afan-public/w7panel-dev && export KO_DEFAULTBASEIMAGE=ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui && /root/go/bin/ko build --bare --tags=${CNB_BRANCH} --tag-only --sbom=none --platform=all
           # 构建镜像，并推送到镜像仓库
         - name: build
-          script: export KO_DOCKER_REPO=ccr.ccs.tencentyun.com/afan-public/w7panel1 && export KO_DEFAULTBASEIMAGE=ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui && /root/go/bin/ko build --bare --tags=${CNB_BRANCH} --tag-only --sbom=none --platform=all
+          script: /root/go/bin/ko login ccr.ccs.tencentyun.com -u ${TENCENT_DOCKER_USERNAME} -p ${TENCENT_DOCKER_PASSWORD} && export KO_DOCKER_REPO=ccr.ccs.tencentyun.com/afan-public/w7panel1 && export KO_DEFAULTBASEIMAGE=ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui && /root/go/bin/ko build --bare --tags=${CNB_BRANCH} --tag-only --sbom=none --platform=all
 
         # - name: publish
         #   script: echo $HELM_KUBECAFILE_BASE64 | base64 -d >/tmp/ca.crt && ./publish.sh
@@ -33,7 +35,9 @@
 v1.1.*:
   tag_push:
     - env:
-        - IMAGE_REPOSITORY=docker.cnb.cool/i0358/zpk
+        - KO_DEFAULTBASEIMAGE=ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui
+        - KO_DOCKER_REPO=ccr.ccs.tencentyun.com/afan-public/w7panel-dev
+        # export KO_DEFAULTBASEIMAGE=ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui && export KO_DOCKER_REPO=ccr.ccs.tencentyun.com/afan-public/w7panel 
       imports:
         - https://cnb.cool/i0358/mykey/-/blob/main/218.yml
       docker:
@@ -44,12 +48,20 @@ v1.1.*:
           - /root/.cache:read-write
       stages:
        
-        - name: upzip
-          script: cd ./kodata/ && unzip -o ./kui.zip
+        - name: build-ui
+          image: node:20
+          script: |
+            set -eu
+            rm -rf /tmp/w7panel-ui
+            git clone --depth 1 --branch dev-v1-k3k-crd https://github.com/w7panel/w7panel-ui /tmp/w7panel-ui
+            cd /tmp/w7panel-ui
+            npm install
+            npm run build
+            cp -a dist/. "${CNB_BUILD_WORKSPACE}/kodata/"
         # - name: unzipwebdav
         #   script: cd ./kodata/plugin && unzip -o ./codeblitz.zip
         - name: logo
-          script: mv ./kodata/logo.png ./kodata/assets/logo.png
+          script: mv ./kodata/logo.png ./kodata/assets/logo.png && cp ./kodata/index.html ./kodata/panel.html
         - name: login
           script: /root/go/bin/ko login docker.cnb.cool -u cnb -p ${CNB_TOKEN}
         # - name: build-dev
@@ -57,7 +69,6 @@ v1.1.*:
           # 构建镜像，并推送到镜像仓库
         - name: build
           script:  export KO_DOCKER_REPO=docker.cnb.cool/i0358/zpk && export KO_DEFAULTBASEIMAGE=ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui && /root/go/bin/ko build --bare --tags=${CNB_BRANCH} --tag-only --sbom=none --platform=all
-
 
         # - name: publish
         #   script: echo $HELM_KUBECAFILE_BASE64 | base64 -d >/tmp/ca.crt && ./publish.sh          

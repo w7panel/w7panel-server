@@ -42,24 +42,12 @@ func (l *licenseVerify) IsTeam(name string) bool {
 	return false
 }
 
-// var LicenseVerify sync.Map
-
 var LicenseVerify = licenseVerify{}
 
 // company team类型 取ServiceAccount 其中一个
 var MainW7Config *W7Config
 
 var CurrentCity string
-
-// func IsLicenseVerify(name string) bool {
-// 	return LicenseVerify.IsCompany(name) || LicenseVerify.IsTeam(name)
-// }
-// func IsCompany(name string) bool {
-// 	return LicenseVerify.IsCompany(name)
-// }
-// func IsTeam(name string) bool {
-// 	return LicenseVerify.IsTeam(name)
-// }
 
 func SetVerifyType(name, verifyType string) {
 	LicenseVerify.Store(name, verifyType)

@@ -45,34 +45,6 @@ func Prepare(sdk *k8s.Sdk) error {
 	return nil
 }
 
-// func WebHookSetupManager(sdk *k8s.Sdk) (webhook.Server, error) {
-// 	if err := ensureCertificates(sdk.GetNamespace()); err != nil {
-// 		return nil, err
-// 	}
-// 	caBound, err := os.ReadFile("/tmp/k8s-webhook-server/serving-certs/tls.crt")
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	// sdk := k8s.NewK8sClient().Sdk
-// 	mutete := NewWebHookMutate(sdk)
-// 	err = mutete.CreateOrUpdate(caBound, svcName, sdk.GetNamespace())
-// 	if err != nil {
-// 		slog.Error("create or update webhook failed")
-// 		return nil, err
-// 	}
-// 	hookServer := webhook.NewServer(webhook.Options{
-// 		Host:    "0.0.0.0",
-// 		Port:    9443,
-// 		CertDir: certDir,
-// 		// CertFile: "/tmp/k8s-webhook-server/serving-certs/tls.crt",
-// 		// KeyFile:  "/tmp/k8s-webhook-server/serving-certs/tls.key",
-// 		//CertFile: "./tmp/k8s-webhook-server/serving-certs/tls.crt",
-// 		//KeyFile:  "./tmp/k8s-webhook-server/serving-certs/tls.key",
-// 	})
-
-// 	return hookServer, nil
-// }
-
 // ResourceMutator 处理各种资源的 webhook
 type ResourceMutator struct {
 	decoder admission.Decoder
@@ -87,13 +59,6 @@ func NewResourceMutator(client client.Client, sdk *k8s.Sdk) *ResourceMutator {
 		client:  client,
 		sdk:     sdk,
 	}
-}
-
-// DomainWhiteListItem 表示白名单中的一个域名项
-type DomainWhiteListItem struct {
-	Prefix   string `json:"prefix"`
-	Domain   string `json:"domain"`
-	Disabled bool   `json:"disabled"`
 }
 
 /*
@@ -116,8 +81,8 @@ func (m *ResourceMutator) Handle(ctx context.Context, req admission.Request) adm
 		return m.handleDaemonset(ctx, req)
 	case "Ingress":
 		return m.handleIngress(ctx, req)
-	case "VirtualClusterPolicy":
-		return m.handleVirtualClusterPolicy(ctx, req)
+	// case "VirtualClusterPolicy":
+	// 	return m.handleVirtualClusterPolicy(ctx, req)
 	case "Pod":
 		return m.handlePod(ctx, req)
 	case "Secret":
@@ -144,9 +109,9 @@ func (m *ResourceMutator) Handle(ctx context.Context, req admission.Request) adm
 		if req.Kind.Group == "apps.kubeblocks.io" {
 			return m.handleKubeblocksCluster(ctx, req)
 		}
-		if req.Kind.Group == "k3k.io" {
-			return m.handleK3kCluster(ctx, req)
-		}
+		// if req.Kind.Group == "k3k.io" {
+		// 	return m.handleK3kCluster(ctx, req)
+		// }
 		return admission.Allowed("不需要修改的资源类型")
 	case "ServiceAccount":
 		return m.handleServiceAccount(ctx, req)

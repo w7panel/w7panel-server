@@ -29,6 +29,8 @@ const (
 	soaRetry              = 1800
 	soaExpire             = 86400
 	soaMinimum            = 1
+	CoreDNSMinVersion     = "v1.12.2"
+	CoreDNSFallthroughUnsupportedMessage = "当前 CoreDNS 的版本低于 v1.12.2，暂不支持该功能，请及时升级版本。"
 )
 
 var (
@@ -56,6 +58,14 @@ type ServerStatus struct {
 	ServiceName string   `json:"serviceName"`
 	ServiceType string   `json:"serviceType,omitempty"`
 	ExternalIPs []string `json:"externalIPs"`
+}
+
+type Info struct {
+	Image                     string `json:"image,omitempty"`
+	Version                   string `json:"version,omitempty"`
+	FileFallthroughSupported  bool   `json:"fileFallthroughSupported"`
+	FileFallthroughMinVersion string `json:"fileFallthroughMinVersion"`
+	FileFallthroughMessage    string `json:"fileFallthroughMessage,omitempty"`
 }
 
 func NormalizeDomain(domain string) (string, error) {

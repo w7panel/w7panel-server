@@ -97,11 +97,13 @@ func filterMicroapp(item *microapp.MicroApp, role string) {
 	if item.Labels == nil {
 		item.Labels = map[string]string{}
 	}
+	item.Labels["microapp.w7.cc/from"] = "root"
+	item.Name = item.Name + "-root"
 	if role == "founder" {
 		return
 	}
-	item.Labels["microapp.w7.cc/from"] = "root"
-	item.Name = item.Name + "-root"
+	// item.Labels["microapp.w7.cc/from"] = "root"
+	// item.Name = item.Name + "-root"
 	item.Spec.Bindings = lo.Filter(item.Spec.Bindings, func(bindings microapp.Bindings, index int) bool {
 		if role == "super" { //super 管理员可以看到所有角色
 			return bindings.Name != "founder"

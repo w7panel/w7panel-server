@@ -27,10 +27,3 @@ func TestVerifyLicenseId(t *testing.T) {
 		t.Errorf("Error: %v", err)
 	}
 }
-
-// func TestVerify(t *testing.T) {
-// 	err := VerifyLicense()
-// 	if err != nil {
-// 		t.Errorf("Error: %v", err)
-// 	}
-// }

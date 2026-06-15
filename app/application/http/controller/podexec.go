@@ -454,6 +454,7 @@ func (self PodExec) KubectlCp(http *gin.Context) {
 
 }
 
+// 根据pod获取pid
 func (self PodExec) GetNodePid(http *gin.Context) {
 
 	token := http.MustGet("k8s_token").(string)

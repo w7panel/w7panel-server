@@ -13,17 +13,6 @@ type Cors struct {
 	middleware.Abstract
 }
 
-type responseWriter struct {
-	gin.ResponseWriter
-	statusCode int
-}
-
-// 实现 WriteHeader 方法来记录状态码
-func (w *responseWriter) WriteHeader(code int) {
-	w.statusCode = code
-	w.ResponseWriter.WriteHeader(code)
-}
-
 func (self Cors) Clear(ctx *gin.Context) {
 	ctx.Header("Access-Control-Allow-Origin", "")
 	ctx.Header("Access-Control-Allow-Headers", "")
@@ -43,15 +32,6 @@ func (self Cors) CorsHandle(ctx *gin.Context) {
 	}
 }
 
-// func (self Cors) CorsWriterHandle(ctx gin.ResponseWriter, host string) {
-// 	// self.Clear(ctx)
-// 	ctx.Header().Set("Access-Control-Allow-Origin", host)
-// 	ctx.Header().Set("Access-Control-Allow-Headers", "Content-Type,AccessToken,X-CSRF-Token, Authorization, Accept")
-// 	ctx.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, PATCH, DELETE, HEAD, OPTIONS")
-// 	ctx.Header().Set("Access-Control-Expose-Headers", self.getAllowHeader())
-// 	ctx.Header().Set("Access-Control-Allow-Credentials", "true")
-// }
-
 func (self Cors) Process(ctx *gin.Context) {
 	// 对于OPTIONS请求，立即处理并返回
 	self.CorsHandle(ctx)
@@ -59,19 +39,8 @@ func (self Cors) Process(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusNoContent)
 		return
 	}
-	// writer := &responseWriter{
-	// 	ResponseWriter: ctx.Writer,
-	// 	statusCode:     http.StatusOK,
-	// }
-
-	// // 替换原来的 ResponseWriter
-	// ctx.Writer = writer
 	// 对于其他请求，先执行后续中间件
 	ctx.Next()
-
-	// 在所有处理完成后检查并设置CORS头
-	// 确保只设置一次，避免重复
-	// ctx.Writer.Header().Get("Access-Control-Allow-Origin")
 
 }
 

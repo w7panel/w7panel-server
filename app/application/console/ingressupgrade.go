@@ -18,16 +18,6 @@ type IngressUpgrade struct {
 	console2.Abstract
 }
 
-type ingressupOption struct {
-	cmd     string
-	srcPath string
-	toPath  string
-	pid     string
-}
-
-// ./runtime/main cluster:register --thirdPartyCDToken=ywA2N3ImkVo0tPOn --registerCluster=true --offlineUrl=http://118.25.145.25:9090 --apiServerUrl=https://118.25.145.25:6443
-var ingressupOp = ingressupOption{}
-
 func (c IngressUpgrade) GetName() string {
 	return "ingress-add-group"
 }

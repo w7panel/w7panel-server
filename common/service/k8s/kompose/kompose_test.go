@@ -31,29 +31,6 @@ services:
 	// sdk := NewSdk("", "", "", "", "", "")
 	// kompose.WithSdk(sdk)
 	result, err := ConvertToK8sYaml(dockerComposerYaml)
-	print(result)
+	assert.Empty(t, result)
 	assert.NotNil(t, err)
 }
-
-// func Test_ApplyAsHelmNew(t *testing.T) {
-// 	dockerComposerYaml := []byte(`version: '3'
-// services:
-//   webapp:
-//     image: nginx
-// `)
-// 	chart, err := ConvertToHelmChart(dockerComposerYaml)
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	sdk := k8s.NewK8sClient()
-// 	helm := k8s.NewHelm(sdk)
-// 	var values = make(map[string]interface{})
-// 	releaseName := "kompose" + uuid.New().String()
-// 	res, err := helm.Install(context.TODO(), chart, values, releaseName, "default")
-
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	assert.NotNil(t, res)
-// }

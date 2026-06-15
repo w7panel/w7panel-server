@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# "microapp升级过需要更新crd"
+kubectl apply -f $KO_DATA_PATH/crds --server-side
+sh $KO_DATA_PATH/shell/migrate-crd-groups.sh
 
 if ! kubectl create -f - <<'EOF'; then
 kind: ConfigMap
@@ -26,7 +29,7 @@ EOF
 
 
 echo "更新higress"
-helm upgrade higress https://cdn.w7.cc/w7panel/charts/higress-2.1.6.tgz \
+helm upgrade higress $KO_DATA_PATH/charts/higress-2.1.6.tgz \
      --namespace higress-system \
      --create-namespace \
      --version v2.1.6 \
@@ -128,9 +131,7 @@ spec:
                                 value: '%REQ(X-Forwarded-Proto)%'
 EOF
 
-# "microapp升级过需要更新crd"
-kubectl apply -f $KO_DATA_PATH/crds --server-side
-sh $KO_DATA_PATH/shell/migrate-crd-groups.sh
+
 
 # echo "升级站点管理"
 # w7panel sitemanager-upgrade --version=1.0.26 --identifie=w7_php --is-agent=true

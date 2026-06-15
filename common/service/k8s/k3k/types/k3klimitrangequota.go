@@ -101,15 +101,6 @@ func (lr *LimitRangeQuota) GetHardSysRequestStorage() *resource.Quantity {
 	return &ret
 }
 
-//	func (lr *LimitRangeQuota) GetExpandStorage() *resource.Quantity {
-//		if lr.Hard != nil {
-//			if v, ok := lr.Hard[ExpandStorageSize]; ok {
-//				return &v
-//			}
-//		}
-//		ret := resource.MustParse("0")
-//		return &ret
-//	}
 func (lr *LimitRangeQuota) CanResizeSysStorage(unUsed resource.Quantity, resizeTo resource.Quantity) bool {
 	currentSysStorage := lr.GetHardSysRequestStorage()
 	cloneResizeTo := resizeTo.DeepCopy()
@@ -199,25 +190,6 @@ func (lr *LimitRangeQuota) GetHardBuyResource() BuyResource {
 		Bandwidth: lr.getBandwidthInt64(),
 	}
 }
-
-// func (lr *LimitRangeQuota) GetHour() int64 {
-// 	quantity := lr.Quantity
-// 	switch lr.Unit {
-// 	case "hour":
-// 		return int64(quantity)
-// 	case "day":
-// 		return int64(quantity) * 24
-// 	case "week":
-// 		return int64(quantity) * 24 * 7
-// 	case "year":
-// 		return int64(quantity) * 30 * 12 *24
-// 	case "month":
-// 		return int64(quantity) * 24 * 30
-
-// 	default:
-// 		return 0
-// 	}
-// }
 
 func (lr *LimitRangeQuota) GetDays() float64 {
 	quantity := lr.Quantity

@@ -19,10 +19,6 @@ func (c UninstallStorePanel) GetName() string {
 	return "uninstall-store-panel"
 }
 
-func (c UninstallStorePanel) Configure(cmd *cobra.Command) {
-
-}
-
 func (c UninstallStorePanel) GetDescription() string {
 	return "执行shell命令"
 }

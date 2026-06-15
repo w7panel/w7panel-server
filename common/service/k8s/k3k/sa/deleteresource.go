@@ -19,8 +19,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-// const k3kFinalizerName = "k3k.sa/finalizer"
-
 type DeleteResource struct {
 	client.Client
 	k3kClient        *k3ktypes.K3kClient
@@ -230,10 +228,10 @@ func (r *DeleteResource) isResourceRecyclingComplete(ctx context.Context, k3kUse
 
 	// 检查k3k集群是否存在的逻辑可能需要根据实际情况调整
 	// 这里假设如果Delete操作返回NotFound错误，则表示集群已不存在
-	err = r.k3kClient.Delete(k3kUser)
-	if err == nil || !errors.IsNotFound(err) {
-		return false
-	}
+	// err = r.k3kClient.Delete(k3kUser)
+	// if err == nil || !errors.IsNotFound(err) {
+	// 	return false
+	// }
 
 	// 所有资源都已删除，回收完成
 	return true

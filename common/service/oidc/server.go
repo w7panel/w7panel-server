@@ -277,6 +277,13 @@ func (s *Server) Issuer(r *http.Request) string {
 	return s.provider.IssuerFromRequest(r)
 }
 
+func (s *Server) ContextWithIssuer(ctx context.Context, r *http.Request) context.Context {
+	if s == nil || r == nil {
+		return ctx
+	}
+	return op.ContextWithIssuer(ctx, s.Issuer(r))
+}
+
 func (s *Server) discoveryIssuer(r *http.Request) string {
 	issuer := s.Issuer(r)
 	parsedIssuer, err := url.Parse(issuer)
@@ -300,16 +307,6 @@ func (s *Server) JWKS() map[string]any {
 		}},
 	}
 }
-
-// 类库默认well-known/openid-configuration.json 不支持前缀 需要单独配置
-// func (s *Server) Discovery(ctx context.Context, r *http.Request) *op.Response {
-
-// 	server, ok := s.legacy.(*legacyServerAdapters)
-// 	if !ok {
-// 		return nil
-// 	}
-// 	return server.Discovery(ct)
-// }
 
 func (s *Server) Discovery(ctx context.Context, r *http.Request) (*op.Response, error) {
 	data := &struct{}{}

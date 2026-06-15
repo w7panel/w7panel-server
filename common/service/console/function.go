@@ -106,29 +106,6 @@ func RefreshCDTokenUseOpenid(saName string) error {
 
 }
 
-// func ReVerifyLicense(w7config *config.W7Config, respo config.W7ConfigRepositoryInterface) error {
-
-// 	license := w7config.License
-// 	if license != nil {
-// 		_, err := VerifyCert(license)
-// 		if err != nil {
-// 			slog.Error("验证证书失败", "error", err)
-// 			config.SetVerifyType(w7config.Name, "normal")
-// 			return err
-// 		}
-
-//			if license != nil && len(license.Subject.Province) > 0 {
-//				// config.LicenseType = license.Subject.Province[0]
-//				config.SetVerifyType(w7config.Name, license.Subject.Province[0])
-//			}
-//			err = respo.Set(w7config)
-//			if err != nil {
-//				return err
-//			}
-//			slog.Info("验证证书成功")
-//		}
-//		return nil
-//	}
 func RefreshCDToken() error {
 	repository := config.NewW7ConfigRepository(k8s.NewK8sClientInner())
 	configs, err := repository.List()

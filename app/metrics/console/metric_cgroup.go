@@ -1,3 +1,5 @@
+//go:build linux
+
 package console
 
 import (
@@ -12,7 +14,6 @@ import (
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 )
 
-// username password register
 type MetricsCgroup struct {
 	console2.Abstract
 }
@@ -21,7 +22,6 @@ type metricsGroupOption struct {
 	Path string
 }
 
-// ./runtime/main cluster:register --thirdPartyCDToken=ywA2N3ImkVo0tPOn --registerCluster=true --offlineUrl=http://118.25.145.25:9090 --apiServerUrl=https://118.25.145.25:6443
 var cro = metricsGroupOption{}
 
 func (c MetricsCgroup) GetName() string {
@@ -29,8 +29,6 @@ func (c MetricsCgroup) GetName() string {
 }
 
 func (c MetricsCgroup) Configure(cmd *cobra.Command) {
-	// username password register
-	//
 	cmd.Flags().StringVar(&cro.Path, "path", "", "path")
 
 }

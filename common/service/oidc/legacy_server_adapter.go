@@ -50,7 +50,3 @@ func (s *legacyServerAdapters) CodeExchange(ctx context.Context, r *op.ClientReq
 	}
 	return op.NewResponse(resp), nil
 }
-
-// func (s *LegacyServer) Discovery(ctx context.Context, r *op.Request[struct{}]) (*op.Response, error) {
-// 	return s.LegacyServer.Discovery(ctx, r)
-// }

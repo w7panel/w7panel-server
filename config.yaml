@@ -94,18 +94,11 @@ log:
       - console
   file:
     driver: file
-    path: ${APP_DIR}runtime/logs/w7panel.log
+    path: w7panel.log
     level: ${LOG_LEVEL-info}
   console:
     driver: console
     level: ${LOG_LEVEL-info}
-database:
-  default:
-    driver: sqlite
-    db_name: ${APP_DIR}w7panel.db
-    charset: utf8mb4
-    show_sql: false
-    prefix: ims_
 k8s:
   config_path: ${KUBECONFIG-./kubeconfig.yaml}
   default_namespace: ${K8S_DEFAULT_NAMESPACE} # 需要同步的namespace
