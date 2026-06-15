@@ -95,6 +95,10 @@ var routeDescriptions = map[string]string{
 	"POST /panel-api/v1/gpu/enabled-gpu":          "开启或关闭 GPU",
 	"POST /panel-api/v1/gpu/install-hami":         "安装 HAMi",
 	"POST /panel-api/v1/gpu/install-gpu-operator": "安装 GPU Operator",
+	"GET /panel-api/v1/gpu/config":                "获取 GPU 配置",
+	"GET /panel-api/v1/gpu/hami/metrics/real":     "获取 HAMi 实时监控指标",
+	"GET /panel-api/v1/gpu/summary":               "获取 GPU 汇总信息",
+	"GET /panel-api/v1/gpu/node/devices":          "获取节点 GPU 设备列表",
 	"POST /panel-api/v1/gpu/gpustack/worker":      "创建 GPUStack Worker",
 
 	"* /panel-api/v1/files/webdav-agent/:pid/subagent/:subpid/agent/*path":   "访问子代理 WebDAV 文件",
@@ -125,18 +129,35 @@ var routeDescriptions = map[string]string{
 	"POST /panel-api/v1/zpk/buildimage/cronjob": "创建镜像构建定时 Job",
 }
 
-func lookupRouteDescription(method string, route string) string {
+func LookupRouteDescription(method string, route string) string {
 	if route == "" {
 		return ""
 	}
-	key := strings.ToUpper(method) + " " + route
-	if description := routeDescriptions[key]; description != "" {
-		return description
+	method = strings.ToUpper(method)
+	routes := []string{route, normalizeRouteDescriptionPath(route)}
+	for _, item := range routes {
+		key := method + " " + item
+		if description := routeDescriptions[key]; description != "" {
+			return description
+		}
+		if description := routeDescriptions["* "+item]; description != "" {
+			return description
+		}
 	}
-	return routeDescriptions["* "+route]
+	return ""
 }
 
-func methodDescription(method string) string {
+func normalizeRouteDescriptionPath(route string) string {
+	parts := strings.Split(route, "/")
+	for i, part := range parts {
+		if strings.HasPrefix(part, ":") || strings.HasPrefix(part, "*") {
+			parts[i] = "*"
+		}
+	}
+	return strings.Join(parts, "/")
+}
+
+func MethodDescription(method string) string {
 	switch strings.ToUpper(method) {
 	case "GET":
 		return "查询"
