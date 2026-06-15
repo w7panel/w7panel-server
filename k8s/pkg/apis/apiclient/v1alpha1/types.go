@@ -19,11 +19,12 @@ type ApiClient struct {
 }
 
 type ApiClientSpec struct {
-	Enabled      *bool  `json:"enabled,omitempty"`
-	ClientID     string `json:"clientId,omitempty"`
-	ClientName   string `json:"clientName,omitempty"`
-	ClientSecret string `json:"clientSecret,omitempty"`
-	TokenType    string `json:"tokenType,omitempty"`
+	Enabled               *bool  `json:"enabled,omitempty"`
+	ClientID              string `json:"clientId,omitempty"`
+	ClientName            string `json:"clientName,omitempty"`
+	ClientSecret          string `json:"clientSecret,omitempty"`
+	TokenType             string `json:"tokenType,omitempty"`
+	TemporaryTokenMinutes *int64 `json:"temporaryTokenMinutes,omitempty"`
 }
 
 type ApiClientStatus struct {

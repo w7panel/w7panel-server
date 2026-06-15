@@ -143,6 +143,27 @@ func TestNormalizeTokenType(t *testing.T) {
 	}
 }
 
+func TestTemporaryTokenMinutes(t *testing.T) {
+	custom := int64(30)
+	tooSmall := int64(0)
+	tooLarge := int64(2000)
+	if got := TemporaryTokenMinutes(nil); got != DefaultTemporaryTokenMinutes {
+		t.Fatalf("nil temporary token minutes = %d, want %d", got, DefaultTemporaryTokenMinutes)
+	}
+	if got := TemporaryTokenMinutes(&custom); got != custom {
+		t.Fatalf("custom temporary token minutes = %d, want %d", got, custom)
+	}
+	if got := TemporaryTokenMinutes(&tooSmall); got != MinTemporaryTokenMinutes {
+		t.Fatalf("too small temporary token minutes = %d, want %d", got, MinTemporaryTokenMinutes)
+	}
+	if got := TemporaryTokenMinutes(&tooLarge); got != MaxTemporaryTokenMinutes {
+		t.Fatalf("too large temporary token minutes = %d, want %d", got, MaxTemporaryTokenMinutes)
+	}
+	if got := TemporaryTokenSeconds(&custom); got != 1800 {
+		t.Fatalf("temporary token seconds = %d, want 1800", got)
+	}
+}
+
 func TestPermanentTokenSecretNameIsStable(t *testing.T) {
 	first := permanentTokenSecretName("appid-demo")
 	second := permanentTokenSecretName("appid-demo")
