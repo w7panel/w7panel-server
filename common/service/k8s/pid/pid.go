@@ -77,7 +77,9 @@ func (p *pid) Handle(param PidParam) (*PidResult, error) {
 		}
 		// clusterPodKey := cacheKey(clusterPod)
 		// val, ok := pidCache.Get(clusterPodKey)
-		clusterPodPid, err := GetContainerPid(daemonsetPod, clusterPod, param.ContainerId, false, p.rootSdk)
+		clusterPodContainerId := clusterPod.Status.ContainerStatuses[0].ContainerID
+		clusterPodPid, err := GetContainerPid(daemonsetPod, clusterPod, clusterPodContainerId, true, p.rootSdk) //20260616 新修改
+		// clusterPodPid, err := GetContainerPid(daemonsetPod, clusterPod, param.ContainerId, false, p.rootSdk) 之前为啥对 //TODO ???
 		if err != nil {
 			return nil, err
 		}
