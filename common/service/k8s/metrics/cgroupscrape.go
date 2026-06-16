@@ -5,7 +5,6 @@ package metrics
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"time"
 
@@ -45,7 +44,7 @@ func StartCroupMetrics() {
 	}
 }
 func collectReport(client sigclient.Client) error {
-	slog.Error("collectReport start")
+	// slog.Error("collectReport start")
 	rs, stat, err := collectMetrics()
 	if err != nil {
 		return err

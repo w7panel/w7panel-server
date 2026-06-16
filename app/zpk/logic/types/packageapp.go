@@ -981,3 +981,7 @@ func (b *PackageApp) GetPanelRegistryServerHost() string {
 func (b *PackageApp) OnlyStatic() bool {
 	return b.Manifest.Application.Type == "front"
 }
+
+func (b *PackageApp) HasHelmUrl() bool {
+	return b.HelmUrl != ""
+}
