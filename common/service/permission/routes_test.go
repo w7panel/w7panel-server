@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TestRoutesFromGinIncludesDescription(t *testing.T) {
+func TestRoutesFromGinReturnsStructuredRoutes(t *testing.T) {
 	routes := RoutesFromGin(gin.RoutesInfo{
 		{
 			Method: "GET",
@@ -23,20 +23,17 @@ func TestRoutesFromGinIncludesDescription(t *testing.T) {
 	})
 
 	expected := map[string]string{
-		"GET /panel-api/v1/example/*":            "获取example",
-		"GET /panel-api/v1/gpu/config":           "获取 GPU 配置",
-		"POST /panel-api/v1/files/webdav-test/*": "测试 WebDAV 文件访问",
+		"GET /panel-api/v1/example/*":            "get",
+		"GET /panel-api/v1/gpu/config":           "get",
+		"POST /panel-api/v1/files/webdav-test/*": "create",
 	}
 	if len(routes) != len(expected) {
 		t.Fatalf("expected %d routes, got %d", len(expected), len(routes))
 	}
 	for _, route := range routes {
 		key := route.Method + " " + route.Path
-		if route.Description != expected[key] {
-			t.Fatalf("expected %s description %q, got %q", key, expected[key], route.Description)
-		}
-		if route.Title != route.Description {
-			t.Fatalf("expected title to match description, got title=%q description=%q", route.Title, route.Description)
+		if route.Verb != expected[key] {
+			t.Fatalf("expected %s verb %q, got %q", key, expected[key], route.Verb)
 		}
 	}
 }

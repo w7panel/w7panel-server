@@ -39,14 +39,12 @@ type OperationLog struct {
 	Method     string    `json:"method"`
 	Path       string    `json:"path"`
 	Route      string    `json:"route"`
-	RouteDesc  string    `json:"route_description"`
 	Params     string    `json:"params,omitempty"`
 	StatusCode int       `json:"status_code"`
 	Success    bool      `json:"success"`
 	DurationMs int64     `json:"duration_ms"`
 	IP         string    `json:"ip"`
 	UserAgent  string    `json:"user_agent"`
-	Message    string    `json:"message"`
 }
 
 type QueryParams struct {
