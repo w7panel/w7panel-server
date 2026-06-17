@@ -5,6 +5,11 @@ for resource in \
   daemonset/longhorn-nfs-installation \
   helmchart/longhorn
 do
+  if ! kubectl -n kube-system get "$resource" >/dev/null 2>&1; then
+    echo "skip missing resource: $resource"
+    continue
+  fi
+
   kubectl -n kube-system label "$resource" \
     app.kubernetes.io/managed-by=Helm \
     --overwrite

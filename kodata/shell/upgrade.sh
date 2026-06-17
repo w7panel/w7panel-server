@@ -107,3 +107,26 @@ w7panel longhornupgrade
 echo "限流配置"
 # apply -f 会覆盖原有配置 所以使用create 
 kubectl create -f $KO_DATA_PATH/yaml/longhorn/cluster-key-rate-limit.yaml || echo "已存在longhorn cluster-key-rate-limit"
+
+# fix 旧版安装longhorn 导致helm 标签丢失
+echo "fix longhorn helm labels"
+
+for resource in \
+  daemonset/longhorn-iscsi-installation \
+  daemonset/longhorn-nfs-installation \
+  helmchart/longhorn
+do
+  if ! kubectl -n kube-system get "$resource" >/dev/null 2>&1; then
+    echo "skip missing resource: $resource"
+    continue
+  fi
+
+  kubectl -n kube-system label "$resource" \
+    app.kubernetes.io/managed-by=Helm \
+    --overwrite
+
+  kubectl -n kube-system annotate "$resource" \
+    meta.helm.sh/release-name=w7panel-longhorn \
+    meta.helm.sh/release-namespace=default \
+    --overwrite
+done
