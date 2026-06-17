@@ -1,4 +1,3 @@
-{{- if not (lookup "helm.cattle.io/v1" "HelmChart" "kube-system" "longhorn") }}
 apiVersion: helm.cattle.io/v1
 kind: HelmChart
 metadata:
@@ -29,4 +28,4 @@ spec:
     global.tolerations[1].key: node.kubernetes.io/storage
     global.tolerations[1].operator: Exists
     global.tolerations[1].effect: NoSchedule
-{{- end }}
+

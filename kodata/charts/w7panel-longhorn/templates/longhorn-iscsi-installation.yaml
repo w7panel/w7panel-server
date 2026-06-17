@@ -1,4 +1,4 @@
-{{- if not (lookup "apps/v1" "DaemonSet" "kube-system" "longhorn-iscsi-installation") }}
+
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -37,4 +37,4 @@ spec:
         image: rancher/mirrored-pause:3.6
   updateStrategy:
     type: RollingUpdate
-{{- end }}
+
