@@ -29,10 +29,12 @@ migrate_resource() {
     for namespace in ${namespaces}; do
         names="$($KUBECTL get "${old_resource}" -n "${namespace}" -o json | jq -r '.items[]?.metadata.name')"
         for name in ${names}; do
-            if [ "${name}" = "longhorn" ]; then
-                echo "skip ${old_resource} namespace/${namespace}/${name}: longhorn old CRD is not migrated"
-                continue
-            fi
+            case "${name}" in
+                longhorn|w7panel-longhorn)
+                    echo "skip ${old_resource} namespace/${namespace}/${name}: longhorn old CRD is not migrated"
+                    continue
+                    ;;
+            esac
 
             if $KUBECTL get "${new_resource}" "${name}" -n "${namespace}" >/dev/null 2>&1; then
                 echo "skip ${old_resource} namespace/${namespace}/${name}: ${new_resource} already exists"

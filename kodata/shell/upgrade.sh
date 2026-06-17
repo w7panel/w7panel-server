@@ -110,25 +110,7 @@ kubectl create -f $KO_DATA_PATH/yaml/longhorn/cluster-key-rate-limit.yaml || ech
 # fix 旧版安装longhorn 导致helm 标签丢失
 echo "fix longhorn helm labels"
 kubectl delete appgroups.w7panel.w7.com/longhorn --wait=false --ignore-not-found
-for resource in \
-  daemonset/longhorn-iscsi-installation \
-  daemonset/longhorn-nfs-installation \
-  helmchart/longhorn
-do
-  if ! kubectl -n kube-system get "$resource" >/dev/null 2>&1; then
-    echo "skip missing resource: $resource"
-    continue
-  fi
 
-  kubectl -n kube-system label "$resource" \
-    app.kubernetes.io/managed-by=Helm \
-    --overwrite
-
-  kubectl -n kube-system annotate "$resource" \
-    meta.helm.sh/release-name=w7panel-longhorn \
-    meta.helm.sh/release-namespace=default \
-    --overwrite
-done
 
 echo "longhorn 升级到面板中"
 w7panel longhornupgrade
