@@ -101,8 +101,7 @@ kubectl get jobs -n default -o json \
     | .metadata.name' \
   | xargs -r kubectl delete job -n default
 
-echo "longhorn 升级到面板中"
-w7panel longhornupgrade
+
 
 echo "限流配置"
 # apply -f 会覆盖原有配置 所以使用create 
@@ -130,3 +129,6 @@ do
     meta.helm.sh/release-namespace=default \
     --overwrite
 done
+
+echo "longhorn 升级到面板中"
+w7panel longhornupgrade
