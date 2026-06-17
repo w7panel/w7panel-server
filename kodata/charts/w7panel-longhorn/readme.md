@@ -36,3 +36,8 @@ kubectl -n longhorn-system patch -p '{"value": "true"}' --type=merge lhs deletin
 # Longhorn
 复查后发现 live 对象还是 1.10.1。原因更具体了：Helm release 记录已经是 1.11.1，后续普通 helm upgrade 做三方 diff 时认为 desired 没变，无法修复这个 live drift。现在需要
   强制替换或直接 patch live HelmChart。
+
+# 地址
+https://charts.longhorn.io/index.yaml
+
+https://github.com/longhorn/charts/releases/download/longhorn-1.12.0/longhorn-1.12.0.tgz
