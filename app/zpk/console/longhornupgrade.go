@@ -2,16 +2,15 @@ package console
 
 import (
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
-	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/types"
-	appv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 	"helm.sh/helm/v3/pkg/release"
-	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 const (
@@ -37,82 +36,41 @@ func (c LonghornUpgrade) Handle(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	groupApi, err := appgroup.NewAppGroupApi(sdk)
-	if err != nil {
-		slog.Error("new appgroup api error", "err", err)
+	version := longhornVersion(release)
+	if version == "" {
+		slog.Error("longhorn version not found", "namespace", longhornNamespace, "releaseName", longhornReleaseName)
 		return
 	}
 
-	group := releaseToLonghornAppGroup(release)
-	_, err = groupApi.GetAppGroup(group.Namespace, group.Name)
+	koDataPath, ok := os.LookupEnv("KO_DATA_PATH")
+	if !ok {
+		koDataPath = "./kodata"
+	}
+
+	scriptPath := filepath.Join(koDataPath, "shell", "upgradelonghorn.sh")
+	stdout, stderr, err := helper.Runsh("sh", scriptPath, version)
+	if stdout != "" {
+		slog.Info("longhorn upgrade shell stdout", "output", stdout)
+	}
+	if stderr != "" {
+		slog.Warn("longhorn upgrade shell stderr", "output", stderr)
+	}
 	if err != nil {
-		if errors.IsNotFound(err) {
-			group.Namespace = "default"
-			_, err = groupApi.CreateGroup(group.Namespace, group)
-			if err != nil {
-				slog.Error("create longhorn appgroup error", "err", err)
-				return
-			}
-			slog.Info("create longhorn appgroup success", "namespace", group.Namespace, "name", group.Name, "version", group.Spec.Version)
-			return
-		}
-		slog.Error("get longhorn appgroup error", "err", err)
+		slog.Error("run longhorn upgrade shell error", "script", scriptPath, "version", version, "err", err)
 		return
 	}
-	slog.Info("longhorn appgroup already exists, skip create", "namespace", group.Namespace, "name", group.Name)
+
+	slog.Info("longhorn upgrade shell success", "script", scriptPath, "version", version)
 }
 
-func releaseToLonghornAppGroup(release *release.Release) *appv1.AppGroup {
-	annotations := release.Chart.Metadata.Annotations
-	if annotations == nil {
-		annotations = map[string]string{}
-	}
-
-	identifie := "w7panel-longhorn"
-
-	title := annotations[zpktypes.HELM_TITLE]
-	if title == "" {
-		title = release.Name
-	}
-
-	logo := annotations[zpktypes.HELM_LOGO]
-	if logo == "" {
-		logo = release.Chart.Metadata.Icon
+func longhornVersion(release *release.Release) string {
+	if release == nil || release.Chart == nil || release.Chart.Metadata == nil {
+		return ""
 	}
 
 	version := release.Chart.Metadata.AppVersion
 	if version == "" {
 		version = release.Chart.Metadata.Version
 	}
-	version = strings.ReplaceAll(version, "v", "")
-	group := appgroup.CreateAppGroup(release.Name, release.Namespace)
-	group.Labels = map[string]string{
-		"w7.cc/identifie": identifie,
-	}
-	group.Spec = appv1.AppGroupSpec{
-		Identifie:   identifie,
-		Type:        appv1.HELM,
-		Version:     version,
-		Title:       title,
-		Logo:        logo,
-		Suffix:      release.Name,
-		ZpkUrl:      "https://zpk.w7.cc/zpk/respo/info/w7panel_longhorn",
-		IsHelm:      true,
-		Description: release.Chart.Metadata.Description,
-		HelmConfig: appv1.HelmConfig{
-			ChartName:  annotations[zpktypes.HELM_CHART_NAME],
-			Repository: annotations[zpktypes.HELM_REPOSITORY_URL],
-			Version:    version,
-		},
-	}
-	group.Status = appv1.AppGroupStatus{
-		Items:        []appv1.AppGroupItemStatus{},
-		DeployItems:  []appv1.DeployItem{},
-		DeployStatus: appv1.StatusDeployed,
-		Ready:        true,
-	}
-	group.Annotations = map[string]string{
-		zpktypes.HELM_DENY_DELETE: "true",
-	}
-	return group
+	return strings.ReplaceAll(version, "v", "")
 }
