@@ -50,8 +50,8 @@ kubectl patch wasmplugin w7-white-domain -n higress-system --type=merge -p '{"sp
 
 
 
-echo "API示例代码"
-kubectl apply -f $KO_DATA_PATH/yaml/code
+# echo "API示例代码"
+# kubectl apply -f $KO_DATA_PATH/yaml/code
 
 echo "create权限 不使用apply" 
 # kubectl get configmap k3k.permission.founder >/dev/null 2>&1 || kubectl apply -f $KO_DATA_PATH/yaml/k3k.permission.founder.yaml --server-side
@@ -78,9 +78,9 @@ kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
 
 
 
-kubectl create secret generic k3k.addon --from-file=manifests.yaml=$KO_DATA_PATH/yaml/k3k/k3k.addon.yaml --dry-run=client -o yaml | kubectl apply -f - || echo "已存在k3k.addon"
+# kubectl create secret generic k3k.addon --from-file=manifests.yaml=$KO_DATA_PATH/yaml/k3k/k3k.addon.yaml --dry-run=client -o yaml | kubectl apply -f - || echo "已存在k3k.addon"
 
-kubectl apply -f $KO_DATA_PATH/yaml/k3k/virtualclusterpolicy.yaml
+# kubectl apply -f $KO_DATA_PATH/yaml/k3k/virtualclusterpolicy.yaml
 
 echo "卸载异常面板"
 w7panel uninstall-store-panel
