@@ -60,7 +60,7 @@ func (c LonghornUpgrade) Handle(cmd *cobra.Command, args []string) {
 	}
 
 	scriptPath := filepath.Join(koDataPath, "shell", "upgradelonghorn.sh")
-	stdout, stderr, err := helper.Runsh("sh", scriptPath, version)
+	stdout, stderr, err := helper.Runsh("bash", scriptPath, version)
 	if stdout != "" {
 		slog.Info("longhorn upgrade shell stdout", "output", stdout)
 	}
@@ -86,8 +86,8 @@ func shouldRunLonghornUpgradeShell(sdk *k8s.Sdk) (bool, error) {
 		if err == nil {
 			return false, nil
 		}
-		if !apierrors.IsNotFound(err) {
-			return false, err
+		if apierrors.IsNotFound(err) {
+			return true, nil
 		}
 	}
 
