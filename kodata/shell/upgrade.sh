@@ -110,7 +110,7 @@ kubectl create -f $KO_DATA_PATH/yaml/longhorn/cluster-key-rate-limit.yaml || ech
 
 # fix 旧版安装longhorn 导致helm 标签丢失
 echo "fix longhorn helm labels"
-
+kubectl delete appgroup/longhorn --wait=false --ignore-not-found
 for resource in \
   daemonset/longhorn-iscsi-installation \
   daemonset/longhorn-nfs-installation \

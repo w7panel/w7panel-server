@@ -409,6 +409,9 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 }
 
 func (d *WorkloadManager) cleanHelm(group *v1alpha1.AppGroup, createJob bool) error {
+	if group.Name == "longhorn" { //LonghornUpgrade 之前版本有bug 暂时不清理
+		return nil
+	}
 	_, err := d.helm.UnInstall(group.Name, group.Namespace)
 	if err != nil {
 		slog.Error("failed helm uninstall to uninstall app", slog.String("error", err.Error()))

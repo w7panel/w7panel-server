@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	longhornReleaseName = "longhorn"
+	longhornReleaseName = "w7panel-longhorn" //应该是w7panel-longhorn 之前是longhorn有问题
 	longhornNamespace   = "longhorn-system"
 )
 
