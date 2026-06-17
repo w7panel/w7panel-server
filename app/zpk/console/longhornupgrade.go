@@ -9,8 +9,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 	"helm.sh/helm/v3/pkg/release"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 const (
@@ -30,7 +32,7 @@ func (c LonghornUpgrade) Handle(cmd *cobra.Command, args []string) {
 	sdk := k8s.NewK8sClient().Sdk
 	helmApi := k8s.NewHelm(sdk)
 
-	release, err := helmApi.Info(longhornReleaseName, longhornNamespace)
+	release, err := helmApi.Info("longhorn", longhornNamespace)
 	if err != nil {
 		slog.Error("longhorn helm not found", "namespace", longhornNamespace, "releaseName", longhornReleaseName, "err", err)
 		return
@@ -39,6 +41,16 @@ func (c LonghornUpgrade) Handle(cmd *cobra.Command, args []string) {
 	version := longhornVersion(release)
 	if version == "" {
 		slog.Error("longhorn version not found", "namespace", longhornNamespace, "releaseName", longhornReleaseName)
+		return
+	}
+
+	shouldRun, err := shouldRunLonghornUpgradeShell(sdk)
+	if err != nil {
+		slog.Error("check longhorn appgroup error", "err", err)
+		return
+	}
+	if !shouldRun {
+		slog.Info("longhorn appgroup already exists, skip upgrade shell")
 		return
 	}
 
@@ -61,6 +73,30 @@ func (c LonghornUpgrade) Handle(cmd *cobra.Command, args []string) {
 	}
 
 	slog.Info("longhorn upgrade shell success", "script", scriptPath, "version", version)
+}
+
+func shouldRunLonghornUpgradeShell(sdk *k8s.Sdk) (bool, error) {
+	groupApi, err := appgroup.NewAppGroupApi(sdk)
+	if err != nil {
+		return false, err
+	}
+
+	for _, name := range []string{longhornReleaseName} {
+		_, err := groupApi.GetAppGroup("default", name)
+		if err == nil {
+			return false, nil
+		}
+		if !apierrors.IsNotFound(err) {
+			return false, err
+		}
+	}
+
+	// groups, err := groupApi.GetAppGroupListByIdentifie("default", longhornReleaseName)
+	// if err != nil {
+	// 	return false, err
+	// }
+	return false, err
+	// return len(groups.Items) == 0, nil
 }
 
 func longhornVersion(release *release.Release) string {
