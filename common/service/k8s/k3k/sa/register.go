@@ -105,9 +105,12 @@ func NewRegister(client client.Client, sdk *k8s.Sdk) *Register {
 
 func (register *Register) RegisterUseConsole(accessToken *types.ConsoleOAuthAccessToken, userinfo *service.ResultUserinfo, k3kConfig *types.K3kConfigSetting) (*corev1.ServiceAccount, error) {
 	userId := strconv.Itoa(userinfo.UserId)
+	openId := userinfo.OpenId
 	anns := map[string]string{
-		types.W7_ACCESS_TOKEN: accessToken.ToString(),
-		"w7.cc/menu-name":     "k3k.permission.normal",
+		types.W7_ACCESS_TOKEN:    accessToken.ToString(),
+		"w7.cc/menu-name":        "k3k.permission.normal",
+		"w7.cc/console-nickname": userinfo.Nickname,
+		"w7.cc/console-openid":   openId,
 	}
 	return register.doRegister("console-"+userId, userId, anns, false, k3kConfig.DefaultPermissionName)
 }

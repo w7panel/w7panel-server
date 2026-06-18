@@ -60,11 +60,13 @@ func (m *MicroAppReplace) Replace(ctx context.Context, data map[string]string, r
 		newVal := v
 		newVal = strings.ReplaceAll(newVal, "${system.group}", microapp.Name)
 		newVal = strings.ReplaceAll(newVal, "${system.userid}", m.Name)
-		newVal = strings.ReplaceAll(newVal, "${system.openid}", m.Name)
+		newVal = strings.ReplaceAll(newVal, "${system.openid}", m.GetConsoleOpenId())
 		newVal = strings.ReplaceAll(newVal, "${system.nickname}", m.GetNickName())
 		newVal = strings.ReplaceAll(newVal, "${system.role}", role)
+		newVal = strings.ReplaceAll(newVal, "${system.url}", microapp.RoleServerUrl(role))
 		// newVal = strings.ReplaceAll(newVal, "${system.installer}", m.Name)
 		newVal = strings.ReplaceAll(newVal, "${system.access_token}", accessToken)
+		newVal = strings.ReplaceAll(newVal, "${system.cloud_uid}", m.GetConsoleId())
 		result[k] = newVal
 	}
 	return result
