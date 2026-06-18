@@ -82,8 +82,8 @@ kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
 
 # kubectl apply -f $KO_DATA_PATH/yaml/k3k/virtualclusterpolicy.yaml
 
-echo "卸载异常面板"
-w7panel uninstall-store-panel
+# echo "卸载异常面板"
+# w7panel uninstall-store-panel
 
 echo "新版metrics"
 w7panel metrics:upgrade
