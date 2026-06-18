@@ -550,6 +550,10 @@ func (u *k3kUser) GetConsoleId() string {
 	return u.Labels["w7.cc/console-id"]
 }
 
+func (u *k3kUser) GetConsoleOpenId() string {
+	return u.Annotations["w7.cc/console-openid"]
+}
+
 func (u *k3kUser) GetDomainWhiteList() string {
 	value, ok := u.Annotations[W7_DOMAIN_WHITE_LIST]
 	if !ok || value == "" || value == "null" {
@@ -591,6 +595,7 @@ func (u *k3kUser) ReplaceW7Config(config *config.W7Config) {
 	if config != nil && config.UserInfo != nil {
 		u.Labels[W7_CONSOLE_ID] = strconv.Itoa(config.UserInfo.UserId)
 		u.Annotations["w7.cc/console-nickname"] = config.UserInfo.Nickname
+		u.Annotations["w7.cc/console-openid"] = config.UserInfo.OpenId
 		// u.Annotations[W7_USER_MODE] = config.UserInfo.UserMode
 		// return 0, fmt.Errorf("user cost is not empty")
 	}

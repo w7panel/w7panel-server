@@ -127,3 +127,11 @@ func (c *MicroApp) RoleCount() int {
 		return item.Support == "thirdparty_cd"
 	})
 }
+
+func (c *MicroApp) RoleServerUrl(role string) string {
+	roleConfig, ok := c.Spec.ConfigV2.Props.RoleConfig[role]
+	if ok {
+		return roleConfig.ServerUrl
+	}
+	return ""
+}
