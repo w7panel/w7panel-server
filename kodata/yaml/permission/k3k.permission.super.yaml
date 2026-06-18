@@ -18,24 +18,24 @@ spec:
   - system/audit
   - usermanage/*
   - sitemanage/*
-  - cluster-nodes-add
-  - cluster-nodes-registries
-  - cluster-nodes-gpu
-  - cluster-nodes-memory
-  - app-apps-add
-  - app-apps-edit
-  - app-apps-delete
-  - app-cronjob-add
-  - app-cronjob-edit
-  - app-cronjob-delete
-  - app-rvproxy-add
-  - app-rvproxy-edit
-  - app-rvproxy-delete
-  - app-dblist-add
-  - app-dblist-delete
-  - storage-node-add
-  - storage-node-edit
-  - storage-node-delete
+  - cluster/nodes/add
+  - cluster/nodes/registries
+  - cluster/nodes/gpu
+  - cluster/nodes/memory
+  - app/apps/add
+  - app/apps/edit
+  - app/apps/delete
+  - app/cronjob/add
+  - app/cronjob/edit
+  - app/cronjob/delete
+  - app/rvproxy/add
+  - app/rvproxy/edit
+  - app/rvproxy/delete
+  - app/database/add
+  - app/database/delete
+  - storage/disk/add
+  - storage/disk/edit
+  - storage/disk/delete
   api:
     /panel-api/v1/auth/console/*:
     - '*'

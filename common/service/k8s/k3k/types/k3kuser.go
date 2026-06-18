@@ -274,7 +274,7 @@ func (u *k3kUser) GetMenu() string {
 	// 	return string(json)
 	// }
 	// if u.IsWeihu() { //维护模式菜单
-	// 	whMenu := []string{"cluster", "cluster-panel", "cluster-resource", "app", "app-apps", "app-apps-delete"}
+	// 	whMenu := []string{"cluster", "cluster/panel", "cluster/resource", "app", "app/apps", "app/apps/delete"}
 	// 	json, _ := json.Marshal(whMenu)
 	// 	return string(json)
 	// }
