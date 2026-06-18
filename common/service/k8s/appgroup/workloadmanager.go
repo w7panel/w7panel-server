@@ -19,11 +19,18 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/selection"
 	appsv1lister "k8s.io/client-go/listers/apps/v1"
 	batchv1lister "k8s.io/client-go/listers/batch/v1"
 	corev1lister "k8s.io/client-go/listers/core/v1"
 )
+
+var oldAppGroupGVR = schema.GroupVersionResource{
+	Group:    "appgroup.w7.cc",
+	Version:  "v1alpha1",
+	Resource: "appgroups",
+}
 
 type WorkloadManager struct {
 	groupApi          *AppGroupApi
@@ -343,6 +350,7 @@ func (d *WorkloadManager) cleanGroupChildren(group *v1alpha1.AppGroup) error {
 
 func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, isInit bool) error {
 	if group.DeletionTimestamp != nil {
+		d.deleteOldAppGroup(group)
 		d.cleanAppGroup(group)
 		parentName, isChild := group.Labels["w7.cc/parent"]
 		if isChild {
@@ -406,6 +414,29 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 	}
 
 	return nil
+}
+
+func (d *WorkloadManager) deleteOldAppGroup(group *v1alpha1.AppGroup) {
+	oldAppGroup, err := d.sdk.DynamicClient().Resource(oldAppGroupGVR).Namespace(group.Namespace).Get(d.sdk.Ctx, group.Name, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			slog.Error("failed to get old appgroup", slog.String("name", group.Name), slog.String("namespace", group.Namespace), slog.String("error", err.Error()))
+		}
+		return
+	}
+
+	if len(oldAppGroup.GetFinalizers()) > 0 {
+		oldAppGroup.SetFinalizers(nil)
+		if _, err := d.sdk.DynamicClient().Resource(oldAppGroupGVR).Namespace(group.Namespace).Update(d.sdk.Ctx, oldAppGroup, metav1.UpdateOptions{}); err != nil && !errors.IsNotFound(err) {
+			slog.Error("failed to clear old appgroup finalizers", slog.String("name", group.Name), slog.String("namespace", group.Namespace), slog.String("error", err.Error()))
+			return
+		}
+	}
+
+	err = d.sdk.DynamicClient().Resource(oldAppGroupGVR).Namespace(group.Namespace).Delete(d.sdk.Ctx, group.Name, metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		slog.Error("failed to delete old appgroup", slog.String("name", group.Name), slog.String("namespace", group.Namespace), slog.String("error", err.Error()))
+	}
 }
 
 func (d *WorkloadManager) cleanHelm(group *v1alpha1.AppGroup, createJob bool) error {
