@@ -6,6 +6,7 @@
         # export KO_DEFAULTBASEIMAGE=ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui && export KO_DOCKER_REPO=ccr.ccs.tencentyun.com/afan-public/w7panel 
       imports:
         - https://cnb.cool/i0358/mykey/-/blob/main/218.yml
+        - https://cnb.cool/i0358/mykey/-/blob/main/tencent.yml
       docker:
         # 通过此参数控制使用的 Dockerfile 构建镜像必须公开
         image: ccr.ccs.tencentyun.com/afan-public/ubuntu:go-build
