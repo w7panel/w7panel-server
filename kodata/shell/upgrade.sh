@@ -93,6 +93,19 @@ w7panel metrics:upgrade
 
 echo "域名解析配置"
 w7panel domain-config
+
+
+echo "longhorn 升级到面板中"
+w7panel longhornupgrade
+
+echo "限流配置"
+# apply -f 会覆盖原有配置 所以使用create 
+kubectl create -f $KO_DATA_PATH/yaml/longhorn/cluster-key-rate-limit.yaml || echo "已存在longhorn cluster-key-rate-limit"
+
+
+
+echo "clear completed jobs and pod..."
+
 kubectl get jobs -n default -o json \
   | jq -r '.items[]
     | select(
@@ -101,9 +114,11 @@ kubectl get jobs -n default -o json \
     | .metadata.name' \
   | xargs -r kubectl delete job -n default
 
-echo "longhorn 升级到面板中"
-w7panel longhornupgrade
+echo "Deleting completed pods..."
 
-echo "限流配置"
-# apply -f 会覆盖原有配置 所以使用create 
-kubectl create -f $KO_DATA_PATH/yaml/longhorn/cluster-key-rate-limit.yaml || echo "已存在longhorn cluster-key-rate-limit"
+kubectl get pods -n default -o json \
+  | jq -r '.items[]
+    | select(.status.phase == "Succeeded")
+    | .metadata.name' \
+  | xargs -r kubectl delete pod -n default
+
