@@ -34,6 +34,24 @@ func getCrdOperations() []admissionregistrationv1.RuleWithOperations {
 	}
 	return getDefaultCrdOperations()
 }
+
+func getMatchConditions() []admissionregistrationv1.MatchCondition {
+	return []admissionregistrationv1.MatchCondition{
+		{
+			Name:       "only-longhorn-storageclass",
+			Expression: `request.resource.group != "storage.k8s.io" || request.resource.resource != "storageclasses" || object.metadata.name == "longhorn"`,
+		},
+		{
+			Name:       "only-default-namespace-pod",
+			Expression: `request.resource.group != "" || request.resource.resource != "pods" || request.namespace == "default"`,
+		},
+		{
+			Name:       "only-k3k-logo-configmap",
+			Expression: `request.resource.group != "" || request.resource.resource != "configmaps" || (object.metadata.name == "k3k.logo.config" && request.namespace == "kube-system")`,
+		},
+	}
+}
+
 func getAgentOperations() []admissionregistrationv1.RuleWithOperations {
 	return []admissionregistrationv1.RuleWithOperations{
 		{
@@ -85,6 +103,15 @@ func getDefaultOperations() []admissionregistrationv1.RuleWithOperations {
 				APIGroups:   []string{""},
 				APIVersions: []string{"v1"},
 				Resources:   []string{"services"},
+			},
+		},
+
+		{
+			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
+			Rule: admissionregistrationv1.Rule{
+				APIGroups:   []string{""},
+				APIVersions: []string{"v1"},
+				Resources:   []string{"configmaps"},
 			},
 		},
 
@@ -253,6 +280,7 @@ func (w *WebHookMutate) CreateOrUpdate(caBound []byte, svcName string, namespace
 				AdmissionReviewVersions: []string{"v1"},
 				SideEffects:             &sideEffects,
 				FailurePolicy:           &policy,
+				MatchConditions:         getMatchConditions(),
 			},
 		},
 	}
