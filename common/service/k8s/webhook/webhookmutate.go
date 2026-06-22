@@ -82,14 +82,6 @@ func getAgentCrdOperations() []admissionregistrationv1.RuleWithOperations {
 				Resources:   []string{"mcpbridges"},
 			},
 		},
-		{
-			Operations: []admissionregistrationv1.OperationType{"DELETE"},
-			Rule: admissionregistrationv1.Rule{
-				APIGroups:   []string{"apps.kubeblocks.io"},
-				APIVersions: []string{"v1alpha1"},
-				Resources:   []string{"clusters"},
-			},
-		},
 	}
 }
 
@@ -223,14 +215,7 @@ func getDefaultCrdOperations() []admissionregistrationv1.RuleWithOperations {
 				Resources:   []string{"nodes"},
 			},
 		},
-		{
-			Operations: []admissionregistrationv1.OperationType{"DELETE"},
-			Rule: admissionregistrationv1.Rule{
-				APIGroups:   []string{"apps.kubeblocks.io"},
-				APIVersions: []string{"v1alpha1"},
-				Resources:   []string{"clusters"},
-			},
-		},
+
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
 			Rule: admissionregistrationv1.Rule{

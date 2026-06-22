@@ -107,7 +107,7 @@ func (m *ResourceMutator) Handle(ctx context.Context, req admission.Request) adm
 		return admission.Allowed("不需要修改的资源类型")
 	case "Cluster":
 		if req.Kind.Group == "apps.kubeblocks.io" {
-			return m.handleKubeblocksCluster(ctx, req)
+			// return m.handleKubeblocksCluster(ctx, req)
 		}
 		// if req.Kind.Group == "k3k.io" {
 		// 	return m.handleK3kCluster(ctx, req)
