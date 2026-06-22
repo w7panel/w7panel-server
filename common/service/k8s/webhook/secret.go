@@ -3,7 +3,6 @@ package webhook
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
@@ -20,9 +19,7 @@ func (m *ResourceMutator) handleSecret(ctx context.Context, req admission.Reques
 	// }
 	secret := &v1.Secret{}
 	// 判断是否Delete 请求
-	delete := false
 	if req.Operation == "DELETE" {
-		delete = true
 		if err := (m.decoder).DecodeRaw(req.OldObject, secret); err != nil {
 			return admission.Errored(http.StatusBadRequest, err)
 		}
@@ -36,12 +33,12 @@ func (m *ResourceMutator) handleSecret(ctx context.Context, req admission.Reques
 		defer k3k.SyncHttpAfter(secret, "sync-secret") // 同步到主集群
 	}
 
-	if !delete {
-		if !helper.IsChildAgent() {
-			time.AfterFunc(time.Second*10, func() {
-				k3k.SyncToChildSecret(secret.DeepCopy()) // 同步到子集群
-			})
-		}
-	}
+	// if !delete { //cert-manager 已经创建到子集群了，不需要再同步
+	// 	if !helper.IsChildAgent() {
+	// 		time.AfterFunc(time.Second*10, func() {
+	// 			k3k.SyncToChildSecret(secret.DeepCopy()) // 同步到子集群
+	// 		})
+	// 	}
+	// }
 	return admission.Allowed("处理 secret 请求")
 }
