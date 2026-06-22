@@ -198,14 +198,6 @@ func getDefaultCrdOperations() []admissionregistrationv1.RuleWithOperations {
 				Resources:   []string{"microapps"},
 			},
 		},
-		{
-			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
-			Rule: admissionregistrationv1.Rule{
-				APIGroups:   []string{"k3k.io"},
-				APIVersions: []string{"v1alpha1"},
-				Resources:   []string{"virtualclusterpolicies", "clusters"},
-			},
-		},
 
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
