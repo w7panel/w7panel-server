@@ -94,6 +94,7 @@ func getDefaultOperations() []admissionregistrationv1.RuleWithOperations {
 				APIGroups:   []string{"apps"},
 				APIVersions: []string{"v1"},
 				Resources:   []string{"statefulsets"},
+				// Scope:       ptr.String(admissionregistrationv1.NamespacedScope),
 			},
 		},
 		{

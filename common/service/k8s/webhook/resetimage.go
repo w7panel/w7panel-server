@@ -229,7 +229,7 @@ func ReSetStatefulSetImage(namespace, name string) error {
 }
 
 func ResetImage(namespace, name, workloadtype string, anno map[string]string) error {
-	slog.Info("reset image", "workload type", workloadtype)
+	// slog.Info("reset image", "workload type", workloadtype)
 	// sha256Image, ok := os.LookupEnv("SHA256_IMAGE")
 	// if !ok || sha256Image == "false" {
 	// 	return nil
