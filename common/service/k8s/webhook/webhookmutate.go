@@ -46,14 +46,6 @@ func getAgentOperations() []admissionregistrationv1.RuleWithOperations {
 		},
 
 		{
-			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
-			Rule: admissionregistrationv1.Rule{
-				APIGroups:   []string{""},
-				APIVersions: []string{"v1"},
-				Resources:   []string{"configmaps"},
-			},
-		},
-		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
 			Rule: admissionregistrationv1.Rule{
 				APIGroups:   []string{""},
@@ -95,7 +87,7 @@ func getDefaultOperations() []admissionregistrationv1.RuleWithOperations {
 				Resources:   []string{"services"},
 			},
 		},
-		
+
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
 			Rule: admissionregistrationv1.Rule{
