@@ -27,26 +27,12 @@ func (m *ResourceMutator) handlePod(ctx context.Context, req admission.Request) 
 			return admission.Denied("不允许创建pod")
 		}
 	}
-	pid.WebHookPid(pod.DeepCopy())
-	// // 检查 Pod 是否有 ownerReferences.kind=Cluster
-	// _, isClusterNormalPod := pod.Labels["k3k.io/clusterName"]
-	// if isClusterNormalPod {
-	// 	return m.handleNormalPod(ctx, pod, req)
-	// }
-	// 纯普通pod
+	if pod.Namespace == "default" {
+		pid.WebHookPid(pod.DeepCopy()) //default 命名空间下，才执行 pid 注入
+	}
+
 	modified := false
-	// 新版cluster spec 直接指定limit
-	// namespace := pod.Namespace
-	// if strings.HasPrefix(namespace, "k3k-") && !helper.IsChildAgent() {
-	// 	err := handlePodLabel(m.client, m.sdk, pod, namespace)
-	// 	if err == nil {
-	// 		modified = true
-	// 	}
-	// 	err = handlePodLimit(pod)//
-	// 	if err == nil {
-	// 		modified = true
-	// 	}
-	// }
+
 	if helper.IsLxcfsEnabled() {
 		modified = injectLxcfs(pod)
 	}
