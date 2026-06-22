@@ -129,6 +129,8 @@ func (s *Server) setUserinfo(userinfo *zitadeloidc.UserInfo, subject string, sco
 	userinfo.PreferredUsername = sa.Name
 	userinfo.AppendClaims("role", k3kuser.GetRole())
 	userinfo.AppendClaims("is_founder", k3kuser.IsFounder())
+	userinfo.AppendClaims("cloud_uid", k3kuser.GetConsoleId())
+	userinfo.AppendClaims("nick_name", k3kuser.GetNickName())
 
 	return nil
 }
