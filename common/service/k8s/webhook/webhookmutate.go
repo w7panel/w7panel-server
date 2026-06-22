@@ -95,14 +95,7 @@ func getDefaultOperations() []admissionregistrationv1.RuleWithOperations {
 				Resources:   []string{"services"},
 			},
 		},
-		{
-			Operations: []admissionregistrationv1.OperationType{"UPDATE"},
-			Rule: admissionregistrationv1.Rule{
-				APIGroups:   []string{""},
-				APIVersions: []string{"v1"},
-				Resources:   []string{"serviceaccounts"},
-			},
-		},
+		
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
 			Rule: admissionregistrationv1.Rule{

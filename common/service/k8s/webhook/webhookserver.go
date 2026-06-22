@@ -105,16 +105,7 @@ func (m *ResourceMutator) Handle(ctx context.Context, req admission.Request) adm
 			return m.handleLonghornReplica(ctx, req)
 		}
 		return admission.Allowed("不需要修改的资源类型")
-	case "Cluster":
-		if req.Kind.Group == "apps.kubeblocks.io" {
-			// return m.handleKubeblocksCluster(ctx, req)
-		}
-		// if req.Kind.Group == "k3k.io" {
-		// 	return m.handleK3kCluster(ctx, req)
-		// }
-		return admission.Allowed("不需要修改的资源类型")
-	case "ServiceAccount":
-		return m.handleServiceAccount(ctx, req)
+
 	case "PersistentVolumeClaim": //扩容资源时候 删除pod
 		return m.handlePvc(ctx, req)
 	case "ApiClient":
