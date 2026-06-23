@@ -236,6 +236,9 @@ func (d *WorkloadManager) HandleWorkload(ds WorkloadWrapperInterface, delete boo
 	// }
 	itemStatus := ds.ToItemStatus()
 	if delete {
+		if itemStatus.Kind != "Job" {
+			d.fixSvc(ds, true)
+		}
 		if group.IsExists() {
 			group.RemoveStatusItem(itemStatus)
 			if itemStatus.Kind != "Job" {
