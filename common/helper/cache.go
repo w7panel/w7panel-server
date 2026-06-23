@@ -16,6 +16,10 @@ func Get(key string) (interface{}, bool) {
 	return defaultCache.Get(key)
 }
 
+func Remember(key string, duration time.Duration, callback func() (interface{}, error)) (interface{}, error) {
+	return defaultCache.Remember(key, duration, callback)
+}
+
 func Check(key string, value interface{}) bool {
 	val, ok := defaultCache.Get(key)
 	return ok && val == value
@@ -77,6 +81,22 @@ func (c *MemoryCache) Get(key string) (interface{}, bool) {
 	}
 
 	return item.Value, true
+}
+
+// Remember returns the cached value if present. Otherwise it calls callback,
+// stores the successful result, and returns it.
+func (c *MemoryCache) Remember(key string, duration time.Duration, callback func() (interface{}, error)) (interface{}, error) {
+	if value, ok := c.Get(key); ok {
+		return value, nil
+	}
+
+	value, err := callback()
+	if err != nil {
+		return nil, err
+	}
+
+	c.Set(key, value, duration)
+	return value, nil
 }
 
 // Delete removes a key from the cache

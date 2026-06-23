@@ -3,9 +3,12 @@ package oidc
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	zitadeloidc "github.com/zitadel/oidc/v3/pkg/oidc"
@@ -126,12 +129,29 @@ func (s *Server) setUserinfo(userinfo *zitadeloidc.UserInfo, subject string, sco
 		return err
 	}
 	k3kuser := k3ktypes.NewK3kUser(sa)
+	openId := k3kuser.GetConsoleOpenId()
 	userinfo.PreferredUsername = sa.Name
 	userinfo.AppendClaims("role", k3kuser.GetRole())
 	userinfo.AppendClaims("is_founder", k3kuser.IsFounder())
 	userinfo.AppendClaims("cloud_uid", k3kuser.GetConsoleId())
 	userinfo.AppendClaims("cloud_openid", k3kuser.GetConsoleOpenId())
 	userinfo.AppendClaims("nick_name", k3kuser.GetNickName())
+	if openId != "" {
+		// 获取 passport token
+		result, err := helper.Remember(openId, time.Hour, func() (any, error) {
+			token, err := console.OpenIdToPassportToken(openId)
+			if err != nil {
+				return "", err
+			}
+			return token.Token, err
+		})
+		if err != nil {
+			slog.Warn("failed to get passport token")
+		} else {
+			userinfo.AppendClaims("cloud_accesstoken", result.(string))
+		}
+
+	}
 
 	return nil
 }
