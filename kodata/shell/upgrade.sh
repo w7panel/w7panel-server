@@ -93,6 +93,19 @@ w7panel metrics:upgrade
 
 echo "域名解析配置"
 w7panel domain-config
+
+
+echo "longhorn 升级到面板中"
+w7panel longhornupgrade
+
+echo "限流配置"
+# apply -f 会覆盖原有配置 所以使用create 
+kubectl create -f $KO_DATA_PATH/yaml/longhorn/cluster-key-rate-limit.yaml || echo "已存在longhorn cluster-key-rate-limit"
+
+
+
+echo "clear completed jobs and pod..."
+
 kubectl get jobs -n default -o json \
   | jq -r '.items[]
     | select(
@@ -101,16 +114,11 @@ kubectl get jobs -n default -o json \
     | .metadata.name' \
   | xargs -r kubectl delete job -n default
 
+echo "Deleting completed pods..."
 
+kubectl get pods -n default -o json \
+  | jq -r '.items[]
+    | select(.status.phase == "Succeeded" or .status.phase == "Failed")
+    | .metadata.name' \
+  | xargs -r kubectl delete pod -n default
 
-echo "限流配置"
-# apply -f 会覆盖原有配置 所以使用create 
-kubectl create -f $KO_DATA_PATH/yaml/longhorn/cluster-key-rate-limit.yaml || echo "已存在longhorn cluster-key-rate-limit"
-
-# fix 旧版安装longhorn 导致helm 标签丢失
-echo "fix longhorn helm labels"
-kubectl delete appgroups.w7panel.w7.com/longhorn --wait=false --ignore-not-found
-
-
-echo "longhorn 升级到面板中"
-w7panel longhornupgrade

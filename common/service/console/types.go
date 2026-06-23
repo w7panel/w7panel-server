@@ -181,3 +181,9 @@ type ThirdPartyCDToken struct {
 	Token string `json:"token"`
 	// Exp   int64  `json:"expiretime"`
 }
+
+type PassportToken struct {
+	Token      string `json:"access_token"`
+	ExpireTime int64  `json:"expire_time"`
+	// Exp   int64  `json:"expiretime"`
+}
