@@ -135,7 +135,8 @@ func (s *Server) setUserinfo(userinfo *zitadeloidc.UserInfo, subject string, sco
 	userinfo.AppendClaims("is_founder", k3kuser.IsFounder())
 	userinfo.AppendClaims("cloud_uid", k3kuser.GetConsoleId())
 	userinfo.AppendClaims("cloud_openid", k3kuser.GetConsoleOpenId())
-	userinfo.AppendClaims("nick_name", k3kuser.GetNickName())
+	// userinfo.AppendClaims("nick_name", k3kuser.GetNickName())
+	userinfo.AppendClaims("cloud_nickname", k3kuser.GetNickName())
 	if openId != "" {
 		// 获取 passport token
 		result, err := helper.Remember(openId, time.Hour, func() (any, error) {
