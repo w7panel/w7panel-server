@@ -98,7 +98,7 @@ func (p *pid) Handle(param PidParam) (*PidResult, error) {
 			subPid = k3kInnerPodPid
 		}
 		agentPod = daemonsetPod
-		proxyIp = daemonsetPod.Status.PodIP
+		// proxyIp = daemonsetPod.Status.PodIP
 	} else {
 		podfindApi := newPodFind(p.rootSdk.ClientSet, p.rootSdk.ClientSet)
 		daemonsetPod, err := p.rootSdk.GetDaemonsetAgentPod(p.rootSdk.GetNamespace(), param.HostIp)
