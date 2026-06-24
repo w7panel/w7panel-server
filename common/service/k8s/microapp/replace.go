@@ -53,7 +53,7 @@ func (m *MicroAppReplace) Replace(ctx context.Context, data map[string]string, r
 		if strings.Contains(v, "${system.access_token}") {
 			requireAccessToken = true
 		}
-		if strings.Contains(v, "${system.cloud_access_token}") {
+		if strings.Contains(v, "${system.cloud_accesstoken}") {
 			requireCloudAccessToken = true
 		}
 	}
@@ -84,7 +84,7 @@ func (m *MicroAppReplace) Replace(ctx context.Context, data map[string]string, r
 		// newVal = strings.ReplaceAll(newVal, "${system.installer}", m.Name)
 		newVal = strings.ReplaceAll(newVal, "${system.access_token}", accessToken)
 		newVal = strings.ReplaceAll(newVal, "${system.cloud_uid}", m.GetConsoleId())
-		newVal = strings.ReplaceAll(newVal, "${system.cloud_access_token}", cloudAccToken)
+		newVal = strings.ReplaceAll(newVal, "${system.cloud_accesstoken}", cloudAccToken)
 		result[k] = newVal
 	}
 	return result
