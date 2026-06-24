@@ -56,6 +56,9 @@ func (self Html) Process(ctx *gin.Context) {
 	}
 
 	ctx.Header("Content-Type", "text/html; charset=utf-8")
+	ctx.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	ctx.Header("Pragma", "no-cache")
+	ctx.Header("Expires", "0")
 	ctx.Status(200)
 	io.Copy(ctx.Writer, bytes.NewReader(htmlContent))
 	ctx.Abort()

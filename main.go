@@ -115,6 +115,9 @@ func main() {
 			Use(cachecontrol.New(cachecontrol.CacheAssetsForeverPreset))
 		routerNocache := engine.Group("/ui").
 			Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedExtensions([]string{".pdf", ".mp4"})))
+		routerHtml := engine.Group("").
+			Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedExtensions([]string{".pdf", ".mp4"}))).
+			Use(cachecontrol.New(cachecontrol.NoCachePreset))
 
 		staticPath := facade.Config.GetString("app.static_path")
 		router.Static("/assets", staticPath+"/assets")
@@ -126,7 +129,7 @@ func main() {
 		router.Static("/ui/wasm", staticPath+"/wasm")
 		router.Static("/ui/yaml", staticPath+"/yaml")
 
-		router.StaticFileFS("/index.html", "index.html", stdhttp.FS(Asset))
+		routerHtml.StaticFileFS("/index.html", "index.html", stdhttp.FS(Asset))
 		router.StaticFileFS("/k3s-agent.sh", "k3s-agent.sh", stdhttp.FS(Asset))
 		router.StaticFileFS("/k3s-server.sh", "k3s-server.sh", stdhttp.FS(Asset))
 		router.StaticFileFS("/favicon.ico", "icon.jpg", stdhttp.FS(Asset))
