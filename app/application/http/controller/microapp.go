@@ -72,7 +72,7 @@ func (self MicroApp) FrontProps(http *gin.Context) {
 	}
 
 	self.JsonResponseWithoutError(http, map[string]string{
-		"url":               item.RoleServerUrl(role),
+		// "url":               item.RoleServerUrl(role),
 		"group":             item.Name,
 		"userid":            replace.Name,
 		"role":              role,
