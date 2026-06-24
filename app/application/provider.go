@@ -243,7 +243,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		}
 		for _, method := range webdavMethods {
 			//subpid 废弃
-			engine.Handle(method, "/panel-api/v1/files/webdav-agent/:pid/subagent/:subpid/agent/*path", middleware.Auth{}.Process, controller2.Webdav{}.HandlePidSubPid)
+			// engine.Handle(method, "/panel-api/v1/files/webdav-agent/:pid/subagent/:subpid/agent/*path", middleware.Auth{}.Process, controller2.Webdav{}.HandlePidSubPid)
 
 			engine.Handle(method, "/panel-api/v1/files/webdav-agent/:pid/agent/*path", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Webdav{}.HandlePid)
 			// engine.Handle(method, "/panel-api/v1/files/webdav-test/*path", controller2.Webdav{}.HandleTest)
@@ -255,19 +255,19 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		engine.POST("/panel-api/v1/files/compress-agent/:pid/compress", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.CompressAgent{}.Compress)
 		engine.POST("/panel-api/v1/files/compress-agent/:pid/extract", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.CompressAgent{}.Extract)
-		engine.POST("/panel-api/v1/files/compress-agent/:pid/subagent/:subpid/compress", middleware.Auth{}.Process, controller2.CompressAgent{}.Compress)
-		engine.POST("/panel-api/v1/files/compress-agent/:pid/subagent/:subpid/extract", middleware.Auth{}.Process, controller2.CompressAgent{}.Extract)
+		// engine.POST("/panel-api/v1/files/compress-agent/:pid/subagent/:subpid/compress", middleware.Auth{}.Process, controller2.CompressAgent{}.Compress)
+		// engine.POST("/panel-api/v1/files/compress-agent/:pid/subagent/:subpid/extract", middleware.Auth{}.Process, controller2.CompressAgent{}.Extract)
 
 		engine.POST("/panel-api/v1/files/permission-agent/:pid/chmod", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.PermissionAgent{}.Chmod)
 		engine.POST("/panel-api/v1/files/permission-agent/:pid/chown", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.PermissionAgent{}.Chown)
-		engine.POST("/panel-api/v1/files/permission-agent/:pid/subagent/:subpid/chmod", middleware.Auth{}.Process, controller2.PermissionAgent{}.Chmod)
-		engine.POST("/panel-api/v1/files/permission-agent/:pid/subagent/:subpid/chown", middleware.Auth{}.Process, controller2.PermissionAgent{}.Chown)
+		// engine.POST("/panel-api/v1/files/permission-agent/:pid/subagent/:subpid/chmod", middleware.Auth{}.Process, controller2.PermissionAgent{}.Chmod)
+		// engine.POST("/panel-api/v1/files/permission-agent/:pid/subagent/:subpid/chown", middleware.Auth{}.Process, controller2.PermissionAgent{}.Chown)
 
 		// 分片上传相关接口
-		localApiGroup.POST("/files/upload-chunk", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.File{}.UploadChunk)                     // 上传分片
-		localApiGroup.GET("/files/check-chunk", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.File{}.CheckChunk)                        // 检查分片是否已上传
-		localApiGroup.POST("/files/merge-chunks", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.File{}.MergeChunks)                     // 合并分片
-		localApiGroup.POST("/files/mvtopod", middleware.Auth{}.Process, middleware.Proxy{}.Process, middleware.Auth{}.Process, controller2.File{}.MoveToPod) //pid文件移动
+		localApiGroup.POST("/files/upload-chunk", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.File{}.UploadChunk) // 上传分片
+		localApiGroup.GET("/files/check-chunk", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.File{}.CheckChunk)    // 检查分片是否已上传
+		localApiGroup.POST("/files/merge-chunks", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.File{}.MergeChunks) // 合并分片
+		// localApiGroup.POST("/files/mvtopod", middleware.Auth{}.Process, middleware.Proxy{}.Process, middleware.Auth{}.Process, controller2.File{}.MoveToPod) //pid文件移动
 
 		engine.GET("/panel-api/v1/kubeconfig", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Proxy{}.Kubeconfig)
 		engine.Any("/panel-api/v1/s3bucket", middleware.Auth{}.Process, controller2.File{}.Upload).Use(middleware.Cors{}.Process)
