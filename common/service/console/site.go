@@ -53,6 +53,24 @@ func RegisterSiteZpk(host, identifie string) (appSecret *AppSecret, err error) {
 
 }
 
+func RegisterSiteZpkOpenId(host, identifie, openid string) (appSecret *AppSecret, err error) {
+
+	sdkClient, err := NewDefaultSdkClient()
+	if err != nil {
+		slog.Error("RegisterSiteZpk error", "err", err)
+	}
+
+	license, err := sdkClient.CreateSiteFromPanel2("https://"+host, identifie, openid)
+	if err != nil {
+		return nil, err
+	}
+	return &AppSecret{
+		AppId:     license.AppId,
+		AppSecret: license.AppSecret,
+	}, nil
+
+}
+
 func PatchAppId(client *k8s.Sdk, appSecret *AppSecret, deploymentName string, namespace string, containerName string) (err error) {
 	patchData := `{
 		"spec": {

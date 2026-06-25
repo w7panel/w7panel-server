@@ -90,18 +90,16 @@ func TestUpdateCoupon(t *testing.T) {
 
 }
 
-func TestFindLastReturnOrder(t *testing.T) {
-	os.Setenv("USER_AGENT", "we7test-beta")
-	// os.Setenv("LOCAL_MOCK", "true")
-	// os.Setenv("")
-	// sdkClient, err := NewDefaultSdkClient()
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-
-	// err = sdkClient.FindLastReturnOrder("")
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-
+func TestOpenIdToPassportToken(t *testing.T) {
+	// os.Setenv("USER_AGENT", "we7test-beta")
+	// os.Setenv("LOCAL_MOCK", "1")
+	sdkClient, err := NewDefaultSdkClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := sdkClient.OpenIdToCloudAccessToken("mzUZB6jb59EJKakQsGrVSg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(info)
 }

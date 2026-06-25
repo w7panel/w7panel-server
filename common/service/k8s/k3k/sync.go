@@ -1,6 +1,7 @@
 package k3k
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"log/slog"
@@ -12,7 +13,9 @@ import (
 	higressV1 "github.com/alibaba/higress/client/pkg/apis/networking/v1"
 	"github.com/rancher/k3k/k3k-kubelet/translate"
 	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	sitev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/site/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -527,6 +530,117 @@ func SyncSecretHttp(secret *corev1.Secret) error {
 		}
 	}
 	return SyncHttp(secret, "sync-secret")
+}
+func SyncSiteHttp(site *sitev1alpha1.Site) error {
+	if helper.IsK3kVirtual() {
+		return SyncHttp(site, "sync-site")
+	}
+	return nil
+}
+
+func SyncSite(params *K3kSync) error {
+	k3kConfig := k8s.NewK3kConfig(params.K3kName, params.K3kNamespace, helper.GetApiServerHost(params.K3kNamespace), params.CkmName)
+	root := k8s.NewK8sClient()
+	clientsdk, err := root.GetK3kClusterSdkByConfig(k3kConfig)
+	if err != nil {
+		return err
+	}
+	clientSigClient, err := clientsdk.ToSigClient()
+	if err != nil {
+		return err
+	}
+
+	site := &sitev1alpha1.Site{}
+	nName := types.NamespacedName{Name: params.VirtualName}
+	err = clientSigClient.Get(root.Ctx, nName, site)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			slog.Info("Site not found in child cluster, skipping", "name", params.VirtualName)
+			return nil
+		}
+		return err
+	}
+
+	if site.Spec.AppId != "" && site.Spec.AppSecret != "" {
+		slog.Info("Site already registered, skipping", "name", params.VirtualName, "appId", site.Spec.AppId)
+		return nil
+	}
+
+	secret, err := console.RegisterSiteZpk(site.Spec.Host, site.Spec.SiteIdentifier)
+	if err != nil {
+		slog.Error("Failed to register site via ZPK", "name", params.VirtualName, "error", err)
+		return err
+	}
+	slog.Info("Site registered successfully", "name", params.VirtualName, "appId", secret.AppId)
+
+	err = patchTargetResource(clientsdk, params.VirtualName, secret, site.Spec.Target.Namespace, site.Spec.Target.ContainerName)
+	if err != nil {
+		slog.Error("Failed to patch target resource", "name", params.VirtualName, "error", err)
+		return err
+	}
+	slog.Info("Target resource patched successfully", "name", params.VirtualName)
+
+	site.Spec.AppId = secret.AppId
+	site.Spec.AppSecret = secret.AppSecret
+	if err := clientSigClient.Update(root.Ctx, site); err != nil {
+		slog.Error("Failed to update Site spec in child cluster", "name", params.VirtualName, "error", err)
+		return err
+	}
+
+	now := metav1.Now()
+	site.Status.Phase = "Registered"
+	site.Status.Message = "site registered and target patched successfully"
+	site.Status.Conditions = append(site.Status.Conditions, metav1.Condition{
+		Type:               "Ready",
+		Status:             metav1.ConditionTrue,
+		Reason:             "Registered",
+		Message:            "site registered and target patched successfully",
+		LastTransitionTime: now,
+	})
+
+	// Update status separately as a sub-resource
+	site.Status.LastRegisteredAt = &now
+	if err := clientSigClient.Status().Update(root.Ctx, site); err != nil {
+		slog.Error("Failed to update Site status in child cluster", "name", params.VirtualName, "error", err)
+		return err
+	}
+
+	slog.Info("Site sync completed", "name", params.VirtualName)
+	return nil
+}
+
+// patchTargetResource injects APP_ID and APP_SECRET env vars into the target workload
+// (Deployment, DaemonSet, or StatefulSet) in the child cluster.
+func patchTargetResource(sdk *k8s.Sdk, siteName string, appSecret *console.AppSecret, namespace, containerName string) error {
+	if containerName == "" {
+		return fmt.Errorf("containerName is required")
+	}
+	patchData := fmt.Sprintf(`{
+		"spec": {
+			"template": {
+				"spec": {
+					"containers": [
+						{
+							"name": "%s",
+							"env": [
+								{
+									"name": "APP_ID",
+									"value": "%s"
+								},
+								{
+									"name": "APP_SECRET",
+									"value": "%s"
+								}
+							]
+						}
+					]
+				}
+			}
+		}
+	}`, containerName, appSecret.AppId, appSecret.AppSecret)
+
+	_, err := sdk.ClientSet.AppsV1().Deployments(namespace).Patch(context.TODO(), siteName, types.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
+	return err
 }
 
 func SyncHttpAfter(object SyncObjectInterface, path string) error {

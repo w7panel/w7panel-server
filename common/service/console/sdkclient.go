@@ -44,7 +44,7 @@ func NewDefaultSdkClient() (*SdkClient, error) {
 func NewSdkClient(license *License) (*SdkClient, error) {
 	apiUrl := "https://console.w7.cc"
 	if helper.IsLocalMock() {
-		apiUrl = "http://172.16.1.150:9004"
+		apiUrl = "http://172.16.1.18:9004"
 	}
 	client := w7.NewClient(
 		license.AppId,
@@ -532,6 +532,7 @@ func (c *SdkClient) ReturnOrderFinish(k3kName string, sn string) (*LastReturnOrd
 	return order, err
 }
 
+// 当前方法只支持创始人 创建站点 暂时不支持其他用户创建站点
 func (c *SdkClient) CreateSiteFromPanel(url, siteIdentifie string) (*License, error) {
 	order := &License{}
 	params := map[string]string{
@@ -544,9 +545,39 @@ func (c *SdkClient) CreateSiteFromPanel(url, siteIdentifie string) (*License, er
 	return order, err
 }
 
+// 支持openid 创建站点 支持其他用户创建站点 比如子集群
+func (c *SdkClient) CreateSiteFromPanel2(url, siteIdentifie, openid string) (*License, error) {
+	order := &License{}
+	params := map[string]string{
+		// "clusterId": clusterId,
+		"url":            url,
+		"site_identifie": siteIdentifie,
+		"openid":         openid,
+		// "orderSn": sn,
+	}
+	_, err := c.Post(order, "/api/thirdparty-cd/k8s-offline/sdk/license/register-from-w7panel2", params)
+	return order, err
+}
+
 func (c *SdkClient) CreatePanelOrder(urlValues url.Values) (*PayResult, error) {
 	result := &PayResult{}
 	response, err := c.getReq().SetFormDataFromValues(urlValues).SetResult(result).Post("/api/thirdparty-cd/k8s-offline/sdk/panel/create-order")
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode() > 299 {
+		slog.Warn("sdk create panel order CreatePanelOrder error", "statusCode", response.StatusCode(), "response", response.String())
+		return nil, errors.New("CreatePanelOrder error" + response.String())
+	}
+	return result, err
+}
+
+func (c *SdkClient) OpenIdToCloudAccessToken(openId string) (*PassportToken, error) {
+	result := &PassportToken{}
+	urlvalues := url.Values{}
+	urlvalues.Add("openid", openId)
+	urlvalues.Add("useDefaultAppid", "1")
+	response, err := c.getReq().SetFormDataFromValues(urlvalues).SetResult(result).Post("/api/thirdparty-cd/k8s-offline/sdk/openid-to-cloud-access-token")
 	if err != nil {
 		return nil, err
 	}
