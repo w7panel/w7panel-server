@@ -45,7 +45,16 @@ func (self Static) StaticInfo(http *gin.Context) {
 		sdk := k8s.NewK8sClient().Sdk
 		group, err := appgroup.GetAppgroupUseSdk(releaseName, "default", sdk)
 		if err == nil {
+			// 去掉 path 部分，只保留 scheme://host
+		if parsedUrl, parseErr := url.Parse(group.Spec.ZpkUrl); parseErr == nil {
+			parsedUrl.Path = ""
+			parsedUrl.RawPath = ""
+			parsedUrl.RawQuery = ""
+			parsedUrl.Fragment = ""
+			zpkUrl = parsedUrl.String()
+		} else {
 			zpkUrl = group.Spec.ZpkUrl
+		}
 			if group.Annotations != nil {
 				ticket = group.Annotations["w7.cc/ticket"]
 			}
