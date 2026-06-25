@@ -9,6 +9,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/buildimage"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	"github.com/w7panel/w7panel/common/service/k8s/service"
+	"github.com/w7panel/w7panel/common/service/k8s/site"
 	webhooklocal "github.com/w7panel/w7panel/common/service/k8s/webhook"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -97,6 +98,13 @@ func StartControlManager() error {
 		err = buildimage.SetupBuildImageController(mgr, sdk)
 		if err != nil {
 			slog.Error("setup build image controller failed", "err", err)
+			return err
+		}
+	}
+	if facade.GetConfig().GetBool("site.enabled") {
+		err = site.SetupSiteController(mgr, sdk)
+		if err != nil {
+			slog.Error("setup site controller failed", "err", err)
 			return err
 		}
 	}

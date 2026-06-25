@@ -6,6 +6,8 @@ import (
 
 // TargetRef identifies a Kubernetes resource to patch with the registered site credentials.
 type TargetRef struct {
+	// Name of the target resource (e.g. "my-deployment").
+	Name string `json:"name,omitempty"`
 	// APIVersion of the target resource (e.g. "apps/v1").
 	APIVersion string `json:"apiVersion,omitempty"`
 	// Kind of the target resource (e.g. "Deployment").
@@ -26,17 +28,21 @@ type SiteSpec struct {
 	// +optional
 	UserName string `json:"userName,omitempty"`
 	// Target is the target Kubernetes resource to patch with the registered credentials.
-	Target TargetRef `json:"target"`
-	// AppId is the registered App ID returned from the panel.
-	AppId string `json:"appId,omitempty"`
-	// AppSecret is the registered App Secret returned from the panel.
-	AppSecret string `json:"appSecret,omitempty"`
+	// +optional
+	Target *TargetRef `json:"target,omitempty"`
 }
 
 // SiteStatus defines the observed state of a ZPK site.
 type SiteStatus struct {
-	// Phase indicates the registration phase: Pending, Registered, or Failed.
+	// Phase indicates the registration phase:
+	// Pending (initial) → AppIdReady (ZPK registered) → Completed (target patched) / Failed.
 	Phase string `json:"phase,omitempty"`
+	// AppId is the registered App ID returned from the panel.
+	// +optional
+	AppId string `json:"appId,omitempty"`
+	// AppSecret is the registered App Secret returned from the panel.
+	// +optional
+	AppSecret string `json:"appSecret,omitempty"`
 	// Conditions represents the latest available observations of the site's state.
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
@@ -44,6 +50,12 @@ type SiteStatus struct {
 	LastRegisteredAt *metav1.Time `json:"lastRegisteredAt,omitempty"`
 	// Message provides additional status description.
 	Message string `json:"message,omitempty"`
+	// PatchRetryCount is the number of times patching has been retried (due to NotFound).
+	// +optional
+	PatchRetryCount int32 `json:"patchRetryCount,omitempty"`
+	// RegisterRetryCount is the number of times registration has been retried.
+	// +optional
+	RegisterRetryCount int32 `json:"registerRetryCount,omitempty"`
 }
 
 // +genclient:nonNamespaced

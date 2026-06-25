@@ -76,7 +76,7 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 		}
 	}()
 	logger := log.FromContext(ctx)
-	logger.Info("Reconciling ServiceAccount", "namespace", req.Namespace, "name", req.Name)
+	// logger.Info("Reconciling ServiceAccount", "namespace", req.Namespace, "name", req.Name)
 	// slog.Error("start sa", "uname", req.Name)
 	// Fetch the ServiceAccount instance
 	sa := &corev1.ServiceAccount{}

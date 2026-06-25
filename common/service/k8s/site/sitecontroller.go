@@ -13,6 +13,8 @@ import (
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
@@ -23,7 +25,6 @@ import (
 
 // SetupSiteController sets up the Site controller with the manager.
 func SetupSiteController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
-	// Register Site types with the manager's scheme
 	if err := sitev1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
 		return err
 	}
@@ -71,7 +72,6 @@ func (r *SiteController) reconcile0(ctx context.Context, req ctrl.Request) (ctrl
 	logger := log.FromContext(ctx)
 	logger.Info("Reconciling Site", "name", req.Name)
 
-	// Fetch the Site instance
 	site := &sitev1alpha1.Site{}
 	if err := r.Get(ctx, req.NamespacedName, site); err != nil {
 		if client.IgnoreNotFound(err) != nil {
@@ -81,90 +81,165 @@ func (r *SiteController) reconcile0(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil
 	}
 
-	// Check if the Site is being deleted
 	if !site.DeletionTimestamp.IsZero() {
 		logger.Info("Site is being deleted", "name", req.Name)
 		return ctrl.Result{}, nil
 	}
 
-	// If already registered, skip
-	if site.Spec.AppId != "" && site.Spec.AppSecret != "" {
-		logger.Info("Site already registered, skipping", "appId", site.Spec.AppId)
+	// ── State machine ──────────────────────────────────────────
+	switch site.Status.Phase {
+	case "", "Pending":
+		return r.handlePending(ctx, site)
+	case "AppIdReady":
+		return r.handleAppIdReady(ctx, site)
+	case "Completed", "Failed":
+		logger.Info("Site reached terminal phase, skipping", "phase", site.Status.Phase)
+		return ctrl.Result{}, nil
+	default:
+		logger.Info("Unknown phase, resetting to Pending", "phase", site.Status.Phase)
+		site.Status.Phase = "Pending"
+		if err := r.Status().Update(ctx, site); err != nil {
+			logger.Error(err, "Failed to reset site phase")
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
 		return ctrl.Result{}, nil
 	}
+}
 
-	// In child agent mode, sync to root panel via HTTP instead of processing locally
+// handlePending registers the site via ZPK and transitions to AppIdReady or Failed.
+func (r *SiteController) handlePending(ctx context.Context, site *sitev1alpha1.Site) (ctrl.Result, error) {
+	// Child agent: sync to root panel instead of processing locally
 	if helper.IsChildAgent() {
-		logger.Info("Child agent mode, syncing site to root panel")
+		slog.Info("Child agent mode, syncing site to root panel", "name", site.GetName())
 		if err := k3k.SyncSiteHttp(site); err != nil {
-			logger.Error(err, "Failed to sync site to root panel")
-			r.updateSiteStatus(site, metav1.ConditionFalse, "SyncFailed", fmt.Sprintf("sync site error: %s", err.Error()))
+			slog.Error("Failed to sync site to root panel", "name", site.GetName(), "error", err)
+			r.setPhase(site, "Failed", "SyncFailed", metav1.ConditionFalse, fmt.Sprintf("sync site error: %s", err.Error()))
 			if err := r.Status().Update(ctx, site); err != nil {
-				logger.Error(err, "Failed to update site status")
+				slog.Error("Failed to update site status", "name", site.GetName(), "error", err)
 				return ctrl.Result{RequeueAfter: time.Minute}, nil
 			}
 			return ctrl.Result{}, nil
 		}
-		logger.Info("Site synced to root panel successfully")
-		r.updateSiteStatus(site, metav1.ConditionTrue, "Synced", "site synced to root panel")
+		slog.Info("Site synced to root panel successfully", "name", site.GetName())
+		r.setPhase(site, "Completed", "Synced", metav1.ConditionTrue, "site synced to root panel")
 		if err := r.Status().Update(ctx, site); err != nil {
-			logger.Error(err, "Failed to update site status")
+			slog.Error("Failed to update site status", "name", site.GetName(), "error", err)
 			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
 		return ctrl.Result{}, nil
 	}
-	var secret *console.AppSecret
-	if !helper.IsChildAgent() {
-		// Register the site via ZPK
-		sec, err := console.RegisterSiteZpk(site.Spec.Host, site.Spec.SiteIdentifier)
-		if err != nil {
-			logger.Error(err, "Failed to register site via ZPK")
-			r.updateSiteStatus(site, metav1.ConditionFalse, "RegistrationFailed", fmt.Sprintf("register site zpk error: %s", err.Error()))
-			if err := r.Status().Update(ctx, site); err != nil {
-				logger.Error(err, "Failed to update site status")
-				return ctrl.Result{RequeueAfter: time.Minute}, nil
-			}
-			return ctrl.Result{}, nil
-		}
-		logger.Info("Site registered successfully", "appId", sec.AppId)
-		secret = sec
-	}
 
-	// Patch the target resource (Deployment / DaemonSet / StatefulSet) with AppId/AppSecret
-	err := r.patchTargetResource(site.Name, secret, site.Spec.Target)
+	slog.Info("Registering site via ZPK", "name", site.GetName())
+	secret, err := console.RegisterSiteZpk(site.Spec.Host, site.Spec.SiteIdentifier)
 	if err != nil {
-		logger.Error(err, "Failed to patch target resource")
-		r.updateSiteStatus(site, metav1.ConditionFalse, "PatchFailed", fmt.Sprintf("patch target error: %s", err.Error()))
+		site.Status.RegisterRetryCount++
+		if site.Status.RegisterRetryCount >= 3 {
+			slog.Error("Registration failed after 3 retries, giving up", "name", site.GetName(), "error", err)
+			r.setPhase(site, "Failed", "RegistrationFailed", metav1.ConditionFalse, fmt.Sprintf("register site zpk error after 3 retries: %s", err.Error()))
+			if err := r.Status().Update(ctx, site); err != nil {
+				slog.Error("Failed to update site status", "name", site.GetName(), "error", err)
+				return ctrl.Result{RequeueAfter: time.Minute}, nil
+			}
+			return ctrl.Result{}, nil
+		}
+		slog.Warn("Registration failed, will retry", "name", site.GetName(), "error", err, "retry", site.Status.RegisterRetryCount)
 		if err := r.Status().Update(ctx, site); err != nil {
-			logger.Error(err, "Failed to update site status")
+			slog.Error("Failed to update site status", "name", site.GetName(), "error", err)
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
+
+	now := metav1.Now()
+	site.Status.AppId = secret.AppId
+	site.Status.AppSecret = secret.AppSecret
+	site.Status.LastRegisteredAt = &now
+	r.setPhase(site, "AppIdReady", "AppIdReady", metav1.ConditionTrue, "AppId/AppSecret obtained from ZPK registration")
+
+	slog.Info("Site registered successfully, phase -> AppIdReady", "name", site.GetName(), "appId", secret.AppId)
+	if err := r.Status().Update(ctx, site); err != nil {
+		slog.Error("Failed to update site status", "name", site.GetName(), "error", err)
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
+	return ctrl.Result{RequeueAfter: time.Second * 5}, nil
+}
+
+// handleAppIdReady patches the target resource and transitions to Completed or Failed.
+func (r *SiteController) handleAppIdReady(ctx context.Context, site *sitev1alpha1.Site) (ctrl.Result, error) {
+	// If no target specified, skip directly to Completed
+	if site.Spec.Target == nil {
+		slog.Info("No target specified, skipping patch", "name", site.GetName())
+		r.setPhase(site, "Completed", "NoTarget", metav1.ConditionTrue, "no target resource to patch")
+		if err := r.Status().Update(ctx, site); err != nil {
+			slog.Error("Failed to update site status", "name", site.GetName(), "error", err)
 			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
 		return ctrl.Result{}, nil
 	}
 
-	logger.Info("Target resource patched successfully")
+	slog.Info("Patching target resource with AppId/AppSecret", "name", site.GetName())
 
-	// Update Site spec with the registered credentials
-	site.Spec.AppId = secret.AppId
-	site.Spec.AppSecret = secret.AppSecret
-	if err := r.Update(ctx, site); err != nil {
-		logger.Error(err, "Failed to update site spec")
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	err := r.patchTargetResource(site.Spec.Target, &console.AppSecret{AppId: site.Status.AppId, AppSecret: site.Status.AppSecret})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			site.Status.PatchRetryCount++
+			if site.Status.PatchRetryCount >= 3 {
+				slog.Warn("Target resource not found after 3 retries, giving up", "name", site.GetName(), "kind", site.Spec.Target.Kind)
+				r.setPhase(site, "Failed", "TargetNotFound", metav1.ConditionFalse, "target resource not found after 3 retries")
+				if err := r.Status().Update(ctx, site); err != nil {
+					slog.Error("Failed to update site status", "name", site.GetName(), "error", err)
+					return ctrl.Result{RequeueAfter: time.Minute}, nil
+				}
+				return ctrl.Result{}, nil
+			}
+			slog.Info("Target resource not found, will retry", "name", site.GetName(), "kind", site.Spec.Target.Kind, "retry", site.Status.PatchRetryCount)
+			if err := r.Status().Update(ctx, site); err != nil {
+				slog.Error("Failed to update site status", "name", site.GetName(), "error", err)
+				return ctrl.Result{RequeueAfter: time.Minute}, nil
+			}
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+		slog.Error("Failed to patch target resource", "name", site.GetName(), "error", err)
+		r.setPhase(site, "Failed", "PatchFailed", metav1.ConditionFalse, fmt.Sprintf("patch target error: %s", err.Error()))
+		if err := r.Status().Update(ctx, site); err != nil {
+			slog.Error("Failed to update site status", "name", site.GetName(), "error", err)
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+		return ctrl.Result{}, nil
 	}
 
-	// Update status to Registered
-	r.updateSiteStatus(site, metav1.ConditionTrue, "Registered", "site registered and target patched successfully")
+	slog.Info("Target resource patched successfully, phase -> Completed", "name", site.GetName())
+	r.setPhase(site, "Completed", "Patched", metav1.ConditionTrue, "target resource patched with AppId/AppSecret")
 	if err := r.Status().Update(ctx, site); err != nil {
-		logger.Error(err, "Failed to update site status")
+		slog.Error("Failed to update site status", "name", site.GetName(), "error", err)
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
-
 	return ctrl.Result{}, nil
 }
 
-// patchTargetResource injects APP_ID and APP_SECRET env vars into the target workload
-// (Deployment, DaemonSet, or StatefulSet) using a strategic merge patch.
-func (r *SiteController) patchTargetResource(siteName string, appSecret *console.AppSecret, target sitev1alpha1.TargetRef) error {
+// patchTargetResource injects APP_ID and APP_SECRET into the target resource.
+// For Deployment/DaemonSet/StatefulSet: patches env vars via strategic merge.
+// For Secret/ConfigMap: creates or updates the resource with the credentials.
+func (r *SiteController) patchTargetResource(target *sitev1alpha1.TargetRef, appSecret *console.AppSecret) error {
+	switch target.Kind {
+	case "Deployment":
+		return r.patchWorkload(target, appSecret)
+	case "DaemonSet":
+		return r.patchWorkload(target, appSecret)
+	case "StatefulSet":
+		return r.patchWorkload(target, appSecret)
+	case "Secret":
+		return r.createOrUpdateSecret(target, appSecret)
+	case "ConfigMap":
+		return r.createOrUpdateConfigMap(target, appSecret)
+	default:
+		return fmt.Errorf("unsupported target kind %q (supported: Deployment, DaemonSet, StatefulSet, Secret, ConfigMap)", target.Kind)
+	}
+}
+
+// patchWorkload injects APP_ID and APP_SECRET env vars into a workload
+// (Deployment, DaemonSet, StatefulSet) using a strategic merge patch.
+func (r *SiteController) patchWorkload(target *sitev1alpha1.TargetRef, appSecret *console.AppSecret) error {
 	patchData := fmt.Sprintf(`{
 		"spec": {
 			"template": {
@@ -194,39 +269,96 @@ func (r *SiteController) patchTargetResource(siteName string, appSecret *console
 		_, err := r.ClientSet.
 			AppsV1().
 			Deployments(target.Namespace).
-			Patch(context.TODO(), siteName, k8stypes.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
+			Patch(context.TODO(), target.Name, k8stypes.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
 		return err
 	case "DaemonSet":
 		_, err := r.ClientSet.
 			AppsV1().
 			DaemonSets(target.Namespace).
-			Patch(context.TODO(), siteName, k8stypes.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
+			Patch(context.TODO(), target.Name, k8stypes.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
 		return err
 	case "StatefulSet":
 		_, err := r.ClientSet.
 			AppsV1().
 			StatefulSets(target.Namespace).
-			Patch(context.TODO(), siteName, k8stypes.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
+			Patch(context.TODO(), target.Name, k8stypes.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
 		return err
-	default:
-		return fmt.Errorf("unsupported target kind %q (supported: Deployment, DaemonSet, StatefulSet)", target.Kind)
 	}
+	return nil
 }
 
-// updateSiteStatus sets the Site status fields (phase, conditions, message).
-func (r *SiteController) updateSiteStatus(site *sitev1alpha1.Site, status metav1.ConditionStatus, reason, message string) {
-	now := metav1.Now()
-
-	phase := "Registered"
-	if status == metav1.ConditionFalse {
-		phase = "Failed"
+// createOrUpdateSecret creates or updates a Secret with APP_ID and APP_SECRET data.
+func (r *SiteController) createOrUpdateSecret(target *sitev1alpha1.TargetRef, appSecret *console.AppSecret) error {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      target.Name,
+			Namespace: target.Namespace,
+		},
+		Data: map[string][]byte{
+			"APP_ID":     []byte(appSecret.AppId),
+			"APP_SECRET": []byte(appSecret.AppSecret),
+		},
+		Type: corev1.SecretTypeOpaque,
 	}
 
+	existing, err := r.ClientSet.CoreV1().Secrets(target.Namespace).Get(context.TODO(), target.Name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			_, err = r.ClientSet.CoreV1().Secrets(target.Namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
+			return err
+		}
+		return err
+	}
+
+	secret.ResourceVersion = existing.ResourceVersion
+	_, err = r.ClientSet.CoreV1().Secrets(target.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+	return err
+}
+
+// createOrUpdateConfigMap creates or updates a ConfigMap with APP_ID and APP_SECRET data.
+func (r *SiteController) createOrUpdateConfigMap(target *sitev1alpha1.TargetRef, appSecret *console.AppSecret) error {
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      target.Name,
+			Namespace: target.Namespace,
+		},
+		Data: map[string]string{
+			"APP_ID":     appSecret.AppId,
+			"APP_SECRET": appSecret.AppSecret,
+		},
+	}
+
+	existing, err := r.ClientSet.CoreV1().ConfigMaps(target.Namespace).Get(context.TODO(), target.Name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			_, err = r.ClientSet.CoreV1().ConfigMaps(target.Namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
+			return err
+		}
+		return err
+	}
+
+	cm.ResourceVersion = existing.ResourceVersion
+	_, err = r.ClientSet.CoreV1().ConfigMaps(target.Namespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
+	return err
+}
+
+// setPhase updates the Site status with the given phase, condition and message.
+func (r *SiteController) setPhase(site *sitev1alpha1.Site, phase, reason string, conditionStatus metav1.ConditionStatus, message string) {
+	now := metav1.Now()
 	site.Status.Phase = phase
 	site.Status.Message = message
+
+	conditionType := "Ready"
+	switch phase {
+	case "AppIdReady":
+		conditionType = "AppIdReady"
+	case "Failed":
+		conditionType = "Ready"
+	}
+
 	site.Status.Conditions = append(site.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             status,
+		Type:               conditionType,
+		Status:             conditionStatus,
 		Reason:             reason,
 		Message:            message,
 		LastTransitionTime: now,

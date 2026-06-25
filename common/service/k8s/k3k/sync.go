@@ -1,7 +1,6 @@
 package k3k
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"log/slog"
@@ -561,47 +560,48 @@ func SyncSite(params *K3kSync) error {
 		return err
 	}
 
-	if site.Spec.AppId != "" && site.Spec.AppSecret != "" {
-		slog.Info("Site already registered, skipping", "name", params.VirtualName, "appId", site.Spec.AppId)
+	switch site.Status.Phase {
+	case "Completed", "Failed":
+		slog.Info("Site in terminal phase, skipping", "name", params.VirtualName, "phase", site.Status.Phase)
+		return nil
+	case "", "Pending":
+		// proceed to register
+	default:
+		slog.Info("Site in unexpected phase, resetting to Pending", "name", params.VirtualName, "phase", site.Status.Phase)
+		site.Status.Phase = "Pending"
+		if err := clientSigClient.Status().Update(root.Ctx, site); err != nil {
+			return err
+		}
 		return nil
 	}
 
 	secret, err := console.RegisterSiteZpk(site.Spec.Host, site.Spec.SiteIdentifier)
 	if err != nil {
 		slog.Error("Failed to register site via ZPK", "name", params.VirtualName, "error", err)
+		site.Status.Phase = "Failed"
+		site.Status.Message = fmt.Sprintf("register site zpk error: %s", err.Error())
+		clientSigClient.Status().Update(root.Ctx, site)
 		return err
 	}
 	slog.Info("Site registered successfully", "name", params.VirtualName, "appId", secret.AppId)
 
-	err = patchTargetResource(clientsdk, params.VirtualName, secret, site.Spec.Target.Namespace, site.Spec.Target.ContainerName)
-	if err != nil {
-		slog.Error("Failed to patch target resource", "name", params.VirtualName, "error", err)
-		return err
-	}
-	slog.Info("Target resource patched successfully", "name", params.VirtualName)
-
-	site.Spec.AppId = secret.AppId
-	site.Spec.AppSecret = secret.AppSecret
-	if err := clientSigClient.Update(root.Ctx, site); err != nil {
-		slog.Error("Failed to update Site spec in child cluster", "name", params.VirtualName, "error", err)
-		return err
-	}
-
 	now := metav1.Now()
-	site.Status.Phase = "Registered"
-	site.Status.Message = "site registered and target patched successfully"
+	site.Status.AppId = secret.AppId
+	site.Status.AppSecret = secret.AppSecret
+	site.Status.LastRegisteredAt = &now
+	site.Status.Phase = "AppIdReady"
+	site.Status.Message = "AppId/AppSecret obtained from ZPK registration"
 	site.Status.Conditions = append(site.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
+		Type:               "AppIdReady",
 		Status:             metav1.ConditionTrue,
-		Reason:             "Registered",
-		Message:            "site registered and target patched successfully",
+		Reason:             "AppIdReady",
+		Message:            "AppId/AppSecret obtained from ZPK registration",
 		LastTransitionTime: now,
 	})
 
-	// Update status separately as a sub-resource
-	site.Status.LastRegisteredAt = &now
+	slog.Info("Site registered successfully, phase -> AppIdReady, patch will be handled by sitecontroller", "name", params.VirtualName)
 	if err := clientSigClient.Status().Update(root.Ctx, site); err != nil {
-		slog.Error("Failed to update Site status in child cluster", "name", params.VirtualName, "error", err)
+		slog.Error("Failed to update Site status", "name", params.VirtualName, "error", err)
 		return err
 	}
 
@@ -611,38 +611,6 @@ func SyncSite(params *K3kSync) error {
 
 // patchTargetResource injects APP_ID and APP_SECRET env vars into the target workload
 // (Deployment, DaemonSet, or StatefulSet) in the child cluster.
-func patchTargetResource(sdk *k8s.Sdk, siteName string, appSecret *console.AppSecret, namespace, containerName string) error {
-	if containerName == "" {
-		return fmt.Errorf("containerName is required")
-	}
-	patchData := fmt.Sprintf(`{
-		"spec": {
-			"template": {
-				"spec": {
-					"containers": [
-						{
-							"name": "%s",
-							"env": [
-								{
-									"name": "APP_ID",
-									"value": "%s"
-								},
-								{
-									"name": "APP_SECRET",
-									"value": "%s"
-								}
-							]
-						}
-					]
-				}
-			}
-		}
-	}`, containerName, appSecret.AppId, appSecret.AppSecret)
-
-	_, err := sdk.ClientSet.AppsV1().Deployments(namespace).Patch(context.TODO(), siteName, types.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
-	return err
-}
-
 func SyncHttpAfter(object SyncObjectInterface, path string) error {
 	time.AfterFunc(time.Second*5, func() {
 		SyncHttp(object, path)

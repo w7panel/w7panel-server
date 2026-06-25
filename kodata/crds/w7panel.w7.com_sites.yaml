@@ -40,12 +40,6 @@ spec:
           spec:
             description: SiteSpec defines the desired state of a ZPK site.
             properties:
-              appId:
-                description: AppId is the registered App ID returned from the panel.
-                type: string
-              appSecret:
-                description: AppSecret is the registered App Secret returned from the panel.
-                type: string
               host:
                 description: Host is the domain name of the site.
                 type: string
@@ -58,14 +52,17 @@ spec:
                   apiVersion:
                     description: APIVersion of the target resource (e.g. "apps/v1").
                     type: string
+                  containerName:
+                    description: ContainerName is the container in the target resource to inject env vars into.
+                    type: string
                   kind:
                     description: Kind of the target resource (e.g. "Deployment").
                     type: string
+                  name:
+                    description: Name of the target resource (e.g. "my-deployment").
+                    type: string
                   namespace:
                     description: Namespace of the target resource.
-                    type: string
-                  containerName:
-                    description: ContainerName is the container in the target resource to inject env vars into.
                     type: string
                 type: object
               userName:
@@ -74,11 +71,16 @@ spec:
             required:
             - host
             - siteIdentifier
-            - target
             type: object
           status:
             description: SiteStatus defines the observed state of a ZPK site.
             properties:
+              appId:
+                description: AppId is the registered App ID returned from the panel.
+                type: string
+              appSecret:
+                description: AppSecret is the registered App Secret returned from the panel.
+                type: string
               conditions:
                 description: |-
                   Conditions represents the latest available observations of the
@@ -145,12 +147,26 @@ spec:
               message:
                 description: Message provides additional status description.
                 type: string
+              patchRetryCount:
+                description: |-
+                  PatchRetryCount is the number of times patching has been retried
+                  (due to NotFound).
+                format: int32
+                type: integer
+              registerRetryCount:
+                description: |-
+                  RegisterRetryCount is the number of times registration has been
+                  retried.
+                format: int32
+                type: integer
               phase:
-                description: "Phase indicates the registration phase: Pending, Registered, or Failed."
+                description: "Phase indicates the registration phase: Pending (initial) \u2192 AppIdReady (ZPK registered) \u2192 Completed (target patched) / Failed."
                 type: string
             type: object
         required:
         - spec
         type: object
+    subresources:
+      status: {}
     served: true
     storage: true
