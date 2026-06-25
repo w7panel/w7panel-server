@@ -5,6 +5,18 @@ KUBECTL="${KUBECTL:-kubectl}"
 NEW_GROUP="w7panel.w7.com"
 NEW_VERSION="v1alpha1"
 
+delete_old_resource() {
+    old_resource="$1"
+    namespace="$2"
+    name="$3"
+
+    echo "delete ${old_resource} namespace/${namespace}/${name}: remove finalizers"
+    $KUBECTL patch "${old_resource}" "${name}" -n "${namespace}" --type=merge -p '{"metadata":{"finalizers":[]}}'
+
+    echo "delete ${old_resource} namespace/${namespace}/${name}"
+    $KUBECTL delete "${old_resource}" "${name}" -n "${namespace}" --ignore-not-found
+}
+
 migrate_resource() {
     old_resource="$1"
     new_resource="$2"
@@ -30,14 +42,15 @@ migrate_resource() {
         names="$($KUBECTL get "${old_resource}" -n "${namespace}" -o json | jq -r '.items[]?.metadata.name')"
         for name in ${names}; do
             case "${name}" in
-                longhorn|w7panel-longhorn)
-                    echo "skip ${old_resource} namespace/${namespace}/${name}: longhorn old CRD is not migrated"
+                longhorn|w7panel-longhorn|w7panel-offline)
+                    echo "skip ${old_resource} namespace/${namespace}/${name}: old CRD is not migrated"
                     continue
                     ;;
             esac
 
             if $KUBECTL get "${new_resource}" "${name}" -n "${namespace}" >/dev/null 2>&1; then
                 echo "skip ${old_resource} namespace/${namespace}/${name}: ${new_resource} already exists"
+                delete_old_resource "${old_resource}" "${namespace}" "${name}"
                 continue
             fi
 
@@ -61,6 +74,8 @@ migrate_resource() {
                     )
                 ' \
                 | $KUBECTL apply -f -
+
+            delete_old_resource "${old_resource}" "${namespace}" "${name}"
         done
     done
 }

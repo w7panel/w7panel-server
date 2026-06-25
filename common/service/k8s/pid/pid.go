@@ -75,16 +75,15 @@ func (p *pid) Handle(param PidParam) (*PidResult, error) {
 		if err != nil {
 			return nil, err
 		}
-		// clusterPodKey := cacheKey(clusterPod)
-		// val, ok := pidCache.Get(clusterPodKey)
-		clusterPodContainerId := clusterPod.Status.ContainerStatuses[0].ContainerID
-		clusterPodPid, err := GetContainerPid(daemonsetPod, clusterPod, clusterPodContainerId, true, p.rootSdk) //20260616 新修改
-		// clusterPodPid, err := GetContainerPid(daemonsetPod, clusterPod, param.ContainerId, false, p.rootSdk) 之前为啥对 //TODO ???
-		if err != nil {
-			return nil, err
-		}
 
-		pid = clusterPodPid
+		// clusterPodContainerId := clusterPod.Status.ContainerStatuses[0].ContainerID
+		// clusterPodPid, err := GetContainerPid(daemonsetPod, clusterPod, clusterPodContainerId, true, p.rootSdk) //20260616 新修改
+		// // clusterPodPid, err := GetContainerPid(daemonsetPod, clusterPod, param.ContainerId, false, p.rootSdk) 之前为啥对 //TODO ???
+		// if err != nil {
+		// 	return nil, err
+		// }
+
+		// pid = clusterPodPid
 		if param.ContainerId != "" && param.FromPodName != "" {
 			//为啥前端传containerId 为了获取pid, 后期因要从annnatation获取pid缓存, 所以需要查询k3kInnerPod
 			k3kInnerPod, err := podfindApi.GetFromPod(param.FromPodName, param.Namespace, true)
@@ -95,10 +94,10 @@ func (p *pid) Handle(param PidParam) (*PidResult, error) {
 			if err != nil {
 				return nil, err
 			}
-			subPid = k3kInnerPodPid
+			pid = k3kInnerPodPid
 		}
-		agentPod = daemonsetPod
-		proxyIp = daemonsetPod.Status.PodIP
+		agentPod = clusterPod
+		// proxyIp = daemonsetPod.Status.PodIP //20260624 子集群直接使用middleware proxy.go来转发请求
 	} else {
 		podfindApi := newPodFind(p.rootSdk.ClientSet, p.rootSdk.ClientSet)
 		daemonsetPod, err := p.rootSdk.GetDaemonsetAgentPod(p.rootSdk.GetNamespace(), param.HostIp)

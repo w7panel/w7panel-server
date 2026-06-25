@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/base64"
 	"fmt"
 	"log/slog"
@@ -45,7 +47,16 @@ func (self Static) StaticInfo(http *gin.Context) {
 		sdk := k8s.NewK8sClient().Sdk
 		group, err := appgroup.GetAppgroupUseSdk(releaseName, "default", sdk)
 		if err == nil {
-			zpkUrl = group.Spec.ZpkUrl
+			// 去掉 path 部分，只保留 scheme://host
+			if parsedUrl, parseErr := url.Parse(group.Spec.ZpkUrl); parseErr == nil {
+				parsedUrl.Path = ""
+				parsedUrl.RawPath = ""
+				parsedUrl.RawQuery = ""
+				parsedUrl.Fragment = ""
+				zpkUrl = parsedUrl.String()
+			} else {
+				zpkUrl = group.Spec.ZpkUrl
+			}
 			if group.Annotations != nil {
 				ticket = group.Annotations["w7.cc/ticket"]
 			}
@@ -142,6 +153,26 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 			return
 		}
 		ctx.Header(frontendSourceHeader, "local")
+		// 客户端支持 gzip 时压缩后返回，减少传输体积
+		if strings.Contains(ctx.GetHeader("Accept-Encoding"), "gzip") {
+			data, err := os.ReadFile(localFile)
+			if err != nil {
+				slog.Error("读取本地文件失败", "path", localFile, "error", err)
+				ctx.String(http.StatusInternalServerError, err.Error())
+				return
+			}
+			var buf bytes.Buffer
+			gz := gzip.NewWriter(&buf)
+			if _, err := gz.Write(data); err != nil {
+				slog.Error("gzip压缩失败", "error", err)
+				ctx.String(http.StatusInternalServerError, err.Error())
+				return
+			}
+			gz.Close()
+			ctx.Header("Content-Encoding", "gzip")
+			ctx.Data(http.StatusOK, http.DetectContentType(data), buf.Bytes())
+			return
+		}
 		ctx.File(localFile)
 		return
 	}
@@ -206,6 +237,12 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 		req.URL.Host = remoteUrl.Host
 		req.URL.Path = remotePath
 		req.URL.RawPath = ""
+		acceptEncoding := req.Header.Get("Accept-Encoding")
+		if acceptEncoding != "" {
+			req.Header.Del("Accept-Encoding")
+			req.Header.Add("Accept-Encoding", "gzip")
+		}
+
 		if ticket != "" {
 			req.URL.RawQuery = "ticket=" + url.QueryEscape(ticket)
 		} else {

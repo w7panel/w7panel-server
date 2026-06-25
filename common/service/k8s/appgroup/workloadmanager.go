@@ -236,6 +236,9 @@ func (d *WorkloadManager) HandleWorkload(ds WorkloadWrapperInterface, delete boo
 	// }
 	itemStatus := ds.ToItemStatus()
 	if delete {
+		if itemStatus.Kind != "Job" {
+			d.fixSvc(ds, true)
+		}
 		if group.IsExists() {
 			group.RemoveStatusItem(itemStatus)
 			if itemStatus.Kind != "Job" {
@@ -350,7 +353,7 @@ func (d *WorkloadManager) cleanGroupChildren(group *v1alpha1.AppGroup) error {
 
 func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, isInit bool) error {
 	if group.DeletionTimestamp != nil {
-		d.deleteOldAppGroup(group)
+		// d.deleteOldAppGroup(group)
 		d.cleanAppGroup(group)
 		parentName, isChild := group.Labels["w7.cc/parent"]
 		if isChild {
@@ -440,7 +443,7 @@ func (d *WorkloadManager) deleteOldAppGroup(group *v1alpha1.AppGroup) {
 }
 
 func (d *WorkloadManager) cleanHelm(group *v1alpha1.AppGroup, createJob bool) error {
-	if group.Name == "longhorn" { //LonghornUpgrade 之前版本有bug 暂时不清理
+	if group.Name == "longhorn" || group.Name == "w7panel-offline" { //LonghornUpgrade 之前版本有bug 暂时不清理
 		return nil
 	}
 	_, err := d.helm.UnInstall(group.Name, group.Namespace)

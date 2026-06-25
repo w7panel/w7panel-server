@@ -3,6 +3,7 @@ package buildimage
 import (
 	"context"
 
+	"github.com/aws/smithy-go/ptr"
 	buildimagev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/buildimage/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -42,6 +43,7 @@ func toBuildJob(ctx context.Context, spec *BuildImageSpec) (*batchv1.Job, error)
 			},
 		},
 		Spec: batchv1.JobSpec{
+			TTLSecondsAfterFinished: ptr.Int32(300),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -53,6 +55,7 @@ func toBuildJob(ctx context.Context, spec *BuildImageSpec) (*batchv1.Job, error)
 				Spec: corev1.PodSpec{
 					// ServiceAccountName: helper.ServiceAccountName(),//不需要k8s 权限
 					RestartPolicy: corev1.RestartPolicyNever,
+
 					Containers: []corev1.Container{
 						{
 							Name:            "build-image",

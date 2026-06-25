@@ -28,16 +28,6 @@ func TestRefreshUseCdToken(t *testing.T) {
 	}
 }
 
-func TestPreInstall(t *testing.T) {
-	SetConsoleApi("http://172.16.1.126:9004")
-	consoleCdClient := NewConsoleCdClient("xxx")
-	p2, err := consoleCdClient.PreInstall("test", "1")
-	if err != nil {
-		t.Error(err)
-	}
-	print(p2)
-}
-
 func TestVerifyCert(t *testing.T) {
 	cert := `-----BEGIN CERTIFICATE-----
 MIIEKDCCAxCgAwIBAgIBAjANBgkqhkiG9w0BAQsFADCBrDELMAkGA1UEBhMCQ04x

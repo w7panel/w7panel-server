@@ -34,6 +34,24 @@ func getCrdOperations() []admissionregistrationv1.RuleWithOperations {
 	}
 	return getDefaultCrdOperations()
 }
+
+func getMatchConditions() []admissionregistrationv1.MatchCondition {
+	return []admissionregistrationv1.MatchCondition{
+		{
+			Name:       "only-longhorn-storageclass",
+			Expression: `request.resource.group != "storage.k8s.io" || request.resource.resource != "storageclasses" || object.metadata.name == "longhorn"`,
+		},
+		{
+			Name:       "only-default-namespace-pod",
+			Expression: `request.resource.group != "" || request.resource.resource != "pods" || request.namespace == "default"`,
+		},
+		{
+			Name:       "only-k3k-logo-configmap",
+			Expression: `request.resource.group != "" || request.resource.resource != "configmaps" || (object.metadata.name == "k3k.logo.config" && request.namespace == "kube-system")`,
+		},
+	}
+}
+
 func getAgentOperations() []admissionregistrationv1.RuleWithOperations {
 	return []admissionregistrationv1.RuleWithOperations{
 		{
@@ -45,14 +63,6 @@ func getAgentOperations() []admissionregistrationv1.RuleWithOperations {
 			},
 		},
 
-		{
-			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
-			Rule: admissionregistrationv1.Rule{
-				APIGroups:   []string{""},
-				APIVersions: []string{"v1"},
-				Resources:   []string{"configmaps"},
-			},
-		},
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
 			Rule: admissionregistrationv1.Rule{
@@ -82,14 +92,6 @@ func getAgentCrdOperations() []admissionregistrationv1.RuleWithOperations {
 				Resources:   []string{"mcpbridges"},
 			},
 		},
-		{
-			Operations: []admissionregistrationv1.OperationType{"DELETE"},
-			Rule: admissionregistrationv1.Rule{
-				APIGroups:   []string{"apps.kubeblocks.io"},
-				APIVersions: []string{"v1alpha1"},
-				Resources:   []string{"clusters"},
-			},
-		},
 	}
 }
 
@@ -103,20 +105,23 @@ func getDefaultOperations() []admissionregistrationv1.RuleWithOperations {
 				Resources:   []string{"services"},
 			},
 		},
+
 		{
-			Operations: []admissionregistrationv1.OperationType{"UPDATE"},
+			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
 			Rule: admissionregistrationv1.Rule{
 				APIGroups:   []string{""},
 				APIVersions: []string{"v1"},
-				Resources:   []string{"serviceaccounts"},
+				Resources:   []string{"configmaps"},
 			},
 		},
+
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
 			Rule: admissionregistrationv1.Rule{
 				APIGroups:   []string{"apps"},
 				APIVersions: []string{"v1"},
 				Resources:   []string{"statefulsets"},
+				// Scope:       ptr.String(admissionregistrationv1.NamespacedScope),
 			},
 		},
 		{
@@ -198,14 +203,6 @@ func getDefaultCrdOperations() []admissionregistrationv1.RuleWithOperations {
 				Resources:   []string{"microapps"},
 			},
 		},
-		{
-			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
-			Rule: admissionregistrationv1.Rule{
-				APIGroups:   []string{"k3k.io"},
-				APIVersions: []string{"v1alpha1"},
-				Resources:   []string{"virtualclusterpolicies", "clusters"},
-			},
-		},
 
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
@@ -231,14 +228,7 @@ func getDefaultCrdOperations() []admissionregistrationv1.RuleWithOperations {
 				Resources:   []string{"nodes"},
 			},
 		},
-		{
-			Operations: []admissionregistrationv1.OperationType{"DELETE"},
-			Rule: admissionregistrationv1.Rule{
-				APIGroups:   []string{"apps.kubeblocks.io"},
-				APIVersions: []string{"v1alpha1"},
-				Resources:   []string{"clusters"},
-			},
-		},
+
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
 			Rule: admissionregistrationv1.Rule{
@@ -290,6 +280,7 @@ func (w *WebHookMutate) CreateOrUpdate(caBound []byte, svcName string, namespace
 				AdmissionReviewVersions: []string{"v1"},
 				SideEffects:             &sideEffects,
 				FailurePolicy:           &policy,
+				MatchConditions:         getMatchConditions(),
 			},
 		},
 	}
