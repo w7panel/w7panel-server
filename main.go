@@ -113,8 +113,7 @@ func main() {
 		router := engine.Group("").
 			Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedExtensions([]string{".pdf", ".mp4"}))).
 			Use(cachecontrol.New(cachecontrol.CacheAssetsForeverPreset))
-		routerNocache := engine.Group("/ui").
-			Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedExtensions([]string{".pdf", ".mp4"})))
+		routerNocache := engine.Group("/ui") //.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedExtensions([]string{".pdf", ".mp4"})))
 		routerHtml := engine.Group("").
 			Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedExtensions([]string{".pdf", ".mp4"}))).
 			Use(cachecontrol.New(cachecontrol.NoCachePreset))

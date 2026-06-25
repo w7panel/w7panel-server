@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/base64"
 	"fmt"
 	"log/slog"
@@ -151,6 +153,26 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 			return
 		}
 		ctx.Header(frontendSourceHeader, "local")
+		// 客户端支持 gzip 时压缩后返回，减少传输体积
+		if strings.Contains(ctx.GetHeader("Accept-Encoding"), "gzip") {
+			data, err := os.ReadFile(localFile)
+			if err != nil {
+				slog.Error("读取本地文件失败", "path", localFile, "error", err)
+				ctx.String(http.StatusInternalServerError, err.Error())
+				return
+			}
+			var buf bytes.Buffer
+			gz := gzip.NewWriter(&buf)
+			if _, err := gz.Write(data); err != nil {
+				slog.Error("gzip压缩失败", "error", err)
+				ctx.String(http.StatusInternalServerError, err.Error())
+				return
+			}
+			gz.Close()
+			ctx.Header("Content-Encoding", "gzip")
+			ctx.Data(http.StatusOK, http.DetectContentType(data), buf.Bytes())
+			return
+		}
 		ctx.File(localFile)
 		return
 	}
