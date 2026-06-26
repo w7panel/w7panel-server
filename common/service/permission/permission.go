@@ -31,6 +31,51 @@ var permissionGVR = schema.GroupVersionResource{
 	Resource: "permissions",
 }
 
+var founderMenu = []string{
+	"cluster",
+	"cluster/panel",
+	"cluster/resource",
+	"app",
+	"app/apps",
+	"app/apps/add",
+	"app/apps/edit",
+	"app/apps/delete",
+	"app/cronjob",
+	"app/cronjob/add",
+	"app/cronjob/edit",
+	"app/cronjob/delete",
+	"app/rvproxy",
+	"app/rvproxy/add",
+	"app/rvproxy/edit",
+	"app/rvproxy/delete",
+	"app/database",
+	"app/database/add",
+	"app/database/delete",
+	"app/gpustack",
+	"storage",
+	"storage/disk",
+	"storage/disk/add",
+	"storage/disk/edit",
+	"storage/disk/delete",
+	"storage/zone",
+	"zpk",
+	"system",
+	"system/cloud",
+	"person/order-center",
+	"person/cost-center",
+	"cluster/nodes",
+	"cluster/nodes/add",
+	"cluster/nodes/registries",
+	"cluster/nodes/gpu",
+	"cluster/nodes/memory",
+	"usermanage/usermanage-whitedomain",
+	"usermanage",
+	"usermanage/users",
+	"usermanage/usergroup",
+	"usermanage/permission",
+	"usermanage/quota",
+}
+
 func Get(ctx context.Context, sdk *k8s.Sdk, name string) (*configv1alpha1.Permission, error) {
 	obj, err := sdk.DynamicClient().Resource(permissionGVR).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
@@ -69,6 +114,9 @@ func ResolveForServiceAccount(ctx context.Context, sdk *k8s.Sdk, sa *corev1.Serv
 	annotations := sa.GetAnnotations()
 	name := annotations[k3ktypes.W7_MENU_NAME]
 	if name == "" {
+		if isFounderServiceAccount(sa) {
+			return founderFallback(), nil
+		}
 		if annotations[k3ktypes.W7_MENU] != "" || annotations["w7.cc/api"] != "" {
 			return FromServiceAccount(sa), nil
 		}
@@ -320,6 +368,17 @@ func IsBuiltin(p *configv1alpha1.Permission) bool {
 	return p.Labels["typemode"] == "in"
 }
 
+func isFounderServiceAccount(sa *corev1.ServiceAccount) bool {
+	labels := sa.GetLabels()
+	if labels[k3ktypes.W7_USER_MODE] == k3ktypes.W7_USER_MODE_FOUNDER {
+		return true
+	}
+	if labels[k3ktypes.W7_ROLE] == k3ktypes.W7_USER_MODE_FOUNDER {
+		return true
+	}
+	return false
+}
+
 func boolString(v bool) string {
 	if v {
 		return "true"
@@ -330,7 +389,7 @@ func boolString(v bool) string {
 func founderFallback() *configv1alpha1.Permission {
 	return &configv1alpha1.Permission{
 		Spec: configv1alpha1.PermissionSpec{
-			Menu: []string{"*"},
+			Menu: founderMenu,
 			API:  map[string][]string{"*": []string{"*"}},
 			Features: configv1alpha1.PermissionFeatures{
 				Debug:      true,

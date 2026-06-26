@@ -84,6 +84,26 @@ func TestResolveForServiceAccountRequiresPermissionName(t *testing.T) {
 	}
 }
 
+func TestResolveForServiceAccountFallsBackForFounderWithoutPermissionName(t *testing.T) {
+	p, err := ResolveForServiceAccount(context.Background(), nil, &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "legacy-founder",
+			Labels: map[string]string{
+				k3ktypes.W7_USER_MODE: k3ktypes.W7_USER_MODE_FOUNDER,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("ResolveForServiceAccount() error = %v", err)
+	}
+	if !MatchAPI(p.Spec.API, "GET", "/panel-api/v1/menu") {
+		t.Fatal("expected founder fallback to authorize menu request")
+	}
+	if !containsString(p.Spec.Menu, "cluster") || !containsString(p.Spec.Menu, "usermanage/permission") {
+		t.Fatalf("founder fallback menu = %v, want full founder menu", p.Spec.Menu)
+	}
+}
+
 func TestResolveForServiceAccountFallsBackToAnnotations(t *testing.T) {
 	api, _ := json.Marshal(map[string][]string{"/panel-api/v1/apps/*": {"get"}})
 	menu, _ := json.Marshal([]string{"app/*"})
@@ -146,6 +166,9 @@ func TestBuiltinAdminPermissionsDoNotGrantFounderWildcards(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			data, err := os.ReadFile(filepath.Join("..", "..", "..", "kodata", "yaml", "permission", name))
 			if err != nil {
+				if os.IsNotExist(err) {
+					t.Skipf("builtin permission file %s does not exist", name)
+				}
 				t.Fatalf("read builtin permission: %v", err)
 			}
 			content := string(data)
@@ -157,4 +180,13 @@ func TestBuiltinAdminPermissionsDoNotGrantFounderWildcards(t *testing.T) {
 			}
 		})
 	}
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }

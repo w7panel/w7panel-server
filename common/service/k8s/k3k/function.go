@@ -124,6 +124,12 @@ func RefreshK3kUser(user *types.K3kUser, rootSdk *k8s.Sdk, update bool) (*types.
 	// user := types.NewK3kUser(sa)
 	// oldSa := user.ServiceAccount.DeepCopy()
 	w7configRepo := config.NewW7ConfigRepository(rootSdk)
+	if user.GetMenuName() == "" && user.IsFounder() {
+		if user.Annotations == nil {
+			user.Annotations = map[string]string{}
+		}
+		user.Annotations[k3ktypes.W7_MENU_NAME] = permissionservice.FounderPermissionName
+	}
 	if !user.IsCustomPermission() {
 		permissionConfig, err := permissionservice.Get(rootSdk.Ctx, rootSdk, user.GetMenuName())
 		if err == nil {

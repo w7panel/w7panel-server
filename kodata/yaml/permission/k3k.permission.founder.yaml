@@ -9,7 +9,48 @@ spec:
   type: builtin
   role: founder
   menu:
-  - '*'
+  - cluster
+  - cluster/panel
+  - cluster/resource
+  - app
+  - app/apps
+  - app/apps/add
+  - app/apps/edit
+  - app/apps/delete
+  - app/cronjob
+  - app/cronjob/add
+  - app/cronjob/edit
+  - app/cronjob/delete
+  - app/rvproxy
+  - app/rvproxy/add
+  - app/rvproxy/edit
+  - app/rvproxy/delete
+  - app/database
+  - app/database/add
+  - app/database/delete
+  - app/gpustack
+  - storage
+  - storage/disk
+  - storage/disk/add
+  - storage/disk/edit
+  - storage/disk/delete
+  - storage/zone
+  - zpk
+  - system
+  - system/cloud
+  - person/order-center
+  - person/cost-center
+  - cluster/nodes
+  - cluster/nodes/add
+  - cluster/nodes/registries
+  - cluster/nodes/gpu
+  - cluster/nodes/memory
+  - usermanage/usermanage-whitedomain
+  - usermanage
+  - usermanage/users
+  - usermanage/usergroup
+  - usermanage/permission
+  - usermanage/quota
   api:
     '*':
     - '*'
