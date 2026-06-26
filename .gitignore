@@ -57,3 +57,5 @@ build.sh
 .agents
 /.agents
 /skills-lock.json
+.go-build-cache
+.go-build-cache/** 

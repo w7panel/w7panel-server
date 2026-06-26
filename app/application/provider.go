@@ -18,7 +18,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/gpu/gpustack"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
-	"github.com/w7panel/w7panel/common/service/k8s/mcp"
 	"github.com/w7panel/w7panel/common/service/k8s/shell"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
@@ -74,10 +73,6 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 		go gpustack.Watch()
 	}
 
-	if facade.GetConfig().GetBool("mcp.watch") {
-
-		go mcp.Watch()
-	}
 	if facade.GetConfig().GetBool("k8s.watch") {
 		go core.StartControlManager()
 	}
@@ -219,7 +214,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/longhorn/volumes/:volumeName/trim-filesystem", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.TrimFilesystem)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-delete", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotDelete)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-purge", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotPurge)
-		
 
 			localApiGroup.GET("/static/:identifie/status", middleware.Auth{}.Process, controller2.Static{}.StaticInfo)
 			localApiGroup.POST("/static/:namespace/download/:name", middleware.Auth{}.Process, controller2.Static{}.Download)
