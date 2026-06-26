@@ -35,6 +35,7 @@ var founderMenu = []string{
 	"cluster",
 	"cluster/panel",
 	"cluster/resource",
+	"cluster/dns",
 	"app",
 	"app/apps",
 	"app/apps/add",
@@ -59,8 +60,11 @@ var founderMenu = []string{
 	"storage/disk/delete",
 	"storage/zone",
 	"zpk",
+	"sitemanage",
 	"system",
 	"system/cloud",
+	"system/license",
+	"system/audit",
 	"person/order-center",
 	"person/cost-center",
 	"cluster/nodes",
@@ -74,6 +78,7 @@ var founderMenu = []string{
 	"usermanage/usergroup",
 	"usermanage/permission",
 	"usermanage/quota",
+	"usermanage/usermanage-system",
 }
 
 func Get(ctx context.Context, sdk *k8s.Sdk, name string) (*configv1alpha1.Permission, error) {

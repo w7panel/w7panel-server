@@ -12,6 +12,7 @@ spec:
   - cluster
   - cluster/panel
   - cluster/resource
+  - cluster/dns
   - app
   - app/apps
   - app/apps/add
@@ -36,8 +37,11 @@ spec:
   - storage/disk/delete
   - storage/zone
   - zpk
+  - sitemanage
   - system
   - system/cloud
+  - system/license
+  - system/audit
   - person/order-center
   - person/cost-center
   - cluster/nodes
@@ -51,6 +55,7 @@ spec:
   - usermanage/usergroup
   - usermanage/permission
   - usermanage/quota
+  - usermanage/usermanage-system
   api:
     '*':
     - '*'
