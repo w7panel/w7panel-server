@@ -299,7 +299,7 @@ func (self Auth) ResetPasswordCurrent(http *gin.Context) {
 	sdk := k8s.NewK8sClient() //全局用户sdk
 	token := http.MustGet("k8s_token").(string)
 	k8sToken := k8s.NewK8sToken(token)
-	userName, err := k8sToken.GetSaName()
+	userName, err := k8sToken.GetUserName()
 	if err != nil {
 		self.JsonResponseWithError(http, err, 500)
 		return

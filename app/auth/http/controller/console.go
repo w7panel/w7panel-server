@@ -59,7 +59,7 @@ func (self Console) BindConsole(gin *gin.Context) {
 	}
 	tokenstr := gin.MustGet("k8s_token").(string)
 	k8sToken := k8s.NewK8sToken(tokenstr)
-	saName, err := k8sToken.GetSaName()
+	saName, err := k8sToken.GetUserName()
 	if err != nil {
 		self.JsonResponseWithError(gin, err, 500)
 		return
@@ -88,7 +88,7 @@ func (self Console) Info(gin *gin.Context) {
 
 	tokenstr := gin.MustGet("k8s_token").(string)
 	k8sToken := k8s.NewK8sToken(tokenstr)
-	saName, err := k8sToken.GetSaName()
+	saName, err := k8sToken.GetUserName()
 	if err != nil {
 		self.JsonResponseWithError(gin, err, 500)
 		return
@@ -171,7 +171,7 @@ func (self Console) RegisterToConsole(gin *gin.Context) {
 	// 	return
 	// }
 	sdk := k8s.NewK8sClient().Sdk
-	saName, err := k8sToken.GetSaName()
+	saName, err := k8sToken.GetUserName()
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
@@ -247,7 +247,7 @@ func (self Console) ImportCert(gin *gin.Context) {
 	// 	return
 	// }
 	// sdk := k8s.NewK8sClient().Sdk
-	saName, err := k8sToken.GetSaName()
+	saName, err := k8sToken.GetUserName()
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
@@ -282,7 +282,7 @@ func (self Console) ImportCertConsole(gin *gin.Context) {
 	// 	return
 	// }
 	// sdk := k8s.NewK8sClient().Sdk
-	saName, err := k8sToken.GetSaName()
+	saName, err := k8sToken.GetUserName()
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return

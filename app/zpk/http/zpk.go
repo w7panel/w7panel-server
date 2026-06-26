@@ -69,7 +69,7 @@ func (self Zpk) GetConfig(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	saName, err := k8sToken.GetSaName()
+	saName, err := k8sToken.GetUserName()
 	if err != nil {
 		slog.Error("zpk config get saName err", "err", err)
 	}

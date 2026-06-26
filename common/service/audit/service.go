@@ -102,7 +102,7 @@ func CurrentUser(ctx *gin.Context) UserContext {
 		return user
 	}
 	token := k8s.NewK8sToken(tokenStr)
-	if name, err := token.GetSaName(); err == nil && name != "" {
+	if name, err := token.GetUserName(); err == nil && name != "" {
 		user.Username = name
 	}
 	user.UserMode = token.GetRole()

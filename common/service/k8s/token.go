@@ -131,7 +131,7 @@ func (t *K8sToken) IsCacheToken() bool {
 	return ok
 }
 
-func (t *K8sToken) GetSaName() (string, error) {
+func (t *K8sToken) GetSaNameOld() (string, error) {
 	sa, _ := getTokenSaName(t.token)
 	if sa == "" {
 		return "", errors.New("token中没有找到serviceaccount")

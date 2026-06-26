@@ -345,7 +345,7 @@ func (p *PackageApp) GetLabels() map[string]string {
 		result[k] = v
 	}
 	if p.K8sToken != nil {
-		saName, err := p.K8sToken.GetSaName()
+		saName, err := p.K8sToken.GetUserName()
 		if err != nil {
 			slog.Warn("get sa name", "err", err)
 		}

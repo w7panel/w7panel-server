@@ -157,7 +157,7 @@ func (o Oidc) AuthorizeCode(ctx *gin.Context) {
 	// oidc.SetLoadFunc(appgroup.AppGroupToOidcSecret)
 	token := ctx.MustGet("k8s_token").(string)
 	k8sToken := k8s.NewK8sToken(token)
-	username, err := k8sToken.GetSaName()
+	username, err := k8sToken.GetUserName()
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
 		return
@@ -196,7 +196,7 @@ func (o Oidc) GetRedirectURI(ctx *gin.Context) {
 	// oidc.SetLoadFunc(appgroup.AppGroupToOidcSecret)
 	token := ctx.MustGet("k8s_token").(string)
 	k8sToken := k8s.NewK8sToken(token)
-	username, err := k8sToken.GetSaName()
+	username, err := k8sToken.GetUserName()
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "error_description": err.Error()})
 		return

@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	permissionservice "github.com/w7panel/w7panel/common/service/permission"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
 	"gopkg.in/yaml.v3"
@@ -45,7 +44,7 @@ func (self Auth) Process(ctx *gin.Context) {
 	}
 	k8sToken := k8s.NewK8sToken(bearertoken)
 	if k8sToken.IsCacheToken() {
-		if saName, err := k8sToken.GetSaName(); err == nil {
+		if saName, err := k8sToken.GetUserName(); err == nil {
 			ctx.Set("username", saName)
 			if !self.authorizePanelAPI(ctx, saName) {
 				return
@@ -65,13 +64,11 @@ func (self Auth) Process(ctx *gin.Context) {
 		return
 	}
 	k8sToken.Cache()
-	if k3k.NeedRelogin(k8sToken) {
 
-	}
-	saName, err := k8sToken.GetSaName()
+	userName, err := k8sToken.GetUserName()
 	if err == nil {
-		ctx.Set("username", saName)
-		if !self.authorizePanelAPI(ctx, saName) {
+		ctx.Set("username", userName)
+		if !self.authorizePanelAPI(ctx, userName) {
 			return
 		}
 	}

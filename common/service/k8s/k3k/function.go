@@ -91,11 +91,11 @@ func SignLastLoginTime(sdk *k8s.Sdk, user *types.K3kUser) error {
 func TokenToK3kUser(token string) (*types.K3kUser, error) {
 	rootSdk := k8s.NewK8sClient().Sdk
 	ktoken := k8s.NewK8sToken(token)
-	saName, err := ktoken.GetSaName()
+	userName, err := ktoken.GetUserName()
 	if err != nil {
 		return nil, err
 	}
-	sa, err := rootSdk.GetServiceAccount(rootSdk.GetNamespace(), saName)
+	sa, err := rootSdk.GetServiceAccount(rootSdk.GetNamespace(), userName)
 	if err != nil {
 		return nil, err
 	}
@@ -191,18 +191,6 @@ func RefreshK3kUser(user *types.K3kUser, rootSdk *k8s.Sdk, update bool) (*types.
 		}
 	}
 	return user, nil
-}
-
-func NeedRelogin(token *k8s.K8sToken) bool {
-	saName, err := token.GetSaName()
-	if err != nil {
-		return false
-	}
-	// if token.GetLockVersion() != GetSaVersion(saName) || token.GetK3kPolicyVersion() != GetPolicyVersion(token.GetPolicyName()) {
-	if token.GetLockVersion() != types.GetSaVersion(saName) {
-		return true
-	}
-	return false
 }
 
 func GetCkm(ctx context.Context, sdk *k8s.Sdk, namespace, cvmName string) (*cvmv1alpha1.Ckm, error) {

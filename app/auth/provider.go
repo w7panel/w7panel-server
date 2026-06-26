@@ -37,8 +37,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			oidcGroup.GET("/register/:clientId", controller2.Oidc{}.GetClient)
 			oidcGroup.PUT("/register/:clientId", controller2.Oidc{}.UpdateClient)
 			oidcGroup.DELETE("/register/:clientId", controller2.Oidc{}.DeleteClient)
-			oidcGroup.GET("/authorize/login", controller2.Oidc{}.LoginPage)
-			oidcGroup.POST("/authorize/login", controller2.Oidc{}.Login)
+
 			oidcGroup.Any("/authorize", controller2.Oidc{}.Handle)
 			oidcGroup.Any("/token", controller2.Oidc{}.Handle)
 			oidcGroup.Any("/userinfo", controller2.Oidc{}.Handle)

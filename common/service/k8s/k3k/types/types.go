@@ -168,12 +168,12 @@ func DelPolicyVersion(name string) {
 }
 
 func NeedRelogin(token *k8s.K8sToken) bool {
-	saName, err := token.GetSaName()
+	userName, err := token.GetUserName()
 	if err != nil {
 		return false
 	}
 	// if token.GetLockVersion() != GetSaVersion(saName) || token.GetK3kPolicyVersion() != GetPolicyVersion(token.GetPolicyName()) {
-	if token.GetLockVersion() != GetSaVersion(saName) {
+	if token.GetLockVersion() != GetSaVersion(userName) {
 		return true
 	}
 	return false
