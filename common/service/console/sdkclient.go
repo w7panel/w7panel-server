@@ -582,8 +582,25 @@ func (c *SdkClient) OpenIdToCloudAccessToken(openId string) (*PassportToken, err
 		return nil, err
 	}
 	if response.StatusCode() > 299 {
-		slog.Warn("sdk create panel order CreatePanelOrder error", "statusCode", response.StatusCode(), "response", response.String())
-		return nil, errors.New("CreatePanelOrder error" + response.String())
+		slog.Warn("sdk create panel order OpenIdToCloudAccessToken error", "statusCode", response.StatusCode(), "response", response.String())
+		return nil, errors.New("OpenIdToCloudAccessToken error" + response.String())
+	}
+	return result, err
+}
+
+func (c *SdkClient) OpenIdToCloudCode(openId, componentAppid string) (*PassportCode, error) {
+	result := &PassportCode{}
+	urlvalues := url.Values{}
+	urlvalues.Add("openid", openId)
+	urlvalues.Add("component_appid", componentAppid)
+	urlvalues.Add("useDefaultAppid", "1")
+	response, err := c.getReq().SetFormDataFromValues(urlvalues).SetResult(result).Post("/api/thirdparty-cd/k8s-offline/sdk/openid-to-cloud-code")
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode() > 299 {
+		slog.Warn("sdk create panel order OpenIdToCloudCode error", "statusCode", response.StatusCode(), "response", response.String())
+		return nil, errors.New("OpenIdToCloudCode error" + response.String())
 	}
 	return result, err
 }

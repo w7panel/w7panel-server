@@ -103,3 +103,17 @@ func TestOpenIdToPassportToken(t *testing.T) {
 	}
 	t.Log(info)
 }
+
+func TestOpenIdToCode(t *testing.T) {
+	// os.Setenv("USER_AGENT", "we7test-beta")
+	os.Setenv("LOCAL_MOCK", "1")
+	sdkClient, err := NewDefaultSdkClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := sdkClient.OpenIdToCloudCode("mzUZB6jb59EJKakQsGrVSg", "510929")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(info)
+}

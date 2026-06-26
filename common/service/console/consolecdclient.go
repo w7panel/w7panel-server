@@ -406,20 +406,7 @@ func OpenIdToCdToken(openId string) (*ThirdPartyCDToken, error) {
 	return result, nil
 }
 
-func OpenIdToPassportToken(openId string) (*PassportToken, error) {
-	result := &PassportToken{}
-	urlvalues := url.Values{}
-	urlvalues.Add("openid", openId)
-	urlvalues.Add("useDefaultAppid", "1")
-	response, err := helper.RetryHttpClient().R().SetFormDataFromValues(urlvalues).SetResult(result).Post(ConsoleCDPanelOpenidConvertPassApi)
-	if err != nil {
-		return nil, err
-	}
-	if response.StatusCode() > 299 {
-		return nil, errors.New("OpenIdToCdToken error" + response.String())
-	}
-	return result, nil
-}
+
 
 func VerifyCert(cert *x509.Certificate) (*CertVerify, error) {
 

@@ -3,6 +3,7 @@ package controller
 import (
 	// "archive/zip"
 
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 
@@ -113,6 +115,36 @@ func (self Console) Info(gin *gin.Context) {
 	}
 
 	self.JsonResponseWithoutError(gin, w7config.ToArray())
+}
+
+func (self Console) JsCloudCode(gin *gin.Context) {
+	componentAppId := gin.Query("componentAppId")
+	if componentAppId == "" {
+		componentAppId = gin.PostForm("componentAppId")
+	}
+	if componentAppId == "" {
+		self.JsonResponseWithError(gin, errors.New("componentAppId is required"), 400)
+		return
+	}
+
+	token := gin.MustGet("k8s_token").(string)
+	user, err := k3k.TokenToK3kUser(token)
+	if err != nil {
+		self.JsonResponseWithServerError(gin, err)
+		return
+	}
+	openId := user.GetConsoleOpenId()
+	if openId == "" {
+		self.JsonResponseWithError(gin, errors.New("openid is empty"), 400)
+		return
+	}
+
+	code, err := console.OpenIdToCloudCode(openId, componentAppId)
+	if err != nil {
+		self.JsonResponseWithServerError(gin, err)
+		return
+	}
+	self.JsonResponseWithoutError(gin, code)
 }
 
 // 绑定集群到控制台交付系统集群

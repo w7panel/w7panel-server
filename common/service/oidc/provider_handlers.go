@@ -140,7 +140,7 @@ func (s *Server) setUserinfo(userinfo *zitadeloidc.UserInfo, subject string, sco
 	if openId != "" {
 		// 获取 passport token
 		result, err := helper.Remember(openId, time.Hour, func() (any, error) {
-			token, err := console.OpenIdToPassportToken(openId)
+			token, err := console.OpenIdToCloudAccessToken(openId)
 			if err != nil {
 				return "", err
 			}

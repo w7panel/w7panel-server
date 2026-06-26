@@ -187,3 +187,9 @@ type PassportToken struct {
 	ExpireTime int64  `json:"expire_time"`
 	// Exp   int64  `json:"expiretime"`
 }
+
+type PassportCode struct {
+	Code string `json:"code"`
+
+	// Exp   int64  `json:"expiretime"`
+}

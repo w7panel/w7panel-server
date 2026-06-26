@@ -63,6 +63,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.GET("/console/login", controller2.Auth{}.ConsoleLogin)
 			localApiGroup.GET("/console/bind", middleware.Auth{}.Process, controller2.Console{}.BindConsole)
 			localApiGroup.GET("/console/info", middleware.Auth{}.Process, controller2.Console{}.Info)
+			localApiGroup.Any("/console/js-cloud-code", middleware.Auth{}.Process, controller2.Console{}.JsCloudCode)
 			localApiGroup.GET("/userinfo", middleware.Auth{}.Process, k3kController.K3k{}.Info)
 			// 不需要创始人权限
 			// localApiGroup.GET("/console/code/:code", middleware.Auth{}.Process, controller2.Console{}.ProxyCouponCode)
@@ -78,6 +79,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		engine.POST("/panel-api/v1/code", middleware.Auth{}.Process, controller2.Oidc{}.AuthorizeCode)
 		engine.POST("/panel-api/v1/callback-url", middleware.Auth{}.Process, controller2.Oidc{}.GetRedirectURI)
+		engine.Any("/panel-api/v1/js-cloud-code", middleware.Auth{}.Process, controller2.Console{}.JsCloudCode)
 
 	})
 }
