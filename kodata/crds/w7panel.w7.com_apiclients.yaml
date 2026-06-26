@@ -45,6 +45,16 @@ spec:
                 type: string
               enabled:
                 type: boolean
+              temporaryTokenMinutes:
+                format: int64
+                maximum: 1440
+                minimum: 1
+                type: integer
+              tokenType:
+                enum:
+                - temporary
+                - permanent
+                type: string
             type: object
           status:
             properties:

@@ -44,26 +44,3 @@ func sanitizeParams(params gin.Params) string {
 	}
 	return string(data)
 }
-
-func buildOperationMessage(ctx *gin.Context) string {
-	if ctx == nil || ctx.Request == nil {
-		return "操作"
-	}
-	method := ctx.Request.Method
-	route := ctx.FullPath()
-	if route == "" {
-		route = ctx.Request.URL.Path
-	}
-	if description := lookupRouteDescription(method, route); description != "" {
-		return description
-	}
-	return fallbackOperationMessage(method, route)
-}
-
-func fallbackOperationMessage(method string, route string) string {
-	action := methodDescription(method)
-	if strings.TrimSpace(route) == "" {
-		return action
-	}
-	return action + " " + route
-}

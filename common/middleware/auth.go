@@ -9,6 +9,7 @@ import (
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
+	permissionservice "github.com/w7panel/w7panel/common/service/permission"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
 	"gopkg.in/yaml.v3"
 )
@@ -46,6 +47,9 @@ func (self Auth) Process(ctx *gin.Context) {
 	if k8sToken.IsCacheToken() {
 		if saName, err := k8sToken.GetSaName(); err == nil {
 			ctx.Set("username", saName)
+			if !self.authorizePanelAPI(ctx, saName) {
+				return
+			}
 		}
 		ctx.Set("k8s_token", bearertoken)
 		ctx.Next()
@@ -67,6 +71,9 @@ func (self Auth) Process(ctx *gin.Context) {
 	saName, err := k8sToken.GetSaName()
 	if err == nil {
 		ctx.Set("username", saName)
+		if !self.authorizePanelAPI(ctx, saName) {
+			return
+		}
 	}
 	ctx.Set("k8s_token", bearertoken)
 	// if facade.Config.GetBool("app.refresh_token_enable") {
@@ -86,6 +93,25 @@ func (self Auth) Process(ctx *gin.Context) {
 	ctx.Next()
 
 	// ctx.Writer.Header().Set("Content-Type", "application/json; charset=UTF-8")
+}
+
+func (self Auth) authorizePanelAPI(ctx *gin.Context, saName string) bool {
+	allowed, err := permissionservice.AuthorizePanelAPI(ctx.Request.Context(), k8s.NewK8sClient().Sdk, saName, ctx.Request.Method, ctx.Request.URL.Path)
+	if err != nil {
+		ctx.AbortWithStatusJSON(403, gin.H{
+			"code": 403,
+			"msg":  "没有权限: " + err.Error(),
+		})
+		return false
+	}
+	if !allowed {
+		ctx.AbortWithStatusJSON(403, gin.H{
+			"code": 403,
+			"msg":  "没有权限",
+		})
+		return false
+	}
+	return true
 }
 
 func (self Auth) getToken(ctx *gin.Context) string {

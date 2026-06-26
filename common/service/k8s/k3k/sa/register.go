@@ -9,6 +9,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	permissionservice "github.com/w7panel/w7panel/common/service/permission"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -89,7 +90,7 @@ func DoRegisterLink(sdk *k8s.Sdk, username, password, policyName string) (*corev
 	annotations := map[string]string{
 		"password": string(bpassword),
 	}
-	return register.doRegister(username, "", annotations, true)
+	return register.doRegister(username, "", annotations, true, policyName)
 }
 
 func NewRegister(client client.Client, sdk *k8s.Sdk) *Register {
@@ -111,18 +112,15 @@ func (register *Register) RegisterUseConsole(accessToken *types.ConsoleOAuthAcce
 		"w7.cc/console-nickname": userinfo.Nickname,
 		"w7.cc/console-openid":   openId,
 	}
-	return register.doRegister("console-"+userId, userId, anns, false)
+	return register.doRegister("console-"+userId, userId, anns, false, k3kConfig.DefaultPermissionName)
 }
 
 func (register *Register) RegisterUid(uid int, k3kConfig *types.K3kConfigSetting) (*corev1.ServiceAccount, error) {
 	userId := strconv.Itoa(uid)
-	anns := map[string]string{
-		"w7.cc/menu-name": "k3k.permission.normal",
-	}
-	return register.doRegister("console-"+userId, userId, anns, false)
+	return register.doRegister("console-"+userId, userId, nil, false, k3kConfig.DefaultPermissionName)
 }
 
-func (register *Register) doRegister(saName string, consoleId string, anns map[string]string, checkAllowRegister bool) (*corev1.ServiceAccount, error) {
+func (register *Register) doRegister(saName string, consoleId string, anns map[string]string, checkAllowRegister bool, permissionName string) (*corev1.ServiceAccount, error) {
 
 	labels := map[string]string{
 		"w7.cc/role":      "normal",
@@ -139,6 +137,9 @@ func (register *Register) doRegister(saName string, consoleId string, anns map[s
 			annotations[k] = v
 		}
 	}
+	if permissionName != "" {
+		annotations[types.W7_MENU_NAME] = permissionName
+	}
 
 	sa := &corev1.ServiceAccount{
 
@@ -152,6 +153,13 @@ func (register *Register) doRegister(saName string, consoleId string, anns map[s
 			Kind:       "ServiceAccount",
 			APIVersion: "v1",
 		},
+	}
+	if permissionName != "" {
+		permissionConfig, err := permissionservice.Get(context.Background(), register.sdk, permissionName)
+		if err != nil {
+			return nil, err
+		}
+		permissionservice.ApplyToServiceAccount(sa, permissionConfig)
 	}
 	// sa 已存在
 	// sa, err = register.sdk.ClientSet.CoreV1().ServiceAccounts("default").Create(register.sdk.Ctx, sa, metav1.CreateOptions{})

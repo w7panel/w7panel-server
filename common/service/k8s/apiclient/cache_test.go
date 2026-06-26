@@ -130,3 +130,51 @@ func TestApiClientCacheMarkAccessedUpdatesStatusCache(t *testing.T) {
 		t.Fatalf("unexpected last accessed time: %v", client.Status.LastAccessedAt.Time)
 	}
 }
+
+func TestNormalizeTokenType(t *testing.T) {
+	if got := NormalizeTokenType(""); got != apiclientv1alpha1.TokenTypeTemporary {
+		t.Fatalf("empty token type = %q, want temporary", got)
+	}
+	if got := NormalizeTokenType(apiclientv1alpha1.TokenTypePermanent); got != apiclientv1alpha1.TokenTypePermanent {
+		t.Fatalf("permanent token type = %q, want permanent", got)
+	}
+	if IsValidTokenType("forever") {
+		t.Fatal("unexpected valid custom token type")
+	}
+}
+
+func TestTemporaryTokenMinutes(t *testing.T) {
+	custom := int64(30)
+	tooSmall := int64(0)
+	tooLarge := int64(2000)
+	if got := TemporaryTokenMinutes(nil); got != DefaultTemporaryTokenMinutes {
+		t.Fatalf("nil temporary token minutes = %d, want %d", got, DefaultTemporaryTokenMinutes)
+	}
+	if got := TemporaryTokenMinutes(&custom); got != custom {
+		t.Fatalf("custom temporary token minutes = %d, want %d", got, custom)
+	}
+	if got := TemporaryTokenMinutes(&tooSmall); got != MinTemporaryTokenMinutes {
+		t.Fatalf("too small temporary token minutes = %d, want %d", got, MinTemporaryTokenMinutes)
+	}
+	if got := TemporaryTokenMinutes(&tooLarge); got != MaxTemporaryTokenMinutes {
+		t.Fatalf("too large temporary token minutes = %d, want %d", got, MaxTemporaryTokenMinutes)
+	}
+	if got := TemporaryTokenSeconds(&custom); got != 1800 {
+		t.Fatalf("temporary token seconds = %d, want 1800", got)
+	}
+}
+
+func TestPermanentTokenSecretNameIsStable(t *testing.T) {
+	first := permanentTokenSecretName("appid-demo")
+	second := permanentTokenSecretName("appid-demo")
+	third := permanentTokenSecretName("appid-other")
+	if first != second {
+		t.Fatal("expected stable permanent token secret name")
+	}
+	if first == third {
+		t.Fatal("expected different appid to use different permanent token secret name")
+	}
+	if len(first) > 63 {
+		t.Fatalf("secret name is too long: %s", first)
+	}
+}

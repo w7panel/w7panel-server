@@ -4,6 +4,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	TokenTypeTemporary = "temporary"
+	TokenTypePermanent = "permanent"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ApiClient struct {
@@ -14,10 +19,12 @@ type ApiClient struct {
 }
 
 type ApiClientSpec struct {
-	Enabled      bool   `json:"enabled,omitempty"`
-	ClientID     string `json:"clientId,omitempty"`
-	ClientName   string `json:"clientName,omitempty"`
-	ClientSecret string `json:"clientSecret,omitempty"`
+	Enabled               *bool  `json:"enabled,omitempty"`
+	ClientID              string `json:"clientId,omitempty"`
+	ClientName            string `json:"clientName,omitempty"`
+	ClientSecret          string `json:"clientSecret,omitempty"`
+	TokenType             string `json:"tokenType,omitempty"`
+	TemporaryTokenMinutes *int64 `json:"temporaryTokenMinutes,omitempty"`
 }
 
 type ApiClientStatus struct {
