@@ -39,7 +39,8 @@ type AppGroupSpecApplyConfiguration struct {
 	// DefaultDomain string     `json:"defaultDomain"` //默认域名
 	ZpkUrl *string `json:"zpkUrl,omitempty"`
 	// 制品库地址
-	HelmConfig *HelmConfigApplyConfiguration `json:"helmConfig,omitempty"`
+	HelmConfig     *HelmConfigApplyConfiguration     `json:"helmConfig,omitempty"`
+	AppCredentials *AppCredentialsApplyConfiguration `json:"appCredentials,omitempty"`
 	// Annotations   map[string]string `json:"annotations"`   //annotations
 	IsHelm *bool `json:"isHelm,omitempty"`
 }
@@ -127,6 +128,14 @@ func (b *AppGroupSpecApplyConfiguration) WithZpkUrl(value string) *AppGroupSpecA
 // If called multiple times, the HelmConfig field is set to the value of the last call.
 func (b *AppGroupSpecApplyConfiguration) WithHelmConfig(value *HelmConfigApplyConfiguration) *AppGroupSpecApplyConfiguration {
 	b.HelmConfig = value
+	return b
+}
+
+// WithAppCredentials sets the AppCredentials field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the AppCredentials field is set to the value of the last call.
+func (b *AppGroupSpecApplyConfiguration) WithAppCredentials(value *AppCredentialsApplyConfiguration) *AppGroupSpecApplyConfiguration {
+	b.AppCredentials = value
 	return b
 }
 

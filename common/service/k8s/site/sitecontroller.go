@@ -2,11 +2,14 @@ package site
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"runtime/debug"
+	"strings"
 	"time"
 
+	appgroupv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	sitev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/site/v1alpha1"
 
 	"github.com/w7panel/w7panel/common/helper"
@@ -26,6 +29,9 @@ import (
 // SetupSiteController sets up the Site controller with the manager.
 func SetupSiteController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
 	if err := sitev1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
+		return err
+	}
+	if err := appgroupv1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
 		return err
 	}
 
@@ -219,72 +225,88 @@ func (r *SiteController) handleAppIdReady(ctx context.Context, site *sitev1alpha
 
 // patchTargetResource injects APP_ID and APP_SECRET into the target resource.
 // For Deployment/DaemonSet/StatefulSet: patches env vars via strategic merge.
+// For AppGroup: updates spec.appCredentials on the AppGroup CR.
 // For Secret/ConfigMap: creates or updates the resource with the credentials.
 func (r *SiteController) patchTargetResource(target *sitev1alpha1.TargetRef, appSecret *console.AppSecret) error {
-	switch target.Kind {
-	case "Deployment":
-		return r.patchWorkload(target, appSecret)
-	case "DaemonSet":
-		return r.patchWorkload(target, appSecret)
-	case "StatefulSet":
-		return r.patchWorkload(target, appSecret)
-	case "Secret":
+	switch strings.ToLower(target.Kind) {
+	case "deployment", "daemonset", "statefulset":
+		return r.patchWorkload(target.Namespace, target.Name, target.Kind, target.ContainerName, appSecret)
+	case "appgroup":
+		return r.patchAppGroup(target, appSecret)
+	case "secret":
 		return r.createOrUpdateSecret(target, appSecret)
-	case "ConfigMap":
+	case "configmap":
 		return r.createOrUpdateConfigMap(target, appSecret)
 	default:
-		return fmt.Errorf("unsupported target kind %q (supported: Deployment, DaemonSet, StatefulSet, Secret, ConfigMap)", target.Kind)
+		return fmt.Errorf("unsupported target kind %q (supported: Deployment, DaemonSet, StatefulSet, AppGroup, Secret, ConfigMap)", target.Kind)
 	}
 }
 
 // patchWorkload injects APP_ID and APP_SECRET env vars into a workload
 // (Deployment, DaemonSet, StatefulSet) using a strategic merge patch.
-func (r *SiteController) patchWorkload(target *sitev1alpha1.TargetRef, appSecret *console.AppSecret) error {
-	patchData := fmt.Sprintf(`{
-		"spec": {
-			"template": {
-				"spec": {
-					"containers": [
+func (r *SiteController) patchWorkload(namespace, name, kind, containerName string, appSecret *console.AppSecret) error {
+	patchData, err := json.Marshal(map[string]any{
+		"spec": map[string]any{
+			"template": map[string]any{
+				"spec": map[string]any{
+					"containers": []map[string]any{
 						{
-							"name": "%s",
-							"env": [
+							"name": containerName,
+							"env": []map[string]string{
 								{
-									"name": "APP_ID",
-									"value": "%s"
+									"name":  "APP_ID",
+									"value": appSecret.AppId,
 								},
 								{
-									"name": "APP_SECRET",
-									"value": "%s"
-								}
-							]
-						}
-					]
-				}
-			}
-		}
-	}`, target.ContainerName, appSecret.AppId, appSecret.AppSecret)
+									"name":  "APP_SECRET",
+									"value": appSecret.AppSecret,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
 
-	switch target.Kind {
-	case "Deployment":
+	switch strings.ToLower(kind) {
+	case "deployment":
 		_, err := r.ClientSet.
 			AppsV1().
-			Deployments(target.Namespace).
-			Patch(context.TODO(), target.Name, k8stypes.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
+			Deployments(namespace).
+			Patch(context.TODO(), name, k8stypes.StrategicMergePatchType, patchData, metav1.PatchOptions{})
 		return err
-	case "DaemonSet":
+	case "daemonset":
 		_, err := r.ClientSet.
 			AppsV1().
-			DaemonSets(target.Namespace).
-			Patch(context.TODO(), target.Name, k8stypes.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
+			DaemonSets(namespace).
+			Patch(context.TODO(), name, k8stypes.StrategicMergePatchType, patchData, metav1.PatchOptions{})
 		return err
-	case "StatefulSet":
+	case "statefulset":
 		_, err := r.ClientSet.
 			AppsV1().
-			StatefulSets(target.Namespace).
-			Patch(context.TODO(), target.Name, k8stypes.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
+			StatefulSets(namespace).
+			Patch(context.TODO(), name, k8stypes.StrategicMergePatchType, patchData, metav1.PatchOptions{})
 		return err
 	}
 	return nil
+}
+
+// patchAppGroup stores APP_ID and APP_SECRET on the AppGroup CR spec.
+func (r *SiteController) patchAppGroup(target *sitev1alpha1.TargetRef, appSecret *console.AppSecret) error {
+	group := &appgroupv1alpha1.AppGroup{}
+	if err := r.Get(context.TODO(), k8stypes.NamespacedName{Name: target.Name, Namespace: target.Namespace}, group); err != nil {
+		return err
+	}
+
+	group.Spec.AppCredentials = &appgroupv1alpha1.AppCredentials{
+		AppId:     appSecret.AppId,
+		AppSecret: appSecret.AppSecret,
+	}
+	return r.Update(context.TODO(), group)
 }
 
 // createOrUpdateSecret creates or updates a Secret with APP_ID and APP_SECRET data.

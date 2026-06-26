@@ -37,6 +37,18 @@ spec:
             type: object
           spec:
             properties:
+              appCredentials:
+                properties:
+                  appId:
+                    description: 应用AppId
+                    type: string
+                  appSecret:
+                    description: 应用AppSecret
+                    type: string
+                required:
+                - appId
+                - appSecret
+                type: object
               description:
                 type: string
               helmConfig:

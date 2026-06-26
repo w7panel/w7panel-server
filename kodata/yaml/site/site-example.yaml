@@ -52,3 +52,18 @@ spec:
     kind: ConfigMap
     name: my-site-config
     namespace: default
+---
+# 示例 5: 写入 AppGroup CRD（注册后将 appId/appSecret 写入 AppGroup spec.appCredentials）
+apiVersion: w7panel.w7.com/v1alpha1
+kind: Site
+metadata:
+  name: my-site-appgroup
+spec:
+  host: site-test4-a.fan.sz.w7.com
+  siteIdentifier: appgroup-001
+  userName: admin
+  target:
+    apiVersion: w7panel.w7.com/v1alpha1
+    kind: AppGroup
+    name: afrzsozs
+    namespace: default
