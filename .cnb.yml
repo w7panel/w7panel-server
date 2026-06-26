@@ -20,7 +20,7 @@
           script: |
             set -eu
             rm -rf /tmp/w7panel-ui
-            git clone --depth 1 --branch dev-1.1.79 https://github.com/w7panel/w7panel-ui /tmp/w7panel-ui
+            git clone --depth 1 --branch dev-v1-k3k-crd https://github.com/w7panel/w7panel-ui /tmp/w7panel-ui
             cd /tmp/w7panel-ui
             npm install
             npm run build
