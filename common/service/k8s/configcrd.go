@@ -27,6 +27,7 @@ var (
 	FilingConfigGVR      = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "filingconfigs"}
 	DomainParseConfigGVR = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "domainparseconfigs"}
 	ContactConfigGVR     = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "contactconfigs"}
+	MicroAppSettingGVR   = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "microappsettings"}
 )
 
 type LicenseCRDSpec struct {

@@ -37,6 +37,7 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(consoleShell.MetricsInstall))
 	console.RegisterCommand(new(consoleShell.UninstallStorePanel)) //删除商店安装的面板
 	console.RegisterCommand(new(consoleShell.DomainParseConfig))   //域名解析
+	console.RegisterCommand(new(consoleShell.SiteSettingUpgrade))  //旧站点配置升级
 	console.RegisterCommand(new(consoleShell.Build))
 	console.RegisterCommand(new(consoleShell.BeianCheck))      //备案检查
 	console.RegisterCommand(new(consoleShell.TestUploadChunk)) // 测试分片上传功能
