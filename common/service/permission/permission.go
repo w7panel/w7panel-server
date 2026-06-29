@@ -70,6 +70,7 @@ var founderMenu = []string{
 	"cluster/nodes",
 	"cluster/nodes/add",
 	"cluster/nodes/registries",
+	"cluster/nodes-image-list",
 	"cluster/nodes/gpu",
 	"cluster/nodes/memory",
 	"usermanage/usermanage-whitedomain",
