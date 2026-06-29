@@ -59,7 +59,7 @@ func TestRenderZoneServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected := "example.com {\n  file /etc/coredns/custom/example.com.zone {\n    reload 5s\n    fallthrough\n  }\n  reload\n  loadbalance\n}\n"
+	expected := "example.com {\n  file /etc/coredns/custom/example.com.zone {\n    reload 5s\n    fallthrough\n  }\n  forward . /etc/resolv.conf\n  reload\n  loadbalance\n}\n"
 	if data != expected {
 		t.Fatalf("unexpected server block:\n%s", data)
 	}

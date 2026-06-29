@@ -163,6 +163,7 @@ func RenderZoneServer(domain string) (string, error) {
 	builder.WriteString("    reload 5s\n")
 	builder.WriteString("    fallthrough\n")
 	builder.WriteString("  }\n")
+	builder.WriteString("  forward . /etc/resolv.conf\n")
 	builder.WriteString("  reload\n")
 	builder.WriteString("  loadbalance\n")
 	builder.WriteString("}\n")

@@ -160,6 +160,9 @@ func TestCreateZoneWritesServerAndZoneFiles(t *testing.T) {
 	if !strings.Contains(customConfig.Data[ConfigMapKey("test4.com")], "file /etc/coredns/custom/test4.com.zone") {
 		t.Fatalf("expected server block to reference zone file, got:\n%s", customConfig.Data[ConfigMapKey("test4.com")])
 	}
+	if !strings.Contains(customConfig.Data[ConfigMapKey("test4.com")], "forward . /etc/resolv.conf") {
+		t.Fatalf("expected server block to forward unmatched queries, got:\n%s", customConfig.Data[ConfigMapKey("test4.com")])
+	}
 	if !strings.Contains(customConfig.Data[ZoneFileConfigMapKey("test4.com")], "$ORIGIN test4.com.") {
 		t.Fatalf("expected zone file, got:\n%s", customConfig.Data[ZoneFileConfigMapKey("test4.com")])
 	}
@@ -215,6 +218,9 @@ func TestListRecordsMigratesLegacyTemplateZone(t *testing.T) {
 	}
 	if !strings.Contains(serverData, "file /etc/coredns/custom/test4.com.zone") {
 		t.Fatalf("expected migrated server block to reference zone file, got:\n%s", serverData)
+	}
+	if !strings.Contains(serverData, "forward . /etc/resolv.conf") {
+		t.Fatalf("expected migrated server block to forward unmatched queries, got:\n%s", serverData)
 	}
 	zoneData := customConfig.Data[ZoneFileConfigMapKey("test4.com")]
 	if !strings.Contains(zoneData, "$ORIGIN test4.com.") {
