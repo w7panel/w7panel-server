@@ -177,6 +177,10 @@ func getGlobalMicroAppSetting(http *gin.Context, sdk *k8s.Sdk) (*microappsetting
 
 func (self Site) Lianxi(http *gin.Context) {
 	sdk := k8s.NewK8sClient()
+	if setting, err := getGlobalMicroAppSetting(http, sdk.Sdk); err == nil && len(setting.Spec.General.ContactConfigs) > 0 {
+		self.JsonResponseWithoutError(http, gin.H{"items": microAppContactItems(setting.Spec.General.ContactConfigs)})
+		return
+	}
 
 	list, err := sdk.DynamicClient().Resource(k8s.ContactConfigGVR).List(http.Request.Context(), metav1.ListOptions{})
 	if err != nil {
@@ -185,6 +189,41 @@ func (self Site) Lianxi(http *gin.Context) {
 	}
 	self.JsonResponseWithoutError(http, list)
 
+}
+
+func microAppContactItems(configs []microappsettingv1alpha1.ContactConfigSettings) []gin.H {
+	items := make([]gin.H, 0, len(configs))
+	for index, config := range configs {
+		name := config.Name
+		if name == "" {
+			name = "contact-us"
+		}
+		items = append(items, gin.H{
+			"metadata": gin.H{
+				"name": name,
+			},
+			"spec": gin.H{
+				"type":     config.Type,
+				"link":     config.Link,
+				"text":     config.Text,
+				"name":     config.Name,
+				"showName": config.ShowName,
+				"selicon":  config.SelIcon,
+				"icon":     config.Icon,
+				"qrcode":   config.Qrcode,
+				"style":    config.Style,
+				"index":    contactIndex(config.Index, index),
+			},
+		})
+	}
+	return items
+}
+
+func contactIndex(value int32, fallback int) int32 {
+	if value > 0 {
+		return value
+	}
+	return int32(fallback + 1)
 }
 
 // TODO 子集群的configmap获取不到 未登录情况下无法获取到子集群的configmap

@@ -61,6 +61,11 @@ func (in *GeneralSettings) DeepCopyInto(out *GeneralSettings) {
 	*out = *in
 	out.SiteLogo = in.SiteLogo
 	out.Filing = in.Filing
+	if in.ContactConfigs != nil {
+		in, out := &in.ContactConfigs, &out.ContactConfigs
+		*out = make([]ContactConfigSettings, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

@@ -31,6 +31,8 @@ import (
 func ForKind(kind schema.GroupVersionKind) interface{} {
 	switch kind {
 	// Group=w7panel.w7.com, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithKind("ContactConfigSettings"):
+		return &microappsettingv1alpha1.ContactConfigApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ConfigMapRef"):
 		return &microappsettingv1alpha1.ConfigMapRefApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("FilingSettings"):

@@ -72,6 +72,7 @@ type legacySiteSetting struct {
 	AllowConsoleRegister string
 	IndexPage            string
 	Filing               k8s.FilingConfigCRDSpec
+	ContactConfigs       []interface{}
 }
 
 func (c SiteSettingUpgrade) loadLegacyConfig(ctx context.Context, sdk *k8s.Sdk) legacySiteSetting {
@@ -93,8 +94,36 @@ func (c SiteSettingUpgrade) loadLegacyConfig(ctx context.Context, sdk *k8s.Sdk) 
 	} else if !apierrors.IsNotFound(err) {
 		slog.Warn("读取旧备案配置失败", "error", err)
 	}
+	setting.ContactConfigs = c.loadLegacyContactConfigs(ctx, sdk)
 
 	return setting
+}
+
+func (c SiteSettingUpgrade) loadLegacyContactConfigs(ctx context.Context, sdk *k8s.Sdk) []interface{} {
+	list, err := sdk.DynamicClient().Resource(k8s.ContactConfigGVR).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			slog.Warn("读取旧联系方式配置失败", "error", err)
+		}
+		return nil
+	}
+	contacts := make([]interface{}, 0, len(list.Items))
+	for _, item := range list.Items {
+		spec := k8s.ParseContactConfigCRDSpec(&item)
+		contacts = append(contacts, map[string]interface{}{
+			"type":     spec.Type,
+			"link":     spec.Link,
+			"text":     spec.Text,
+			"name":     spec.Name,
+			"showName": spec.ShowName,
+			"selicon":  spec.SelIcon,
+			"icon":     spec.Icon,
+			"qrcode":   spec.Qrcode,
+			"style":    spec.Style,
+			"index":    int64(spec.Index),
+		})
+	}
+	return contacts
 }
 
 func (c SiteSettingUpgrade) upsertSettingConfigMap(ctx context.Context, sdk *k8s.Sdk, namespace, name string) error {
@@ -196,6 +225,7 @@ func (c SiteSettingUpgrade) upsertMicroAppSetting(ctx context.Context, sdk *k8s.
 	c.setString(setting, overwrite, []string{"spec", "general", "filing", "publicSecurityNetworkFiling"}, legacy.Filing.Location)
 	c.setString(setting, overwrite, []string{"spec", "general", "filing", "electronicBusinessLicense"}, legacy.Filing.License)
 	c.setString(setting, overwrite, []string{"spec", "general", "filing", "valueAddedTelecomBusinessLicense"}, legacy.Filing.Tbol)
+	c.setSlice(setting, overwrite, []string{"spec", "general", "contactConfigs"}, legacy.ContactConfigs)
 
 	if setting.GetResourceVersion() == "" {
 		_, err = resource.Create(ctx, setting, metav1.CreateOptions{})
@@ -222,6 +252,16 @@ func (c SiteSettingUpgrade) setBoolString(obj *unstructured.Unstructured, overwr
 	_, exists, _ := unstructured.NestedBool(obj.Object, fields...)
 	if overwrite || !exists {
 		_ = unstructured.SetNestedField(obj.Object, value == "true", fields...)
+	}
+}
+
+func (c SiteSettingUpgrade) setSlice(obj *unstructured.Unstructured, overwrite bool, fields []string, value []interface{}) {
+	if len(value) == 0 {
+		return
+	}
+	current, exists, _ := unstructured.NestedSlice(obj.Object, fields...)
+	if overwrite || !exists || len(current) == 0 {
+		_ = unstructured.SetNestedSlice(obj.Object, value, fields...)
 	}
 }
 

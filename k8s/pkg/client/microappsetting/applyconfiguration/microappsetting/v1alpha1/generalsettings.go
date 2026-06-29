@@ -24,6 +24,7 @@ type GeneralSettingsApplyConfiguration struct {
 	SiteLogo        *ConfigMapRefApplyConfiguration   `json:"siteLogo,omitempty"`
 	SiteDescription *string                           `json:"siteDescription,omitempty"`
 	Filing          *FilingSettingsApplyConfiguration `json:"filing,omitempty"`
+	ContactConfigs  []ContactConfigApplyConfiguration `json:"contactConfigs,omitempty"`
 }
 
 // GeneralSettingsApplyConfiguration constructs a declarative configuration of the GeneralSettings type for use with
@@ -61,5 +62,18 @@ func (b *GeneralSettingsApplyConfiguration) WithSiteDescription(value string) *G
 // If called multiple times, the Filing field is set to the value of the last call.
 func (b *GeneralSettingsApplyConfiguration) WithFiling(value *FilingSettingsApplyConfiguration) *GeneralSettingsApplyConfiguration {
 	b.Filing = value
+	return b
+}
+
+// WithContactConfigs adds the given value to the ContactConfigs field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the ContactConfigs field.
+func (b *GeneralSettingsApplyConfiguration) WithContactConfigs(values ...*ContactConfigApplyConfiguration) *GeneralSettingsApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithContactConfigs")
+		}
+		b.ContactConfigs = append(b.ContactConfigs, *values[i])
+	}
 	return b
 }

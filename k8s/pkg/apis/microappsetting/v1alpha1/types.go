@@ -48,6 +48,8 @@ type GeneralSettings struct {
 	SiteDescription string `json:"siteDescription,omitempty"`
 	// Filing 是备案相关设置。
 	Filing FilingSettings `json:"filing,omitempty"`
+	// ContactConfigs 是联系方式配置。
+	ContactConfigs []ContactConfigSettings `json:"contactConfigs,omitempty"`
 }
 
 type FilingSettings struct {
@@ -66,6 +68,19 @@ type ConfigMapRef struct {
 	Name string `json:"name,omitempty"`
 	// Key 是被引用的 ConfigMap 键名。
 	Key string `json:"key,omitempty"`
+}
+
+type ContactConfigSettings struct {
+	Type     string `json:"type,omitempty"`
+	Link     string `json:"link,omitempty"`
+	Text     string `json:"text,omitempty"`
+	Name     string `json:"name,omitempty"`
+	ShowName bool   `json:"showName,omitempty"`
+	SelIcon  string `json:"selicon,omitempty"`
+	Icon     string `json:"icon,omitempty"`
+	Qrcode   string `json:"qrcode,omitempty"`
+	Style    string `json:"style,omitempty"`
+	Index    int32  `json:"index,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

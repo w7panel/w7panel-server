@@ -41,6 +41,33 @@ spec:
               general:
                 description: General 是通用站点设置。
                 properties:
+                  contactConfigs:
+                    description: ContactConfigs 是联系方式配置。
+                    items:
+                      properties:
+                        icon:
+                          type: string
+                        index:
+                          format: int32
+                          type: integer
+                        link:
+                          type: string
+                        name:
+                          type: string
+                        qrcode:
+                          type: string
+                        selicon:
+                          type: string
+                        showName:
+                          type: boolean
+                        style:
+                          type: string
+                        text:
+                          type: string
+                        type:
+                          type: string
+                      type: object
+                    type: array
                   filing:
                     description: Filing 是备案相关设置。
                     properties:
