@@ -25,6 +25,9 @@ spec:
   - path: /panel-api/v1/microapp/*
     method:
     - get
+  - path: /panel-api/v1/static/*
+    method:
+    - '*'
   - path: /panel-api/v1/microapp/*/proxy/*
     method:
     - '*'

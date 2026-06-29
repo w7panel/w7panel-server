@@ -135,6 +135,9 @@ func (QxUpgrade) syncServiceAccountPermissions(sdk *k8s.Sdk) error {
 	for _, item := range list.Items {
 		sa := item.DeepCopy()
 		permissionName := permissionservice.NormalizePermissionName(sa.GetAnnotations()[k3ktypes.W7_MENU_NAME])
+		if permissionName == "" && isNormalServiceAccount(sa) {
+			permissionName = permissionservice.NormalPermissionName
+		}
 		if permissionName == "" {
 			continue
 		}
@@ -150,6 +153,13 @@ func (QxUpgrade) syncServiceAccountPermissions(sdk *k8s.Sdk) error {
 		}
 	}
 	return nil
+}
+
+func isNormalServiceAccount(sa *corev1.ServiceAccount) bool {
+	labels := sa.GetLabels()
+	return labels[k3ktypes.W7_USER_MODE] == k3ktypes.W7_USER_MODE_NORMAL ||
+		labels[k3ktypes.K3K_USER_MODE] == k3ktypes.W7_USER_MODE_NORMAL ||
+		labels[k3ktypes.W7_ROLE] == k3ktypes.W7_USER_MODE_NORMAL
 }
 
 func configMapToPermission(cm *corev1.ConfigMap) *configv1alpha1.Permission {

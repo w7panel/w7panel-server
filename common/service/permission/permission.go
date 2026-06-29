@@ -123,6 +123,11 @@ func ResolveForServiceAccount(ctx context.Context, sdk *k8s.Sdk, sa *corev1.Serv
 		if isFounderServiceAccount(sa) {
 			return founderFallback(), nil
 		}
+		if isNormalServiceAccount(sa) && sdk != nil {
+			if p, err := Get(ctx, sdk, NormalPermissionName); err == nil {
+				return p, nil
+			}
+		}
 		if annotations[k3ktypes.W7_MENU] != "" || annotations["w7.cc/api"] != "" {
 			return FromServiceAccount(sa), nil
 		}
@@ -367,7 +372,7 @@ func matchPath(pattern, path string) bool {
 	if pattern == "*" || pattern == path {
 		return true
 	}
-	if strings.HasSuffix(pattern, "/*") {
+	if strings.HasSuffix(pattern, "/*") && !strings.Contains(strings.TrimSuffix(pattern, "/*"), "*") {
 		return strings.HasPrefix(path, strings.TrimSuffix(pattern, "/*")+"/")
 	}
 	parts := strings.Split(pattern, "*")
@@ -445,6 +450,13 @@ func isFounderServiceAccount(sa *corev1.ServiceAccount) bool {
 		return true
 	}
 	return false
+}
+
+func isNormalServiceAccount(sa *corev1.ServiceAccount) bool {
+	labels := sa.GetLabels()
+	return labels[k3ktypes.W7_USER_MODE] == k3ktypes.W7_USER_MODE_NORMAL ||
+		labels[k3ktypes.K3K_USER_MODE] == k3ktypes.W7_USER_MODE_NORMAL ||
+		labels[k3ktypes.W7_ROLE] == k3ktypes.W7_USER_MODE_NORMAL
 }
 
 func boolString(v bool) string {

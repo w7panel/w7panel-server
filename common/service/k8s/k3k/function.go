@@ -130,6 +130,12 @@ func RefreshK3kUser(user *types.K3kUser, rootSdk *k8s.Sdk, update bool) (*types.
 		}
 		user.Annotations[k3ktypes.W7_MENU_NAME] = permissionservice.FounderPermissionName
 	}
+	if user.GetMenuName() == "" && user.IsNormal() {
+		if user.Annotations == nil {
+			user.Annotations = map[string]string{}
+		}
+		user.Annotations[k3ktypes.W7_MENU_NAME] = permissionservice.NormalPermissionName
+	}
 	if !user.IsCustomPermission() {
 		permissionConfig, err := permissionservice.Get(rootSdk.Ctx, rootSdk, user.GetMenuName())
 		if err == nil {

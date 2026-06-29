@@ -12,6 +12,7 @@ import (
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/yaml"
 )
 
 func TestMatchAPI(t *testing.T) {
@@ -63,6 +64,13 @@ func TestMatchAPI(t *testing.T) {
 			method: "POST",
 			path:   "/panel-api/v1/helm/releases",
 			want:   false,
+		},
+		{
+			name:   "middle wildcard with trailing wildcard matches proxy path",
+			rules:  map[string][]string{"/panel-api/v1/namespaces/*/services/*/proxy/*": {"*"}},
+			method: "POST",
+			path:   "/panel-api/v1/namespaces/default/services/demo/proxy/api",
+			want:   true,
 		},
 	}
 
@@ -216,6 +224,78 @@ func TestBuiltinAdminPermissionsDoNotGrantFounderWildcards(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBuiltinNormalPermissionKeepsMinimumAppDirectAccess(t *testing.T) {
+	p := loadBuiltinPermission(t, "normal.yaml")
+	api := APIMap(p)
+
+	if len(MenuRules(p)) != 0 {
+		t.Fatalf("normal menuRules = %v, want empty", MenuRules(p))
+	}
+	if len(p.Spec.RBACRules) != 0 {
+		t.Fatalf("normal rbacRules = %v, want empty", p.Spec.RBACRules)
+	}
+
+	allowed := []struct {
+		method string
+		path   string
+	}{
+		{method: "GET", path: "/panel-api/v1/k3k/info"},
+		{method: "GET", path: "/panel-api/v1/auth/userinfo"},
+		{method: "GET", path: "/panel-api/v1/auth/console/info"},
+		{method: "POST", path: "/panel-api/v1/auth/refresh-token2"},
+		{method: "GET", path: "/panel-api/v1/microapp/top"},
+		{method: "GET", path: "/panel-api/v1/microapp/demo/info"},
+		{method: "GET", path: "/panel-api/v1/microapp/demo/frontprops"},
+		{method: "POST", path: "/panel-api/v1/microapp/demo/proxy/api/data"},
+		{method: "GET", path: "/panel-api/v1/static/demo/status"},
+		{method: "POST", path: "/panel-api/v1/static/default/download/demo"},
+		{method: "GET", path: "/panel-api/v1/static/proxy/zpk/demo/v1/frontend/index.js"},
+		{method: "GET", path: "/panel-api/v1/namespaces/default/services/demo/proxy/api"},
+		{method: "POST", path: "/panel-api/v1/namespaces/default/pods/demo/proxy/api"},
+	}
+	for _, tt := range allowed {
+		t.Run("allow "+tt.method+" "+tt.path, func(t *testing.T) {
+			if !MatchAPI(api, tt.method, tt.path) {
+				t.Fatalf("normal permission should allow %s %s", tt.method, tt.path)
+			}
+		})
+	}
+
+	denied := []struct {
+		method string
+		path   string
+	}{
+		{method: "GET", path: "/panel-api/v1/menu"},
+		{method: "GET", path: "/panel-api/v1/auth/permissions/routes"},
+		{method: "POST", path: "/panel-api/v1/auth/reset-password-current"},
+		{method: "GET", path: "/panel-api/v1/app-info"},
+		{method: "GET", path: "/panel-api/v1/kubeconfig"},
+		{method: "GET", path: "/panel-api/v1/namespaces"},
+		{method: "GET", path: "/panel-api/v1/helm/releases"},
+		{method: "GET", path: "/panel-api/v1/audit/list"},
+	}
+	for _, tt := range denied {
+		t.Run("deny "+tt.method+" "+tt.path, func(t *testing.T) {
+			if MatchAPI(api, tt.method, tt.path) {
+				t.Fatalf("normal permission should deny %s %s", tt.method, tt.path)
+			}
+		})
+	}
+}
+
+func loadBuiltinPermission(t *testing.T, name string) *configv1alpha1.Permission {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "kodata", "yaml", "permission", name))
+	if err != nil {
+		t.Fatalf("read builtin permission %s: %v", name, err)
+	}
+	p := &configv1alpha1.Permission{}
+	if err := yaml.Unmarshal(data, p); err != nil {
+		t.Fatalf("parse builtin permission %s: %v", name, err)
+	}
+	return p
 }
 
 func containsString(values []string, want string) bool {
