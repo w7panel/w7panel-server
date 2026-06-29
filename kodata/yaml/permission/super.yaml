@@ -17,6 +17,7 @@ spec:
   - system/license
   - system/audit
   - usermanage/*
+  - usermanage/site-setting
   - sitemanage/*
   - cluster/nodes/add
   - cluster/nodes/registries

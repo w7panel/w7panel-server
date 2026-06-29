@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"html"
 	"io"
@@ -18,11 +19,14 @@ import (
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
 	"k8s.io/apimachinery/pkg/types"
+	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Html struct {
 	middleware.Abstract
 }
+
+const globalMicroAppSettingName = "default"
 
 func (self Html) Process(ctx *gin.Context) {
 	path := ctx.Request.URL.Path
@@ -47,7 +51,7 @@ func (self Html) Process(ctx *gin.Context) {
 	}
 
 	if microappConfig, ok := buildMicroAppConfig(ctx); ok {
-		if siteName, err := loadMicroAppSiteName(microappConfig); err != nil {
+		if siteName, err := loadMicroAppSiteName(ctx.Request.Context(), microappConfig); err != nil {
 			slog.Warn("load microapp site name failed", "err", err)
 		} else if siteName != "" {
 			htmlContent = replaceHTMLTitle(htmlContent, siteName)
@@ -140,7 +144,7 @@ func injectMicroAppScript(htmlContent []byte, microappConfig map[string]any) []b
 	return append(htmlContent, script...)
 }
 
-func loadMicroAppSiteName(microappConfig map[string]any) (string, error) {
+func loadMicroAppSiteName(ctx context.Context, microappConfig map[string]any) (string, error) {
 	name, _ := microappConfig["name"].(string)
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -153,16 +157,40 @@ func loadMicroAppSiteName(microappConfig map[string]any) (string, error) {
 		return "", err
 	}
 
-	setting := &microappsettingv1alpha1.MicroAppSetting{}
-	err = sigClient.Get(sdk.Ctx, types.NamespacedName{
-		Name:      name,
-		Namespace: sdk.GetNamespace(),
-	}, setting)
+	setting, err := getMicroAppSetting(ctx, sigClient, sdk.GetNamespace(), name)
 	if err != nil {
-		return "", err
+		if name == globalMicroAppSettingName {
+			return "", err
+		}
+		globalSetting, globalErr := getMicroAppSetting(ctx, sigClient, sdk.GetNamespace(), globalMicroAppSettingName)
+		if globalErr != nil {
+			return "", err
+		}
+		return strings.TrimSpace(globalSetting.Spec.General.SiteName), nil
 	}
 
-	return strings.TrimSpace(setting.Spec.General.SiteName), nil
+	siteName := strings.TrimSpace(setting.Spec.General.SiteName)
+	if siteName != "" || name == globalMicroAppSettingName {
+		return siteName, nil
+	}
+
+	globalSetting, err := getMicroAppSetting(ctx, sigClient, sdk.GetNamespace(), globalMicroAppSettingName)
+	if err != nil {
+		return siteName, nil
+	}
+	return strings.TrimSpace(globalSetting.Spec.General.SiteName), nil
+}
+
+func getMicroAppSetting(ctx context.Context, client sigclient.Client, namespace string, name string) (*microappsettingv1alpha1.MicroAppSetting, error) {
+	setting := &microappsettingv1alpha1.MicroAppSetting{}
+	err := client.Get(ctx, types.NamespacedName{
+		Name:      name,
+		Namespace: namespace,
+	}, setting)
+	if err != nil {
+		return nil, err
+	}
+	return setting, nil
 }
 
 func replaceHTMLTitle(htmlContent []byte, title string) []byte {

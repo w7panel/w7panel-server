@@ -2,8 +2,10 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
+	microappsettingv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/microappsetting/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
@@ -14,8 +16,15 @@ type Site struct {
 	controller.Abstract
 }
 
+const globalMicroAppSettingName = "default"
+
 func (self Site) Beian(http *gin.Context) {
 	sdk := k8s.NewK8sClient()
+	if setting, err := getGlobalMicroAppSetting(http, sdk.Sdk); err == nil && hasMicroAppFiling(setting.Spec.General.Filing) {
+		self.JsonResponseWithoutError(http, microAppFilingResponse(setting.Spec.General.Filing))
+		return
+	}
+
 	obj, err := sdk.GetConfigCRD(http.Request.Context(), k8s.FilingConfigGVR, k8s.FilingConfigName)
 	if err != nil {
 		self.JsonSuccessResponse(http)
@@ -27,6 +36,11 @@ func (self Site) Beian(http *gin.Context) {
 
 func (self Site) Beian2(http *gin.Context) {
 	sdk := k8s.NewK8sClientInner()
+	if setting, err := getGlobalMicroAppSetting(http, sdk); err == nil && hasMicroAppFiling(setting.Spec.General.Filing) {
+		self.JsonResponseWithoutError(http, microAppFilingResponse(setting.Spec.General.Filing))
+		return
+	}
+
 	obj, err := sdk.GetConfigCRD(http.Request.Context(), k8s.FilingConfigGVR, k8s.FilingConfigName)
 	if err != nil {
 		self.JsonSuccessResponse(http)
@@ -56,15 +70,46 @@ func filingConfigResponse(spec k8s.FilingConfigCRDSpec) gin.H {
 	return response
 }
 
+func microAppFilingResponse(spec microappsettingv1alpha1.FilingSettings) gin.H {
+	response := gin.H{}
+	if spec.ICP != "" {
+		response["icpnumber"] = spec.ICP
+	}
+	if spec.PublicSecurityNetworkFiling != "" {
+		response["number"] = spec.PublicSecurityNetworkFiling
+		response["location"] = spec.PublicSecurityNetworkFiling
+	}
+	if spec.ElectronicBusinessLicense != "" {
+		response["license"] = spec.ElectronicBusinessLicense
+	}
+	if spec.ValueAddedTelecomBusinessLicense != "" {
+		response["tbol"] = spec.ValueAddedTelecomBusinessLicense
+	}
+	return response
+}
+
+func hasMicroAppFiling(spec microappsettingv1alpha1.FilingSettings) bool {
+	return spec.ICP != "" ||
+		spec.PublicSecurityNetworkFiling != "" ||
+		spec.ElectronicBusinessLicense != "" ||
+		spec.ValueAddedTelecomBusinessLicense != ""
+}
+
 func (self Site) K3kConfig(http *gin.Context) {
 	sdk := k8s.NewK8sClient()
+	response := gin.H{}
+	if setting, err := getGlobalMicroAppSetting(http, sdk.Sdk); err == nil && setting.Spec.Login.IndexPage != "" {
+		response["indexpage"] = setting.Spec.Login.IndexPage
+		self.JsonResponseWithoutError(http, response)
+		return
+	}
+
 	dataMap, err := sdk.GetConfigCRDData(http, k8s.K3kConfigGVR, k8s.K3kConfigName)
 	if err != nil {
 		self.JsonSuccessResponse(http)
 		return
 	}
 
-	response := gin.H{}
 	if data, ok := dataMap["indexpage"]; ok {
 		response["indexpage"] = data
 	}
@@ -91,6 +136,12 @@ func (self Site) InitUser(http *gin.Context) {
 		response["captchaEnabled"] = "true"
 	}
 
+	if setting, err := getGlobalMicroAppSetting(http, sdk.Sdk); err == nil {
+		response["allowConsoleRegister"] = boolString(setting.Spec.Login.RegistrationEnabled)
+		self.JsonResponseWithoutError(http, response)
+		return
+	}
+
 	dataMap, err := sdk.GetConfigCRDData(http, k8s.K3kConfigGVR, k8s.K3kConfigName)
 	if err == nil {
 		if data, ok := dataMap["allowConsoleRegister"]; ok {
@@ -99,6 +150,29 @@ func (self Site) InitUser(http *gin.Context) {
 	}
 
 	self.JsonResponseWithoutError(http, response)
+}
+
+func boolString(value bool) string {
+	if value {
+		return "true"
+	}
+	return "false"
+}
+
+func getGlobalMicroAppSetting(http *gin.Context, sdk *k8s.Sdk) (*microappsettingv1alpha1.MicroAppSetting, error) {
+	sigClient, err := sdk.ToSigClient()
+	if err != nil {
+		return nil, err
+	}
+	setting := &microappsettingv1alpha1.MicroAppSetting{}
+	err = sigClient.Get(http.Request.Context(), types.NamespacedName{
+		Name:      globalMicroAppSettingName,
+		Namespace: sdk.GetNamespace(),
+	}, setting)
+	if err != nil {
+		return nil, err
+	}
+	return setting, nil
 }
 
 func (self Site) Lianxi(http *gin.Context) {

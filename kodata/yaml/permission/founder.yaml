@@ -55,6 +55,7 @@ spec:
   - usermanage/usergroup
   - usermanage/permission
   - usermanage/quota
+  - usermanage/site-setting
   - usermanage/usermanage-system
   apiRules:
   - path: '*'

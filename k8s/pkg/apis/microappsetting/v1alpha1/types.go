@@ -26,6 +26,8 @@ type LoginSettings struct {
 	LoginMode string `json:"loginMode,omitempty"`
 	// RegistrationEnabled 表示是否开启注册。
 	RegistrationEnabled bool `json:"registrationEnabled,omitempty"`
+	// IndexPage 表示登录前默认首页。
+	IndexPage string `json:"indexPage,omitempty"`
 	// ProtocolConfig 是注册协议与隐私协议配置。
 	ProtocolConfig ProtocolConfig `json:"protocolConfig,omitempty"`
 }

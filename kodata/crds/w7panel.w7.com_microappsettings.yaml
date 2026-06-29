@@ -77,6 +77,9 @@ spec:
               login:
                 description: Login 是登录设置。
                 properties:
+                  indexPage:
+                    description: IndexPage 表示登录前默认首页。
+                    type: string
                   loginMode:
                     description: LoginMode 表示登录方式。
                     type: string
