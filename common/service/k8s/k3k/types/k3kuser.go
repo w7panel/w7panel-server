@@ -291,6 +291,9 @@ func (u *k3kUser) GetMenu() string {
 func (u *k3kUser) GetMenuName() string {
 	name, ok := u.Annotations[W7_MENU_NAME]
 	if ok {
+		if strings.HasPrefix(name, "k3k.permission.") {
+			return strings.ReplaceAll(name, "k3k.permission.", "")
+		}
 		return name
 	}
 	return ""
