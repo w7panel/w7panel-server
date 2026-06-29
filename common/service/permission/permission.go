@@ -135,6 +135,7 @@ func ResolveForServiceAccount(ctx context.Context, sdk *k8s.Sdk, sa *corev1.Serv
 	}
 	p, err := Get(ctx, sdk, name)
 	if err == nil {
+		EnsureBuiltinDefaults(p)
 		return p, nil
 	}
 	if errors.IsNotFound(err) && name == FounderPermissionName {
@@ -168,6 +169,7 @@ func ApplyToServiceAccount(sa *corev1.ServiceAccount, p *configv1alpha1.Permissi
 	if sa.Labels == nil {
 		sa.Labels = map[string]string{}
 	}
+	EnsureBuiltinDefaults(p)
 	menu, _ := json.Marshal(MenuRules(p))
 	apiRules, _ := json.Marshal(APIMap(p))
 	whiteList, _ := json.Marshal(p.Spec.DomainWhiteList)
@@ -327,9 +329,6 @@ func APIMapToRules(api map[string][]string) []configv1alpha1.PermissionAPIRule {
 }
 
 func APIRulesToMap(rules []configv1alpha1.PermissionAPIRule) map[string][]string {
-	if rules == nil {
-		return nil
-	}
 	api := make(map[string][]string, len(rules))
 	for _, rule := range rules {
 		if rule.Path == "" {
@@ -338,6 +337,32 @@ func APIRulesToMap(rules []configv1alpha1.PermissionAPIRule) map[string][]string
 		api[rule.Path] = append([]string(nil), rule.Method...)
 	}
 	return api
+}
+
+func EnsureBuiltinDefaults(p *configv1alpha1.Permission) {
+	if p == nil || NormalizePermissionName(p.Name) != FounderPermissionName {
+		return
+	}
+	if len(p.Spec.APIRules) == 0 {
+		p.Spec.APIRules = []configv1alpha1.PermissionAPIRule{{
+			Path:   "*",
+			Method: []string{"*"},
+		}}
+	}
+	if len(p.Spec.RBACRules) == 0 {
+		p.Spec.RBACRules = []rbacv1.PolicyRule{{
+			APIGroups: []string{"*"},
+			Resources: []string{"*"},
+			Verbs:     []string{"*"},
+		}}
+	}
+	if !p.Spec.Features.Debug && !p.Spec.Features.Webshell && !p.Spec.Features.Fileeditor {
+		p.Spec.Features = configv1alpha1.PermissionFeatures{
+			Debug:      true,
+			Webshell:   true,
+			Fileeditor: true,
+		}
+	}
 }
 
 func MatchAPI(rules map[string][]string, method, path string) bool {

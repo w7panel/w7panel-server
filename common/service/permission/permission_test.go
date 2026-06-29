@@ -165,6 +165,22 @@ func TestApplyToServiceAccountKeepsAnnotationFormat(t *testing.T) {
 	}
 }
 
+func TestApplyToServiceAccountBackfillsFounderDefaults(t *testing.T) {
+	sa := &corev1.ServiceAccount{}
+	ApplyToServiceAccount(sa, &configv1alpha1.Permission{
+		ObjectMeta: metav1.ObjectMeta{Name: FounderPermissionName},
+		Spec: configv1alpha1.PermissionSpec{
+			Role: FounderPermissionName,
+		},
+	})
+	if got := sa.Annotations["w7.cc/api"]; got != `{"*":["*"]}` {
+		t.Fatalf("founder api annotation = %s, want wildcard api", got)
+	}
+	if got := sa.Annotations[k3ktypes.K3K_DEBUG]; got != "true" {
+		t.Fatalf("founder debug annotation = %s, want true", got)
+	}
+}
+
 func TestIsBuiltin(t *testing.T) {
 	tests := []struct {
 		name string

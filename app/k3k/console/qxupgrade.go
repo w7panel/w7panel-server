@@ -104,6 +104,7 @@ func (QxUpgrade) migratePermissions(sdk *k8s.Sdk, configmaps *corev1.ConfigMapLi
 			continue
 		}
 		p := configMapToPermission(&cm)
+		permissionservice.EnsureBuiltinDefaults(p)
 		obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(p)
 		if err != nil {
 			slog.Error("Failed to convert permission", "error", err, "name", cm.Name)
@@ -146,6 +147,7 @@ func (QxUpgrade) syncServiceAccountPermissions(sdk *k8s.Sdk) error {
 			slog.Error("Failed to get serviceaccount permission", "error", err, "sa", sa.Name, "permission", permissionName)
 			continue
 		}
+		permissionservice.EnsureBuiltinDefaults(p)
 		sa.Annotations[k3ktypes.W7_MENU_NAME] = permissionName
 		permissionservice.ApplyToServiceAccount(sa, p)
 		if _, err := sdk.ClientSet.CoreV1().ServiceAccounts(sa.Namespace).Update(context.Background(), sa, v1.UpdateOptions{}); err != nil {
