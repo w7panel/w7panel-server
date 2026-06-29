@@ -46,6 +46,7 @@ func (self Auth) Process(ctx *gin.Context) {
 	if k8sToken.IsCacheToken() {
 		if saName, err := k8sToken.GetUserName(); err == nil {
 			ctx.Set("username", saName)
+			// TODO 兼容非 k3k 集群，非k3k 集群不校验权限
 			if !self.authorizePanelAPI(ctx, saName) {
 				return
 			}

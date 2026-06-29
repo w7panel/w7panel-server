@@ -1,7 +1,6 @@
 apiVersion: w7panel.w7.com/v1alpha1
 kind: Permission
 metadata:
-    generation: 9
     labels:
         typemode: in
     name: normal
@@ -15,6 +14,26 @@ spec:
             method:
                 - create
             path: /panel-api/v1/k3k/sync-down-static
+        -
+            method:
+                - get
+            path: /panel-api/v1/metrics/state
+        -
+            method:
+                - get
+            path: /panel-api/v1/metrics/usage/cvm/*/name/*/disk
+        -
+            method:
+                - get
+            path: /panel-api/v1/metrics/usage/cvm/*/name/*/normal
+        -
+            method:
+                - get
+            path: /panel-api/v1/metrics/usage/disk
+        -
+            method:
+                - get
+            path: /panel-api/v1/metrics/usage/normal
         -
             method:
                 - get
@@ -52,39 +71,7 @@ spec:
         debug: false
         fileeditor: false
         webshell: false
-    menuRules:
-        - cluster
-        - cluster/panel
-        - cluster/resource
-        - app
-        - app/apps
-        - app/apps/add
-        - app/apps/edit
-        - app/apps/delete
-        - app/cronjob
-        - app/cronjob/add
-        - app/cronjob/edit
-        - app/cronjob/delete
-        - app/rvproxy
-        - app/rvproxy/add
-        - app/rvproxy/edit
-        - app/rvproxy/delete
-        - app/database
-        - app/database/add
-        - app/database/delete
-        - app/gpustack
-        - storage
-        - storage/disk
-        - storage/disk/add
-        - storage/disk/edit
-        - storage/disk/delete
-        - storage/zone
-        - system
-        - system/cloud
-        - person/order-center
-        - person/cost-center
-        - system/audit
-        - cluster/dns
+    menuRules: []
     parentPermission: ''
     role: normal
     title: 普通用户
