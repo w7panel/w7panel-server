@@ -78,7 +78,7 @@ func DeleteFromShop(k3kpolicy *corev1.ConfigMap) error {
 func CheckPublish(ctx context.Context, r client.Client, k3kpolicy *corev1.ConfigMap) error {
 
 	// cfg := &corev1.ConfigMap{}
-	// if err := r.Get(ctx, types.NamespacedName{Namespace: "kube-system", Name: "k3k.config"}, cfg); err != nil {
+	// if err := r.Get(ctx, types.NamespacedName{Namespace: "kube-system", Name: "config"}, cfg); err != nil {
 	// 	if errors.IsNotFound(err) {
 	// 		slog.Error("configmap not found")
 	// 		return err

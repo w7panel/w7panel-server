@@ -50,7 +50,7 @@ roleRef:
 kind: K3sConfig
 apiVersion: w7panel.w7.com/v1alpha1
 metadata:
-    name: k3s.config
+    name: config
 spec:
     data:
         k3s.mode: '4'

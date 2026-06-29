@@ -57,13 +57,18 @@ type PermissionFeatures struct {
 	Fileeditor bool `json:"fileeditor,omitempty"`
 }
 
+type PermissionAPIRule struct {
+	Path   string   `json:"path,omitempty"`
+	Method []string `json:"method,omitempty"`
+}
+
 type PermissionSpec struct {
 	Title            string              `json:"title,omitempty"`
 	Type             string              `json:"type,omitempty"`
 	Role             string              `json:"role,omitempty"`
 	ParentPermission string              `json:"parentPermission,omitempty"`
-	Menu             []string            `json:"menu,omitempty"`
-	API              map[string][]string `json:"api,omitempty"`
+	MenuRules        []string            `json:"menuRules,omitempty"`
+	APIRules         []PermissionAPIRule `json:"apiRules,omitempty"`
 	Features         PermissionFeatures  `json:"features,omitempty"`
 	DomainWhiteList  []string            `json:"domainWhiteList,omitempty"`
 	RBACRules        []rbacv1.PolicyRule `json:"rbacRules,omitempty"`

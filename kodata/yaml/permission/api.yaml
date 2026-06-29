@@ -1,0 +1,192 @@
+apiVersion: w7panel.w7.com/v1alpha1
+kind: Permission
+metadata:
+  name: api
+  labels:
+    typemode: in
+spec:
+  title: 对外 API
+  type: builtin
+  role: api
+  menuRules: []
+  apiRules:
+  - path: /panel-api/v1/auth/userinfo
+    method:
+    - get
+  - path: /panel-api/v1/auth/refresh-token2
+    method:
+    - create
+  - path: /panel-api/v1/userinfo
+    method:
+    - get
+  - path: /panel-api/v1/menu
+    method:
+    - get
+  - path: /panel-api/v1/k3k/info
+    method:
+    - get
+  - path: /panel-api/v1/k3k/cvm*
+    method:
+    - '*'
+  - path: /panel-api/v1/k3k/ckm*
+    method:
+    - '*'
+  - path: /panel-api/v1/k3k/overselling/*
+    method:
+    - '*'
+  - path: /panel-api/v1/k3k/order/license
+    method:
+    - create
+  - path: /panel-api/v1/namespaces
+    method:
+    - get
+  - path: /panel-api/v1/helm/*
+    method:
+    - '*'
+  - path: /panel-api/v1/zpk/*
+    method:
+    - '*'
+  - path: /panel-api/v1/metrics/*
+    method:
+    - get
+  - path: /panel-api/v1/audit/*
+    method:
+    - get
+  - path: /panel-api/v1/gpu/*
+    method:
+    - '*'
+  - path: /panel-api/v1/registry/*
+    method:
+    - '*'
+  - path: /panel-api/v1/tty
+    method:
+    - get
+  - path: /panel-api/v1/nodetty
+    method:
+    - get
+  - path: /panel-api/v1/exec
+    method:
+    - get
+  - path: /panel-api/v1/exec2
+    method:
+    - create
+  - path: /panel-api/v1/exec-all
+    method:
+    - create
+  - path: /panel-api/v1/download/*
+    method:
+    - get
+  - path: /panel-api/v1/files/*
+    method:
+    - '*'
+  - path: /panel-api/v1/cp
+    method:
+    - create
+  - path: /panel-api/v1/cppid
+    method:
+    - create
+  - path: /panel-api/v1/mvpid
+    method:
+    - create
+  - path: /panel-api/v1/pid
+    method:
+    - get
+  - path: /panel-api/v1/nodepid
+    method:
+    - get
+  - path: /panel-api/v1/mountfiles*
+    method:
+    - '*'
+  - path: /panel-api/v1/yaml
+    method:
+    - create
+  - path: /panel-api/v1/rollback
+    method:
+    - update
+  - path: /panel-api/v1/kcompose
+    method:
+    - create
+  - path: /panel-api/v1/pinyin
+    method:
+    - create
+  - path: /panel-api/v1/dns*
+    method:
+    - '*'
+  - path: /panel-api/v1/myip
+    method:
+    - get
+  - path: /panel-api/v1/db-conn-test
+    method:
+    - create
+  - path: /panel-api/v1/ping-etcd
+    method:
+    - create
+  - path: /panel-api/v1/*/proxy/*
+    method:
+    - '*'
+  - path: /panel-api/v1/namespaces/*/services/*/proxy-root/*
+    method:
+    - '*'
+  - path: /panel-api/v1/namespaces/*/services/*/proxy/*
+    method:
+    - '*'
+  - path: /panel-api/v1/namespaces/*/pods/*/proxy/*
+    method:
+    - '*'
+  - path: /panel-api/v1/longhorn/*
+    method:
+    - '*'
+  - path: /panel-api/v1/static/*
+    method:
+    - '*'
+  - path: /panel-api/v1/kubeconfig
+    method:
+    - get
+  - path: /panel-api/v1/s3bucket
+    method:
+    - '*'
+  - path: /panel-api/v1/microapp/*
+    method:
+    - '*'
+  - path: /panel-api/v1/containers/*
+    method:
+    - '*'
+  - path: /panel-api/v1/oidc/*
+    method:
+    - '*'
+  - path: /panel-api/v1/code
+    method:
+    - create
+  - path: /panel-api/v1/callback-url
+    method:
+    - create
+  features:
+    debug: true
+    fileeditor: true
+    webshell: true
+  rbacRules:
+  - apiGroups:
+    - apiextensions.k8s.io
+    resources:
+    - customresourcedefinitions
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ''
+    resources:
+    - namespaces
+    - serviceaccounts
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - w7panel.w7.com
+    resources:
+    - '*'
+    verbs:
+    - get
+    - list
+    - watch

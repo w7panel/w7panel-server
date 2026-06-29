@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 )
 
-const K3K_MENU_FOUNDER_NAME = "k3k.permission.founder"
+const K3K_MENU_FOUNDER_NAME = "founder"
 const W7_CREATE_POD = "w7.cc/create-pod"
 
 var K3kInitStatus string

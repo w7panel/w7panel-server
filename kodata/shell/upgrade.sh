@@ -54,7 +54,7 @@ kubectl patch wasmplugin w7-white-domain -n higress-system --type=merge -p '{"sp
 # kubectl apply -f $KO_DATA_PATH/yaml/code
 
 echo "create权限 不使用apply" 
-# kubectl get configmap k3k.permission.founder >/dev/null 2>&1 || kubectl apply -f $KO_DATA_PATH/yaml/k3k.permission.founder.yaml --server-side
+# kubectl get permission founder >/dev/null 2>&1 || kubectl apply -f $KO_DATA_PATH/yaml/permission/founder.yaml --server-side
 kubectl create -f $KO_DATA_PATH/yaml/permission || echo "已存在"
 
 # 系统内置权限直接替换，自定义权限不在该目录中
@@ -121,4 +121,3 @@ kubectl get pods -n default -o json \
     | select(.status.phase == "Succeeded" or .status.phase == "Failed")
     | .metadata.name' \
   | xargs -r kubectl delete pod -n default
-

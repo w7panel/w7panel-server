@@ -34,16 +34,21 @@ spec:
                 type: string
               parentPermission:
                 type: string
-              menu:
+              menuRules:
                 type: array
                 items:
                   type: string
-              api:
-                type: object
-                additionalProperties:
-                  type: array
-                  items:
-                    type: string
+              apiRules:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    path:
+                      type: string
+                    method:
+                      type: array
+                      items:
+                        type: string
               features:
                 type: object
                 properties:

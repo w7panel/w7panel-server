@@ -1,14 +1,14 @@
 apiVersion: w7panel.w7.com/v1alpha1
 kind: Permission
 metadata:
-  name: k3k.permission.founder
+  name: founder
   labels:
     typemode: in
 spec:
   title: 创始人
   type: builtin
   role: founder
-  menu:
+  menuRules:
   - cluster
   - cluster/panel
   - cluster/resource
@@ -56,8 +56,9 @@ spec:
   - usermanage/permission
   - usermanage/quota
   - usermanage/usermanage-system
-  api:
-    '*':
+  apiRules:
+  - path: '*'
+    method:
     - '*'
   features:
     debug: true

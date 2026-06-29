@@ -16,12 +16,12 @@ EOF
   echo "longhorn-volumes-config 已存在"
 fi
 
-echo "配置k3s.config crd..."
-kubectl apply -f - <<'EOF' || echo "k3s.config 已更新"
+echo "配置k3sconfigs/config crd..."
+kubectl apply -f - <<'EOF' || echo "k3sconfigs/config 已更新"
 kind: K3sConfig
 apiVersion: w7panel.w7.com/v1alpha1
 metadata:
-  name: k3s.config
+  name: config
 spec:
   data:
     k3s.mode: "4"
@@ -139,7 +139,7 @@ EOF
 # w7panel sitemanager-upgrade --version=1.0.26 --identifie=w7_nodejs --is-agent=true
 # w7panel sitemanager-upgrade --version=1.0.26 --identifie=w7_python --is-agent=true
 # w7panel sitemanager-upgrade --version=1.0.25 --identifie=w7_sitemanager --is-agent=true
-# add k3s.config
+# add k3sconfigs/config
 
 kubectl get jobs -n default -o json \
   | jq -r '.items[]

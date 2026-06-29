@@ -74,7 +74,7 @@ func (QxUpgrade) handleConfigmaps(configmaps *corev1.ConfigMapList, sigClient si
 		if configmap.Annotations == nil {
 			configmap.Annotations = map[string]string{}
 		}
-		if configmap.Name == "k3k.permission.founder" {
+		if permissionservice.NormalizePermissionName(configmap.Name) == permissionservice.FounderPermissionName {
 			// configmap.Labels["w7.cc/role"] = "founder"
 			configmap.Labels["typemode"] = "in"
 			err := sigClient.Update(context.Background(), &configmap)
@@ -100,7 +100,7 @@ func (QxUpgrade) handleConfigmaps(configmaps *corev1.ConfigMapList, sigClient si
 func (QxUpgrade) migratePermissions(sdk *k8s.Sdk, configmaps *corev1.ConfigMapList) {
 	gvr := schema.GroupVersionResource{Group: "w7panel.w7.com", Version: "v1alpha1", Resource: "permissions"}
 	for _, cm := range configmaps.Items {
-		if cm.Name == "k3k.permission.tech" {
+		if cm.Name == "k3k.permission.tech" || cm.Name == "permission.tech" || cm.Name == "tech" {
 			continue
 		}
 		p := configMapToPermission(&cm)
@@ -134,7 +134,7 @@ func (QxUpgrade) syncServiceAccountPermissions(sdk *k8s.Sdk) error {
 	}
 	for _, item := range list.Items {
 		sa := item.DeepCopy()
-		permissionName := sa.GetAnnotations()[k3ktypes.W7_MENU_NAME]
+		permissionName := permissionservice.NormalizePermissionName(sa.GetAnnotations()[k3ktypes.W7_MENU_NAME])
 		if permissionName == "" {
 			continue
 		}
@@ -143,6 +143,7 @@ func (QxUpgrade) syncServiceAccountPermissions(sdk *k8s.Sdk) error {
 			slog.Error("Failed to get serviceaccount permission", "error", err, "sa", sa.Name, "permission", permissionName)
 			continue
 		}
+		sa.Annotations[k3ktypes.W7_MENU_NAME] = permissionName
 		permissionservice.ApplyToServiceAccount(sa, p)
 		if _, err := sdk.ClientSet.CoreV1().ServiceAccounts(sa.Namespace).Update(context.Background(), sa, v1.UpdateOptions{}); err != nil {
 			slog.Error("Failed to update serviceaccount permission", "error", err, "sa", sa.Name)
@@ -154,16 +155,16 @@ func (QxUpgrade) syncServiceAccountPermissions(sdk *k8s.Sdk) error {
 func configMapToPermission(cm *corev1.ConfigMap) *configv1alpha1.Permission {
 	menu := []string{}
 	_ = json.Unmarshal([]byte(cm.Data["menu"]), &menu)
-	name := cm.Name
+	name := permissionservice.NormalizePermissionName(cm.Name)
 	role := cm.Labels["w7.cc/role"]
 	parentPermission := ""
-	if cm.Name == permissionservice.FounderPermissionName {
+	if name == permissionservice.FounderPermissionName {
 		role = "founder"
 	}
-	if cm.Name == permissionservice.SuperPermissionName {
+	if name == permissionservice.SuperPermissionName {
 		role = "super"
 	}
-	if cm.Name == permissionservice.NormalPermissionName {
+	if name == permissionservice.NormalPermissionName {
 		role = "normal"
 	}
 	if cm.Labels["typemode"] != "in" {
@@ -191,7 +192,7 @@ func configMapToPermission(cm *corev1.ConfigMap) *configv1alpha1.Permission {
 			Type:             map[bool]string{true: "builtin", false: "custom"}[cm.Labels["typemode"] == "in"],
 			Role:             role,
 			ParentPermission: parentPermission,
-			Menu:             menu,
+			MenuRules:        menu,
 			Features: configv1alpha1.PermissionFeatures{
 				Debug:      cm.Data["debug"] == "true",
 				Webshell:   cm.Data["webshell"] == "true",

@@ -1,0 +1,41 @@
+apiVersion: w7panel.w7.com/v1alpha1
+kind: Permission
+metadata:
+  name: normal
+  labels:
+    typemode: in
+spec:
+  title: 普通用户
+  type: builtin
+  role: normal
+  menuRules: []
+  apiRules:
+  - path: /panel-api/v1/k3k/info
+    method:
+    - get
+  - path: /panel-api/v1/auth/userinfo
+    method:
+    - get
+  - path: /panel-api/v1/auth/console/info
+    method:
+    - get
+  - path: /panel-api/v1/auth/refresh-token2
+    method:
+    - create
+  - path: /panel-api/v1/microapp/*
+    method:
+    - get
+  - path: /panel-api/v1/microapp/*/proxy/*
+    method:
+    - '*'
+  - path: /panel-api/v1/namespaces/*/services/*/proxy/*
+    method:
+    - '*'
+  - path: /panel-api/v1/namespaces/*/pods/*/proxy/*
+    method:
+    - '*'
+  features:
+    debug: false
+    fileeditor: false
+    webshell: false
+  rbacRules: []

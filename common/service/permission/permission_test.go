@@ -96,15 +96,15 @@ func TestResolveForServiceAccountFallsBackForFounderWithoutPermissionName(t *tes
 	if err != nil {
 		t.Fatalf("ResolveForServiceAccount() error = %v", err)
 	}
-	if !MatchAPI(p.Spec.API, "GET", "/panel-api/v1/menu") {
+	if !MatchAPI(APIMap(p), "GET", "/panel-api/v1/menu") {
 		t.Fatal("expected founder fallback to authorize menu request")
 	}
-	if !containsString(p.Spec.Menu, "cluster") || !containsString(p.Spec.Menu, "usermanage/permission") {
-		t.Fatalf("founder fallback menu = %v, want full founder menu", p.Spec.Menu)
+	if !containsString(MenuRules(p), "cluster") || !containsString(MenuRules(p), "usermanage/permission") {
+		t.Fatalf("founder fallback menu = %v, want full founder menu", MenuRules(p))
 	}
 }
 
-func TestResolveForServiceAccountFallsBackToAnnotations(t *testing.T) {
+func TestResolveForServiceAccountUsesAnnotations(t *testing.T) {
 	api, _ := json.Marshal(map[string][]string{"/panel-api/v1/apps/*": {"get"}})
 	menu, _ := json.Marshal([]string{"app/*"})
 	p, err := ResolveForServiceAccount(context.Background(), nil, &corev1.ServiceAccount{
@@ -119,8 +119,41 @@ func TestResolveForServiceAccountFallsBackToAnnotations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveForServiceAccount() error = %v", err)
 	}
-	if !MatchAPI(p.Spec.API, "GET", "/panel-api/v1/apps/demo") {
+	if !MatchAPI(APIMap(p), "GET", "/panel-api/v1/apps/demo") {
 		t.Fatal("expected annotation api rules to authorize request")
+	}
+}
+
+func TestNormalizePermissionName(t *testing.T) {
+	tests := map[string]string{
+		"k3k.permission.founder": "founder",
+		"permission.super":       "super",
+		"k3k.permission.demo":    "demo",
+		"demo":                   "demo",
+	}
+	for in, want := range tests {
+		if got := NormalizePermissionName(in); got != want {
+			t.Fatalf("NormalizePermissionName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestApplyToServiceAccountKeepsAnnotationFormat(t *testing.T) {
+	sa := &corev1.ServiceAccount{}
+	ApplyToServiceAccount(sa, &configv1alpha1.Permission{
+		Spec: configv1alpha1.PermissionSpec{
+			MenuRules: []string{"app/apps"},
+			APIRules: []configv1alpha1.PermissionAPIRule{{
+				Path:   "/panel-api/v1/apps/*",
+				Method: []string{"get"},
+			}},
+		},
+	})
+	if got := sa.Annotations[k3ktypes.W7_MENU]; got != `["app/apps"]` {
+		t.Fatalf("menu annotation = %s, want list json", got)
+	}
+	if got := sa.Annotations["w7.cc/api"]; got != `{"/panel-api/v1/apps/*":["get"]}` {
+		t.Fatalf("api annotation = %s, want map json", got)
 	}
 }
 
@@ -162,7 +195,7 @@ func TestIsBuiltin(t *testing.T) {
 }
 
 func TestBuiltinAdminPermissionsDoNotGrantFounderWildcards(t *testing.T) {
-	for _, name := range []string{"k3k.permission.admin.yaml", "k3k.permission.super.yaml", "k3k.permission.api.yaml"} {
+	for _, name := range []string{"super.yaml", "api.yaml"} {
 		t.Run(name, func(t *testing.T) {
 			data, err := os.ReadFile(filepath.Join("..", "..", "..", "kodata", "yaml", "permission", name))
 			if err != nil {
@@ -172,7 +205,10 @@ func TestBuiltinAdminPermissionsDoNotGrantFounderWildcards(t *testing.T) {
 				t.Fatalf("read builtin permission: %v", err)
 			}
 			content := string(data)
-			if strings.Contains(content, "  api:\n    '*':\n    - '*'") {
+			if strings.Contains(content, "  api:\n") || strings.Contains(content, "  menu:\n") || strings.Contains(content, "  menu: []") {
+				t.Fatal("builtin permissions must use menuRules/apiRules")
+			}
+			if strings.Contains(content, "  - path: '*'\n    method:\n    - '*'") {
 				t.Fatal("admin permission must not grant every panel API")
 			}
 			if strings.Contains(content, "  - apiGroups:\n    - '*'\n    resources:\n    - '*'\n    verbs:\n    - '*'") {

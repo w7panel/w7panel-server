@@ -273,7 +273,7 @@ func (s *k3sConfigController) initK3sConfig(node *v1.Node) error {
 	config := k8s.NewConfigCRD("K3sConfig", k8s.K3sConfigName, labels, data)
 	_, err := k8sClient.DynamicClient().Resource(k8s.K3sConfigGVR).Apply(k8sClient.Ctx, k8s.K3sConfigName, config, metav1.ApplyOptions{FieldManager: "k8s-offline", Force: true})
 	if err != nil {
-		slog.Error("create k3s.config crd error", "err", err)
+		slog.Error("create k3sconfigs/config crd error", "err", err)
 		return err
 	}
 	return nil
@@ -377,7 +377,7 @@ func (s *k3sConfigController) handleK3sConfig(data map[string]string, nodes *v1.
 			if change {
 				data, err := helper.YamlToBytes(k3sConfig.k3sConfigYaml)
 				if err != nil {
-					slog.Error("k3s.config yaml to bytes error", "err", err)
+					slog.Error("k3sconfigs/config yaml to bytes error", "err", err)
 					return err
 				}
 				err = helper.WriteK3sConfig(data)

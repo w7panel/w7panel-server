@@ -838,7 +838,7 @@ func (self Sdk) Login2(username string, password string, checkPassword bool) (*c
 	_, hasMode := sa.Labels["w7.cc/user-mode"]
 	if !hasMode {
 		sa.Labels["w7.cc/user-mode"] = "founder"
-		sa.Annotations["w7.cc/menu-name"] = "k3k.permission.founder"
+		sa.Annotations["w7.cc/menu-name"] = "founder"
 		sa.Annotations["w7.cc/menu"] = K3K_MENU_FOUNDER
 		sa.Annotations["w7.cc/debug"] = "true"
 		sa.Annotations["w7.cc/file-editor"] = "true"
@@ -903,7 +903,7 @@ func (self Sdk) ResetPassword(username string, password string, usermode string)
 		}
 		sa.Labels["w7.cc/user-mode"] = usermode
 		if usermode == "founder" {
-			sa.Annotations["w7.cc/menu-name"] = "k3k.permission.founder"
+			sa.Annotations["w7.cc/menu-name"] = "founder"
 			sa.Annotations["w7.cc/menu"] = K3K_MENU_FOUNDER
 			sa.Annotations["w7.cc/debug"] = "true"
 			sa.Annotations["w7.cc/file-editor"] = "true"

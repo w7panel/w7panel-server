@@ -5,7 +5,7 @@ metadata:
   name: {{ .Release.Name }}
   annotations:
     {{- include "helm.annotations" . | nindent 4 }}
-    w7.cc/menu-name: k3k.permission.founder
+    w7.cc/menu-name: founder
   labels:
     {{- include "helm.labels" . | nindent 4 }}
 

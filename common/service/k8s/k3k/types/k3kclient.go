@@ -53,7 +53,7 @@ func (k *K3kClient) GetK3kConfigSetting() (*K3kConfigSetting, error) {
 kind: K3kConfig
 apiVersion: w7panel.w7.com/v1alpha1
 metadata:
-    name: k3k.config
+    name: config
 spec:
     data:
         allowConsoleRegister: "true"

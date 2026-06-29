@@ -11,10 +11,10 @@ import (
 const (
 	ConfigCRDGroup        = "w7panel.w7.com"
 	ConfigCRDVersion      = "v1alpha1"
-	K3kConfigName         = "k3k.config"
-	K3sConfigName         = "k3s.config"
+	K3kConfigName         = "config"
+	K3sConfigName         = "config"
 	LicenseName           = "license"
-	OverSellingConfigName = "k3k.overselling.config"
+	OverSellingConfigName = "config"
 	FilingConfigName      = "beian"
 	DomainParseConfigName = "domain-parse"
 )

@@ -14,10 +14,10 @@ import (
 	w7.cc/login-time: '2026-05-25 22:20:19'
 	w7.cc/menu: >-
 	    ["cluster","cluster/panel","app","app/apps","app/apps/add","app/apps/edit","app/apps/delete","app/cronjob","app/cronjob/add","app/cronjob/edit","app/cronjob/delete","app/rvproxy","app/rvproxy/add","app/rvproxy/edit","app/rvproxy/delete","storage","storage/disk","storage/disk/add","storage/disk/edit","storage/disk/delete","storage/zone","system","system/cloud","system/cost","person/order-center","person/cost-center"]
-	w7.cc/menu-name: k3k.permission.dqobvuhu
+	w7.cc/menu-name: dqobvuhu
 	w7.cc/quota-limit: >-
 	    {"storageclass":"union1","hard":{"cpu":"2","memory":"4","bandwidth":"1","requests.storage":"10"}}
-	w7.cc/quota-limit-name: k3k.quota.vljoefug
+	w7.cc/quota-limit-name: vljoefug
 	w7.cc/web-shell: 'true'
 */
 func (u *k3kUser) ReplaceCkm(ckm *cvmv1alpha1.Ckm) {

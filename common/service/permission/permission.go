@@ -19,10 +19,10 @@ import (
 )
 
 const (
-	FounderPermissionName = "k3k.permission.founder"
-	SuperPermissionName   = "k3k.permission.super"
-	NormalPermissionName  = "k3k.permission.normal"
-	APIPermissionName     = "k3k.permission.api"
+	FounderPermissionName = "founder"
+	SuperPermissionName   = "super"
+	NormalPermissionName  = "normal"
+	APIPermissionName     = "api"
 )
 
 var permissionGVR = schema.GroupVersionResource{
@@ -104,8 +104,8 @@ func FromServiceAccount(sa *corev1.ServiceAccount) *configv1alpha1.Permission {
 	_ = json.Unmarshal([]byte(annotations["w7.cc/api"]), &api)
 	return &configv1alpha1.Permission{
 		Spec: configv1alpha1.PermissionSpec{
-			Menu: menu,
-			API:  api,
+			MenuRules: menu,
+			APIRules:  APIMapToRules(api),
 			Features: configv1alpha1.PermissionFeatures{
 				Debug:      annotations[k3ktypes.K3K_DEBUG] == "true",
 				Webshell:   annotations[k3ktypes.W7_WEB_SHELL] == "true",
@@ -117,7 +117,7 @@ func FromServiceAccount(sa *corev1.ServiceAccount) *configv1alpha1.Permission {
 
 func ResolveForServiceAccount(ctx context.Context, sdk *k8s.Sdk, sa *corev1.ServiceAccount) (*configv1alpha1.Permission, error) {
 	annotations := sa.GetAnnotations()
-	name := annotations[k3ktypes.W7_MENU_NAME]
+	name := NormalizePermissionName(annotations[k3ktypes.W7_MENU_NAME])
 	if name == "" {
 		if isFounderServiceAccount(sa) {
 			return founderFallback(), nil
@@ -138,7 +138,7 @@ func ResolveForServiceAccount(ctx context.Context, sdk *k8s.Sdk, sa *corev1.Serv
 }
 
 func RBACRoleNameForServiceAccount(ctx context.Context, sdk *k8s.Sdk, sa *corev1.ServiceAccount) (string, error) {
-	name := sa.GetAnnotations()[k3ktypes.W7_MENU_NAME]
+	name := NormalizePermissionName(sa.GetAnnotations()[k3ktypes.W7_MENU_NAME])
 	if name == "" {
 		return "", nil
 	}
@@ -162,8 +162,8 @@ func ApplyToServiceAccount(sa *corev1.ServiceAccount, p *configv1alpha1.Permissi
 	if sa.Labels == nil {
 		sa.Labels = map[string]string{}
 	}
-	menu, _ := json.Marshal(p.Spec.Menu)
-	apiRules, _ := json.Marshal(p.Spec.API)
+	menu, _ := json.Marshal(MenuRules(p))
+	apiRules, _ := json.Marshal(APIMap(p))
 	whiteList, _ := json.Marshal(p.Spec.DomainWhiteList)
 	sa.Annotations[k3ktypes.W7_MENU] = string(menu)
 	sa.Annotations["w7.cc/api"] = string(apiRules)
@@ -173,6 +173,21 @@ func ApplyToServiceAccount(sa *corev1.ServiceAccount, p *configv1alpha1.Permissi
 	sa.Annotations[k3ktypes.W7_DOMAIN_WHITE_LIST] = string(whiteList)
 	if p.Spec.Role != "" {
 		sa.Labels[k3ktypes.W7_ROLE] = p.Spec.Role
+	}
+}
+
+func NormalizePermissionName(name string) string {
+	switch name {
+	case "k3k.permission.founder", "permission.founder":
+		return FounderPermissionName
+	case "k3k.permission.super", "permission.super":
+		return SuperPermissionName
+	case "k3k.permission.normal", "permission.normal":
+		return NormalPermissionName
+	case "k3k.permission.api", "permission.api":
+		return APIPermissionName
+	default:
+		return strings.TrimPrefix(strings.TrimPrefix(name, "k3k.permission."), "permission.")
 	}
 }
 
@@ -269,7 +284,54 @@ func AuthorizePanelAPI(ctx context.Context, sdk *k8s.Sdk, saName, method, path s
 	if err != nil {
 		return false, err
 	}
-	return MatchAPI(p.Spec.API, method, path), nil
+	return MatchAPI(APIMap(p), method, path), nil
+}
+
+func MenuRules(p *configv1alpha1.Permission) []string {
+	if p == nil {
+		return nil
+	}
+	return p.Spec.MenuRules
+}
+
+func APIRules(p *configv1alpha1.Permission) []configv1alpha1.PermissionAPIRule {
+	if p == nil {
+		return nil
+	}
+	return p.Spec.APIRules
+}
+
+func APIMap(p *configv1alpha1.Permission) map[string][]string {
+	return APIRulesToMap(APIRules(p))
+}
+
+func APIMapToRules(api map[string][]string) []configv1alpha1.PermissionAPIRule {
+	if api == nil {
+		return nil
+	}
+	rules := make([]configv1alpha1.PermissionAPIRule, 0, len(api))
+	for path, methods := range api {
+		rule := configv1alpha1.PermissionAPIRule{
+			Path:   path,
+			Method: append([]string(nil), methods...),
+		}
+		rules = append(rules, rule)
+	}
+	return rules
+}
+
+func APIRulesToMap(rules []configv1alpha1.PermissionAPIRule) map[string][]string {
+	if rules == nil {
+		return nil
+	}
+	api := make(map[string][]string, len(rules))
+	for _, rule := range rules {
+		if rule.Path == "" {
+			continue
+		}
+		api[rule.Path] = append([]string(nil), rule.Method...)
+	}
+	return api
 }
 
 func MatchAPI(rules map[string][]string, method, path string) bool {
@@ -394,8 +456,11 @@ func boolString(v bool) string {
 func founderFallback() *configv1alpha1.Permission {
 	return &configv1alpha1.Permission{
 		Spec: configv1alpha1.PermissionSpec{
-			Menu: founderMenu,
-			API:  map[string][]string{"*": []string{"*"}},
+			MenuRules: founderMenu,
+			APIRules: []configv1alpha1.PermissionAPIRule{{
+				Path:   "*",
+				Method: []string{"*"},
+			}},
 			Features: configv1alpha1.PermissionFeatures{
 				Debug:      true,
 				Webshell:   true,

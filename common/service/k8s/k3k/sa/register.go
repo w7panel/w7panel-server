@@ -108,7 +108,7 @@ func (register *Register) RegisterUseConsole(accessToken *types.ConsoleOAuthAcce
 	openId := userinfo.OpenId
 	anns := map[string]string{
 		types.W7_ACCESS_TOKEN:    accessToken.ToString(),
-		"w7.cc/menu-name":        "k3k.permission.normal",
+		"w7.cc/menu-name":        permissionservice.NormalPermissionName,
 		"w7.cc/console-nickname": userinfo.Nickname,
 		"w7.cc/console-openid":   openId,
 	}

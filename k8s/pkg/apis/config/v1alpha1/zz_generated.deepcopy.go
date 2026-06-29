@@ -328,22 +328,16 @@ func (in *PermissionList) DeepCopyObject() runtime.Object {
 
 func (in *PermissionSpec) DeepCopyInto(out *PermissionSpec) {
 	*out = *in
-	if in.Menu != nil {
-		in, out := &in.Menu, &out.Menu
+	if in.MenuRules != nil {
+		in, out := &in.MenuRules, &out.MenuRules
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.API != nil {
-		in, out := &in.API, &out.API
-		*out = make(map[string][]string, len(*in))
-		for key, val := range *in {
-			if val == nil {
-				(*out)[key] = nil
-				continue
-			}
-			outVal := make([]string, len(val))
-			copy(outVal, val)
-			(*out)[key] = outVal
+	if in.APIRules != nil {
+		in, out := &in.APIRules, &out.APIRules
+		*out = make([]PermissionAPIRule, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	out.Features = in.Features
@@ -366,6 +360,24 @@ func (in *PermissionSpec) DeepCopy() *PermissionSpec {
 		return nil
 	}
 	out := new(PermissionSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *PermissionAPIRule) DeepCopyInto(out *PermissionAPIRule) {
+	*out = *in
+	if in.Method != nil {
+		in, out := &in.Method, &out.Method
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+}
+
+func (in *PermissionAPIRule) DeepCopy() *PermissionAPIRule {
+	if in == nil {
+		return nil
+	}
+	out := new(PermissionAPIRule)
 	in.DeepCopyInto(out)
 	return out
 }
