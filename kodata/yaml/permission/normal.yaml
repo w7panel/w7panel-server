@@ -1,44 +1,91 @@
 apiVersion: w7panel.w7.com/v1alpha1
 kind: Permission
 metadata:
-  name: normal
-  labels:
-    typemode: in
+    generation: 9
+    labels:
+        typemode: in
+    name: normal
 spec:
-  title: 普通用户
-  type: builtin
-  role: normal
-  menuRules: []
-  apiRules:
-  - path: /panel-api/v1/k3k/info
-    method:
-    - get
-  - path: /panel-api/v1/auth/userinfo
-    method:
-    - get
-  - path: /panel-api/v1/auth/console/info
-    method:
-    - get
-  - path: /panel-api/v1/auth/refresh-token2
-    method:
-    - create
-  - path: /panel-api/v1/microapp/*
-    method:
-    - get
-  - path: /panel-api/v1/static/*
-    method:
-    - '*'
-  - path: /panel-api/v1/microapp/*/proxy/*
-    method:
-    - '*'
-  - path: /panel-api/v1/namespaces/*/services/*/proxy/*
-    method:
-    - '*'
-  - path: /panel-api/v1/namespaces/*/pods/*/proxy/*
-    method:
-    - '*'
-  features:
-    debug: false
-    fileeditor: false
-    webshell: false
-  rbacRules: []
+    apiRules:
+        -
+            method:
+                - get
+            path: /panel-api/v1/auth/console/info
+        -
+            method:
+                - create
+            path: /panel-api/v1/k3k/sync-down-static
+        -
+            method:
+                - get
+            path: /panel-api/v1/microapp/*/frontprops
+        -
+            method:
+                - get
+            path: /panel-api/v1/microapp/*/info
+        -
+            method:
+                - delete
+                - get
+                - patch
+                - create
+                - update
+            path: /panel-api/v1/microapp/*/proxy/*
+        -
+            method:
+                - get
+            path: /panel-api/v1/microapp/top
+        -
+            method:
+                - create
+            path: /panel-api/v1/oidc/js-code
+        -
+            method:
+                - create
+            path: /panel-api/v1/static/*/download/*
+        -
+            method:
+                - get
+            path: /panel-api/v1/static/*/status
+    domainWhiteList: []
+    features:
+        debug: false
+        fileeditor: false
+        webshell: false
+    menuRules:
+        - cluster
+        - cluster/panel
+        - cluster/resource
+        - app
+        - app/apps
+        - app/apps/add
+        - app/apps/edit
+        - app/apps/delete
+        - app/cronjob
+        - app/cronjob/add
+        - app/cronjob/edit
+        - app/cronjob/delete
+        - app/rvproxy
+        - app/rvproxy/add
+        - app/rvproxy/edit
+        - app/rvproxy/delete
+        - app/database
+        - app/database/add
+        - app/database/delete
+        - app/gpustack
+        - storage
+        - storage/disk
+        - storage/disk/add
+        - storage/disk/edit
+        - storage/disk/delete
+        - storage/zone
+        - system
+        - system/cloud
+        - person/order-center
+        - person/cost-center
+        - system/audit
+        - cluster/dns
+    parentPermission: ''
+    role: normal
+    title: 普通用户
+    type: builtin
