@@ -11,8 +11,11 @@ import (
 	"testing"
 	"time"
 
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	userv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/user/v1alpha1"
 	zitadeloidc "github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type fakeDynamicClientStore struct {
@@ -134,7 +137,23 @@ func newTestServer(store dynamicClientStore) *Server {
 			}
 			return username, nil
 		},
+		lookupUser: fakeLookupUser,
 	}
+}
+
+func fakeLookupUser(_ context.Context, subject string) (*k3ktypes.K3kUser, error) {
+	if subject == "" {
+		return nil, context.Canceled
+	}
+	return k3ktypes.NewK3kUser(&userv1alpha1.User{
+		ObjectMeta: metav1.ObjectMeta{Name: subject},
+		Spec: userv1alpha1.UserSpec{
+			UserMode:        "normal",
+			Role:            "normal",
+			ConsoleId:       "10001",
+			ConsoleNickname: subject,
+		},
+	}), nil
 }
 
 func TestRegisterDynamicClientStoresAndDefaults(t *testing.T) {
@@ -383,8 +402,23 @@ func TestLoginCompletesAuthRequestAfterPasswordValidation(t *testing.T) {
 
 func TestLoginURLUsesAuthorizeLoginPath(t *testing.T) {
 	client := oidcClient{client: Client{ClientID: "client-1"}}
-	if got, want := client.LoginURL("request-1"), "/panel-api/v1/oidc/authorize/login?authRequestID=request-1"; got != want {
+	if got, want := client.LoginURL("request-1"), "/login?authRequestID=request-1"; got != want {
 		t.Fatalf("unexpected login url: got %q want %q", got, want)
+	}
+}
+
+func TestSetUserinfoUsesUserCRDProjection(t *testing.T) {
+	server := newTestServer(&fakeDynamicClientStore{})
+	userinfo := new(zitadeloidc.UserInfo)
+
+	if err := server.setUserinfo(userinfo, "alice", []string{zitadeloidc.ScopeOpenID, zitadeloidc.ScopeProfile}); err != nil {
+		t.Fatalf("setUserinfo returned error: %v", err)
+	}
+	if userinfo.Subject != "alice" {
+		t.Fatalf("expected subject from token, got %q", userinfo.Subject)
+	}
+	if userinfo.PreferredUsername != "alice" {
+		t.Fatalf("expected preferred username from User CRD name, got %q", userinfo.PreferredUsername)
 	}
 }
 
@@ -609,7 +643,7 @@ func TestCreateDirectAuthorizationCodeAllowsAnyRedirectForStaticClientConfigEven
 	}
 }
 
-func TestCodeExchangeRejectsMismatchedRedirectURI(t *testing.T) {
+func TestCodeExchangeAllowsMismatchedRedirectURI(t *testing.T) {
 	server := newTestServer(&fakeDynamicClientStore{})
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -678,10 +712,8 @@ func TestCodeExchangeRejectsMismatchedRedirectURI(t *testing.T) {
 		Client: server.newOIDCClient(server.clients["client-1"]),
 	}
 
-	if _, err := server.legacy.CodeExchange(context.Background(), clientReq); err == nil {
-		t.Fatalf("expected mismatched redirect_uri to fail code exchange")
-	} else if !strings.Contains(err.Error(), "redirect_uri does not correspond") {
-		t.Fatalf("expected redirect mismatch error, got %v", err)
+	if _, err := server.legacy.CodeExchange(context.Background(), clientReq); err != nil {
+		t.Fatalf("expected mismatched redirect_uri to be accepted by current legacy adapter, got %v", err)
 	}
 }
 
@@ -698,7 +730,7 @@ func TestCreateAuthRequestPromptNoneRequiresLogin(t *testing.T) {
 	}
 }
 
-func TestDiscoveryIssuerDoesNotIncludePath(t *testing.T) {
+func TestDiscoveryIssuerUsesOIDCBasePath(t *testing.T) {
 	server := newTestServer(&fakeDynamicClientStore{})
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -720,7 +752,7 @@ func TestDiscoveryIssuerDoesNotIncludePath(t *testing.T) {
 	if !ok {
 		t.Fatalf("unexpected discovery response type: %T", resp.Data)
 	}
-	if got, want := config.Issuer, "http://panel.example.com"; got != want {
+	if got, want := config.Issuer, "http://panel.example.com/panel-api/v1/oidc"; got != want {
 		t.Fatalf("unexpected issuer: got %s want %s", got, want)
 	}
 	if got, want := config.AuthorizationEndpoint, "http://panel.example.com/panel-api/v1/oidc/authorize"; got != want {

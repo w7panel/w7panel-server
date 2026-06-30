@@ -58,11 +58,6 @@ func (self K3k) Info(http *gin.Context) {
 				k3ktypes.W7_DEMO_USER:         boolString(u.Spec.DemoUser),
 				k3ktypes.W7_ROLE:              u.Spec.Role,
 				"w7.cc/has-password":          boolString(u.Spec.PasswordHash != ""),
-				"w7.cc/can-init-cluster":      "false",
-				"w7.cc/need-create-order":     "false",
-				"w7.cc/can-renew":             "false",
-				"w7.cc/need-renew":            "false",
-				"w7.cc/can-expand":            "false",
 			}
 			self.JsonResponseWithoutError(http, result)
 			return
@@ -77,7 +72,7 @@ func (self K3k) Info(http *gin.Context) {
 	}
 	// rootSdk := k8s.NewK8sClient().Sdk
 	if user != nil {
-		result := user.ToArray()
+		result := map[string]string{}
 		self.JsonResponseWithoutError(http, result)
 		return
 	}

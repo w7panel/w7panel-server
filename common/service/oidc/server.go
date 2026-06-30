@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	oidclib "github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
@@ -100,6 +101,7 @@ type Server struct {
 	store   dynamicClientStore
 
 	authenticateUser func(context.Context, string, string) (string, error)
+	lookupUser       func(context.Context, string) (*k3ktypes.K3kUser, error)
 
 	clientsMu sync.RWMutex
 	clients   map[string]Client
@@ -181,6 +183,7 @@ func NewServer(cfg Config) (*Server, error) {
 		accessTokens:  make(map[string]*accessToken),
 		refreshTokens: make(map[string]*refreshToken),
 		accessTokenBy: make(map[string]*cachedAccessToken),
+		lookupUser:    lookupK3kUser,
 	}
 
 	for _, client := range cfg.Clients {

@@ -10,19 +10,22 @@ import (
 	console2 "github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	permissionservice "github.com/w7panel/w7panel/common/service/permission"
+	userservice "github.com/w7panel/w7panel/common/service/user"
 
 	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func LoginByServiceAccount(client *k8s.Sdk, sa *v1.ServiceAccount, seconds int64, updateK3kUser bool, cvmName string) (string, bool, error) {
-	k3kUser := types.NewK3kUser(sa)
+	userCRD, err := userservice.Get(client.Ctx, client, sa.Name)
+	if err != nil {
+		return "", false, err
+	}
+	k3kUser := types.NewK3kUser(userCRD.ToTyped())
 	isK3kUser := false
 	// if k3kUser.IsClusterUser() {
 	// 	isK3kUser = true
@@ -38,7 +41,7 @@ func LoginByServiceAccount(client *k8s.Sdk, sa *v1.ServiceAccount, seconds int64
 
 	// }
 	k8s.NewK8sClient().Clear(sa.Name, cvmName)
-	_, err := RefreshK3kUser(k3kUser, client, updateK3kUser)
+	_, err = RefreshK3kUser(k3kUser, client, updateK3kUser)
 	if err != nil {
 		return "", false, err
 	}
@@ -72,18 +75,9 @@ func LoginByServiceAccount(client *k8s.Sdk, sa *v1.ServiceAccount, seconds int64
 }
 
 func SignLastLoginTime(sdk *k8s.Sdk, user *types.K3kUser) error {
-	client, err := sdk.ToSigClient()
-	if err != nil {
-		return err
-	}
-	//设置最后登录时间
-	_, err = controllerutil.CreateOrPatch(context.TODO(), client, user.ServiceAccount, func() error {
-		user.SetLoginTime()
-		return nil
-	})
-	if err != nil {
-		return err
-	}
+	user.SetLoginTime()
+	user.SyncSpecFromRuntime()
+	_, err := userservice.UpdateSpec(context.TODO(), sdk, user.Name, user.Spec)
 	return err
 }
 
@@ -94,11 +88,11 @@ func TokenToK3kUser(token string) (*types.K3kUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	sa, err := rootSdk.GetServiceAccount(rootSdk.GetNamespace(), userName)
+	userCRD, err := userservice.Get(rootSdk.Ctx, rootSdk, userName)
 	if err != nil {
 		return nil, err
 	}
-	user := types.NewK3kUser(sa)
+	user := types.NewK3kUser(userCRD.ToTyped())
 	if ktoken.IsK3kCluster() {
 		user.SetCvmName(ktoken.GetCvmName())
 	}
@@ -120,35 +114,23 @@ func TokenToCkm(ctx context.Context, token, namespace, name string) (*cvmv1alpha
 
 // 登录时候刷新用户权限
 func RefreshK3kUser(user *types.K3kUser, rootSdk *k8s.Sdk, update bool) (*types.K3kUser, error) {
-	// user := types.NewK3kUser(sa)
-	// oldSa := user.ServiceAccount.DeepCopy()
 	w7configRepo := config.NewW7ConfigRepository(rootSdk)
 	if user.GetMenuName() == "" && user.IsFounder() {
-		if user.Annotations == nil {
-			user.Annotations = map[string]string{}
-		}
+		user.Spec.PermissionName = permissionservice.FounderPermissionName
 		user.Annotations[k3ktypes.W7_MENU_NAME] = permissionservice.FounderPermissionName
 	}
 	if user.GetMenuName() == "" && user.IsNormal() {
-		if user.Annotations == nil {
-			user.Annotations = map[string]string{}
-		}
+		user.Spec.PermissionName = permissionservice.NormalPermissionName
 		user.Annotations[k3ktypes.W7_MENU_NAME] = permissionservice.NormalPermissionName
 	}
 	if !user.IsCustomPermission() {
 		permissionConfig, err := permissionservice.Get(rootSdk.Ctx, rootSdk, user.GetMenuName())
 		if err == nil {
-			permissionservice.ApplyToServiceAccount(user.ServiceAccount, permissionConfig)
+			permissionservice.EnsureBuiltinDefaults(permissionConfig)
+			user.ApplyPermission(permissionConfig.Name, permissionConfig.Spec.Role, permissionservice.MenuRules(permissionConfig), permissionConfig.Spec.Features, permissionConfig.Spec.DomainWhiteList, permissionservice.APIRules(permissionConfig))
 		}
 		if err != nil {
 			slog.Error("GetPermission error", "error", err)
-		}
-		menuConfig, cmErr := rootSdk.ClientSet.CoreV1().ConfigMaps(user.GetNamespace()).Get(rootSdk.Ctx, user.GetMenuName(), metav1.GetOptions{})
-		if cmErr != nil && err != nil {
-			slog.Error("GetMenuConfig error", "error", cmErr)
-		}
-		if err != nil && cmErr == nil {
-			user.ReplaceMenu(menuConfig)
 		}
 	}
 
@@ -174,7 +156,8 @@ func RefreshK3kUser(user *types.K3kUser, rootSdk *k8s.Sdk, update bool) (*types.
 	}
 	// user.SetOverMode(true)
 	if update {
-		_, err := rootSdk.ClientSet.CoreV1().ServiceAccounts(user.GetNamespace()).Update(rootSdk.Ctx, user.ServiceAccount, metav1.UpdateOptions{})
+		user.SyncSpecFromRuntime()
+		_, err := userservice.UpdateSpec(rootSdk.Ctx, rootSdk, user.Name, user.Spec)
 		if err != nil {
 			slog.Error("user update error", "error", err)
 			return nil, err
