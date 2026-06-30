@@ -157,7 +157,7 @@ func (self Auth) consoleUser(ctx context.Context, sdk *k8s.Sdk, userInfo *clouds
 	if err != nil {
 		return nil, err
 	}
-	kconfig, err := types.NewK3kClient(client).GetK3kConfigSetting()
+	kconfig, err := types.NewK3kClient(client).GetK3kConfigSetting(sdk.GetNamespace())
 	if err != nil {
 		return nil, err
 	}

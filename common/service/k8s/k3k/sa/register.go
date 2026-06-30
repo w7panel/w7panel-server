@@ -31,7 +31,7 @@ func DoRegister(sdk *k8s.Sdk, accessToken *types.ConsoleOAuthAccessToken, userin
 		return nil, err
 	}
 	k3kClient := types.NewK3kClient(client)
-	kconfig, err := k3kClient.GetK3kConfigSetting()
+	kconfig, err := k3kClient.GetK3kConfigSetting(sdk.GetNamespace())
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func DoRegisterByUid(sdk *k8s.Sdk, uid int) (*corev1.ServiceAccount, error) {
 		return nil, err
 	}
 	k3kClient := types.NewK3kClient(client)
-	kconfig, err := k3kClient.GetK3kConfigSetting()
+	kconfig, err := k3kClient.GetK3kConfigSetting(sdk.GetNamespace())
 	if err != nil {
 		return nil, err
 	}

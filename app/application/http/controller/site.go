@@ -100,20 +100,7 @@ func (self Site) K3kConfig(http *gin.Context) {
 	response := gin.H{}
 	if setting, err := getGlobalMicroAppSetting(http, sdk.Sdk); err == nil && setting.Spec.Login.IndexPage != "" {
 		response["indexpage"] = setting.Spec.Login.IndexPage
-		self.JsonResponseWithoutError(http, response)
-		return
 	}
-
-	dataMap, err := sdk.GetConfigCRDData(http, k8s.K3kConfigGVR, k8s.K3kConfigName)
-	if err != nil {
-		self.JsonSuccessResponse(http)
-		return
-	}
-
-	if data, ok := dataMap["indexpage"]; ok {
-		response["indexpage"] = data
-	}
-
 	self.JsonResponseWithoutError(http, response)
 }
 
@@ -138,17 +125,7 @@ func (self Site) InitUser(http *gin.Context) {
 
 	if setting, err := getGlobalMicroAppSetting(http, sdk.Sdk); err == nil {
 		response["allowConsoleRegister"] = boolString(setting.Spec.Login.RegistrationEnabled)
-		self.JsonResponseWithoutError(http, response)
-		return
 	}
-
-	dataMap, err := sdk.GetConfigCRDData(http, k8s.K3kConfigGVR, k8s.K3kConfigName)
-	if err == nil {
-		if data, ok := dataMap["allowConsoleRegister"]; ok {
-			response["allowConsoleRegister"] = data
-		}
-	}
-
 	self.JsonResponseWithoutError(http, response)
 }
 
