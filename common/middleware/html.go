@@ -3,11 +3,14 @@ package middleware
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"html"
 	"io"
 	"log/slog"
+	"mime"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -18,6 +21,7 @@ import (
 
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -51,10 +55,13 @@ func (self Html) Process(ctx *gin.Context) {
 	}
 
 	if microappConfig, ok := buildMicroAppConfig(ctx); ok {
-		if siteName, err := loadMicroAppSiteName(ctx.Request.Context(), microappConfig); err != nil {
-			slog.Warn("load microapp site name failed", "err", err)
-		} else if siteName != "" {
-			htmlContent = replaceHTMLTitle(htmlContent, siteName)
+		if siteConfig, err := loadMicroAppSiteConfig(ctx.Request.Context(), microappConfig); err != nil {
+			slog.Warn("load microapp site config failed", "err", err)
+		} else if len(siteConfig) > 0 {
+			microappConfig["site"] = siteConfig
+			if siteName, _ := siteConfig["siteName"].(string); siteName != "" {
+				htmlContent = replaceHTMLTitle(htmlContent, siteName)
+			}
 		}
 		htmlContent = injectMicroAppScript(htmlContent, microappConfig)
 	}
@@ -144,41 +151,40 @@ func injectMicroAppScript(htmlContent []byte, microappConfig map[string]any) []b
 	return append(htmlContent, script...)
 }
 
-func loadMicroAppSiteName(ctx context.Context, microappConfig map[string]any) (string, error) {
+func loadMicroAppSiteConfig(ctx context.Context, microappConfig map[string]any) (map[string]any, error) {
 	name, _ := microappConfig["name"].(string)
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return "", nil
+		return nil, nil
 	}
 
 	sdk := k8s.NewK8sClient().Sdk
 	sigClient, err := sdk.ToSigClient()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	setting, err := getMicroAppSetting(ctx, sigClient, sdk.GetNamespace(), name)
 	if err != nil {
 		if name == globalMicroAppSettingName {
-			return "", err
+			return nil, err
 		}
 		globalSetting, globalErr := getMicroAppSetting(ctx, sigClient, sdk.GetNamespace(), globalMicroAppSettingName)
 		if globalErr != nil {
-			return "", err
+			return nil, err
 		}
-		return strings.TrimSpace(globalSetting.Spec.General.SiteName), nil
+		return buildMicroAppSiteConfig(ctx, sdk, nil, globalSetting), nil
 	}
 
-	siteName := strings.TrimSpace(setting.Spec.General.SiteName)
-	if siteName != "" || name == globalMicroAppSettingName {
-		return siteName, nil
+	if name == globalMicroAppSettingName {
+		return buildMicroAppSiteConfig(ctx, sdk, setting, nil), nil
 	}
 
 	globalSetting, err := getMicroAppSetting(ctx, sigClient, sdk.GetNamespace(), globalMicroAppSettingName)
 	if err != nil {
-		return siteName, nil
+		return buildMicroAppSiteConfig(ctx, sdk, setting, nil), nil
 	}
-	return strings.TrimSpace(globalSetting.Spec.General.SiteName), nil
+	return buildMicroAppSiteConfig(ctx, sdk, setting, globalSetting), nil
 }
 
 func getMicroAppSetting(ctx context.Context, client sigclient.Client, namespace string, name string) (*microappsettingv1alpha1.MicroAppSetting, error) {
@@ -191,6 +197,113 @@ func getMicroAppSetting(ctx context.Context, client sigclient.Client, namespace 
 		return nil, err
 	}
 	return setting, nil
+}
+
+func buildMicroAppSiteConfig(ctx context.Context, sdk *k8s.Sdk, setting, fallback *microappsettingv1alpha1.MicroAppSetting) map[string]any {
+	general := microappGeneral(setting)
+	fallbackGeneral := microappGeneral(fallback)
+	login := microappLogin(setting)
+	fallbackLogin := microappLogin(fallback)
+	siteLogo := general.SiteLogo
+	if siteLogo.Name == "" {
+		siteLogo = fallbackGeneral.SiteLogo
+	}
+
+	result := map[string]any{
+		"siteName":        firstNonEmpty(general.SiteName, fallbackGeneral.SiteName),
+		"siteDescription": firstNonEmpty(general.SiteDescription, fallbackGeneral.SiteDescription),
+		"filing":          microAppFilingConfig(general.Filing, fallbackGeneral.Filing),
+		"login": map[string]any{
+			"loginMode":           firstNonEmpty(login.LoginMode, fallbackLogin.LoginMode),
+			"registrationEnabled": microAppRegistrationEnabled(setting, fallback),
+			"indexPage":           firstNonEmpty(login.IndexPage, fallbackLogin.IndexPage),
+		},
+	}
+	if logo := loadMicroAppLogo(ctx, sdk, siteLogo); logo != "" {
+		result["logo"] = logo
+	}
+	return result
+}
+
+func microappGeneral(setting *microappsettingv1alpha1.MicroAppSetting) microappsettingv1alpha1.GeneralSettings {
+	if setting == nil {
+		return microappsettingv1alpha1.GeneralSettings{}
+	}
+	return setting.Spec.General
+}
+
+func microappLogin(setting *microappsettingv1alpha1.MicroAppSetting) microappsettingv1alpha1.LoginSettings {
+	if setting == nil {
+		return microappsettingv1alpha1.LoginSettings{}
+	}
+	return setting.Spec.Login
+}
+
+func microAppRegistrationEnabled(setting, fallback *microappsettingv1alpha1.MicroAppSetting) bool {
+	if setting != nil {
+		return setting.Spec.Login.RegistrationEnabled
+	}
+	if fallback != nil {
+		return fallback.Spec.Login.RegistrationEnabled
+	}
+	return false
+}
+
+func microAppFilingConfig(filing, fallback microappsettingv1alpha1.FilingSettings) map[string]string {
+	icp := firstNonEmpty(filing.ICP, fallback.ICP)
+	publicSecurity := firstNonEmpty(filing.PublicSecurityNetworkFiling, fallback.PublicSecurityNetworkFiling)
+	return map[string]string{
+		"icp":                              icp,
+		"icpnumber":                        icp,
+		"publicSecurityNetworkFiling":      publicSecurity,
+		"number":                           publicSecurity,
+		"location":                         publicSecurity,
+		"electronicBusinessLicense":        firstNonEmpty(filing.ElectronicBusinessLicense, fallback.ElectronicBusinessLicense),
+		"license":                          firstNonEmpty(filing.ElectronicBusinessLicense, fallback.ElectronicBusinessLicense),
+		"valueAddedTelecomBusinessLicense": firstNonEmpty(filing.ValueAddedTelecomBusinessLicense, fallback.ValueAddedTelecomBusinessLicense),
+		"tbol":                             firstNonEmpty(filing.ValueAddedTelecomBusinessLicense, fallback.ValueAddedTelecomBusinessLicense),
+	}
+}
+
+func loadMicroAppLogo(ctx context.Context, sdk *k8s.Sdk, ref microappsettingv1alpha1.ConfigMapRef) string {
+	if ref.Name == "" || ref.Key == "" {
+		return ""
+	}
+	configMap, err := sdk.ClientSet.CoreV1().ConfigMaps(sdk.GetNamespace()).Get(ctx, ref.Name, metav1.GetOptions{})
+	if err != nil {
+		return ""
+	}
+	if data := configMap.Data[ref.Key]; data != "" {
+		if strings.HasPrefix(data, "data:") || strings.HasPrefix(data, "http://") || strings.HasPrefix(data, "https://") || strings.HasPrefix(data, "/") {
+			return data
+		}
+		return "data:" + mimeType(ref.Key) + ";base64," + data
+	}
+	if data := configMap.BinaryData[ref.Key]; len(data) > 0 {
+		prefix := configMap.Annotations["w7.cc/logo-imagetype"]
+		if prefix == "" {
+			prefix = "data:" + mimeType(ref.Key) + ";base64,"
+		}
+		return prefix + base64.StdEncoding.EncodeToString(data)
+	}
+	return ""
+}
+
+func mimeType(key string) string {
+	if value := mime.TypeByExtension(filepath.Ext(key)); value != "" {
+		return value
+	}
+	return "image/png"
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func replaceHTMLTitle(htmlContent []byte, title string) []byte {
