@@ -17,6 +17,8 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	saLogic "github.com/w7panel/w7panel/common/service/k8s/k3k/sa"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	userservice "github.com/w7panel/w7panel/common/service/user"
+	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 	corev1 "k8s.io/api/core/v1"
@@ -66,7 +68,7 @@ func (self Auth) login(http *gin.Context, verifyCaptcha bool) {
 	}
 
 	client := k8s.NewK8sClient()
-	sa, err := client.Login2(params.Username, params.Password, true)
+	u, err := userservice.Login(http.Request.Context(), client.Sdk, params.Username, params.Password)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			err = errors.New("用户不存在")
@@ -78,21 +80,29 @@ func (self Auth) login(http *gin.Context, verifyCaptcha bool) {
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	self.dologin(client.Sdk, sa, http, true, "")
+	self.dologinUser(client.Sdk, u, http, loginMethod, "")
 }
 
 func (self Auth) Register(http *gin.Context) {
 	type ParamsValidate struct {
 		Username   string `form:"username" json:"username" binding:"required"`
 		Password   string `form:"password" json:"password" binding:"required"`
-		PolicyName string `form:"policyName" json:"policyName" binding:"required"`
+		PolicyName string `form:"policyName" json:"policyName"`
 	}
 	params := ParamsValidate{}
 	if !self.Validate(http, &params) {
 		return
 	}
 	sdk := k8s.NewK8sClient().Sdk
-	_, err := saLogic.DoRegisterLink(sdk, params.Username, params.Password, params.PolicyName)
+	permissionName := params.PolicyName
+	if permissionName == "" {
+		permissionName = "normal"
+	}
+	_, err := userservice.Create(http.Request.Context(), sdk, params.Username, params.Password, userservice.Spec{
+		UserMode:       "normal",
+		Role:           "normal",
+		PermissionName: permissionName,
+	})
 	if err != nil {
 		self.JsonResponseWithError(http, err, 500)
 		return
@@ -191,6 +201,25 @@ func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Cont
 	return
 }
 
+func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Context, loginMethod string, ckmName string) {
+	seconds := facade.Config.GetInt64("app.login_seconds")
+	token, err := userservice.SignToken(u, seconds)
+	if err != nil {
+		auditservice.RecordLoginFailure(http, u.Name, loginMethod, err)
+		self.JsonResponseWithError(http, err, 500)
+		return
+	}
+	rs := service.GetRefreshToken(u.Name, ckmName)
+	auditservice.RecordLoginSuccessUser(http, u.Name, loginMethod, u)
+	self.JsonResponseWithoutError(http, gin.H{
+		"token":         token,
+		"expire":        time.Now().Add(time.Duration(seconds) * time.Second).Unix(),
+		"isK3kUser":     u.Spec.UserMode == "cluster",
+		"isClusterUser": u.Spec.UserMode == "cluster",
+		"refreshToken":  rs.Token,
+	})
+}
+
 func (self Auth) RefreshToken2(http *gin.Context) {
 	type ParamsValidate struct {
 		Token string `form:"refreshToken" binding:"required"`
@@ -205,12 +234,12 @@ func (self Auth) RefreshToken2(http *gin.Context) {
 		return
 	}
 	sdk := k8s.NewK8sClient().Sdk
-	sa, err := sdk.GetServiceAccount(sdk.GetNamespace(), userName)
+	u, err := userservice.Get(http.Request.Context(), sdk, userName)
 	if err != nil {
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	self.dologin(sdk, sa, http, true, cvmName)
+	self.dologinUser(sdk, u, http, "refresh", cvmName)
 }
 
 func (self Auth) InitUser(http *gin.Context) {
@@ -232,8 +261,17 @@ func (self Auth) InitUser(http *gin.Context) {
 		self.JsonResponseWithError(http, errors.New("已经初始化过用户"), 500)
 		return
 	}
-	err = client.Register(params.Username, params.Password, client.GetNamespace(), "cluster-admin", true, "founder")
-	if err != nil {
+	_, err = userservice.Create(http.Request.Context(), client.Sdk, params.Username, params.Password, userservice.Spec{
+		UserMode:       "founder",
+		Role:           "founder",
+		PermissionName: "founder",
+		Features: configv1alpha1.PermissionFeatures{
+			Debug:      true,
+			Webshell:   true,
+			Fileeditor: true,
+		},
+	})
+	if err != nil && !k8serrors.IsAlreadyExists(err) {
 		self.JsonResponseWithError(http, errors.New("初始化用户失败"), 500)
 		return
 	}
@@ -267,17 +305,12 @@ func (self Auth) ResetPassword(http *gin.Context) {
 
 	// username := client.GetServiceAccountName()
 
-	_, err := sdk.LoginCreateToken(params.Username, params.Password, false, facade.Config.GetInt64("app.login_seconds"))
+	_, err := userservice.Login(http.Request.Context(), sdk.Sdk, params.Username, params.Password)
 	if err != nil {
 		self.JsonResponseWithError(http, fmt.Errorf("原始用户密码错误"), 500)
 		return
 	}
-	sa, err := sdk.GetServiceAccount(sdk.GetNamespace(), params.Username)
-	if err != nil {
-		self.JsonResponseWithError(http, err, 500)
-		return
-	}
-	err = sdk.ResetPassword(params.Username, params.NewPassword, sa.Labels["w7.cc/user-mode"])
+	err = userservice.ResetPassword(http.Request.Context(), sdk.Sdk, params.Username, params.NewPassword)
 	if err != nil {
 		self.JsonResponseWithError(http, err, 500)
 		return
@@ -297,31 +330,36 @@ func (self Auth) ResetPasswordCurrent(http *gin.Context) {
 		return
 	}
 	sdk := k8s.NewK8sClient() //全局用户sdk
-	token := http.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
-	userName, err := k8sToken.GetUserName()
-	if err != nil {
-		self.JsonResponseWithError(http, err, 500)
+	userName := http.GetString("username")
+	if userName == "" {
+		token := http.MustGet("k8s_token").(string)
+		k8sToken := k8s.NewK8sToken(token)
+		var err error
+		userName, err = k8sToken.GetUserName()
+		if err != nil {
+			self.JsonResponseWithError(http, err, 500)
+			return
+		}
+	}
+	if userName == "" {
+		self.JsonResponseWithError(http, fmt.Errorf("用户不存在"), 500)
 		return
 	}
 	// username := client.GetServiceAccountName()
-	sa, err := sdk.GetServiceAccount("default", userName)
+	u, err := userservice.Get(http.Request.Context(), sdk.Sdk, userName)
 	if err != nil {
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	if sa.Annotations != nil {
-		sa.Annotations = map[string]string{}
-	}
-	if sa.Annotations["password"] != "" {
-		_, err := sdk.LoginCreateToken(userName, params.Password, false, facade.Config.GetInt64("app.login_seconds"))
+	if u.Spec.PasswordHash != "" {
+		_, err := userservice.Login(http.Request.Context(), sdk.Sdk, userName, params.Password)
 		if err != nil {
 			self.JsonResponseWithError(http, fmt.Errorf("原始用户密码错误"), 500)
 			return
 		}
 	}
 
-	err = sdk.ResetPassword(userName, params.NewPassword, sa.Labels["w7.cc/user-mode"])
+	err = userservice.ResetPassword(http.Request.Context(), sdk.Sdk, userName, params.NewPassword)
 	if err != nil {
 		self.JsonResponseWithError(http, err, 500)
 		return

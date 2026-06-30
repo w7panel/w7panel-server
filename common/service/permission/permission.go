@@ -295,6 +295,20 @@ func AuthorizePanelAPI(ctx context.Context, sdk *k8s.Sdk, saName, method, path s
 	return MatchAPI(APIMap(p), method, path), nil
 }
 
+func AuthorizePanelAPIWithPermission(ctx context.Context, sdk *k8s.Sdk, p *configv1alpha1.Permission, method, path string) (bool, error) {
+	if !strings.HasPrefix(path, "/panel-api/v1/") {
+		return true, nil
+	}
+	if isAlwaysAllowed(path) {
+		return true, nil
+	}
+	if p == nil {
+		return false, fmt.Errorf("用户未关联权限")
+	}
+	EnsureBuiltinDefaults(p)
+	return MatchAPI(APIMap(p), method, path), nil
+}
+
 func MenuRules(p *configv1alpha1.Permission) []string {
 	if p == nil {
 		return nil

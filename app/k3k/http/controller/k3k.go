@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -11,7 +12,10 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
+	permissionservice "github.com/w7panel/w7panel/common/service/permission"
+	userservice "github.com/w7panel/w7panel/common/service/user"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
@@ -24,6 +28,46 @@ type K3k struct {
 *
  */
 func (self K3k) Info(http *gin.Context) {
+	if username := http.GetString("username"); username != "" {
+		sdk := k8s.NewK8sClient().Sdk
+		if u, err := userservice.Get(http.Request.Context(), sdk, username); err == nil {
+			p, _ := userservice.ResolvePermission(http.Request.Context(), sdk, u)
+			menu := ""
+			api := ""
+			if p != nil {
+				menu = mustJSON(permissionservice.MenuRules(p))
+				api = mustJSON(permissionservice.APIMap(p))
+			}
+			if len(u.Spec.MenuRules) > 0 {
+				menu = mustJSON(u.Spec.MenuRules)
+			}
+			if len(u.Spec.APIRules) > 0 {
+				api = mustJSON(permissionservice.APIRulesToMap(u.Spec.APIRules))
+			}
+			result := map[string]string{
+				k3ktypes.K3K_USER_MODE:        u.Spec.UserMode,
+				"w7.cc/username":              u.Name,
+				k3ktypes.K3K_NAME:             u.Name,
+				k3ktypes.K3K_NAMESPACE:        sdk.GetNamespace(),
+				k3ktypes.K3K_DEBUG:            boolString(u.Spec.Features.Debug || (p != nil && p.Spec.Features.Debug)),
+				k3ktypes.W7_FILE_EDITTOR:      boolString(u.Spec.Features.Fileeditor || (p != nil && p.Spec.Features.Fileeditor)),
+				k3ktypes.W7_WEB_SHELL:         boolString(u.Spec.Features.Webshell || (p != nil && p.Spec.Features.Webshell)),
+				k3ktypes.W7_MENU:              menu,
+				"w7.cc/api":                   api,
+				k3ktypes.W7_DOMAIN_WHITE_LIST: mustJSON(u.Spec.DomainWhiteList),
+				k3ktypes.W7_DEMO_USER:         boolString(u.Spec.DemoUser),
+				k3ktypes.W7_ROLE:              u.Spec.Role,
+				"w7.cc/has-password":          boolString(u.Spec.PasswordHash != ""),
+				"w7.cc/can-init-cluster":      "false",
+				"w7.cc/need-create-order":     "false",
+				"w7.cc/can-renew":             "false",
+				"w7.cc/need-renew":            "false",
+				"w7.cc/can-expand":            "false",
+			}
+			self.JsonResponseWithoutError(http, result)
+			return
+		}
+	}
 
 	token := http.MustGet("k8s_token").(string)
 	user, err := k3k.TokenToK3kUser(token)
@@ -37,6 +81,18 @@ func (self K3k) Info(http *gin.Context) {
 		self.JsonResponseWithoutError(http, result)
 		return
 	}
+}
+
+func boolString(v bool) string {
+	if v {
+		return "true"
+	}
+	return "false"
+}
+
+func mustJSON(v interface{}) string {
+	data, _ := json.Marshal(v)
+	return string(data)
 }
 
 func (self K3k) ReInitCluster(http *gin.Context) {

@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	userservice "github.com/w7panel/w7panel/common/service/user"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -25,6 +26,26 @@ func RecordLoginSuccess(ctx *gin.Context, username string, method string, sa *co
 		return
 	}
 	user := userFromServiceAccount(sa)
+	log := LoginLog{
+		Time:        time.Now(),
+		AuditType:   TypeLogin,
+		Tenant:      user.Tenant,
+		Username:    username,
+		UserMode:    user.UserMode,
+		LoginMethod: method,
+		Success:     true,
+		IP:          clientIP(ctx),
+		UserAgent:   ctx.Request.UserAgent(),
+		Message:     "login success",
+	}
+	go safeWriteLogin(log)
+}
+
+func RecordLoginSuccessUser(ctx *gin.Context, username string, method string, u *userservice.User) {
+	if !Enabled() {
+		return
+	}
+	user := userFromUser(u)
 	log := LoginLog{
 		Time:        time.Now(),
 		AuditType:   TypeLogin,
@@ -98,7 +119,17 @@ func CurrentUser(ctx *gin.Context) UserContext {
 		Username: ctx.GetString("username"),
 		UserMode: "normal",
 	}
+	if mode := ctx.GetString("user_mode"); mode != "" {
+		user.UserMode = mode
+		user.IsAdmin = mode == "founder" || mode == "cluster"
+	}
 	if tokenStr == "" {
+		return user
+	}
+	if ctx.GetString("panel_token") != "" {
+		if user.Tenant == "" {
+			user.Tenant = "default"
+		}
 		return user
 	}
 	token := k8s.NewK8sToken(tokenStr)
@@ -115,6 +146,26 @@ func CurrentUser(ctx *gin.Context) UserContext {
 	if user.Tenant == "" {
 		user.Tenant = "default"
 	}
+	return user
+}
+
+func userFromUser(u *userservice.User) UserContext {
+	user := UserContext{
+		Tenant:   "default",
+		UserMode: "normal",
+	}
+	if u == nil {
+		return user
+	}
+	user.Username = u.Name
+	user.UserMode = u.Spec.UserMode
+	if user.UserMode == "" {
+		user.UserMode = u.Spec.Role
+	}
+	if user.UserMode == "" {
+		user.UserMode = "normal"
+	}
+	user.IsAdmin = user.UserMode == "founder" || user.UserMode == "cluster"
 	return user
 }
 

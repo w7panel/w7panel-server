@@ -280,3 +280,9 @@ spec:
     - get
     - list
     - watch
+  - apiGroups:
+    - w7panel.w7.com
+    resources:
+    - users
+    verbs:
+    - '*'
