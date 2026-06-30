@@ -112,10 +112,8 @@ func featuresFromPermission(features configv1alpha1.PermissionFeatures) map[stri
 
 func (u *K3kUser) ApplyPermission(menuName string, role string, menuRules []string, features configv1alpha1.PermissionFeatures, whiteList []configv1alpha1.DomainWhiteItem, apiRules []configv1alpha1.PermissionAPIRule) {
 	u.Spec.PermissionName = menuName
-	u.Annotations[W7_MENU_NAME] = menuName
 	if role != "" {
 		u.Spec.Role = role
-		u.Labels[W7_ROLE] = role
 	}
 	u.Spec.MenuRules = append([]string(nil), menuRules...)
 	// u.Annotations[W7_MENU] = stringSliceJSON(menuRules)
@@ -123,9 +121,9 @@ func (u *K3kUser) ApplyPermission(menuName string, role string, menuRules []stri
 	// u.Annotations[W7_DOMAIN_WHITE_LIST] = domainWhiteListJSON(whiteList)
 	u.Spec.APIRules = append([]configv1alpha1.PermissionAPIRule(nil), apiRules...)
 	// u.Annotations["w7.cc/api"] = apiRulesJSON(apiRules)
-	for k, v := range featuresFromPermission(features) {
-		u.Annotations[k] = v
-	}
+	// for k, v := range featuresFromPermission(features) {
+	// 	u.Annotations[k] = v
+	// }
 	u.Spec.Features = features
 }
 
