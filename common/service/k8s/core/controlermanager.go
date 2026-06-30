@@ -7,7 +7,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/buildimage"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	"github.com/w7panel/w7panel/common/service/k8s/service"
 	"github.com/w7panel/w7panel/common/service/k8s/site"
 	webhooklocal "github.com/w7panel/w7panel/common/service/k8s/webhook"
@@ -86,14 +85,6 @@ func StartControlManager() error {
 		// }
 	}
 
-	if facade.GetConfig().GetBool("k3k.watch") {
-		slog.Info("k3k watch enabled")
-		err = k3k.SetupK3kControllers(mgr)
-		if err != nil {
-			slog.Error("setup k3k controllers failed", "err", err)
-			return err
-		}
-	}
 	if facade.GetConfig().GetBool("buildimage.enabled") {
 		err = buildimage.SetupBuildImageController(mgr, sdk)
 		if err != nil {
