@@ -343,8 +343,10 @@ func (in *PermissionSpec) DeepCopyInto(out *PermissionSpec) {
 	out.Features = in.Features
 	if in.DomainWhiteList != nil {
 		in, out := &in.DomainWhiteList, &out.DomainWhiteList
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = make([]DomainWhiteItem, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	if in.RBACRules != nil {
 		in, out := &in.RBACRules, &out.RBACRules
@@ -360,6 +362,25 @@ func (in *PermissionSpec) DeepCopy() *PermissionSpec {
 		return nil
 	}
 	out := new(PermissionSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *DomainWhiteItem) DeepCopyInto(out *DomainWhiteItem) {
+	*out = *in
+	if in.Enable != nil {
+		in, out := &in.Enable, &out.Enable
+		*out = new(bool)
+		**out = **in
+	}
+	return
+}
+
+func (in *DomainWhiteItem) DeepCopy() *DomainWhiteItem {
+	if in == nil {
+		return nil
+	}
+	out := new(DomainWhiteItem)
 	in.DeepCopyInto(out)
 	return out
 }

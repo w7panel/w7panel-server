@@ -61,7 +61,18 @@ spec:
               domainWhiteList:
                 type: array
                 items:
-                  type: string
+                  type: object
+                  properties:
+                    prefix:
+                      type: string
+                    domain:
+                      type: string
+                    prefixRandom:
+                      type: boolean
+                    disabled:
+                      type: boolean
+                    enable:
+                      type: boolean
               rbacRules:
                 type: array
                 x-kubernetes-list-type: atomic

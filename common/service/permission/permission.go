@@ -103,10 +103,13 @@ func FromServiceAccount(sa *corev1.ServiceAccount) *configv1alpha1.Permission {
 	_ = json.Unmarshal([]byte(annotations[k3ktypes.W7_MENU]), &menu)
 	api := map[string][]string{}
 	_ = json.Unmarshal([]byte(annotations["w7.cc/api"]), &api)
+	whiteList := []configv1alpha1.DomainWhiteItem{}
+	_ = json.Unmarshal([]byte(annotations[k3ktypes.W7_DOMAIN_WHITE_LIST]), &whiteList)
 	return &configv1alpha1.Permission{
 		Spec: configv1alpha1.PermissionSpec{
-			MenuRules: menu,
-			APIRules:  APIMapToRules(api),
+			MenuRules:       menu,
+			APIRules:        APIMapToRules(api),
+			DomainWhiteList: whiteList,
 			Features: configv1alpha1.PermissionFeatures{
 				Debug:      annotations[k3ktypes.K3K_DEBUG] == "true",
 				Webshell:   annotations[k3ktypes.W7_WEB_SHELL] == "true",

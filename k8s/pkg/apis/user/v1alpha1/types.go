@@ -16,7 +16,7 @@ type UserSpec struct {
 	MenuRules       []string                           `json:"menuRules,omitempty"`
 	APIRules        []configv1alpha1.PermissionAPIRule `json:"apiRules,omitempty"`
 	Features        configv1alpha1.PermissionFeatures  `json:"features,omitempty"`
-	DomainWhiteList []string                           `json:"domainWhiteList,omitempty"`
+	DomainWhiteList []configv1alpha1.DomainWhiteItem   `json:"domainWhiteList,omitempty"`
 	DemoUser        bool                               `json:"demoUser,omitempty"`
 	ConsoleId       string                             `json:"consoleId,omitempty"`
 	ConsoleOpenid   string                             `json:"consoleOpenid,omitempty"`

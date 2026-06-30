@@ -148,7 +148,7 @@ func ResolvePermission(ctx context.Context, sdk *k8s.Sdk, u *User) (*configv1alp
 			MenuRules:       append([]string(nil), u.Spec.MenuRules...),
 			APIRules:        append([]configv1alpha1.PermissionAPIRule(nil), u.Spec.APIRules...),
 			Features:        u.Spec.Features,
-			DomainWhiteList: append([]string(nil), u.Spec.DomainWhiteList...),
+			DomainWhiteList: append([]configv1alpha1.DomainWhiteItem(nil), u.Spec.DomainWhiteList...),
 		}}, nil
 	}
 	switch role(u) {
@@ -219,7 +219,7 @@ func FromServiceAccount(sa *corev1.ServiceAccount) Spec {
 	_ = json.Unmarshal([]byte(annotations[k3ktypes.W7_MENU]), &menu)
 	api := map[string][]string{}
 	_ = json.Unmarshal([]byte(annotations["w7.cc/api"]), &api)
-	whiteList := []string{}
+	whiteList := []configv1alpha1.DomainWhiteItem{}
 	_ = json.Unmarshal([]byte(annotations[k3ktypes.W7_DOMAIN_WHITE_LIST]), &whiteList)
 	return normalizeSpec(sa.Name, Spec{
 		PasswordHash:   annotations["password"],
