@@ -91,6 +91,9 @@ func mustJSON(v interface{}) string {
 		slog.Error("json marshal error", "error", err)
 		return "[]"
 	}
+	if data == nil || string(data) == "null" {
+		return "[]"
+	}
 	return string(data)
 }
 
