@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -203,14 +204,26 @@ func NormalizePermissionName(name string) string {
 }
 
 func SyncPermissionAccount(ctx context.Context, sdk *k8s.Sdk, p *configv1alpha1.Permission) error {
-	if !IsBuiltin(p) {
-		return nil
-	}
 	client, err := sdk.ToSigClient()
 	if err != nil {
 		return err
 	}
-	namespace := sdk.GetNamespace()
+	return syncPermissionResources(ctx, client, sdk.GetNamespace(), p)
+}
+
+func syncPermissionResources(ctx context.Context, client client.Client, namespace string, p *configv1alpha1.Permission) error {
+	clusterRole := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{Name: p.Name},
+	}
+	if _, err := controllerutil.CreateOrPatch(ctx, client, clusterRole, func() error {
+		clusterRole.Rules = p.Spec.RBACRules
+		return nil
+	}); err != nil {
+		return err
+	}
+	if !IsBuiltin(p) {
+		return nil
+	}
 	sa := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      p.Name,
@@ -232,19 +245,10 @@ func SyncPermissionAccount(ctx context.Context, sdk *k8s.Sdk, p *configv1alpha1.
 	}); err != nil {
 		return err
 	}
-	clusterRole := &rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{Name: p.Name},
-	}
-	if _, err := controllerutil.CreateOrPatch(ctx, client, clusterRole, func() error {
-		clusterRole.Rules = p.Spec.RBACRules
-		return nil
-	}); err != nil {
-		return err
-	}
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{Name: p.Name},
 	}
-	_, err = controllerutil.CreateOrPatch(ctx, client, clusterRoleBinding, func() error {
+	_, err := controllerutil.CreateOrPatch(ctx, client, clusterRoleBinding, func() error {
 		clusterRoleBinding.Subjects = []rbacv1.Subject{{
 			Kind:      "ServiceAccount",
 			Name:      p.Name,
@@ -269,9 +273,6 @@ func SyncAllPermissionAccounts(ctx context.Context, sdk *k8s.Sdk) error {
 		p := &configv1alpha1.Permission{}
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(item.Object, p); err != nil {
 			return err
-		}
-		if !IsBuiltin(p) {
-			continue
 		}
 		if err := SyncPermissionAccount(ctx, sdk, p); err != nil {
 			return err
