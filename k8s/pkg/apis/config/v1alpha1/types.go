@@ -62,6 +62,14 @@ type PermissionAPIRule struct {
 	Method []string `json:"method,omitempty"`
 }
 
+type DomainWhiteItem struct {
+	Prefix       string `json:"prefix,omitempty"`
+	Domain       string `json:"domain,omitempty"`
+	PrefixRandom bool   `json:"prefixRandom,omitempty"`
+	Disabled     bool   `json:"disabled,omitempty"`
+	Enable       *bool  `json:"enable,omitempty"`
+}
+
 type PermissionSpec struct {
 	Title            string              `json:"title,omitempty"`
 	Type             string              `json:"type,omitempty"`
@@ -70,7 +78,7 @@ type PermissionSpec struct {
 	MenuRules        []string            `json:"menuRules,omitempty"`
 	APIRules         []PermissionAPIRule `json:"apiRules,omitempty"`
 	Features         PermissionFeatures  `json:"features,omitempty"`
-	DomainWhiteList  []string            `json:"domainWhiteList,omitempty"`
+	DomainWhiteList  []DomainWhiteItem   `json:"domainWhiteList,omitempty"`
 	RBACRules        []rbacv1.PolicyRule `json:"rbacRules,omitempty"`
 }
 

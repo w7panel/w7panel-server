@@ -103,8 +103,10 @@ func (in *UserSpec) DeepCopyInto(out *UserSpec) {
 	}
 	if in.DomainWhiteList != nil {
 		in, out := &in.DomainWhiteList, &out.DomainWhiteList
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = make([]configv1alpha1.DomainWhiteItem, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	if in.W7Config != nil {
 		in, out := &in.W7Config, &out.W7Config
