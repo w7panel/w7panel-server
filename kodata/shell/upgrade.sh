@@ -89,8 +89,8 @@ kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
 echo "新版metrics"
 w7panel metrics:upgrade
 
-echo "升级权限菜单"
-w7panel qx-upgrade
+# echo "升级权限菜单"
+# w7panel qx-upgrade
 
 echo "域名解析配置"
 w7panel domain-config
