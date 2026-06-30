@@ -1,27 +1,25 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	cloudservice "github.com/w7corp/sdk-open-cloud-go/service"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service"
 	auditservice "github.com/w7panel/w7panel/common/service/audit"
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
-	saLogic "github.com/w7panel/w7panel/common/service/k8s/k3k/sa"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	userservice "github.com/w7panel/w7panel/common/service/user"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
-	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -131,79 +129,78 @@ func (self Auth) ConsoleLogin(http *gin.Context) {
 		return
 	}
 
-	w7config, err := w7respo.GetByConsoleId(strconv.Itoa(userInfo.UserId))
+	u, err := self.consoleUser(http.Request.Context(), sdk, userInfo, params.PolicyName)
 	if err != nil {
-		//尝试注册用户
-		sa, err := saLogic.DoRegister(sdk, types.NewConsoleOAuthAccessToken2(accessToken), userInfo, params.PolicyName)
-		if err != nil {
-			if !k8serrors.IsAlreadyExists(err) {
-				auditservice.RecordLoginFailure(http, strconv.Itoa(userInfo.UserId), "oauth", err)
-				self.JsonResponseWithError(http, err, 500)
-				return
-			}
-		}
-		_, err = oclient.BindUseAccessToken(sa.Name, accessToken)
-		if err != nil {
-			bindErr := err
-			deleteErr := sdk.ClientSet.CoreV1().ServiceAccounts(sa.Namespace).Delete(sdk.Ctx, sa.Name, metav1.DeleteOptions{})
-			if deleteErr != nil {
-				slog.Error("删除serviceaccount失败", "err", deleteErr)
-			}
-			auditservice.RecordLoginFailure(http, sa.Name, "oauth", bindErr)
-			self.JsonResponseWithError(http, bindErr, 500)
-			return
-		}
-
-		self.dologin(sdk, sa, http, false, "")
-		return
-	}
-	saName := w7config.Name
-	_, err = oclient.BindUseAccessToken(saName, accessToken)
-	if err != nil {
-		auditservice.RecordLoginFailure(http, saName, "oauth", err)
+		auditservice.RecordLoginFailure(http, strconv.Itoa(userInfo.UserId), "oauth", err)
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	sa, err := sdk.GetServiceAccount(sdk.GetNamespace(), saName)
+	_, err = oclient.BindUseAccessToken(u.Name, accessToken)
 	if err != nil {
-		auditservice.RecordLoginFailure(http, saName, "oauth", err)
+		auditservice.RecordLoginFailure(http, u.Name, "oauth", err)
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	self.dologin(sdk, sa, http, true, "")
+	self.dologinUser(sdk, u, http, "oauth", "")
 
 }
 
-func (self Auth) dologin(sdk *k8s.Sdk, sa *corev1.ServiceAccount, http *gin.Context, updateK3kUser bool, ckmName string) {
-	seconds := facade.Config.GetInt64("app.login_seconds")
-	token, isK3kUser, err := k3k.LoginByServiceAccount(sdk, sa, seconds, updateK3kUser, ckmName)
-	loginMethod := "password"
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			err = errors.New("用户不存在")
-			auditservice.RecordLoginFailure(http, sa.Name, loginMethod, err)
-			self.JsonResponseWithError(http, err, 500)
-			return
-		}
-		auditservice.RecordLoginFailure(http, sa.Name, loginMethod, err)
-		self.JsonResponseWithError(http, err, 500)
-		return
+func (self Auth) consoleUser(ctx context.Context, sdk *k8s.Sdk, userInfo *cloudservice.ResultUserinfo, policyName string) (*userservice.User, error) {
+	consoleID := strconv.Itoa(userInfo.UserId)
+	if u, err := userservice.GetByConsoleID(ctx, sdk, consoleID); err == nil {
+		return u, nil
+	} else if !k8serrors.IsNotFound(err) {
+		return nil, err
 	}
-	rs := service.GetRefreshToken(sa.Name, ckmName)
-	auditservice.RecordLoginSuccess(http, sa.Name, loginMethod, sa)
-	self.JsonResponseWithoutError(http, gin.H{
-		"token":         token,
-		"expire":        time.Now().Add(time.Duration(seconds) * time.Second).Unix(),
-		"isK3kUser":     isK3kUser, //废弃		废弃字段，后续删除
-		"isClusterUser": isK3kUser,
-		"refreshToken":  rs.Token,
+
+	client, err := sdk.ToSigClient()
+	if err != nil {
+		return nil, err
+	}
+	kconfig, err := types.NewK3kClient(client).GetK3kConfigSetting()
+	if err != nil {
+		return nil, err
+	}
+	if !kconfig.AllowConsoleRegister {
+		return nil, errors.New("不允许控制台注册")
+	}
+	permissionName := policyName
+	if permissionName == "" {
+		permissionName = kconfig.DefaultPermissionName
+	}
+	if permissionName == "" {
+		permissionName = "normal"
+	}
+
+	name := "console-" + consoleID
+	u, err := userservice.CreateWithHash(ctx, sdk, name, userservice.Spec{
+		UserMode:        "normal",
+		Role:            "normal",
+		PermissionName:  permissionName,
+		ConsoleId:       consoleID,
+		ConsoleOpenid:   userInfo.OpenId,
+		ConsoleNickname: userInfo.Nickname,
 	})
-	return
+	if k8serrors.IsAlreadyExists(err) {
+		return userservice.Get(ctx, sdk, name)
+	}
+	return u, err
 }
 
 func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Context, loginMethod string, ckmName string) {
 	seconds := facade.Config.GetInt64("app.login_seconds")
-	token, err := userservice.SignToken(u, seconds)
+	execSA, err := userservice.ExecutionServiceAccount(http.Request.Context(), sdk, u)
+	if err != nil {
+		auditservice.RecordLoginFailure(http, u.Name, loginMethod, err)
+		self.JsonResponseWithError(http, err, 500)
+		return
+	}
+	role := u.Spec.Role
+	if role == "" {
+		role = u.Spec.UserMode
+	}
+	audiences := []string{u.Name, role, u.Spec.ConsoleId, ckmName, execSA, "https://kubernetes.default.svc.cluster.local", "k3s"}
+	token, err := sdk.CreateTokenRequest(execSA, seconds, audiences)
 	if err != nil {
 		auditservice.RecordLoginFailure(http, u.Name, loginMethod, err)
 		self.JsonResponseWithError(http, err, 500)

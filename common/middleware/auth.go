@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -11,7 +10,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	permissionservice "github.com/w7panel/w7panel/common/service/permission"
 	userservice "github.com/w7panel/w7panel/common/service/user"
-	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
 	"gopkg.in/yaml.v3"
 )
@@ -45,15 +43,12 @@ func (self Auth) Process(ctx *gin.Context) {
 		})
 		return
 	}
-	if self.processPanelToken(ctx, bearertoken) {
-		return
-	}
 	k8sToken := k8s.NewK8sToken(bearertoken)
 	if k8sToken.IsCacheToken() {
 		if saName, err := k8sToken.GetUserName(); err == nil {
 			ctx.Set("username", saName)
 			// TODO 兼容非 k3k 集群，非k3k 集群不校验权限
-			if !self.authorizePanelAPI(ctx, saName) {
+			if !self.authorizeUserOrServiceAccount(ctx, saName) {
 				return
 			}
 		}
@@ -75,7 +70,7 @@ func (self Auth) Process(ctx *gin.Context) {
 	userName, err := k8sToken.GetUserName()
 	if err == nil {
 		ctx.Set("username", userName)
-		if !self.authorizePanelAPI(ctx, userName) {
+		if !self.authorizeUserOrServiceAccount(ctx, userName) {
 			return
 		}
 	}
@@ -99,52 +94,32 @@ func (self Auth) Process(ctx *gin.Context) {
 	// ctx.Writer.Header().Set("Content-Type", "application/json; charset=UTF-8")
 }
 
-func (self Auth) processPanelToken(ctx *gin.Context, bearertoken string) bool {
-	claims, err := userservice.ParseToken(bearertoken)
-	if err != nil {
-		return false
-	}
+func (self Auth) authorizeUserOrServiceAccount(ctx *gin.Context, name string) bool {
 	sdk := k8s.NewK8sClient().Sdk
-	u, err := userservice.Get(ctx.Request.Context(), sdk, claims.Username)
+	u, err := userservice.Get(ctx.Request.Context(), sdk, name)
 	if err != nil {
-		ctx.AbortWithStatusJSON(401, gin.H{"code": 401, "msg": "请登录"})
-		return true
+		return self.authorizePanelAPI(ctx, name)
 	}
 	p, err := userservice.ResolvePermission(ctx.Request.Context(), sdk, u)
 	if err != nil {
 		ctx.AbortWithStatusJSON(403, gin.H{"code": 403, "msg": "没有权限: " + err.Error()})
-		return true
+		return false
 	}
 	allowed, err := permissionservice.AuthorizePanelAPIWithPermission(ctx.Request.Context(), sdk, p, ctx.Request.Method, ctx.Request.URL.Path)
 	if err != nil {
 		ctx.AbortWithStatusJSON(403, gin.H{"code": 403, "msg": "没有权限: " + err.Error()})
-		return true
+		return false
 	}
 	if !allowed {
 		ctx.AbortWithStatusJSON(403, gin.H{"code": 403, "msg": "没有权限"})
-		return true
-	}
-	execSA, err := userservice.ExecutionServiceAccount(ctx.Request.Context(), sdk, u)
-	if err != nil {
-		ctx.AbortWithStatusJSON(403, gin.H{"code": 403, "msg": "没有权限: " + err.Error()})
-		return true
+		return false
 	}
 	role := u.Spec.Role
 	if role == "" {
 		role = u.Spec.UserMode
 	}
-	audiences := []string{u.Name, role, u.Spec.ConsoleId, "", execSA, "https://kubernetes.default.svc.cluster.local", "k3s"}
-	execToken, err := sdk.CreateTokenRequest(execSA, facade.Config.GetInt64("app.login_seconds"), audiences)
-	if err != nil {
-		ctx.AbortWithStatusJSON(403, gin.H{"code": 403, "msg": fmt.Sprintf("创建执行token失败: %v", err)})
-		return true
-	}
-	ctx.Set("username", u.Name)
 	ctx.Set("user_mode", role)
 	ctx.Set("permission_name", u.Spec.PermissionName)
-	ctx.Set("panel_token", bearertoken)
-	ctx.Set("k8s_token", execToken)
-	ctx.Next()
 	return true
 }
 
