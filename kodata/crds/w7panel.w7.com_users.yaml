@@ -76,23 +76,7 @@ spec:
                 type: string
               loginTime:
                 type: string
-              quotaLimit:
-                x-kubernetes-preserve-unknown-fields: true
-              quotaLimitLock:
-                type: boolean
-              costName:
-                type: string
-              cost:
-                x-kubernetes-preserve-unknown-fields: true
               status:
-                type: string
-              clusterMode:
-                type: string
-              clusterStatus:
-                type: string
-              storageClass:
-                type: string
-              storageRequestSize:
                 type: string
               pause:
                 type: string
@@ -100,8 +84,6 @@ spec:
                 type: string
               pendingRecycleTime:
                 type: string
-              cvmUser:
-                type: boolean
               maintenance:
                 type: boolean
               version:

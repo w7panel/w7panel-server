@@ -53,19 +53,10 @@ type Spec struct {
 	ConsoleOpenid   string                             `json:"consoleOpenid,omitempty"`
 	ConsoleNickname string                             `json:"consoleNickname,omitempty"`
 	LoginTime       string                             `json:"loginTime,omitempty"`
-	QuotaLimit      map[string]interface{}             `json:"quotaLimit,omitempty"`
-	QuotaLimitLock  bool                               `json:"quotaLimitLock,omitempty"`
-	CostName        string                             `json:"costName,omitempty"`
-	Cost            map[string]interface{}             `json:"cost,omitempty"`
 	Status          string                             `json:"status,omitempty"`
-	ClusterMode     string                             `json:"clusterMode,omitempty"`
-	ClusterStatus   string                             `json:"clusterStatus,omitempty"`
-	StorageClass    string                             `json:"storageClass,omitempty"`
-	StorageRequest  string                             `json:"storageRequestSize,omitempty"`
 	Pause           string                             `json:"pause,omitempty"`
 	JobName         string                             `json:"jobName,omitempty"`
 	PendingRecycle  string                             `json:"pendingRecycleTime,omitempty"`
-	CVMUser         bool                               `json:"cvmUser,omitempty"`
 	Maintenance     bool                               `json:"maintenance,omitempty"`
 	Version         int32                              `json:"version,omitempty"`
 }
@@ -232,9 +223,6 @@ func ToServiceAccount(u *User, namespace string) *corev1.ServiceAccount {
 		"w7.cc/login-time":                u.Spec.LoginTime,
 		"w7.cc/console-openid":            u.Spec.ConsoleOpenid,
 		"w7.cc/console-nickname":          u.Spec.ConsoleNickname,
-		k3ktypes.K3K_CLUSTER_MODE:         u.Spec.ClusterMode,
-		"k3k.io/storageclass":             u.Spec.StorageClass,
-		"k3k.io/storage-request-size":     u.Spec.StorageRequest,
 		k3ktypes.K3K_PENDING_RECYCLE_TIME: u.Spec.PendingRecycle,
 		k3ktypes.W7_PAUSE:                 u.Spec.Pause,
 		k3ktypes.K3K_JOB_NAME:             u.Spec.JobName,
@@ -243,11 +231,7 @@ func ToServiceAccount(u *User, namespace string) *corev1.ServiceAccount {
 		k3ktypes.W7_USER_MODE: role(u),
 		k3ktypes.W7_ROLE:      role(u),
 		"w7.cc/demo-user":     boolString(u.Spec.DemoUser),
-		k3ktypes.W7_CVM_USER:  boolString(u.Spec.CVMUser),
 		k3ktypes.W7_WH_MODE:   boolString(u.Spec.Maintenance),
-	}
-	if u.Spec.ClusterStatus != "" {
-		labels[k3ktypes.K3K_CLUSTER_STATUS] = u.Spec.ClusterStatus
 	}
 	if u.Spec.ConsoleId != "" {
 		labels[k3ktypes.W7_CONSOLE_ID] = u.Spec.ConsoleId
@@ -269,10 +253,6 @@ func FromServiceAccount(sa *corev1.ServiceAccount) Spec {
 	_ = json.Unmarshal([]byte(annotations["w7.cc/api"]), &api)
 	whiteList := []string{}
 	_ = json.Unmarshal([]byte(annotations[k3ktypes.W7_DOMAIN_WHITE_LIST]), &whiteList)
-	quotaLimit := map[string]interface{}{}
-	_ = json.Unmarshal([]byte(annotations["w7.cc/quota-limit"]), &quotaLimit)
-	cost := map[string]interface{}{}
-	_ = json.Unmarshal([]byte(annotations["w7.cc/cost"]), &cost)
 	return normalizeSpec(sa.Name, Spec{
 		PasswordHash:   annotations["password"],
 		UserMode:       labels[k3ktypes.W7_USER_MODE],
@@ -292,19 +272,10 @@ func FromServiceAccount(sa *corev1.ServiceAccount) Spec {
 		ConsoleOpenid:   annotations["w7.cc/console-openid"],
 		ConsoleNickname: annotations["w7.cc/console-nickname"],
 		LoginTime:       annotations["w7.cc/login-time"],
-		QuotaLimit:      quotaLimit,
-		QuotaLimitLock:  annotations["w7.cc/quota-limit-lock"] == "true",
-		CostName:        annotations["w7.cc/cost-name"],
-		Cost:            cost,
 		Status:          annotations["w7.cc/k3k-job-status"],
-		ClusterMode:     annotations[k3ktypes.K3K_CLUSTER_MODE],
-		ClusterStatus:   labels[k3ktypes.K3K_CLUSTER_STATUS],
-		StorageClass:    annotations["k3k.io/storageclass"],
-		StorageRequest:  annotations["k3k.io/storage-request-size"],
 		Pause:           annotations[k3ktypes.W7_PAUSE],
 		JobName:         annotations[k3ktypes.K3K_JOB_NAME],
 		PendingRecycle:  annotations[k3ktypes.K3K_PENDING_RECYCLE_TIME],
-		CVMUser:         labels[k3ktypes.W7_CVM_USER] == "true",
 		Maintenance:     labels[k3ktypes.W7_WH_MODE] == "true",
 	})
 }
