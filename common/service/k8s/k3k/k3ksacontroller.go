@@ -24,16 +24,12 @@ func setupServiceAccountController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
 
 	client := mgr.GetClient()
 	k3kClient := k3ktypes.NewK3kClient(client)
-	limitClient := sa.NewLimitRangeClient(client)
-	storage := sa.NewStorage(client)
 	r := &K3kServiceAccountController{
 		Client:      client,
 		Scheme:      mgr.GetScheme(),
 		k3kClient:   k3kClient,
 		rolebinding: sa.NewRoleBinding(client),
-		deleteRc:    sa.NewDeleteResource(client, k3kClient, limitClient),
-		limitClient: limitClient,
-		storage:     storage,
+		deleteRc:    sa.NewDeleteResource(client, k3kClient),
 		sdk:         sdk,
 	}
 
@@ -49,8 +45,6 @@ type K3kServiceAccountController struct {
 	k3kClient   *k3ktypes.K3kClient
 	rolebinding *sa.RoleBinding
 	deleteRc    *sa.DeleteResource
-	limitClient *sa.Limitrangeclient
-	storage     *sa.Storage
 	sdk         *k8s.Sdk
 }
 

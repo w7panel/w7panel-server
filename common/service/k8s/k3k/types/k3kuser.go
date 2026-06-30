@@ -1,22 +1,15 @@
 package types
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
-	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/config"
-	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type K3kUser struct {
@@ -25,43 +18,16 @@ type K3kUser struct {
 
 type k3kUser struct {
 	*v1.ServiceAccount
-	lqr  *LimitRangeQuota
-	cost *K3kCost
 	// *k3kUserBase
 	// *k3kUserOverSelling
-	*k3kUserOrder
 }
 
 func NewK3kUser(sa *v1.ServiceAccount) *K3kUser {
-	jstr, ok := sa.Annotations[W7_QUOTA_LIMIT]
-	lqr := &LimitRangeQuota{}
-	if ok {
-		lqr2, err := NewLimitRangeQuata(jstr)
-		if err != nil {
-			slog.Error("parse limit range quota error", "error", err)
-		} else {
-			lqr = lqr2
-		}
-	}
 
 	u := &K3kUser{k3kUser: &k3kUser{
 		ServiceAccount: sa,
-		lqr:            lqr,
 	}}
-	costStr, ok1 := sa.Annotations[W7_COST]
 
-	if ok1 {
-		cost2, err := CreateCostFromString(costStr)
-		if err != nil {
-			slog.Error("parse cost error", "error", err)
-		}
-		u.cost = cost2
-	}
-	k3kUserBase := Newk3kUserBase(u.ServiceAccount)
-	k3kUserTime := Newk3kUserTime(u.ServiceAccount)
-	k3kUserOverSelling := Newk3kUserOverSelling(u.ServiceAccount, k3kUserBase)
-	k3kUserOrder := Newk3kUserOrder(u.ServiceAccount, k3kUserOverSelling, k3kUserTime, u.cost)
-	u.k3kUserOrder = k3kUserOrder
 	return u
 
 }
@@ -163,54 +129,6 @@ func (u *k3kUser) GetK3kJobStatus() string {
 		return name
 	}
 	return K3K_STATUS_UNKNOW
-}
-
-func (u *k3kUser) GetStorageClass() string {
-	if u.lqr != nil {
-		return u.lqr.StorageClass
-	}
-	return ""
-}
-
-func (u *k3kUser) GetStorageRequestSize() string {
-	if u.lqr != nil {
-		result := u.lqr.GetHardRequestStorage()
-		return result.String()
-	}
-	return "5Gi"
-}
-
-func (u *k3kUser) GetClusterSysStorageRequestSize() string {
-
-	defaultSize := u.GetStorageRequestSize()
-	// return defaultSize
-	if u.GetClusterMode() == "virtual" {
-		return defaultSize
-	}
-	return "5Gi" //shared 模式默认给5Gi
-	// if u.lqr != nil {
-	// 	result, ok := u.lqr.Hard[SysStorageSize]
-	// 	if ok {
-	// 		return result.String()
-	// 	}
-	// }
-	// return "1Gi"
-}
-
-func (u *k3kUser) GetClusterDataStorageRequestSize() string {
-
-	defaultSize := u.GetStorageRequestSize()
-	quantity, err := resource.ParseQuantity(defaultSize)
-	if err != nil {
-		slog.Error("parse quantity error", "error", err)
-	}
-	shareSize := resource.MustParse("5Gi")
-	if (quantity.Cmp(shareSize)) > 0 {
-		quantity.Sub(shareSize)
-		return quantity.String()
-	}
-	//
-	return "5Gi"
 }
 
 func (u *k3kUser) GetAgentName() string {
@@ -327,108 +245,6 @@ func (u *k3kUser) GetDebugMode() string {
 	return "false"
 }
 
-func (u *k3kUser) CanInitCluster() bool {
-	if !u.IsOverSellingSuccess() {
-		return false
-	}
-	// if u.IsClusterUser() {
-	// 	return u.IsClusterCreating() || u.IsClusterNew()
-	// }
-	return false
-}
-func (u *k3kUser) ToArray() map[string]string {
-	// needCreateOrder := "true"
-	// if !u.NeedCreateOrder() {
-	// 	needCreateOrder = "false"
-	// }
-	// canReNew := "false"
-	// if err := u.CanRenewError(); err == nil {
-	// 	canReNew = "true"
-	// }
-	// needRenew := "false"
-	// if u.NeedRenew() {
-	// 	needRenew = "true"
-	// }
-	// canExpand := "false"
-	// if err := u.CanExpandError(); err == nil {
-	// 	canExpand = "true"
-	// }
-	expiretime, err := u.GetExpireTime()
-	expiretimeStr := "" //expiretime.Format("2006-01-02 15:04:05")
-	if err == nil {
-		expiretimeStr = expiretime.Format("2006-01-02 15:04:05")
-	}
-	hasPassword := false
-	passval, passok := u.Annotations["password"]
-	if passok && passval != "" {
-		hasPassword = true
-	}
-	// price, err := u.GetBasePrice()
-	// if err != nil {
-	// 	price = decimal.Zero
-	// }
-	uprice, err := u.GetUnitPrice()
-	if err != nil {
-		uprice = decimal.Zero
-	}
-	// if u.cost != nil && u.cost.IsGive() {
-	// 	price = decimal.Zero
-	// }
-	result := map[string]string{
-		K3K_USER_MODE: u.GetUserMode(),
-		K3K_NAME:      u.GetK3kName(),
-		K3K_NAMESPACE: u.GetK3kNamespace(),
-		// K3K_STORAGE_CLASS:        u.GetStorageClass(),
-		// K3K_STORAGE_REQUEST_SIZE: u.GetStorageRequestSize(),
-		K3K_JOB_NAME:              u.GetK3kJobName(),
-		K3K_JOB_STATUS:            u.GetK3kJobStatus(),
-		K3K_CLUSTER_MODE:          u.GetClusterMode(),
-		K3K_CLUSTER_POLICY:        u.GetClusterPolicy(),
-		"w7.cc/username":          u.Name,
-		K3K_DEBUG:                 u.GetDebugMode(),
-		W7_MENU:                   u.GetMenu(),
-		W7_QUOTA_LIMIT:            u.Annotations[W7_QUOTA_LIMIT],
-		W7_FILE_EDITTOR:           u.Annotations[W7_FILE_EDITTOR],
-		W7_WEB_SHELL:              u.Annotations[W7_WEB_SHELL],
-		W7_DOMAIN_WHITE_LIST:      u.GetDomainWhiteList(), // 白名单域名
-		W7_DEMO_USER:              u.Labels[W7_DEMO_USER],
-		W7_SYS_STORAGE_PVC_NAME:   u.GetClusterServer0PvcName(), // 系统存储PVC名称
-		W7_COST:                   u.Annotations[W7_COST],
-		"w7.cc/can-init-cluster":  "false",                   //boolToString(u.CanInitCluster()),       //是否可以初始化集群
-		"w7.cc/need-create-order": "false",                   //needCreateOrder,                        //需要创建初始订单
-		"w7.cc/need-over-check":   "false",                   //boolToString(u.NeedOverSellingCheck()), //是否必须超额检查 首次购买
-		"w7.cc/can-over-check":    "false",                   //boolToString(u.CanOverSellingCheck()),  //是否可以超额检查 扩容不强制检查
-		"w7.cc/has-over-resource": "false",                   //boolToString(!u.CanOverSellingCheck()), //资源是否超额
-		"w7.cc/has-password":      boolToString(hasPassword), //是否设置了密码
-		// "w7.cc/base-price-total":  price.String(),                         //初始订单价格
-		"w7.cc/unit-price-total": uprice.String(),        //续费订单单价
-		"w7.cc/can-renew":        "false",                //canReNew,               //是否可以续费
-		"w7.cc/need-renew":       "false",                //needRenew,              //必须续费
-		"w7.cc/can-expand":       "false",                //canExpand,              //是否可以扩容
-		"w7.cc/over-mode":        u.Labels[W7_OVER_MODE], //检测资源是否足够
-		K3K_EXPIRE_TIME:          expiretimeStr,
-		K3K_CLUSTER_STATUS:       u.Labels[K3K_CLUSTER_STATUS],
-		// "w7.cc/diff-day":          strconv.FormatInt(int64(u.GetDiffDays()), //废弃
-		"w7.cc/diff-month":            u.GetDiffMonths().String(),
-		W7_ROLE:                       u.GetRole(),
-		W7_WH_MODE:                    u.Labels[W7_WH_MODE],
-		W7_WH_JOB:                     u.Labels[W7_WH_JOB],
-		W7_WH_JOB_STATUS:              u.GetWHJobStatus(),
-		"w7.cc/server-pod-name":       u.GetServer0Name(),
-		"w7.cc/server-container-name": u.GetServer0ContainerName(),
-		"w7.cc/support-cvm":           boolToString(u.SupportCvm()),
-		"w7.cc/is-cvm-req":            boolToString(u.IsCvmReqUser()), //是否是CVM请求用户
-		"w7.cc/cvm-name":              u.GetCvmName(),                 //cvmName
-		"w7.cc/cvm-namespace":         u.GetK3kNamespace(),
-	}
-	// if !u.IsClusterUser() {
-	// result[W7_FILE_EDITTOR] = "true"
-	// result[W7_WEB_SHELL] = "true"
-	// }
-	return result
-
-}
-
 func (u *k3kUser) GetRole() string {
 	// if u.IsClusterUser() { //子集群用户默认是founder fix站点管理
 	// 	return "founder"
@@ -473,21 +289,6 @@ func (u *k3kUser) GetClusterPolicyVersion() string {
 		return version
 	}
 	return "1"
-}
-
-func (u *k3kUser) Running(jobName string) {
-	u.Annotations[K3K_JOB_STATUS] = K3K_STATUS_RUNNING
-	u.Annotations[K3K_JOB_NAME] = jobName
-	u.Labels[K3K_CLUSTER_STATUS] = K3K_STATUS_USER_CREATING //创建中
-}
-
-func (u *k3kUser) ReNew() {
-	u.Annotations[K3K_JOB_STATUS] = K3K_STATUS_UNKNOW
-	u.Annotations[K3K_JOB_NAME] = ""
-	u.DelPendingRecycleTime()
-	delete(u.Annotations, K3K_EXPIRE_TIME)
-	delete(u.Labels, W7_BASE_ORDER_SN)
-	delete(u.Labels, W7_BASE_ORDER_STATUS)
 }
 
 func (u *k3kUser) ToK3kConfig(cvmName string) *k8s.K3kConfig {
@@ -536,17 +337,6 @@ func (u *k3kUser) GetServer0Name() string {
 
 func (u *k3kUser) GetServer0ContainerName() string {
 	return u.GetK3kNamespace() + "-server"
-}
-
-func (u *k3kUser) GetBandWidth() resource.Quantity {
-	if u.lqr != nil {
-		return u.lqr.GetBandWidth()
-	}
-	return resource.MustParse("0M")
-}
-
-func (u *k3kUser) GetLimitRange() *LimitRangeQuota {
-	return u.lqr
 }
 
 func (u *k3kUser) GetConsoleId() string {
@@ -604,115 +394,6 @@ func (u *k3kUser) ReplaceW7Config(config *config.W7Config) {
 	}
 }
 
-func (u *k3kUser) ReplaceQuota(config *v1.ConfigMap) error {
-	if u.IsClusterReady() || u.IsClusterLabelReady() {
-		return nil
-	}
-	if config.Annotations == nil {
-		config.Annotations = make(map[string]string)
-	}
-	if u.Annotations[W7_QUOTA_LIMIT_LOCK] == "true" {
-		return nil
-	}
-	u.Annotations[W7_QUOTA_LIMIT] = config.Data["quota"]
-	// lqr := &LimitRangeQuota{}
-	lqr2, err := NewLimitRangeQuata(config.Data["quota"])
-	if err != nil {
-		slog.Error("parse limit range error", "error", err)
-		return err
-	}
-	u.lqr = lqr2
-	return nil
-	// u.Annotations[W7_QUATA_LIMIT_NAME] = config.Name
-}
-
-func (u *k3kUser) ReplaceCost(config *v1.ConfigMap) error {
-
-	cost, err := ConfigMapToCost(config)
-	if err != nil {
-		slog.Error("parse cost error", "error", err)
-		return err
-	}
-	u.ReplaceQuota(config)
-	if config.Annotations == nil {
-		config.Annotations = make(map[string]string)
-	}
-	jsonCost, err := cost.ToJsonString()
-	if err != nil {
-		slog.Error("parse cost error", "error", err)
-		return err
-	}
-	u.Annotations[W7_COST] = (jsonCost)
-	// u.Annotations[W7_COST_PACKAGE] = config.Data["packageConfig"]
-
-	// cost2, err := CreateCostFromString(string(data))
-	// if err != nil {
-	// 	slog.Error("parse cost error", "error", err)
-	// 	return err
-	// }
-	u.cost = cost
-	u.k3kUserOrder.cost = cost
-	return nil
-	// u.Annotations[W7_QUATA_LIMIT_NAME] = config.Name
-}
-
-func (u *k3kUser) GetBasePrice() (decimal.Decimal, error) {
-
-	unit, err := u.GetUnitPrice()
-	if err != nil {
-		return decimal.Decimal{}, err
-	}
-	days, err := u.GetBaseDay()
-	if err != nil {
-		return decimal.Decimal{}, err
-	}
-	return unit.Mul(decimal.NewFromFloat(days)), nil
-
-}
-
-func (u *k3kUser) GetUnitPrice() (decimal.Decimal, error) {
-	compute, err := u.GetOrderCompute()
-	if err != nil {
-		return decimal.Decimal{}, err
-	}
-	return compute.GetUnitPrice(), nil
-}
-
-// 首次购买默认赠送天数
-func (u *k3kUser) GetBaseDay() (float64, error) {
-	if u.lqr == nil {
-		return 0, fmt.Errorf("limit range not set")
-	}
-	return u.lqr.GetDays(), nil
-}
-
-func (u *k3kUser) GetDefaultUnitQuantity() UnitQuantity {
-	if u.lqr != nil {
-		return u.lqr.GetDefaultUnitQuantity()
-	}
-	return UnitQuantity{Quantity: 0, Unit: "month"}
-}
-
-func (u *k3kUser) CanResizeSysStorage(unUsed resource.Quantity, resizeTo resource.Quantity) bool {
-	if u.lqr != nil {
-		return u.lqr.CanResizeSysStorage(unUsed, resizeTo)
-	}
-	return false
-}
-
-func (u *k3kUser) ResizeSysStorage(storageSize resource.Quantity) {
-	if u.lqr != nil {
-		u.lqr.ResizeSysStorage(storageSize)
-		json := u.GetLimitRange().ToString()
-		u.Annotations[W7_QUOTA_LIMIT] = json
-		u.Annotations[W7_QUOTA_LIMIT_NAME] = ""
-	}
-}
-
-func (u *k3kUser) GetCost() *K3kCost {
-	return u.cost
-}
-
 // 是否需要购买基础资源，
 
 func (u *k3kUser) IsFounder() bool {
@@ -736,111 +417,12 @@ func (u *k3kUser) IsPause() bool {
 }
 
 // 是否必须超额检查，扩容不需要超额检查
-func (u *k3kUser) SetOverMode(ok bool) error {
-	if ok && u.Labels[W7_OVER_MODE] != "success" {
-		isExpand := u.IsExpand()
-		u.Labels[W7_OVER_MODE] = "success"
-		if isExpand { // 如果是扩容
-			// u.lqr.ResetHard(rlist)
-			// bs := NewBaseResource(&K3kUser{u})
-			// rlist := bs.GetExpand(u.GetOverResource())
-			u.lqr.Expand(u.GetOverResource())
-			// u.lqr.ResetHard(rlist)
-			delete(u.Annotations, W7_OVER_RESOURCE) //重复执行 会导致扩容的资源累加多次
-		} else {
-			u.lqr.ResetHard(u.GetOverResource())
-		}
-		u.Annotations[W7_QUOTA_LIMIT] = u.GetLimitRange().ToString()
-		u.Annotations[W7_QUOTA_LIMIT_NAME] = ""
-	} else {
-		u.Labels[W7_OVER_MODE] = "no-resource" //资源不足
-		// delete(u.Annotations, W7_OVER_BASE_RESOURCE)
-	}
-	return nil
-}
 
 func (u *k3kUser) SetLoginTime() {
 	u.Annotations[W7_LOGIN_TIME] = time.Now().Format(time.DateTime)
 }
 
-func (u *k3kUser) GetOrderCompute() (*K3kOrderCompute, error) {
-	if u.cost == nil {
-		return nil, errors.New("当前用户未配置费用套餐，无法生成计算器")
-	}
-	if u.lqr == nil {
-		return nil, errors.New("未配置资源限额, 无法生成计算器")
-	}
-	return NewK3kOrderComputeWithCostLimitRange(u.lqr, u.cost), nil
-}
-
 // 锁定退款订单
-func (u *k3kUser) LockReturnK3kOrder(order *console.K3kOrder) error {
-	if u.lqr != nil {
-		currentResource := u.lqr.GetHardBuyResource()
-		orderRes := K3kOrderToBuyResource(order)
-		currentTime, err := u.GetExpireTime()
-
-		if order.BuyMode == "base" {
-			currentResource = currentResource.Sub(orderRes)
-			if err == nil {
-				currentTime = time.Now()
-			}
-		}
-		if order.BuyMode == "expand" {
-			currentResource = currentResource.Sub(orderRes)
-		}
-		if order.BuyMode == "renew" {
-			currentResource = ZeroBuyResource
-			hour, err := decimal.NewFromString(order.Hour)
-			if err == nil {
-				sec := hour.Mul(decimal.NewFromInt(3600))
-				if err == nil {
-					durations := time.Second * time.Duration(-sec.IntPart())
-					currentTime.Add(durations)
-				}
-			}
-		}
-		lockOrder := LockReturnK3kOrder{
-			CurrentTime: currentTime.Unix(),
-			BuyResource: currentResource,
-			OrderSn:     order.OrderSn,
-			BuyMode:     order.BuyMode,
-		}
-		data, err := json.Marshal(lockOrder)
-		if err != nil {
-			return err
-		}
-		u.Annotations[W7_RETURN_ORDER_INFO] = string(data)
-	}
-	return nil
-}
-
-func (u *k3kUser) GetLockReturnK3kOrder() (*LockReturnK3kOrder, error) {
-	data, ok := u.Annotations[W7_RETURN_ORDER_INFO]
-	if ok {
-		lockOrder := &LockReturnK3kOrder{}
-		err := json.Unmarshal([]byte(data), lockOrder)
-		if err != nil {
-			return nil, err
-		}
-		return lockOrder, nil
-	}
-	return nil, errors.New("not found")
-}
-
-func (u *k3kUser) ProcessReturnK3kOrder() error {
-	rorder, err := u.GetLockReturnK3kOrder()
-	if err != nil {
-		return err
-	}
-	u.SetOverMode(true) //等待中的资源 让生效
-	u.lqr.ResetHard(rorder.ToOverSellingResource())
-	if rorder.CurrentTime > 0 {
-		u.Annotations[K3K_EXPIRE_TIME] = time.Unix(rorder.CurrentTime, 9).Format("2006-01-02 15:04:05")
-	}
-	delete(u.Annotations, W7_RETURN_ORDER_INFO)
-	return nil
-}
 
 // 是否是演示用户
 func (u *k3kUser) IsDemo() bool {
@@ -888,4 +470,11 @@ func (u *k3kUser) GetCkmName() string {
 }
 func (u *k3kUser) GetNickName() string {
 	return u.Annotations["w7.cc/console-nickname"]
+}
+
+func (u *k3kUser) ToArray() map[string]string {
+
+	return map[string]string{
+		"uid": u.Name,
+	}
 }

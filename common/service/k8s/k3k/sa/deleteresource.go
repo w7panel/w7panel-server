@@ -2,7 +2,6 @@ package sa
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -21,15 +20,13 @@ import (
 
 type DeleteResource struct {
 	client.Client
-	k3kClient        *k3ktypes.K3kClient
-	limitrangeclient *Limitrangeclient
+	k3kClient *k3ktypes.K3kClient
 }
 
-func NewDeleteResource(client client.Client, k3kClient *k3ktypes.K3kClient, limitrangeclient *Limitrangeclient) *DeleteResource {
+func NewDeleteResource(client client.Client, k3kClient *k3ktypes.K3kClient) *DeleteResource {
 	return &DeleteResource{
-		Client:           client,
-		k3kClient:        k3kClient,
-		limitrangeclient: limitrangeclient,
+		Client:    client,
+		k3kClient: k3kClient,
 	}
 }
 
@@ -127,77 +124,6 @@ func (r *DeleteResource) deleteAssociatedResources(ctx context.Context, k3kUser 
 	// 	//namespace 删除失败，则不重复执行
 	// 	return nil
 	// }
-
-	return nil
-}
-
-func (r *DeleteResource) HandleResourceRecycleStatus(ctx context.Context, sa *corev1.ServiceAccount, k3kUser *k3ktypes.K3kUser) error {
-	logger := log.FromContext(ctx)
-	currentStatus := k3kUser.GetResourceStatus()
-
-	// 检查是否需要更新状态
-	switch currentStatus {
-	case k3ktypes.K3K_STATUS_USER_CREATING, k3ktypes.K3K_STATUS_USER_READY:
-		// 如果用户已过期，更新为待回收状态
-		_, err := controllerutil.CreateOrPatch(ctx, r.Client, sa, func() error {
-			if k3kUser.IsExpired() {
-				k3kUser.SetResourceStatus(k3ktypes.K3K_STATUS_USER_WAIT)
-			}
-			if k3kUser.IsPause() {
-				k3kUser.UnPause()
-			}
-			if k3kUser.HasPendingRecycleTime() {
-				k3kUser.DelPendingRecycleTime()
-			}
-			return nil
-		})
-
-		if err != nil {
-			slog.Error("K3K_STATUS_USER_READY Failed to update ServiceAccount status", "error", err)
-		}
-
-	case k3ktypes.K3K_STATUS_USER_WAIT:
-
-		_, err := controllerutil.CreateOrPatch(ctx, r.Client, sa, func() error {
-			if !k3kUser.HasPendingRecycleTime() {
-				k3kUser.SetPendingRecycleTime()
-			}
-			if !k3kUser.IsPause() {
-				k3kUser.Pause()
-			}
-			if k3kUser.IsPendingRecycleExpired() {
-				logger.Info("Pending recycle period expired, starting resource recycling", "name", sa.Name)
-				k3kUser.SetResourceStatus(k3ktypes.K3K_STATUS_USER_RECYCLE)
-			}
-			return nil
-		})
-
-		if err != nil {
-			slog.Error("K3K_STATUS_USER_WAIT Failed to update ServiceAccount status", "error", err)
-			return err
-		}
-		if k3kUser.IsPendingRecycleExpired() {
-			if err := r.deleteAssociatedResources(ctx, k3kUser); err != nil {
-				slog.Error("Failed to delete associated resources", "error", err)
-				return err
-			}
-		}
-
-	case k3ktypes.K3K_STATUS_USER_RECYCLE:
-		if err := r.deleteAssociatedResources(ctx, k3kUser); err != nil {
-			slog.Error("Failed to delete associated resources", "error", err)
-			return err
-		}
-		// 检查资源回收是否完成
-		if r.isResourceRecyclingComplete(ctx, k3kUser) {
-			logger.Info("Resource recycling complete", "name", sa.Name)
-			k3kUser.SetResourceStatus(k3ktypes.K3K_STATUS_USER_NEW)
-			k3kUser.ReNew()
-			if err := r.Update(ctx, sa); err != nil {
-				return fmt.Errorf("failed to update ServiceAccount status: %v", err)
-			}
-		}
-	}
 
 	return nil
 }

@@ -1,15 +1,11 @@
 package webhook
 
 import (
-	"fmt"
-	"log/slog"
 	"os"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
-	k3kTypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -62,59 +58,4 @@ func getSa(client client.Client, sdk *k8s.Sdk, saName string) (*v1.ServiceAccoun
 		return nil, err
 	}
 	return sa, err
-}
-
-func getResourceLimit(client client.Client, sdk *k8s.Sdk, clusterName string, role string) (v1.ResourceList, error) {
-	sa, err := getSa(client, sdk, clusterName)
-	if err != nil {
-		return nil, err
-	}
-	k3kUser := k3kTypes.NewK3kUser(sa)
-	if !k3kUser.IsClusterUser() {
-		slog.Info("不是集群用户")
-		return nil, err
-	}
-	rang := k3kUser.GetLimitRange()
-	if rang == nil {
-		slog.Info("未配置limitRange")
-		return nil, err
-	}
-	cpu := rang.Hard.Cpu()
-	memory := rang.Hard.Memory()
-	if k3kUser.IsVirtual() {
-		rs := v1.ResourceList{}
-		cpuCopy := cpu.DeepCopy()
-		memoryCopy := memory.DeepCopy()
-		cpuPoint := *cpu
-		memoryPoint := *memory
-		if k3kUser.IsWeihu() {
-			cpuPoint.Add(cpuCopy)
-			memoryPoint.Add(memoryCopy)
-		}
-		rs["cpu"] = cpuPoint
-		rs["memory"] = memoryPoint
-
-		return rs, err
-	}
-
-	if k3kUser.IsShared() {
-		if role == "server" {
-			cpu2 := resource.MustParse("500m")
-			memory2 := resource.MustParse("1Gi")
-			rs := v1.ResourceList{}
-			rs["cpu"] = cpu2
-			rs["memory"] = memory2
-			return rs, err
-
-		}
-		if role == "agent" {
-			cpu3 := resource.MustParse("100m")
-			memory3 := resource.MustParse("100Mi")
-			rs := v1.ResourceList{}
-			rs["cpu"] = cpu3
-			rs["memory"] = memory3
-			return rs, err
-		}
-	}
-	return nil, fmt.Errorf("err not found")
 }

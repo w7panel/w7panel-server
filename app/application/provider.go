@@ -277,10 +277,11 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		// 用于应用直达 注册协议 和logo 通用接口
 		engine.GET("/panel-api/v1/noauth/site/{name}/configmap", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.NoAuthConfigMap)
 
-		engine.GET("/panel-api/v1/microapp/top", middleware.Auth{}.Process, controller2.MicroApp{}.List)                     //获取microapp列表
-		engine.GET("/panel-api/v1/microapp/:name/info", middleware.Auth{}.Process, controller2.MicroApp{}.Info)              //获取microapp详情
-		engine.GET("/panel-api/v1/microapp/:name/frontprops", middleware.Auth{}.Process, controller2.MicroApp{}.FrontProps)  //获取microapp前端系统参数
-		engine.Any("/panel-api/v1/microapp/:name/proxy/*path", middleware.Auth{}.Process, controller2.Proxy{}.ProxyMicroApp) //microapp proxy
+		engine.GET("/panel-api/v1/microapp/top", middleware.Auth{}.Process, controller2.MicroApp{}.List)                           //获取microapp列表
+		engine.GET("/panel-api/v1/microapp/:name/info", middleware.Auth{}.Process, controller2.MicroApp{}.Info)                    //获取microapp详情
+		engine.GET("/panel-api/v1/microapp/:name/frontprops", middleware.Auth{}.Process, controller2.MicroApp{}.FrontProps)        //获取microapp前端系统参数
+		engine.Any("/panel-api/v1/microapp/:name/proxy/*path", middleware.Auth{}.Process, controller2.Proxy{}.ProxyMicroApp)       //microapp proxy
+		engine.GET("/panel-api/v1/microapp/global-frontprops", middleware.Auth{}.Process, controller2.MicroApp{}.GlobalFrontProps) //获取microapp前端系统参数
 
 		containerGroup := localApiGroup.Group("/containers", middleware.Auth{}.Process, middleware.Proxy{}.Process)
 		{

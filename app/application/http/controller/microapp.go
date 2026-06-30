@@ -83,3 +83,42 @@ func (self MicroApp) FrontProps(http *gin.Context) {
 		"cloud_accesstoken": cloudAccessToken,
 	})
 }
+
+func (self MicroApp) GlobalFrontProps(http *gin.Context) {
+	token := http.MustGet("k8s_token").(string)
+
+	replace, err := microapp.NewMicroAppReplace(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+
+	role := replace.GetRole()
+	accessToken := ""
+	server, err := oidc.GetServer()
+	if err == nil && server != nil {
+		accessToken, err = server.CreateDefaultAccessToken(server.ContextWithIssuer(http.Request.Context(), http.Request), replace.Name)
+		if err != nil {
+			accessToken = ""
+		}
+	}
+
+	cloudAccessToken := ""
+	if replace.GetConsoleOpenId() != "" {
+		token, err := microapp.GetCloudAccessToken(replace.GetConsoleOpenId())
+		if err == nil {
+			cloudAccessToken = token
+		}
+	}
+
+	self.JsonResponseWithoutError(http, map[string]string{
+		// "url":               item.RoleServerUrl(role),
+		"userid":            replace.Name,
+		"role":              role,
+		"access_token":      accessToken,
+		"openid":            replace.GetConsoleOpenId(),
+		"nickname":          replace.GetNickName(),
+		"cloud_uid":         replace.GetConsoleId(),
+		"cloud_accesstoken": cloudAccessToken,
+	})
+}

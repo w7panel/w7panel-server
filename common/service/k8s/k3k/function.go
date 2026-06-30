@@ -14,7 +14,6 @@ import (
 	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -165,28 +164,7 @@ func RefreshK3kUser(user *types.K3kUser, rootSdk *k8s.Sdk, update bool) (*types.
 			user.ReplaceCkm(cvm) //
 		}
 	}
-	// if !user.IsCustomQuota() {
-	// 	quotaConfig, err := rootSdk.ClientSet.CoreV1().ConfigMaps(user.GetNamespace()).Get(rootSdk.Ctx, user.GetQuotaName(), metav1.GetOptions{})
-	// 	if err != nil {
-	// 		slog.Error("GetQuotaConfig error", "error", err)
-	// 	}
-	// 	if err == nil {
-	// 		user.ReplaceQuota(quotaConfig)
-	// 	}
-	// }
-	if !user.IsCustomCost() {
-		costConfig, err := rootSdk.ClientSet.CoreV1().ConfigMaps(user.GetNamespace()).Get(rootSdk.Ctx, user.GetCostName(), metav1.GetOptions{})
-		if err != nil {
-			slog.Error("GetCostConfig error", "error", err)
-		}
-		if err == nil {
-			err := user.ReplaceCost(costConfig)
-			if err != nil {
-				slog.Error("ReplaceCost error", "error", err)
-				return nil, err
-			}
-		}
-	}
+
 	w7config, err := w7configRepo.Get(user.Name)
 	if err != nil {
 		slog.Error("GetW7Config error", "error", err)
@@ -221,65 +199,4 @@ func GetCkm(ctx context.Context, sdk *k8s.Sdk, namespace, cvmName string) (*cvmv
 		return nil, err
 	}
 	return cvm, nil
-}
-
-func SyncUserToCvm(ctx context.Context, user *types.K3kUser, sdk *k8s.Sdk) error {
-	if !user.IsOldClusterUser() {
-		return nil
-	}
-	if user.IsExpired() {
-		return nil
-	}
-	user.SetOverMode(true)
-	lr := user.GetLimitRange()
-	if lr == nil {
-		return nil
-	}
-	secret := &corev1.Secret{}
-	sigClient, err := sdk.ToSigClient()
-	if err != nil {
-		return err
-	}
-	sigClient.Get(ctx, client.ObjectKey{Name: "k3k-" + user.GetName() + "-token", Namespace: user.GetK3kNamespace()}, secret)
-	if err != nil {
-		slog.Error("get k3k cluster secret error", "error", err)
-	}
-	token := ""
-	if err == nil {
-		token = string(secret.Data[corev1.ServiceAccountTokenKey]) //保存用户集群的token
-	}
-	slog.Info("cvm token", "token", token)
-
-	cvm, err := GetCkm(ctx, sdk, user.GetK3kNamespace(), user.GetName())
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			rs := lr.GetHardBuyResource()
-
-			cvm = &cvmv1alpha1.Ckm{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      user.GetName(),
-					Namespace: user.GetK3kNamespace(),
-				},
-				Spec: cvmv1alpha1.CkmSpec{
-					PurchasedResource: &cvmv1alpha1.CkmResource{
-						CPU:       rs.Cpu,
-						Memory:    rs.Memory,
-						Storage:   rs.Storage,
-						Bandwidth: rs.Bandwidth,
-					},
-					StorageClassName: lr.StorageClass,
-					ExpireTime:       user.Annotations[k3ktypes.K3K_EXPIRE_TIME],
-					Workload: cvmv1alpha1.Workload{
-						Token: token,
-					},
-				},
-			}
-			err := sdk.Create(ctx, cvm)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }

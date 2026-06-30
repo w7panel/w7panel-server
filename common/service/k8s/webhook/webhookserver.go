@@ -2,14 +2,11 @@ package webhook
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
-	"net/http"
 	"os"
 	"sync"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
-	k3kTypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -162,82 +159,4 @@ func setRequestLimit(pod *v1.Pod, cpu resource.Quantity, memory resource.Quantit
 		}
 	}
 	return changed
-}
-
-func (m *ResourceMutator) handleK3sPod(ctx context.Context, pod *v1.Pod, req admission.Request, clusterName string) admission.Response {
-	// slog.Info("处理 Pod admission handleK3sPod 请求")
-
-	// 检查是否需要修改
-	modified := false
-
-	// 检查 Pod 是否有 ownerReferences.kind=Cluster
-	role, ok := pod.Labels["role"]
-	if !ok {
-		return admission.Allowed("Pod 没有 role")
-	}
-	sa, err := getSa(m.client, m.sdk, clusterName)
-	if err != nil {
-		return admission.Allowed("未找到sa")
-	}
-	k3kUser := k3kTypes.NewK3kUser(sa)
-	if !k3kUser.IsClusterUser() {
-		slog.Info("不是集群用户")
-		return admission.Allowed("不是集群用户")
-	}
-	rang := k3kUser.GetLimitRange()
-	if rang == nil {
-		slog.Info("未配置limitRange")
-		return admission.Allowed("未配置limitRange")
-	}
-	cpu := rang.Hard.Cpu()
-	memory := rang.Hard.Memory()
-	if k3kUser.IsVirtual() {
-		if role == "server" {
-			setRequestLimit(pod, *cpu, *memory)
-		}
-		modified = true
-	}
-
-	if k3kUser.IsShared() {
-		if role == "server" {
-			cpu2 := resource.MustParse("500m")
-			memory2 := resource.MustParse("1Gi")
-			setRequestLimit(pod, cpu2, memory2)
-			modified = true
-		}
-		if role == "agent" {
-			cpu3 := resource.MustParse("100m")
-			memory3 := resource.MustParse("100Mi")
-			setRequestLimit(pod, cpu3, memory3)
-			modified = true
-		}
-	}
-
-	quantity := k3kUser.GetBandWidth()
-	if !quantity.IsZero() {
-		if pod.Annotations == nil {
-			pod.Annotations = make(map[string]string)
-		}
-		quantitystr := quantity.String()
-		slog.Info("Pod 带宽限制", slog.String("bandwidth", quantitystr))
-		// quantitystr = strings.ReplaceAll(quantitystr, "Mi", "Mbps")
-
-		pod.Annotations["kubernetes.io/egress-bandwidth"] = quantitystr
-		pod.Annotations["kubernetes.io/ingress-bandwidth"] = quantitystr
-		modified = true
-	}
-
-	// 如果没有修改，直接返回允许
-	if !modified {
-		return admission.Allowed("Pod 已有带宽注解或不需要修改")
-	}
-
-	// 序列化修改后的 Pod
-	marshaledPod, err := json.Marshal(pod)
-	if err != nil {
-		return admission.Errored(http.StatusInternalServerError, err)
-	}
-
-	// 返回修改后的资源
-	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
 }
