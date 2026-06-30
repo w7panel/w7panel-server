@@ -74,6 +74,30 @@ spec:
                 type: string
               consoleNickname:
                 type: string
+              w7Config:
+                type: object
+                properties:
+                  thirdpartyCDToken:
+                    type: string
+                  cdTokenExpireTime:
+                    type: integer
+                  clusterId:
+                    type: string
+                  offlineUrl:
+                    type: string
+                  accessToken:
+                    type: string
+                  expireTime:
+                    type: integer
+                  apiServerUrl:
+                    type: string
+                  userInfo:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  license:
+                    type: string
+                  debugValue:
+                    type: string
               loginTime:
                 type: string
               status:

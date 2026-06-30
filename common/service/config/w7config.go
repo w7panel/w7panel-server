@@ -1,7 +1,9 @@
 package config
 
 import (
+	"context"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -14,7 +16,11 @@ import (
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func init() {
@@ -48,6 +54,12 @@ var LicenseVerify = licenseVerify{}
 var MainW7Config *W7Config
 
 var CurrentCity string
+
+var userGVR = schema.GroupVersionResource{
+	Group:    "w7panel.w7.com",
+	Version:  "v1alpha1",
+	Resource: "users",
+}
 
 func SetVerifyType(name, verifyType string) {
 	LicenseVerify.Store(name, verifyType)
@@ -229,48 +241,72 @@ func (c *w7ConfigRepository) secretToW7config(secret *v1.Secret, name string) *W
 }
 
 func (c *w7ConfigRepository) Get(name string) (*W7Config, error) {
-	secretName := secretName(name)
-	secret, err1 := c.ClientSet.CoreV1().Secrets(c.GetNamespace()).Get(c.Ctx, secretName, metav1.GetOptions{})
-	if err1 != nil {
-		slog.Warn("failed to get w7-config: ")
-		return &W7Config{Name: name}, fmt.Errorf("failed to get w7-config: %w", err1)
+	obj, err := c.DynamicClient().Resource(userGVR).Get(c.Ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return &W7Config{Name: name}, fmt.Errorf("failed to get user w7-config: %w", err)
 	}
-	return c.secretToW7config(secret, name), nil
-
+	config, ok, err := unstructured.NestedMap(obj.Object, "spec", "w7Config")
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return &W7Config{Name: name}, fmt.Errorf("not found w7 config for user: %s", name)
+	}
+	return userConfigToW7Config(name, config)
 }
 
 func (c *w7ConfigRepository) List() ([]*W7Config, error) {
-	secrets, err := c.ClientSet.CoreV1().Secrets(c.GetNamespace()).List(c.Ctx, metav1.ListOptions{
-		LabelSelector: "w7.cc/oauth-config=true",
-	})
+	list, err := c.DynamicClient().Resource(userGVR).List(c.Ctx, metav1.ListOptions{})
 	if err != nil {
-		return []*W7Config{}, fmt.Errorf("failed to list secrets: %w", err)
+		return []*W7Config{}, fmt.Errorf("failed to list user w7-config: %w", err)
 	}
 	configs := []*W7Config{}
-	for _, secret := range secrets.Items {
-		if strings.HasSuffix(secret.Name, ".w7-config") {
-			configs = append(configs, c.secretToW7config(&secret, strings.TrimSuffix(secret.Name, ".w7-config")))
+	for i := range list.Items {
+		config, ok, err := unstructured.NestedMap(list.Items[i].Object, "spec", "w7Config")
+		if err != nil || !ok {
+			continue
+		}
+		cfg, err := userConfigToW7Config(list.Items[i].GetName(), config)
+		if err == nil {
+			configs = append(configs, cfg)
 		}
 	}
 	return configs, nil
 }
 
 func (c *w7ConfigRepository) GetByConsoleId(consoleId string) (*W7Config, error) {
-	secrets, err := c.ClientSet.CoreV1().Secrets(c.GetNamespace()).List(c.Ctx, metav1.ListOptions{
-		LabelSelector: "w7.cc/console-uid=" + consoleId,
-	})
+	list, err := c.DynamicClient().Resource(userGVR).List(c.Ctx, metav1.ListOptions{})
 	if err != nil {
-		return &W7Config{}, fmt.Errorf("failed to list secrets: %w", err)
+		return &W7Config{}, fmt.Errorf("failed to get user by console id: %w", err)
 	}
-	for _, secret := range secrets.Items {
-		if strings.HasSuffix(secret.Name, ".w7-config") {
-			return c.secretToW7config(&secret, strings.TrimSuffix(secret.Name, ".w7-config")), nil
+	for i := range list.Items {
+		currentConsoleId, _, _ := unstructured.NestedString(list.Items[i].Object, "spec", "consoleId")
+		if currentConsoleId != consoleId {
+			continue
 		}
+		config, ok, err := unstructured.NestedMap(list.Items[i].Object, "spec", "w7Config")
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return &W7Config{Name: list.Items[i].GetName()}, fmt.Errorf("not found w7 config for user: %s", list.Items[i].GetName())
+		}
+		return userConfigToW7Config(list.Items[i].GetName(), config)
 	}
-	return &W7Config{}, fmt.Errorf("not found w7 config for console id: %s", consoleId)
+	return &W7Config{}, apierrors.NewNotFound(schema.GroupResource{Group: userGVR.Group, Resource: userGVR.Resource}, consoleId)
 }
 
 func (c *w7ConfigRepository) Set(config *W7Config) error {
+	if config.DebugValue == "" {
+		config.DebugValue = helper.RandomString(5)
+	}
+	if err := c.setUserConfig(config); err != nil {
+		return err
+	}
+	return c.setSecretConfig(config)
+}
+
+func (c *w7ConfigRepository) setSecretConfig(config *W7Config) error {
 	secretName := secretName(config.Name)
 	secret, err := c.ClientSet.CoreV1().Secrets(c.GetNamespace()).Get(c.Ctx, secretName, metav1.GetOptions{})
 	isUpdate := true
@@ -289,7 +325,7 @@ func (c *w7ConfigRepository) Set(config *W7Config) error {
 		secret.Labels = make(map[string]string)
 	}
 	secret.Labels["w7.cc/oauth-config"] = "true"
-	secret.Labels["w7.cc/test"] = helper.RandomString(5)
+	secret.Labels["w7.cc/test"] = config.DebugValue
 	secret.Data["thirdparty_cd_token"] = []byte(config.ThirdpartyCDToken)
 	secret.Data["access_token"] = []byte(config.AccessToken)
 	if config.ExpireTime == 0 {
@@ -320,4 +356,157 @@ func (c *w7ConfigRepository) Set(config *W7Config) error {
 		}
 	}
 	return err
+}
+
+func (c *w7ConfigRepository) setUserConfig(config *W7Config) error {
+	obj, err := c.DynamicClient().Resource(userGVR).Get(c.Ctx, config.Name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	configMap, err := w7ConfigToUserConfig(config)
+	if err != nil {
+		return err
+	}
+	if err := unstructured.SetNestedMap(obj.Object, configMap, "spec", "w7Config"); err != nil {
+		return err
+	}
+	if config.UserInfo != nil {
+		consoleId, _, _ := unstructured.NestedString(obj.Object, "spec", "consoleId")
+		if consoleId == "" {
+			if err := unstructured.SetNestedField(obj.Object, strconv.Itoa(config.UserInfo.UserId), "spec", "consoleId"); err != nil {
+				return err
+			}
+		}
+		consoleOpenid, _, _ := unstructured.NestedString(obj.Object, "spec", "consoleOpenid")
+		if consoleOpenid == "" {
+			if err := unstructured.SetNestedField(obj.Object, config.UserInfo.OpenId, "spec", "consoleOpenid"); err != nil {
+				return err
+			}
+		}
+		consoleNickname, _, _ := unstructured.NestedString(obj.Object, "spec", "consoleNickname")
+		if consoleNickname == "" {
+			if err := unstructured.SetNestedField(obj.Object, config.UserInfo.Nickname, "spec", "consoleNickname"); err != nil {
+				return err
+			}
+		}
+	}
+	_, err = c.DynamicClient().Resource(userGVR).Update(c.Ctx, obj, metav1.UpdateOptions{})
+	return err
+}
+
+func w7ConfigToUserConfig(config *W7Config) (map[string]interface{}, error) {
+	if config == nil {
+		return nil, nil
+	}
+	license := ""
+	if config.License != nil && len(config.License.Raw) > 0 {
+		license = base64.StdEncoding.EncodeToString(config.License.Raw)
+	}
+	configMap := map[string]interface{}{
+		"thirdpartyCDToken": config.ThirdpartyCDToken,
+		"cdTokenExpireTime": int64(config.CDTokenExpireTime),
+		"clusterId":         config.ClusterId,
+		"offlineUrl":        config.OfflineUrl,
+		"accessToken":       config.AccessToken,
+		"expireTime":        int64(config.ExpireTime),
+		"apiServerUrl":      config.ApiServerUrl,
+		"license":           license,
+		"debugValue":        config.DebugValue,
+	}
+	if config.UserInfo != nil {
+		userInfo, err := runtime.DefaultUnstructuredConverter.ToUnstructured(config.UserInfo)
+		if err != nil {
+			return nil, err
+		}
+		configMap["userInfo"] = userInfo
+	}
+	return configMap, nil
+}
+
+func userConfigToW7Config(name string, config map[string]interface{}) (*W7Config, error) {
+	if config == nil {
+		return &W7Config{Name: name}, fmt.Errorf("not found w7 config for user: %s", name)
+	}
+	var cert *x509.Certificate
+	license := stringValue(config["license"])
+	if license != "" {
+		raw, err := base64.StdEncoding.DecodeString(license)
+		if err != nil {
+			return nil, err
+		}
+		cert, err = helper.ParseX509(raw)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var userInfo *service.ResultUserinfo
+	if rawUserInfo, ok := config["userInfo"].(map[string]interface{}); ok && len(rawUserInfo) > 0 {
+		info := service.ResultUserinfo{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(rawUserInfo, &info); err != nil {
+			return nil, err
+		}
+		userInfo = &info
+	}
+	return &W7Config{
+		Name:              name,
+		ThirdpartyCDToken: stringValue(config["thirdpartyCDToken"]),
+		CDTokenExpireTime: intValue(config["cdTokenExpireTime"]),
+		ClusterId:         stringValue(config["clusterId"]),
+		OfflineUrl:        stringValue(config["offlineUrl"]),
+		AccessToken:       stringValue(config["accessToken"]),
+		ExpireTime:        intValue(config["expireTime"]),
+		ApiServerUrl:      stringValue(config["apiServerUrl"]),
+		UserInfo:          userInfo,
+		License:           cert,
+		DebugValue:        stringValue(config["debugValue"]),
+	}, nil
+}
+
+func stringValue(v interface{}) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
+}
+
+func intValue(v interface{}) int {
+	switch value := v.(type) {
+	case int:
+		return value
+	case int64:
+		return int(value)
+	case int32:
+		return int(value)
+	case float64:
+		return int(value)
+	case string:
+		i, _ := strconv.Atoi(value)
+		return i
+	default:
+		return 0
+	}
+}
+
+func (c *w7ConfigRepository) MigrateSecretsToUsers(ctx context.Context) error {
+	secrets, err := c.ClientSet.CoreV1().Secrets(c.GetNamespace()).List(ctx, metav1.ListOptions{
+		LabelSelector: "w7.cc/oauth-config=true",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to list w7-config secrets: %w", err)
+	}
+	for i := range secrets.Items {
+		secret := &secrets.Items[i]
+		if !strings.HasSuffix(secret.Name, ".w7-config") {
+			continue
+		}
+		cfg := c.secretToW7config(secret, strings.TrimSuffix(secret.Name, ".w7-config"))
+		if err := c.setUserConfig(cfg); err != nil {
+			if apierrors.IsNotFound(err) {
+				slog.Warn("skip w7-config secret because user not found", "secret", secret.Name, "user", cfg.Name)
+				continue
+			}
+			return err
+		}
+	}
+	return nil
 }

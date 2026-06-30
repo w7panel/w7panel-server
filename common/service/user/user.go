@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	cloudservice "github.com/w7corp/sdk-open-cloud-go/service"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	permissionservice "github.com/w7panel/w7panel/common/service/permission"
@@ -52,6 +53,7 @@ type Spec struct {
 	ConsoleId       string                             `json:"consoleId,omitempty"`
 	ConsoleOpenid   string                             `json:"consoleOpenid,omitempty"`
 	ConsoleNickname string                             `json:"consoleNickname,omitempty"`
+	W7Config        *W7Config                          `json:"w7Config,omitempty"`
 	LoginTime       string                             `json:"loginTime,omitempty"`
 	Status          string                             `json:"status,omitempty"`
 	Pause           string                             `json:"pause,omitempty"`
@@ -59,6 +61,19 @@ type Spec struct {
 	PendingRecycle  string                             `json:"pendingRecycleTime,omitempty"`
 	Maintenance     bool                               `json:"maintenance,omitempty"`
 	Version         int32                              `json:"version,omitempty"`
+}
+
+type W7Config struct {
+	ThirdpartyCDToken string                       `json:"thirdpartyCDToken,omitempty"`
+	CDTokenExpireTime int                          `json:"cdTokenExpireTime,omitempty"`
+	ClusterId         string                       `json:"clusterId,omitempty"`
+	OfflineUrl        string                       `json:"offlineUrl,omitempty"`
+	AccessToken       string                       `json:"accessToken,omitempty"`
+	ExpireTime        int                          `json:"expireTime,omitempty"`
+	ApiServerUrl      string                       `json:"apiServerUrl,omitempty"`
+	UserInfo          *cloudservice.ResultUserinfo `json:"userInfo,omitempty"`
+	License           string                       `json:"license,omitempty"`
+	DebugValue        string                       `json:"debugValue,omitempty"`
 }
 
 func Get(ctx context.Context, sdk *k8s.Sdk, name string) (*User, error) {
