@@ -12,6 +12,7 @@ import (
 	higressV1 "github.com/alibaba/higress/client/pkg/apis/networking/v1"
 	"github.com/rancher/k3k/k3k-kubelet/translate"
 	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	sitev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/site/v1alpha1"
@@ -574,8 +575,16 @@ func SyncSite(params *K3kSync) error {
 		}
 		return nil
 	}
-
-	secret, err := console.RegisterSiteZpk(site.Spec.Host, site.Spec.SiteIdentifier)
+	w7configRepo := config.NewW7ConfigRepository(root.Sdk)
+	w7config, err := w7configRepo.Get(params.K3kName)
+	if err != nil || w7config.UserInfo == nil || w7config.UserInfo.OpenId == "" {
+		site.Status.Phase = "Failed"
+		site.Status.Message = fmt.Sprintf("register site zpk error get openid err: %s", err.Error())
+		clientSigClient.Status().Update(root.Ctx, site)
+		return err
+	}
+	// 按openid 注册站点，获取 appId 和 appSecret
+	secret, err := console.RegisterSiteZpkOpenId(site.Spec.Host, site.Spec.SiteIdentifier, w7config.UserInfo.OpenId)
 	if err != nil {
 		slog.Error("Failed to register site via ZPK", "name", params.VirtualName, "error", err)
 		site.Status.Phase = "Failed"

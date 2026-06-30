@@ -24,4 +24,14 @@ func TestRegisterSite(t *testing.T) {
 	}
 }
 
+func TestRegisterUserOpenId(t *testing.T) {
+	// os.Setenv("USER_AGFNT", "we7test-beta")
+	os.Setenv("DEBUG", "true")
+	result, err := RegisterSiteZpkOpenId("host1.fan.sz.w7.com", "test-a", "uKnkpN39QyZZ0CTz9JULiQ")
+	if err != nil {
+		t.Errorf("RegisterSite() error = %v", err)
+	}
+	t.Log(result)
+}
+
 // 修改原函数以接受接口作为参数进行测试

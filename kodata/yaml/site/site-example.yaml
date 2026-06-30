@@ -57,13 +57,13 @@ spec:
 apiVersion: w7panel.w7.com/v1alpha1
 kind: Site
 metadata:
-  name: my-site-appgroup
+  name: my-site-appgroup2
 spec:
-  host: site-test4-a.fan.sz.w7.com
+  host: site-test5-a.fan.sz.w7.com
   siteIdentifier: appgroup-001
   userName: admin
   target:
     apiVersion: w7panel.w7.com/v1alpha1
     kind: AppGroup
-    name: afrzsozs
+    name: traefik-whoami-pmymzjai
     namespace: default
