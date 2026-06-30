@@ -31,6 +31,7 @@ import (
 	microappsettingv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/microappsetting/v1alpha1"
 	oidcv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/oidc/v1alpha1"
 	sitev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/site/v1alpha1"
+	userv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/user/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"golang.org/x/crypto/bcrypt"
 	"helm.sh/helm/v3/pkg/kube"
@@ -93,6 +94,7 @@ func init() {
 	_ = cvmv1alpha1.AddToScheme(scheme)
 	_ = oidcv1alpha1.AddToScheme(scheme)
 	_ = sitev1alpha1.AddToScheme(scheme)
+	_ = userv1alpha1.AddToScheme(scheme)
 }
 
 func GetScheme() *runtime.Scheme {

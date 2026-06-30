@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	cloudservice "github.com/w7corp/sdk-open-cloud-go/service"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	permissionservice "github.com/w7panel/w7panel/common/service/permission"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
+	userv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/user/v1alpha1"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -22,58 +22,20 @@ import (
 )
 
 const (
-	Kind       = "User"
-	APIVersion = "w7panel.w7.com/v1alpha1"
+	Kind       = userv1alpha1.Kind
+	APIVersion = userv1alpha1.APIVersion
 )
 
-var GVR = schema.GroupVersionResource{
-	Group:    "w7panel.w7.com",
-	Version:  "v1alpha1",
-	Resource: "users",
-}
+var GVR = userv1alpha1.GVR
+
+type Spec = userv1alpha1.UserSpec
+type W7Config = userv1alpha1.W7Config
 
 type User struct {
 	Name      string
 	Spec      Spec
 	Object    *unstructured.Unstructured
 	CreatedAt time.Time
-}
-
-type Spec struct {
-	PasswordHash    string                             `json:"passwordHash,omitempty"`
-	UserMode        string                             `json:"userMode,omitempty"`
-	Role            string                             `json:"role,omitempty"`
-	PermissionName  string                             `json:"permissionName,omitempty"`
-	MenuRules       []string                           `json:"menuRules,omitempty"`
-	APIRules        []configv1alpha1.PermissionAPIRule `json:"apiRules,omitempty"`
-	Features        configv1alpha1.PermissionFeatures  `json:"features,omitempty"`
-	DomainWhiteList []string                           `json:"domainWhiteList,omitempty"`
-	ExpireTime      string                             `json:"expireTime,omitempty"`
-	DemoUser        bool                               `json:"demoUser,omitempty"`
-	ConsoleId       string                             `json:"consoleId,omitempty"`
-	ConsoleOpenid   string                             `json:"consoleOpenid,omitempty"`
-	ConsoleNickname string                             `json:"consoleNickname,omitempty"`
-	W7Config        *W7Config                          `json:"w7Config,omitempty"`
-	LoginTime       string                             `json:"loginTime,omitempty"`
-	Status          string                             `json:"status,omitempty"`
-	Pause           string                             `json:"pause,omitempty"`
-	JobName         string                             `json:"jobName,omitempty"`
-	PendingRecycle  string                             `json:"pendingRecycleTime,omitempty"`
-	Maintenance     bool                               `json:"maintenance,omitempty"`
-	Version         int32                              `json:"version,omitempty"`
-}
-
-type W7Config struct {
-	ThirdpartyCDToken string                       `json:"thirdpartyCDToken,omitempty"`
-	CDTokenExpireTime int                          `json:"cdTokenExpireTime,omitempty"`
-	ClusterId         string                       `json:"clusterId,omitempty"`
-	OfflineUrl        string                       `json:"offlineUrl,omitempty"`
-	AccessToken       string                       `json:"accessToken,omitempty"`
-	ExpireTime        int                          `json:"expireTime,omitempty"`
-	ApiServerUrl      string                       `json:"apiServerUrl,omitempty"`
-	UserInfo          *cloudservice.ResultUserinfo `json:"userInfo,omitempty"`
-	License           string                       `json:"license,omitempty"`
-	DebugValue        string                       `json:"debugValue,omitempty"`
 }
 
 func Get(ctx context.Context, sdk *k8s.Sdk, name string) (*User, error) {
