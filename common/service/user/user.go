@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -127,9 +126,6 @@ func Login(ctx context.Context, sdk *k8s.Sdk, username, password string) (*User,
 	if err != nil {
 		return nil, err
 	}
-	if err := checkExpire(u); err != nil {
-		return nil, err
-	}
 	if u.Spec.PasswordHash == "" || bcrypt.CompareHashAndPassword([]byte(u.Spec.PasswordHash), []byte(password)) != nil {
 		return nil, fmt.Errorf("用户名密码错误")
 	}
@@ -188,27 +184,22 @@ func ExecutionServiceAccount(ctx context.Context, sdk *k8s.Sdk, u *User) (string
 
 func ToServiceAccount(u *User, namespace string) *corev1.ServiceAccount {
 	annotations := map[string]string{
-		"password":                        u.Spec.PasswordHash,
-		k3ktypes.W7_MENU_NAME:             u.Spec.PermissionName,
-		k3ktypes.K3K_DEBUG:                boolString(u.Spec.Features.Debug),
-		k3ktypes.W7_WEB_SHELL:             boolString(u.Spec.Features.Webshell),
-		k3ktypes.W7_FILE_EDITTOR:          boolString(u.Spec.Features.Fileeditor),
-		k3ktypes.W7_DOMAIN_WHITE_LIST:     mustJSON(u.Spec.DomainWhiteList),
-		"w7.cc/api":                       mustJSON(permissionservice.APIRulesToMap(u.Spec.APIRules)),
-		k3ktypes.W7_MENU:                  mustJSON(u.Spec.MenuRules),
-		"w7.cc/expiretime":                u.Spec.ExpireTime,
-		"w7.cc/login-time":                u.Spec.LoginTime,
-		"w7.cc/console-openid":            u.Spec.ConsoleOpenid,
-		"w7.cc/console-nickname":          u.Spec.ConsoleNickname,
-		k3ktypes.K3K_PENDING_RECYCLE_TIME: u.Spec.PendingRecycle,
-		k3ktypes.W7_PAUSE:                 u.Spec.Pause,
-		k3ktypes.K3K_JOB_NAME:             u.Spec.JobName,
+		"password":                    u.Spec.PasswordHash,
+		k3ktypes.W7_MENU_NAME:         u.Spec.PermissionName,
+		k3ktypes.K3K_DEBUG:            boolString(u.Spec.Features.Debug),
+		k3ktypes.W7_WEB_SHELL:         boolString(u.Spec.Features.Webshell),
+		k3ktypes.W7_FILE_EDITTOR:      boolString(u.Spec.Features.Fileeditor),
+		k3ktypes.W7_DOMAIN_WHITE_LIST: mustJSON(u.Spec.DomainWhiteList),
+		"w7.cc/api":                   mustJSON(permissionservice.APIRulesToMap(u.Spec.APIRules)),
+		k3ktypes.W7_MENU:              mustJSON(u.Spec.MenuRules),
+		"w7.cc/login-time":            u.Spec.LoginTime,
+		"w7.cc/console-openid":        u.Spec.ConsoleOpenid,
+		"w7.cc/console-nickname":      u.Spec.ConsoleNickname,
 	}
 	labels := map[string]string{
 		k3ktypes.W7_USER_MODE: role(u),
 		k3ktypes.W7_ROLE:      role(u),
 		"w7.cc/demo-user":     boolString(u.Spec.DemoUser),
-		k3ktypes.W7_WH_MODE:   boolString(u.Spec.Maintenance),
 	}
 	if u.Spec.ConsoleId != "" {
 		labels[k3ktypes.W7_CONSOLE_ID] = u.Spec.ConsoleId
@@ -243,17 +234,11 @@ func FromServiceAccount(sa *corev1.ServiceAccount) Spec {
 			Fileeditor: annotations[k3ktypes.W7_FILE_EDITTOR] == "true",
 		},
 		DomainWhiteList: whiteList,
-		ExpireTime:      annotations["w7.cc/expiretime"],
 		DemoUser:        labels["w7.cc/demo-user"] == "true",
 		ConsoleId:       labels[k3ktypes.W7_CONSOLE_ID],
 		ConsoleOpenid:   annotations["w7.cc/console-openid"],
 		ConsoleNickname: annotations["w7.cc/console-nickname"],
 		LoginTime:       annotations["w7.cc/login-time"],
-		Status:          annotations["w7.cc/k3k-job-status"],
-		Pause:           annotations[k3ktypes.W7_PAUSE],
-		JobName:         annotations[k3ktypes.K3K_JOB_NAME],
-		PendingRecycle:  annotations[k3ktypes.K3K_PENDING_RECYCLE_TIME],
-		Maintenance:     labels[k3ktypes.W7_WH_MODE] == "true",
 	})
 }
 
@@ -309,20 +294,6 @@ func normalizeSpec(name string, spec Spec) Spec {
 		spec.PermissionName = permissionservice.FounderPermissionName
 	}
 	return spec
-}
-
-func checkExpire(u *User) error {
-	if strings.TrimSpace(u.Spec.ExpireTime) == "" {
-		return nil
-	}
-	t, err := time.ParseInLocation("2006-01-02 15:04:05", u.Spec.ExpireTime, time.Local)
-	if err != nil {
-		return err
-	}
-	if t.Unix() < time.Now().Unix() && role(u) != "cluster" && role(u) != "founder" {
-		return fmt.Errorf("用户已过期")
-	}
-	return nil
 }
 
 func role(u *User) string {

@@ -64,8 +64,6 @@ spec:
                 type: array
                 items:
                   type: string
-              expireTime:
-                type: string
               demoUser:
                 type: boolean
               consoleId:
@@ -100,18 +98,5 @@ spec:
                     type: string
               loginTime:
                 type: string
-              status:
-                type: string
-              pause:
-                type: string
-              jobName:
-                type: string
-              pendingRecycleTime:
-                type: string
-              maintenance:
-                type: boolean
-              version:
-                type: integer
-                format: int32
             required:
             - userMode

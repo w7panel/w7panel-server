@@ -17,19 +17,12 @@ type UserSpec struct {
 	APIRules        []configv1alpha1.PermissionAPIRule `json:"apiRules,omitempty"`
 	Features        configv1alpha1.PermissionFeatures  `json:"features,omitempty"`
 	DomainWhiteList []string                           `json:"domainWhiteList,omitempty"`
-	ExpireTime      string                             `json:"expireTime,omitempty"`
 	DemoUser        bool                               `json:"demoUser,omitempty"`
 	ConsoleId       string                             `json:"consoleId,omitempty"`
 	ConsoleOpenid   string                             `json:"consoleOpenid,omitempty"`
 	ConsoleNickname string                             `json:"consoleNickname,omitempty"`
 	W7Config        *W7Config                          `json:"w7Config,omitempty"`
 	LoginTime       string                             `json:"loginTime,omitempty"`
-	Status          string                             `json:"status,omitempty"`
-	Pause           string                             `json:"pause,omitempty"`
-	JobName         string                             `json:"jobName,omitempty"`
-	PendingRecycle  string                             `json:"pendingRecycleTime,omitempty"`
-	Maintenance     bool                               `json:"maintenance,omitempty"`
-	Version         int32                              `json:"version,omitempty"`
 }
 
 type W7Config struct {
