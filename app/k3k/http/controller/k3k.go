@@ -91,7 +91,11 @@ func boolString(v bool) string {
 }
 
 func mustJSON(v interface{}) string {
-	data, _ := json.Marshal(v)
+	data, err := json.Marshal(v)
+	if err != nil {
+		slog.Error("json marshal error", "error", err)
+		return "[]"
+	}
 	return string(data)
 }
 

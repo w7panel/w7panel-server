@@ -214,23 +214,6 @@ func (self Console) RegisterToConsole(gin *gin.Context) {
 
 }
 
-func (self Console) ThirdPartyCDToken(gin *gin.Context) {
-
-	// sdk, err := k8s.NewK8sClient().Channel(gin.MustGet("k8s_token").(string))
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(gin, err)
-	// 	return
-	// }
-	// respo := config.NewW7ConfigRepository(sdk)
-	// consoleClient := console.NewClusterClient(respo, sdk, nil)
-	// err = consoleClient.UnRegister()
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(gin, err)
-	// 	return
-	// }
-	// self.JsonSuccessResponse(gin)
-}
-
 func (self Console) ImportCert(gin *gin.Context) {
 	type ParamsValidate struct {
 		Cert string `form:"cert" binding:"required"`
