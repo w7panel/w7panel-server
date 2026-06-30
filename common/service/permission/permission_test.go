@@ -11,7 +11,11 @@ import (
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/yaml"
 )
 
@@ -129,6 +133,84 @@ func TestResolveForServiceAccountUsesAnnotations(t *testing.T) {
 	}
 	if !MatchAPI(APIMap(p), "GET", "/panel-api/v1/apps/demo") {
 		t.Fatal("expected annotation api rules to authorize request")
+	}
+}
+
+func TestSyncPermissionResourcesCreatesClusterRoleForCustomPermission(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := rbacv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	client := fake.NewClientBuilder().WithScheme(scheme).Build()
+	p := &configv1alpha1.Permission{
+		ObjectMeta: metav1.ObjectMeta{Name: "custom-dev"},
+		Spec: configv1alpha1.PermissionSpec{
+			Type: "custom",
+			RBACRules: []rbacv1.PolicyRule{{
+				APIGroups: []string{""},
+				Resources: []string{"pods"},
+				Verbs:     []string{"get", "list"},
+			}},
+		},
+	}
+
+	if err := syncPermissionResources(context.Background(), client, "default", p); err != nil {
+		t.Fatalf("syncPermissionResources() error = %v", err)
+	}
+	clusterRole := &rbacv1.ClusterRole{}
+	if err := client.Get(context.Background(), types.NamespacedName{Name: "custom-dev"}, clusterRole); err != nil {
+		t.Fatalf("expected ClusterRole to be created: %v", err)
+	}
+	if got := clusterRole.Rules; len(got) != 1 || got[0].Resources[0] != "pods" {
+		t.Fatalf("unexpected ClusterRole rules: %#v", got)
+	}
+	sa := &corev1.ServiceAccount{}
+	if err := client.Get(context.Background(), types.NamespacedName{Name: "custom-dev", Namespace: "default"}, sa); err == nil {
+		t.Fatalf("custom permission should not create permission ServiceAccount")
+	}
+}
+
+func TestSyncPermissionResourcesCreatesBuiltinAccountAndBinding(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := rbacv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	client := fake.NewClientBuilder().WithScheme(scheme).Build()
+	p := &configv1alpha1.Permission{
+		ObjectMeta: metav1.ObjectMeta{Name: NormalPermissionName},
+		Spec: configv1alpha1.PermissionSpec{
+			Type: "builtin",
+			Role: NormalPermissionName,
+			RBACRules: []rbacv1.PolicyRule{{
+				APIGroups: []string{""},
+				Resources: []string{"pods"},
+				Verbs:     []string{"get"},
+			}},
+		},
+	}
+
+	if err := syncPermissionResources(context.Background(), client, "default", p); err != nil {
+		t.Fatalf("syncPermissionResources() error = %v", err)
+	}
+	sa := &corev1.ServiceAccount{}
+	if err := client.Get(context.Background(), types.NamespacedName{Name: NormalPermissionName, Namespace: "default"}, sa); err != nil {
+		t.Fatalf("expected builtin permission ServiceAccount: %v", err)
+	}
+	if sa.Labels["w7.cc/permission-account"] != "true" {
+		t.Fatalf("permission account label = %q", sa.Labels["w7.cc/permission-account"])
+	}
+	binding := &rbacv1.ClusterRoleBinding{}
+	if err := client.Get(context.Background(), types.NamespacedName{Name: NormalPermissionName}, binding); err != nil {
+		t.Fatalf("expected builtin permission ClusterRoleBinding: %v", err)
+	}
+	if len(binding.Subjects) != 1 || binding.Subjects[0].Name != NormalPermissionName || binding.RoleRef.Name != NormalPermissionName {
+		t.Fatalf("unexpected ClusterRoleBinding: %#v", binding)
 	}
 }
 
