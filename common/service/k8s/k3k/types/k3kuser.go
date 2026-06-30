@@ -3,7 +3,6 @@ package types
 import (
 	"encoding/json"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/w7panel/w7panel/common/service/config"
@@ -63,7 +62,7 @@ func labelsFromUser(user *userv1alpha1.User) map[string]string {
 
 func (u *K3kUser) SyncSpecFromRuntime() {
 	u.Spec.Role = u.GetRole()
-	u.Spec.PermissionName = u.GetMenuName()
+	u.Spec.PermissionName = u.GetPermissionName()
 	u.Spec.Features = configv1alpha1.PermissionFeatures{
 		Debug:      u.Annotations[K3K_DEBUG] == "true",
 		Webshell:   u.Annotations[W7_WEB_SHELL] == "true",
@@ -150,15 +149,8 @@ func (u *k3kUser) GetK3kNamespace() string {
 	return "k3k-" + u.GetName()
 }
 
-func (u *k3kUser) GetMenuName() string {
-	name, ok := u.Annotations[W7_MENU_NAME]
-	if ok {
-		if strings.HasPrefix(name, "k3k.permission.") {
-			return strings.ReplaceAll(name, "k3k.permission.", "")
-		}
-		return name
-	}
-	return ""
+func (u *k3kUser) GetPermissionName() string {
+	return u.Spec.PermissionName
 }
 
 func (u *k3kUser) GetRole() string {
@@ -212,7 +204,7 @@ func (u *k3kUser) GetDomainWhiteList1() string {
 
 // 自定义权限菜单
 func (u *k3kUser) IsCustomPermission() bool {
-	return u.Spec.MenuRules != nil && len(u.Spec.MenuRules) > 0
+	return u.Spec.PermissionName == ""
 }
 
 func (u *k3kUser) ReplaceW7Config(config *config.W7Config) {

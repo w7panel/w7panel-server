@@ -14,7 +14,6 @@ import (
 
 	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
-	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -115,16 +114,14 @@ func TokenToCkm(ctx context.Context, token, namespace, name string) (*cvmv1alpha
 // 登录时候刷新用户权限
 func RefreshK3kUser(user *types.K3kUser, rootSdk *k8s.Sdk, update bool) (*types.K3kUser, error) {
 	w7configRepo := config.NewW7ConfigRepository(rootSdk)
-	if user.GetMenuName() == "" && user.IsFounder() {
+	if user.GetPermissionName() == "" && user.IsFounder() {
 		user.Spec.PermissionName = permissionservice.FounderPermissionName
-		user.Annotations[k3ktypes.W7_MENU_NAME] = permissionservice.FounderPermissionName
 	}
-	if user.GetMenuName() == "" && user.IsNormal() {
+	if user.GetPermissionName() == "" && user.IsNormal() {
 		user.Spec.PermissionName = permissionservice.NormalPermissionName
-		user.Annotations[k3ktypes.W7_MENU_NAME] = permissionservice.NormalPermissionName
 	}
 	if !user.IsCustomPermission() {
-		permissionConfig, err := permissionservice.Get(rootSdk.Ctx, rootSdk, user.GetMenuName())
+		permissionConfig, err := permissionservice.Get(rootSdk.Ctx, rootSdk, user.GetPermissionName())
 		if err == nil {
 			permissionservice.EnsureBuiltinDefaults(permissionConfig)
 			user.ApplyPermission(permissionConfig.Name, permissionConfig.Spec.Role, permissionservice.MenuRules(permissionConfig), permissionConfig.Spec.Features, permissionConfig.Spec.DomainWhiteList, permissionservice.APIRules(permissionConfig))

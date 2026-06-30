@@ -24,11 +24,11 @@ func (u *k3kUser) ReplaceCkm(ckm *cvmv1alpha1.Ckm) {
 	if ckm.Annotations == nil {
 		return
 	}
-	// u.Annotations[W7_MENU_NAME] = menu.Name
-	u.Annotations[K3K_DEBUG] = ckm.Annotations[K3K_DEBUG]
-	u.Annotations[W7_MENU] = ckm.Annotations[W7_MENU]
-	u.Annotations[W7_WEB_SHELL] = ckm.Annotations[W7_WEB_SHELL]
-	u.Annotations[W7_FILE_EDITTOR] = ckm.Annotations[W7_FILE_EDITTOR]
+
+	u.Spec.Features.Debug = ckm.Annotations[K3K_DEBUG] == "true"
+	u.Spec.Features.Webshell = ckm.Annotations[W7_WEB_SHELL] == "true"
+	u.Spec.Features.Fileeditor = ckm.Annotations[W7_FILE_EDITTOR] == "true"
+
 	if ckm.Spec.Rescue { //维护模式 只给这几个权限 只能删除 不能新建编辑
 		whMenu := []string{"cluster", "cluster/panel", "cluster/resource", "app", "app/apps", "app/apps/delete"}
 		json, _ := json.Marshal(whMenu)
