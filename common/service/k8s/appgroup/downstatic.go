@@ -94,14 +94,15 @@ func DownStatic(appgroup *v1alpha1.AppGroup) {
 		slog.Info("静态资源下载未开启")
 		return
 	}
-	frontTypeStr, ok := appgroup.Annotations["w7.cc/front-type"]
-	if !ok {
-		return
-	}
-	if strings.Contains(frontTypeStr, "thirdparty_cd") {
-		// go k3k.SyncDownStatic(appgroup.Name, appgroup.Spec.ZpkUrl)
-		fetchWebZipAndDownload(appgroup.Spec.ZpkUrl, appgroup.Name, appgroup.Spec.Version)
-	}
+	// frontTypeStr, ok := appgroup.Annotations["w7.cc/front-type"]
+	// if !ok {
+	// 	return
+	// }
+	// if strings.Contains(frontTypeStr, "thirdparty_cd") {
+	// go k3k.SyncDownStatic(appgroup.Name, appgroup.Spec.ZpkUrl)
+	// 去掉front-type 判断
+	fetchWebZipAndDownload(appgroup.Spec.ZpkUrl, appgroup.Name, appgroup.Spec.Version)
+	// }
 }
 
 func DownStaticGo(zpkurl, name, version string) {
