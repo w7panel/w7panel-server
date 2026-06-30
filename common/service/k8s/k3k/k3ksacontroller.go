@@ -88,7 +88,7 @@ func (r *K3kServiceAccountController) reconcile0(ctx context.Context, req ctrl.R
 	// if sa.Name != "hello" {
 	// 	return ctrl.Result{}, nil
 	// }
-	k3kUser := k3ktypes.NewK3kUser(sa)
+	k3kUser := k3ktypes.NewK3kUserFromServiceAccount(sa)
 	// Check if the ServiceAccount is being deleted
 	if !sa.DeletionTimestamp.IsZero() {
 		logger.Info("ServiceAccount is being deleted", "namespace", req.Namespace, "name", req.Name)

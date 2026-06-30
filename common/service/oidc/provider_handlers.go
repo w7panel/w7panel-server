@@ -11,6 +11,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	userservice "github.com/w7panel/w7panel/common/service/user"
 	zitadeloidc "github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
 )
@@ -123,14 +124,16 @@ func (s *Server) setUserinfo(userinfo *zitadeloidc.UserInfo, subject string, sco
 	if userinfo.Subject == "" {
 		userinfo.Subject = subject
 	}
-	sdk := k8s.NewK8sClient().Sdk
-	sa, err := sdk.Login2(userinfo.Subject, "", false)
+	lookupUser := s.lookupUser
+	if lookupUser == nil {
+		lookupUser = lookupK3kUser
+	}
+	k3kuser, err := lookupUser(context.Background(), userinfo.Subject)
 	if err != nil {
 		return err
 	}
-	k3kuser := k3ktypes.NewK3kUser(sa)
 	openId := k3kuser.GetConsoleOpenId()
-	userinfo.PreferredUsername = sa.Name
+	userinfo.PreferredUsername = k3kuser.Name
 	userinfo.AppendClaims("role", k3kuser.GetRole())
 	userinfo.AppendClaims("is_founder", k3kuser.IsFounder())
 	userinfo.AppendClaims("cloud_uid", k3kuser.GetConsoleId())
@@ -155,4 +158,13 @@ func (s *Server) setUserinfo(userinfo *zitadeloidc.UserInfo, subject string, sco
 	}
 
 	return nil
+}
+
+func lookupK3kUser(ctx context.Context, subject string) (*k3ktypes.K3kUser, error) {
+	sdk := k8s.NewK8sClient().Sdk
+	u, err := userservice.Get(ctx, sdk, subject)
+	if err != nil {
+		return nil, err
+	}
+	return k3ktypes.NewK3kUser(u.ToTyped()), nil
 }

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"os"
 	"strconv"
 	"strings"
@@ -9,7 +10,10 @@ import (
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
+	userv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/user/v1alpha1"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type K3kUser struct {
@@ -17,19 +21,165 @@ type K3kUser struct {
 }
 
 type k3kUser struct {
-	*v1.ServiceAccount
+	*userv1alpha1.User
+	Labels      map[string]string
+	Annotations map[string]string
+	cvmName     string
 	// *k3kUserBase
 	// *k3kUserOverSelling
 }
 
-func NewK3kUser(sa *v1.ServiceAccount) *K3kUser {
-
+func NewK3kUser(user *userv1alpha1.User) *K3kUser {
+	if user.Labels == nil {
+		user.Labels = map[string]string{}
+	}
+	if user.Annotations == nil {
+		user.Annotations = map[string]string{}
+	}
 	u := &K3kUser{k3kUser: &k3kUser{
-		ServiceAccount: sa,
+		User:        user,
+		Labels:      labelsFromUser(user),
+		Annotations: annotationsFromUser(user),
 	}}
 
 	return u
 
+}
+
+func NewK3kUserFromServiceAccount(sa *v1.ServiceAccount) *K3kUser {
+	user := &userv1alpha1.User{
+		ObjectMeta: metav1.ObjectMeta{Name: sa.Name, Labels: sa.Labels, Annotations: sa.Annotations},
+		Spec: userv1alpha1.UserSpec{
+			PasswordHash:    sa.Annotations["password"],
+			UserMode:        sa.Labels[W7_USER_MODE],
+			Role:            sa.Labels[W7_ROLE],
+			PermissionName:  sa.Annotations[W7_MENU_NAME],
+			ConsoleId:       sa.Labels[W7_CONSOLE_ID],
+			ConsoleOpenid:   sa.Annotations["w7.cc/console-openid"],
+			ConsoleNickname: sa.Annotations["w7.cc/console-nickname"],
+			LoginTime:       sa.Annotations[W7_LOGIN_TIME],
+			DemoUser:        sa.Labels[W7_DEMO_USER] == "true",
+		},
+	}
+	return &K3kUser{k3kUser: &k3kUser{
+		User:        user,
+		Labels:      sa.Labels,
+		Annotations: sa.Annotations,
+	}}
+}
+
+func labelsFromUser(user *userv1alpha1.User) map[string]string {
+	labels := map[string]string{}
+	for k, v := range user.Labels {
+		labels[k] = v
+	}
+	role := user.Spec.Role
+	if role == "" {
+		role = user.Spec.UserMode
+	}
+	if role == "" {
+		role = W7_USER_MODE_NORMAL
+	}
+	labels[W7_USER_MODE] = role
+	labels[W7_ROLE] = role
+	labels[W7_DEMO_USER] = boolToString(user.Spec.DemoUser)
+	if user.Spec.ConsoleId != "" {
+		labels[W7_CONSOLE_ID] = user.Spec.ConsoleId
+	}
+	return labels
+}
+
+func annotationsFromUser(user *userv1alpha1.User) map[string]string {
+	annotations := map[string]string{}
+	for k, v := range user.Annotations {
+		annotations[k] = v
+	}
+	annotations["password"] = user.Spec.PasswordHash
+	annotations[W7_MENU_NAME] = user.Spec.PermissionName
+	annotations[K3K_DEBUG] = boolToString(user.Spec.Features.Debug)
+	annotations[W7_WEB_SHELL] = boolToString(user.Spec.Features.Webshell)
+	annotations[W7_FILE_EDITTOR] = boolToString(user.Spec.Features.Fileeditor)
+	annotations[W7_DOMAIN_WHITE_LIST] = mustJSONString(user.Spec.DomainWhiteList)
+	annotations["w7.cc/api"] = apiRulesJSON(user.Spec.APIRules)
+	annotations[W7_MENU] = mustJSONString(user.Spec.MenuRules)
+	annotations[W7_LOGIN_TIME] = user.Spec.LoginTime
+	annotations["w7.cc/console-openid"] = user.Spec.ConsoleOpenid
+	annotations["w7.cc/console-nickname"] = user.Spec.ConsoleNickname
+	return annotations
+}
+
+func (u *K3kUser) SyncSpecFromRuntime() {
+	u.Spec.UserMode = u.GetUserMode()
+	u.Spec.Role = u.GetRole()
+	u.Spec.PermissionName = u.GetMenuName()
+	u.Spec.Features = configv1alpha1.PermissionFeatures{
+		Debug:      u.Annotations[K3K_DEBUG] == "true",
+		Webshell:   u.Annotations[W7_WEB_SHELL] == "true",
+		Fileeditor: u.Annotations[W7_FILE_EDITTOR] == "true",
+	}
+	u.Spec.MenuRules = []string{}
+	_ = json.Unmarshal([]byte(u.Annotations[W7_MENU]), &u.Spec.MenuRules)
+	u.Spec.DomainWhiteList = []configv1alpha1.DomainWhiteItem{}
+	_ = json.Unmarshal([]byte(u.GetDomainWhiteList()), &u.Spec.DomainWhiteList)
+	u.Spec.DemoUser = u.Labels[W7_DEMO_USER] == "true"
+	u.Spec.ConsoleId = u.Labels[W7_CONSOLE_ID]
+	u.Spec.ConsoleOpenid = u.Annotations["w7.cc/console-openid"]
+	u.Spec.ConsoleNickname = u.Annotations["w7.cc/console-nickname"]
+	u.Spec.LoginTime = u.Annotations[W7_LOGIN_TIME]
+}
+
+func mustJSONString(v interface{}) string {
+	data, _ := json.Marshal(v)
+	return string(data)
+}
+
+func stringSliceJSON(v []string) string {
+	data, _ := json.Marshal(v)
+	return string(data)
+}
+
+func domainWhiteListJSON(v []configv1alpha1.DomainWhiteItem) string {
+	data, _ := json.Marshal(v)
+	return string(data)
+}
+
+func apiRulesJSON(v []configv1alpha1.PermissionAPIRule) string {
+	api := make(map[string][]string, len(v))
+	for _, rule := range v {
+		if rule.Path == "" {
+			continue
+		}
+		api[rule.Path] = append([]string(nil), rule.Method...)
+	}
+	data, _ := json.Marshal(api)
+	return string(data)
+}
+
+func featuresFromPermission(features configv1alpha1.PermissionFeatures) map[string]string {
+	return map[string]string{
+		K3K_DEBUG:       boolToString(features.Debug),
+		W7_WEB_SHELL:    boolToString(features.Webshell),
+		W7_FILE_EDITTOR: boolToString(features.Fileeditor),
+	}
+}
+
+func (u *K3kUser) ApplyPermission(menuName string, role string, menuRules []string, features configv1alpha1.PermissionFeatures, whiteList []configv1alpha1.DomainWhiteItem, apiRules []configv1alpha1.PermissionAPIRule) {
+	u.Spec.PermissionName = menuName
+	u.Annotations[W7_MENU_NAME] = menuName
+	if role != "" {
+		u.Spec.Role = role
+		u.Labels[W7_ROLE] = role
+	}
+	u.Spec.MenuRules = append([]string(nil), menuRules...)
+	u.Annotations[W7_MENU] = stringSliceJSON(menuRules)
+	u.Spec.DomainWhiteList = append([]configv1alpha1.DomainWhiteItem(nil), whiteList...)
+	u.Annotations[W7_DOMAIN_WHITE_LIST] = domainWhiteListJSON(whiteList)
+	u.Spec.APIRules = append([]configv1alpha1.PermissionAPIRule(nil), apiRules...)
+	u.Annotations["w7.cc/api"] = apiRulesJSON(apiRules)
+	for k, v := range featuresFromPermission(features) {
+		u.Annotations[k] = v
+	}
+	u.Spec.Features = features
 }
 func (u *k3kUser) IsClusterReady() bool {
 	return u.Annotations[K3K_JOB_STATUS] == K3K_STATUS_COMPLETE
@@ -446,27 +596,18 @@ func (u *k3kUser) SupportCvm() bool {
 
 // 是否是cvm请求用户 子集群请求用户
 func (u *k3kUser) IsCvmReqUser() bool {
-	if u.Annotations == nil {
-		return false
-	}
-	return u.Annotations[W7_CVM_NAME] != ""
+	return u.cvmName != ""
 }
 
 func (u *k3kUser) SetCvmName(name string) {
-	if u.Annotations == nil {
-		u.Annotations = make(map[string]string)
-	}
-	u.Annotations[W7_CVM_NAME] = name
+	u.cvmName = name
 }
 
 func (u *k3kUser) GetCvmName() string {
 	return u.GetCkmName()
 }
 func (u *k3kUser) GetCkmName() string {
-	if u.Annotations == nil {
-		return ""
-	}
-	return u.Annotations[W7_CVM_NAME]
+	return u.cvmName
 }
 func (u *k3kUser) GetNickName() string {
 	return u.Annotations["w7.cc/console-nickname"]

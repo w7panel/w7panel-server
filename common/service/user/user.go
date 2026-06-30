@@ -37,6 +37,20 @@ type User struct {
 	CreatedAt time.Time
 }
 
+func (u *User) ToTyped() *userv1alpha1.User {
+	obj := &userv1alpha1.User{
+		ObjectMeta: metav1.ObjectMeta{Name: u.Name},
+		Spec:       u.Spec,
+	}
+	if u.Object != nil {
+		obj.SetResourceVersion(u.Object.GetResourceVersion())
+		obj.SetCreationTimestamp(u.Object.GetCreationTimestamp())
+		obj.SetLabels(u.Object.GetLabels())
+		obj.SetAnnotations(u.Object.GetAnnotations())
+	}
+	return obj
+}
+
 func Get(ctx context.Context, sdk *k8s.Sdk, name string) (*User, error) {
 	obj, err := sdk.DynamicClient().Resource(GVR).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
@@ -119,6 +133,24 @@ func ResetPassword(ctx context.Context, sdk *k8s.Sdk, name, password string) err
 	obj.SetResourceVersion(u.Object.GetResourceVersion())
 	_, err = sdk.DynamicClient().Resource(GVR).Update(ctx, obj, metav1.UpdateOptions{})
 	return err
+}
+
+func UpdateSpec(ctx context.Context, sdk *k8s.Sdk, name string, spec Spec) (*User, error) {
+	current, err := Get(ctx, sdk, name)
+	if err != nil {
+		return nil, err
+	}
+	spec = normalizeSpec(name, spec)
+	obj, err := ToUnstructured(name, spec)
+	if err != nil {
+		return nil, err
+	}
+	obj.SetResourceVersion(current.Object.GetResourceVersion())
+	updated, err := sdk.DynamicClient().Resource(GVR).Update(ctx, obj, metav1.UpdateOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return FromUnstructured(updated)
 }
 
 func Login(ctx context.Context, sdk *k8s.Sdk, username, password string) (*User, error) {
