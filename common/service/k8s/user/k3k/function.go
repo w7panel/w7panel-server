@@ -93,7 +93,7 @@ func TokenToK3kUser(token string) (*types.K3kUser, error) {
 	}
 	user := types.NewK3kUser(userCRD.ToTyped())
 	if ktoken.IsK3kCluster() {
-		user.SetCvmName(ktoken.GetCvmName())
+		user.SetCkmName(ktoken.GetCvmName())
 	}
 	return RefreshK3kUser(user, rootSdk, false)
 }
@@ -131,7 +131,7 @@ func RefreshK3kUser(user *types.K3kUser, rootSdk *k8s.Sdk, update bool) (*types.
 		}
 	}
 
-	if user.IsCvmReqUser() {
+	if user.IsCkmReqUser() {
 		ckmName := user.GetCkmName()
 		k3kNs := user.GetK3kNamespace()
 		cvm, err := GetCkm(context.TODO(), rootSdk, k3kNs, ckmName)

@@ -18,7 +18,7 @@ type k3kUser struct {
 	*userv1alpha1.User
 	Labels      map[string]string
 	Annotations map[string]string
-	cvmName     string
+	ckmName     string
 	// *k3kUserBase
 	// *k3kUserOverSelling
 }
@@ -246,19 +246,19 @@ func (u *k3kUser) SupportCvm() bool {
 }
 
 // 是否是cvm请求用户 子集群请求用户
-func (u *k3kUser) IsCvmReqUser() bool {
-	return u.cvmName != ""
+func (u *k3kUser) IsCkmReqUser() bool {
+	return u.ckmName != ""
 }
 
-func (u *k3kUser) SetCvmName(name string) {
-	u.cvmName = name
+func (u *k3kUser) SetCkmName(name string) {
+	u.ckmName = name
 }
 
 func (u *k3kUser) GetCvmName() string {
 	return u.GetCkmName()
 }
 func (u *k3kUser) GetCkmName() string {
-	return u.cvmName
+	return u.ckmName
 }
 
 func (u *k3kUser) ToArray1() map[string]string {

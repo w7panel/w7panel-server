@@ -29,20 +29,16 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	server.RegisterRouters(func(engine *gin.Engine) {
 		k3kGroup := engine.Group("/panel-api/v1/k3k") //.Use(middleware.Cors{}.Process)
 		{
-			k3kGroup.GET("/info", middleware.Auth{}.Process, controller2.K3k{}.Info)           // 登录信息
-			k3kGroup.POST("/init", middleware.Auth{}.Process, controller2.K3k{}.ReInitCluster) // 初始化集群
-			// k3kGroup.POST("/whjob", middleware.Auth{}.Process, controller2.K3k{}.WhJob)        // 重新新建救援任务
-			// k3kGroup.POST("/init-cluster", middleware.Auth{}.Process, controller2.K3k{}.ReInitClusterSuper) // 创始人初始化集群
-			k3kGroup.POST("/sync-ingress", controller2.K3k{}.SyncIngress)        //
-			k3kGroup.POST("/sync-configmap", controller2.K3k{}.SyncConfigmap)    //
-			k3kGroup.POST("/sync-mcpbridge", controller2.K3k{}.SyncMcpBridge)    //
-			k3kGroup.POST("/sync-secret", controller2.K3k{}.SyncSecret)          //
-			k3kGroup.POST("/sync-down-static", controller2.K3k{}.SyncDownStatic) //
-			k3kGroup.POST("/sync-microapp", controller2.K3k{}.SyncMicroApp)      //microapp同步到子集群
+			k3kGroup.GET("/info", middleware.Auth{}.Process, controller2.K3k{}.Info) // 登录信息
+			k3kGroup.POST("/sync-ingress", controller2.K3k{}.SyncIngress)            //
+			k3kGroup.POST("/sync-configmap", controller2.K3k{}.SyncConfigmap)        //
+			k3kGroup.POST("/sync-mcpbridge", controller2.K3k{}.SyncMcpBridge)        //
+			k3kGroup.POST("/sync-secret", controller2.K3k{}.SyncSecret)              //
+			k3kGroup.POST("/sync-down-static", controller2.K3k{}.SyncDownStatic)     //
+			k3kGroup.POST("/sync-microapp", controller2.K3k{}.SyncMicroApp)          //microapp同步到子集群
+			k3kGroup.POST("/sync-site", controller2.K3k{}.SyncSite)                  //microapp同步到子集群
 			// 主集群login 需要验证是否founder
-			k3kGroup.POST("/login", middleware.Auth{}.Process, controller2.K3k{}.Login) //
-
-			// k3kGroup.POST("/wh", middleware.Auth{}.Process, controller2.K3k{}.WhMoshi) // 维护模式 切换
+			// k3kGroup.POST("/login", middleware.Auth{}.Process, controller2.K3k{}.Login) //
 
 			k3kGroup.POST("/order/notify", controller2.Order{}.OrderNotify) // 支付回调 不需要登录
 

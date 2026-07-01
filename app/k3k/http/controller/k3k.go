@@ -344,3 +344,19 @@ func (self K3k) SyncMicroApp(http *gin.Context) {
 	self.JsonSuccessResponse(http)
 	return
 }
+
+func (self K3k) SyncSite(http *gin.Context) {
+
+	params := k3k.K3kSync{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	err := k3k.SyncSite(&params)
+	if err != nil {
+		slog.Error("同步site失败", "error", err)
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonSuccessResponse(http)
+	return
+}
