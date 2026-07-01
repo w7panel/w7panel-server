@@ -383,6 +383,74 @@ func TestBuiltinNormalPermissionKeepsMinimumAppDirectAccess(t *testing.T) {
 	}
 }
 
+func TestBuiltinSuperPermissionExcludesTenantAndSystemManagement(t *testing.T) {
+	p := loadBuiltinPermission(t, "super.yaml")
+	api := APIMap(p)
+
+	for _, denied := range []string{
+		"usermanage/*",
+		"usermanage/site-setting",
+		"system/license",
+		"system/audit",
+	} {
+		if containsString(MenuRules(p), denied) {
+			t.Fatalf("super menuRules must not include %q", denied)
+		}
+	}
+	if !containsString(MenuRules(p), "system/cloud") {
+		t.Fatal("super menuRules must keep system/cloud")
+	}
+
+	deniedAPI := []struct {
+		method string
+		path   string
+	}{
+		{method: "POST", path: "/panel-api/v1/auth/reset-password"},
+		{method: "GET", path: "/panel-api/v1/audit/login-logs"},
+		{method: "POST", path: "/panel-api/v1/oidc/register"},
+	}
+	for _, tt := range deniedAPI {
+		if MatchAPI(api, tt.method, tt.path) {
+			t.Fatalf("super permission should deny %s %s", tt.method, tt.path)
+		}
+	}
+	if !MatchAPI(api, "POST", "/panel-api/v1/auth/console/register-to-console") {
+		t.Fatal("super permission should keep cloud registration APIs")
+	}
+}
+
+func TestBuiltinSuperRBACRestrictsSensitiveResourcesToReadOnly(t *testing.T) {
+	p := loadBuiltinPermission(t, "super.yaml")
+
+	sensitive := []struct {
+		group    string
+		resource string
+	}{
+		{group: "apiextensions.k8s.io", resource: "customresourcedefinitions"},
+		{group: "", resource: "namespaces"},
+		{group: "", resource: "serviceaccounts"},
+		{group: "w7panel.w7.com", resource: "users"},
+		{group: "w7panel.w7.com", resource: "permissions"},
+	}
+	for _, item := range sensitive {
+		if !rbacAllows(p.Spec.RBACRules, item.group, item.resource, "get") {
+			t.Fatalf("super rbac should allow read for %s/%s", item.group, item.resource)
+		}
+		for _, verb := range []string{"create", "update", "patch", "delete"} {
+			if rbacAllows(p.Spec.RBACRules, item.group, item.resource, verb) {
+				t.Fatalf("super rbac must not allow %s for %s/%s", verb, item.group, item.resource)
+			}
+		}
+	}
+
+	if !rbacAllows(p.Spec.RBACRules, "apps", "deployments", "create") {
+		t.Fatal("super rbac should allow non-sensitive Kubernetes resources")
+	}
+	if !rbacAllows(p.Spec.RBACRules, "", "pods", "delete") {
+		t.Fatal("super rbac should allow regular core resources")
+	}
+}
+
 func loadBuiltinPermission(t *testing.T, name string) *configv1alpha1.Permission {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join("..", "..", "..", "kodata", "yaml", "permission", name))
@@ -400,6 +468,19 @@ func containsString(values []string, want string) bool {
 	for _, value := range values {
 		if value == want {
 			return true
+		}
+	}
+	return false
+}
+
+func rbacAllows(rules []rbacv1.PolicyRule, apiGroup, resource, verb string) bool {
+	for _, rule := range rules {
+		if containsString(rule.APIGroups, apiGroup) || containsString(rule.APIGroups, "*") {
+			if containsString(rule.Resources, resource) || containsString(rule.Resources, "*") {
+				if containsString(rule.Verbs, verb) || containsString(rule.Verbs, "*") {
+					return true
+				}
+			}
 		}
 	}
 	return false

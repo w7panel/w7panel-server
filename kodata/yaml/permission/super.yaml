@@ -14,10 +14,6 @@ spec:
   - storage/*
   - zpk
   - system/cloud
-  - system/license
-  - system/audit
-  - usermanage/*
-  - usermanage/site-setting
   - sitemanage/*
   - cluster/nodes/add
   - cluster/nodes/registries
@@ -45,9 +41,6 @@ spec:
   - path: /panel-api/v1/auth/permissions/routes
     method:
     - get
-  - path: /panel-api/v1/auth/reset-password
-    method:
-    - create
   - path: /panel-api/v1/auth/reset-password-current
     method:
     - create
@@ -88,9 +81,6 @@ spec:
     method:
     - '*'
   - path: /panel-api/v1/metrics/*
-    method:
-    - get
-  - path: /panel-api/v1/audit/*
     method:
     - get
   - path: /panel-api/v1/gpu/*
@@ -192,9 +182,6 @@ spec:
   - path: /panel-api/v1/containers/*
     method:
     - '*'
-  - path: /panel-api/v1/oidc/*
-    method:
-    - '*'
   - path: /panel-api/v1/code
     method:
     - create
@@ -281,8 +268,53 @@ spec:
     - list
     - watch
   - apiGroups:
-    - w7panel.w7.com
+    - ''
     resources:
-    - users
+    - bindings
+    - configmaps
+    - endpoints
+    - events
+    - limitranges
+    - nodes
+    - persistentvolumeclaims
+    - persistentvolumes
+    - pods
+    - pods/attach
+    - pods/exec
+    - pods/log
+    - pods/portforward
+    - pods/proxy
+    - replicationcontrollers
+    - replicationcontrollers/scale
+    - resourcequotas
+    - secrets
+    - services
+    - services/proxy
+    verbs:
+    - '*'
+  - apiGroups:
+    - apps
+    resources:
+    - '*'
+    verbs:
+    - '*'
+  - apiGroups:
+    - batch
+    resources:
+    - '*'
+    verbs:
+    - '*'
+  - apiGroups:
+    - networking.k8s.io
+    resources:
+    - '*'
+    verbs:
+    - '*'
+  - apiGroups:
+    - autoscaling
+    - policy
+    - storage.k8s.io
+    resources:
+    - '*'
     verbs:
     - '*'
