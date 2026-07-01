@@ -11,7 +11,6 @@ import (
 	"github.com/w7panel/w7panel/common/service"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
-	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	permissionservice "github.com/w7panel/w7panel/common/service/permission"
@@ -335,14 +334,15 @@ func (self K3k) SyncDownStatic(http *gin.Context) {
 }
 
 func (self K3k) SyncMicroApp(http *gin.Context) {
-	params := k3k.K3kSync{}
-	if !self.Validate(http, &params) {
-		return
-	}
-	// slog.Error("同步SyncMicroApp")
-	microapp.Sync(params.K3kName, params.K3kNamespace, params.CkmName)
-	self.JsonSuccessResponse(http)
-	return
+	// 无需再同步
+	// params := k3k.K3kSync{}
+	// if !self.Validate(http, &params) {
+	// 	return
+	// }
+	// // slog.Error("同步SyncMicroApp")
+	// microapp.Sync(params.K3kName, params.K3kNamespace, params.CkmName)
+	// self.JsonSuccessResponse(http)
+	// return
 }
 
 func (self K3k) SyncSite(http *gin.Context) {

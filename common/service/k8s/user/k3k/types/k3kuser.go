@@ -68,10 +68,6 @@ func (u *K3kUser) SyncSpecFromRuntime() {
 		Webshell:   u.Annotations[W7_WEB_SHELL] == "true",
 		Fileeditor: u.Annotations[W7_FILE_EDITTOR] == "true",
 	}
-	u.Spec.MenuRules = []string{}
-	_ = json.Unmarshal([]byte(u.Annotations[W7_MENU]), &u.Spec.MenuRules)
-	// u.Spec.DomainWhiteList = []configv1alpha1.DomainWhiteItem{}
-	// _ = json.Unmarshal([]byte(u.GetDomainWhiteList()), &u.Spec.DomainWhiteList)
 
 }
 

@@ -30,12 +30,28 @@ func (self MicroApp) List(http *gin.Context) {
 func (self MicroApp) Info(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
 	name := http.Param("name")
-	microapp, err := microapp.ListInfo(token, name)
+	microappObj, err := microapp.ListInfo(token, name)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	self.JsonResponseWithoutError(http, microapp)
+	replace, err := microapp.NewMicroAppReplace(token)
+	if err != nil {
+		self.JsonResponseWithoutError(http, microappObj)
+		return
+	}
+	configs := microappObj.Spec.ConfigV2.Props.RoleConfig
+	if configs != nil {
+		self.JsonResponseWithoutError(http, microappObj)
+		return
+	}
+	for role, _ := range configs {
+		config := microappObj.Spec.ConfigV2.Props.RoleConfig[role]
+		props := replace.Replace(http, config.FrontendProps, role, microappObj)
+		config.FrontendProps = props
+	}
+
+	self.JsonResponseWithoutError(http, microappObj)
 
 }
 

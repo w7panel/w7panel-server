@@ -42,6 +42,7 @@ func (m *MicroAppProxy) Proxy(ctx context.Context, path string) (*httputil.Rever
 	if m.replace != nil { // 替换变量
 		headers = m.replace.Replace(ctx, headers, m.role, m.MicroApp)
 		query = m.replace.Replace(ctx, query, m.role, m.MicroApp)
+
 	}
 	return helper.ProxyUrl(proxyServer, path, "", headers, query)
 
