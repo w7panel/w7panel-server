@@ -2,8 +2,10 @@ package microapp
 
 import (
 	"context"
+	"errors"
 	"strings"
 
+	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s/k3k"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
 	"github.com/w7panel/w7panel/common/service/oidc"
@@ -78,4 +80,15 @@ func (m *MicroAppReplace) getAccessToken(ctx context.Context) (string, error) {
 		return "", err
 	}
 	return server.CreateDefaultAccessToken(ctx, m.Name)
+}
+
+func GetCloudAccessToken(openId string) (string, error) {
+	if openId != "" {
+		token, err := console.OpenIdToCloudAccessToken(openId)
+		if err != nil {
+			return "", err
+		}
+		return token.Token, err
+	}
+	return "", errors.New("openId is empty")
 }

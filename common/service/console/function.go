@@ -171,3 +171,19 @@ func RefreshW7Config(w7config *config.W7Config, repository config.W7ConfigReposi
 	}
 	return nil
 }
+
+func OpenIdToCloudAccessToken(openId string) (*PassportToken, error) {
+	sdkclient, err := NewDefaultSdkClient()
+	if err != nil {
+		return nil, err
+	}
+	return sdkclient.OpenIdToCloudAccessToken(openId)
+}
+
+func OpenIdToCloudCode(openId, componentAppid string) (*PassportCode, error) {
+	sdkclient, err := NewDefaultSdkClient()
+	if err != nil {
+		return nil, err
+	}
+	return sdkclient.OpenIdToCloudCode(openId, componentAppid)
+}

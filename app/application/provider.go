@@ -286,6 +286,9 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		engine.GET("/panel-api/v1/microapp/:name/info", middleware.Auth{}.Process, controller2.MicroApp{}.Info)              //获取microapp详情
 		engine.Any("/panel-api/v1/microapp/:name/proxy/*path", middleware.Auth{}.Process, controller2.Proxy{}.ProxyMicroApp) //microapp proxy
 
+		engine.GET("/panel-api/v1/microapp/:name/frontprops", middleware.Auth{}.Process, controller2.MicroApp{}.FrontProps) 
+		engine.GET("/panel-api/v1/microapp/global-frontprops", middleware.Auth{}.Process, controller2.MicroApp{}.GlobalFrontProps) //获取microapp前端系统参数
+
 		containerGroup := localApiGroup.Group("/containers", middleware.Auth{}.Process, middleware.Proxy{}.Process)
 		{
 			containerGroup.POST("/image/export-push", controller2.Container{}.ExportAndPushImage)
