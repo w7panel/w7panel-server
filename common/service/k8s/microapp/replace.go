@@ -5,9 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
-	"time"
 
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
@@ -101,17 +99,17 @@ func (m *MicroAppReplace) getAccessToken(ctx context.Context) (string, error) {
 func GetCloudAccessToken(openId string) (string, error) {
 	if openId != "" {
 		// 获取 passport token
-		result, err := helper.Remember(openId, time.Hour, func() (any, error) {
-			token, err := console.OpenIdToCloudAccessToken(openId)
-			if err != nil {
-				return "", err
-			}
-			return token.Token, err
-		})
+		// result, err := helper.Remember(openId, time.Hour, func() (any, error) {
+		token, err := console.OpenIdToCloudAccessToken(openId)
 		if err != nil {
 			return "", err
 		}
-		return result.(string), nil
+		return token.Token, err
+		// })
+		if err != nil {
+			return "", err
+		}
+		// return result.(string), nil
 	}
 	return "", errors.New("openId is empty")
 }
