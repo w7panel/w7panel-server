@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	userservice "github.com/w7panel/w7panel/common/service/user"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	corev1 "k8s.io/api/core/v1"

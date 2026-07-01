@@ -15,7 +15,7 @@ import (
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

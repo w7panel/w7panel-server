@@ -6,7 +6,7 @@ import (
 	controller2 "github.com/w7panel/w7panel/app/k3k/http/controller"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/middleware"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
 )

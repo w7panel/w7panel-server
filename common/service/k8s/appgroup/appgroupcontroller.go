@@ -6,7 +6,7 @@ import (
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	applicationversiond "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/clientset/versioned"
 	appInformer "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/informers/externalversions"
 	v1alpha1Lister "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"

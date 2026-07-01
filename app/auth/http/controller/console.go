@@ -12,7 +12,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 

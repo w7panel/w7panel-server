@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
-	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	oidclib "github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"

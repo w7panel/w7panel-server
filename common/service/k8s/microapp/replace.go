@@ -9,8 +9,8 @@ import (
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/console"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
-	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	"github.com/w7panel/w7panel/common/service/oidc"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 )

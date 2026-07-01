@@ -15,7 +15,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	userservice "github.com/w7panel/w7panel/common/service/user"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"

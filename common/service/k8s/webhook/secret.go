@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/w7panel/w7panel/common/helper"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )

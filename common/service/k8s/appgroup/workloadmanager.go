@@ -7,7 +7,7 @@ import (
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	// "github.com/w7panel/w7panel/common/service/k8s/zpk"

@@ -8,7 +8,7 @@ import (
 	"github.com/w7corp/sdk-open-cloud-go/service"
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	permissionservice "github.com/w7panel/w7panel/common/service/permission"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"

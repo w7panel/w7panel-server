@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	v1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

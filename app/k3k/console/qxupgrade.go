@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	permissionservice "github.com/w7panel/w7panel/common/service/permission"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"

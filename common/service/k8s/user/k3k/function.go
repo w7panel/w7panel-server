@@ -13,7 +13,7 @@ import (
 	userservice "github.com/w7panel/w7panel/common/service/user"
 
 	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"

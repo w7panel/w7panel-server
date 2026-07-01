@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
-	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"

@@ -1,7 +1,7 @@
 
 # 前提
 ./k8s/pkg/apis/cvm/v1alpha1 目录下是cvm 类型定义文件
-common/service/k8s/k3k 原有功能目录
+common/service/k8s/user/k3k 原有功能目录
 app/k3k http api目录
 
 # 原有功能

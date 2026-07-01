@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
-	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	permissionservice "github.com/w7panel/w7panel/common/service/permission"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	userv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/user/v1alpha1"

@@ -3,7 +3,7 @@ package controller
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/k3k/overselling"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k/overselling"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 
