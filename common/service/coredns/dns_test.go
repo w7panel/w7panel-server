@@ -168,6 +168,50 @@ func TestCreateZoneWritesServerAndZoneFiles(t *testing.T) {
 	}
 }
 
+func TestApplyZoneRecordsWritesDesiredRecords(t *testing.T) {
+	ctx := context.Background()
+	client := fake.NewSimpleClientset(
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: CoreDNSName, Namespace: CoreDNSNamespace},
+			Data:       map[string]string{coreDNSCorefileKey: ".:53 {\n  errors\n}\n"},
+		},
+		coreDNSDeployment(),
+	)
+	service := newServiceWithClient(client)
+
+	zone, records, err := service.ApplyZoneRecords(ctx, "yaml.test", []Record{
+		{Name: "@", Type: "A", Value: "10.0.0.10"},
+		{Name: "www", Type: "CNAME", Value: "yaml.test."},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if zone.Domain != "yaml.test" || zone.RecordNum != 2 || len(records) != 2 {
+		t.Fatalf("unexpected applied zone: %#v records=%#v", zone, records)
+	}
+	customConfig, err := client.CoreV1().ConfigMaps(CoreDNSNamespace).Get(ctx, CoreDNSCustomName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	zoneData := customConfig.Data[ZoneFileConfigMapKey("yaml.test")]
+	if !strings.Contains(zoneData, "@ 60 IN A 10.0.0.10") {
+		t.Fatalf("expected apex record, got:\n%s", zoneData)
+	}
+	if !strings.Contains(zoneData, "www 60 IN CNAME yaml.test.") {
+		t.Fatalf("expected cname record, got:\n%s", zoneData)
+	}
+	if customConfig.Data[ConfigMapKey("yaml.test")] == "" {
+		t.Fatalf("expected server block")
+	}
+	deployment, err := client.AppsV1().Deployments(CoreDNSNamespace).Get(ctx, CoreDNSName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if deployment.Spec.Template.Annotations[coreDNSRestartAnnotationKey] == "" {
+		t.Fatalf("expected restart annotation")
+	}
+}
+
 func TestListRecordsMigratesLegacyTemplateZone(t *testing.T) {
 	ctx := context.Background()
 	legacyServer := `test4.com {

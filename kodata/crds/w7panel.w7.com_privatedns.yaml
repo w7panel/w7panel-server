@@ -1,0 +1,136 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+    api-approved.kubernetes.io: "https://www.w7.cc"
+  name: privatedns.w7panel.w7.com
+spec:
+  group: w7panel.w7.com
+  names:
+    kind: PrivateDNS
+    listKind: PrivateDNSList
+    plural: privatedns
+    singular: privatedns
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.domain
+      name: Domain
+      type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .status.recordCount
+      name: Records
+      type: integer
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: PrivateDNS is the Schema for managing CoreDNS private zones.
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: PrivateDNSSpec defines the desired state of a private DNS zone.
+            properties:
+              domain:
+                description: Domain is the DNS zone domain, for example "example.com".
+                type: string
+              records:
+                description: Records is the complete desired record set for the zone.
+                items:
+                  description: PrivateDNSRecord defines a DNS record in a private DNS zone.
+                  properties:
+                    id:
+                      description: ID is an optional stable record identifier. If empty, the controller derives one from record content.
+                      type: string
+                    mxPriority:
+                      description: MXPriority is used by MX records. Defaults to the CoreDNS service default when omitted.
+                      type: integer
+                    name:
+                      description: Name is the host label. Use "@" or empty for the zone apex.
+                      type: string
+                    ttl:
+                      description: TTL is the record TTL in seconds. Defaults to the CoreDNS service default when omitted.
+                      type: integer
+                    type:
+                      description: "Type is the DNS record type. Supported values match the CoreDNS service layer: A, AAAA, CNAME, MX, NS, TXT."
+                      type: string
+                    value:
+                      description: Value is the DNS record value.
+                      type: string
+                  required:
+                  - type
+                  - value
+                  type: object
+                type: array
+            required:
+            - domain
+            type: object
+          status:
+            description: PrivateDNSStatus defines the observed state of a private DNS zone.
+            properties:
+              conditions:
+                description: Conditions represents the latest observations of the resource state.
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              message:
+                description: Message provides additional status detail.
+                type: string
+              observedGeneration:
+                description: ObservedGeneration is the last reconciled metadata generation.
+                format: int64
+                type: integer
+              phase:
+                description: Phase is Pending, Ready, or Failed.
+                type: string
+              recordCount:
+                description: RecordCount is the number of records applied to the zone.
+                type: integer
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

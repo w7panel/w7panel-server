@@ -139,6 +139,49 @@ func (s *Service) CreateZone(ctx context.Context, domain string) (Zone, error) {
 	return Zone{Domain: domain}, nil
 }
 
+func (s *Service) ApplyZoneRecords(ctx context.Context, domain string, records []Record) (Zone, []Record, error) {
+	domain, err := NormalizeDomain(domain)
+	if err != nil {
+		return Zone{}, nil, err
+	}
+	normalized := make([]Record, 0, len(records))
+	for _, record := range records {
+		item, err := NormalizeRecord(domain, record)
+		if err != nil {
+			return Zone{}, nil, err
+		}
+		normalized = append(normalized, item)
+	}
+
+	cfg, err := s.getOrCreateCustomConfigMap(ctx)
+	if err != nil {
+		return Zone{}, nil, err
+	}
+	if cfg.Data == nil {
+		cfg.Data = map[string]string{}
+	}
+	serverKey := ConfigMapKey(domain)
+	zoneKey := ZoneFileConfigMapKey(domain)
+	previousZone := cfg.Data[zoneKey]
+	serverData, err := RenderZoneServer(domain)
+	if err != nil {
+		return Zone{}, nil, err
+	}
+	zoneData, err := RenderZoneWithNextSerial(domain, normalized, previousZone)
+	if err != nil {
+		return Zone{}, nil, err
+	}
+	cfg.Data[serverKey] = serverData
+	cfg.Data[zoneKey] = zoneData
+	if _, err := s.updateCustomConfigMap(ctx, cfg); err != nil {
+		return Zone{}, nil, err
+	}
+	if err := s.applyCoreDNSChange(ctx); err != nil {
+		return Zone{}, nil, err
+	}
+	return Zone{Domain: domain, RecordNum: len(normalized), UpdateTime: configMapTime(cfg)}, normalized, nil
+}
+
 func (s *Service) Info(ctx context.Context) (Info, error) {
 	info := Info{FileFallthroughMinVersion: CoreDNSMinVersion}
 	deployment, err := s.clientSet.AppsV1().Deployments(CoreDNSNamespace).Get(ctx, CoreDNSName, metav1.GetOptions{})

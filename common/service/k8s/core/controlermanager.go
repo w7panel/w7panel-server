@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/buildimage"
+	"github.com/w7panel/w7panel/common/service/k8s/privatedns"
 	"github.com/w7panel/w7panel/common/service/k8s/service"
 	"github.com/w7panel/w7panel/common/service/k8s/site"
 	webhooklocal "github.com/w7panel/w7panel/common/service/k8s/webhook"
@@ -102,6 +103,13 @@ func StartControlManager() error {
 		err = site.SetupSiteController(mgr, sdk)
 		if err != nil {
 			slog.Error("setup site controller failed", "err", err)
+			return err
+		}
+	}
+	if facade.GetConfig().GetBool("privatedns.enabled") {
+		err = privatedns.SetupPrivateDNSController(mgr, sdk)
+		if err != nil {
+			slog.Error("setup private dns controller failed", "err", err)
 			return err
 		}
 	}
