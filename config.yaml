@@ -62,6 +62,8 @@ lxcfs:
 site:
   enabled: ${SITE_ENABLED-false}
   token_refresh_resolution: ${TOKEN_REFRESH_RESOLUTION-600s} # token刷新间隔
+privatedns:
+  enabled: ${PRIVATEDNS_ENABLED-false}
 oidc:
   enabled: ${OIDC_ENABLED-true}
   issuer: ${OIDC_ISSUER-}
