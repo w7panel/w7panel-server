@@ -1,0 +1,9 @@
+1. Proxy service:
+   {{ include "w7panel-cloudnoauth.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+
+2. Panel DNS is managed by another component.
+   Expected record: api.w7.cc CNAME {{ include "w7panel-cloudnoauth.serviceFQDN" . }}
+
+3. Check health:
+   kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "w7panel-cloudnoauth.fullname" . }} 8000:{{ .Values.service.port }}

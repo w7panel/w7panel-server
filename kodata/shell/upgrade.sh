@@ -9,7 +9,7 @@ echo "升级用户"
 w7panel user-upgrade 
 
 echo "导入yaml"
-kubectl apply -f $KO_DATA_PATH/yaml/nvidia.yaml 
+kubectl apply -f $KO_DATA_PATH/yaml/nvidia.yaml
 
 # echo "卸载默认的vm-operator"
 # helm list -n w7-system --filter 'vm-operator' | grep -q 'vm-operator' && helm uninstall vm-operator -n w7-system
@@ -103,6 +103,9 @@ echo "限流配置"
 # apply -f 会覆盖原有配置 所以使用create 
 kubectl create -f $KO_DATA_PATH/yaml/longhorn/cluster-key-rate-limit.yaml || echo "已存在longhorn cluster-key-rate-limit"
 
+
+echo "安装/升级cloudnoauth"
+helm upgrade --namespace default w7panel-cloudnoauth $KO_DATA_PATH/charts/w7panel-cloudnoauth --install --timeout 600s
 
 
 echo "clear completed jobs and pod..."

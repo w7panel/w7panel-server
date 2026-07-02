@@ -1,0 +1,22 @@
+{{- if .Values.privateDNS.enabled }}
+apiVersion: w7panel.w7.com/v1alpha1
+kind: PrivateDNS
+metadata:
+  name: {{ .Values.privateDNS.name | default (printf "%s-dns" (include "w7panel-cloudnoauth.fullname" .)) | trunc 63 | trimSuffix "-" }}
+  labels:
+    {{- include "w7panel-cloudnoauth.labels" . | nindent 4 }}
+spec:
+  domain: {{ .Values.privateDNS.domain | quote }}
+  records:
+    {{- range .Values.privateDNS.records }}
+    - name: {{ .name | quote }}
+      type: {{ .type | quote }}
+      value: {{ tpl .value $ | quote }}
+      {{- if .ttl }}
+      ttl: {{ .ttl }}
+      {{- end }}
+      {{- if .mxPriority }}
+      mxPriority: {{ .mxPriority }}
+      {{- end }}
+    {{- end }}
+{{- end }}
