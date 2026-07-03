@@ -15,11 +15,12 @@ type PidParam struct {
 }
 
 type PidResult struct {
-	Pid      int    `json:"pid"`
-	SubPid   int    `json:"subPid"`
-	ProxyIp  string `json:"proxyIp"`
-	AgentPod *corev1.Pod
-	Pwd      string `json:"pwd"`
+	Pid           int    `json:"pid"`
+	SubPid        int    `json:"subPid"`
+	ProxyIp       string `json:"proxyIp"`
+	AgentPod      *corev1.Pod
+	ContainerName string `json:"containerName"`
+	Pwd           string `json:"pwd"`
 }
 
 type PidCacheItem struct {
@@ -60,12 +61,16 @@ func (p *PidResult) ToArray() map[string]string {
 	if subpidstr == "0" {
 		subpidstr = ""
 	}
+	containerName := p.ContainerName
+	if containerName == "" && len(pod.Spec.Containers) == 1 {
+		containerName = pod.Spec.Containers[0].Name
+	}
 	return map[string]string{
 		"podName":       pod.Name,
 		"pid":           pidstr,
 		"subPid":        subpidstr,
 		"namespace":     pod.Namespace,
-		"containerName": pod.Spec.Containers[0].Name,
+		"containerName": containerName,
 		"podIp":         podIp,
 		// "pwd":            pwd,
 		"webdavUrl": webdavUrl,

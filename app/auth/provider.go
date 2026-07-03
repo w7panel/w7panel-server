@@ -6,7 +6,7 @@ import (
 	controller2 "github.com/w7panel/w7panel/app/auth/http/controller"
 	k3kController "github.com/w7panel/w7panel/app/k3k/http/controller"
 	"github.com/w7panel/w7panel/common/middleware"
-	permissionservice "github.com/w7panel/w7panel/common/service/permission"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
 )
@@ -33,10 +33,10 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		{
 			oidcGroup.Any("/.well-known/openid-configuration", controller2.Oidc{}.Discovery)
 			oidcGroup.Any("/jwks", controller2.Oidc{}.Handle)
-			oidcGroup.POST("/register", controller2.Oidc{}.RegisterClient)
-			oidcGroup.GET("/register/:clientId", controller2.Oidc{}.GetClient)
-			oidcGroup.PUT("/register/:clientId", controller2.Oidc{}.UpdateClient)
-			oidcGroup.DELETE("/register/:clientId", controller2.Oidc{}.DeleteClient)
+			// oidcGroup.POST("/register", controller2.Oidc{}.RegisterClient)
+			// oidcGroup.GET("/register/:clientId", controller2.Oidc{}.GetClient)
+			// oidcGroup.PUT("/register/:clientId", controller2.Oidc{}.UpdateClient)
+			// oidcGroup.DELETE("/register/:clientId", controller2.Oidc{}.DeleteClient)
 
 			oidcGroup.Any("/authorize", controller2.Oidc{}.Handle)
 			oidcGroup.Any("/token", controller2.Oidc{}.Handle)
@@ -69,7 +69,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			// 不需要创始人权限
 			// localApiGroup.GET("/console/code/:code", middleware.Auth{}.Process, controller2.Console{}.ProxyCouponCode)
 			// localApiGroup.Any("/console/proxy/*path", middleware.Auth{}.Process, controller2.Console{}.Proxy)
-			localApiGroup.GET("/console/code/:code", middleware.Auth{}.Process, controller2.Console{}.ProxyCouponCode)
+
 			localApiGroup.Any("/console/proxy/*path", middleware.Auth{}.Process, controller2.Console{}.Proxy)
 			localApiGroup.GET("/permissions/routes", middleware.Auth{}.Process, func(ctx *gin.Context) {
 				ctx.JSON(200, gin.H{

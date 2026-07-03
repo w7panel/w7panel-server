@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/coredns"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 
@@ -12,8 +13,15 @@ type DNS struct {
 	controller.Abstract
 }
 
+var errK3kDNSServerUnsupported = errors.New("private dns server is not supported in k3k cluster")
+
 func (d DNS) Zones(ctx *gin.Context) {
-	zones, err := coredns.NewService().ListZones(ctx.Request.Context())
+	service, _, err := d.service(ctx)
+	if err != nil {
+		d.JsonResponseWithServerError(ctx, err)
+		return
+	}
+	zones, err := service.ListZones(ctx.Request.Context())
 	if err != nil {
 		d.JsonResponseWithServerError(ctx, err)
 		return
@@ -22,7 +30,12 @@ func (d DNS) Zones(ctx *gin.Context) {
 }
 
 func (d DNS) Info(ctx *gin.Context) {
-	info, err := coredns.NewService().Info(ctx.Request.Context())
+	service, _, err := d.service(ctx)
+	if err != nil {
+		d.JsonResponseWithServerError(ctx, err)
+		return
+	}
+	info, err := service.Info(ctx.Request.Context())
 	if err != nil {
 		d.JsonResponseWithServerError(ctx, err)
 		return
@@ -39,7 +52,12 @@ func (d DNS) CreateZone(ctx *gin.Context) {
 		d.JsonResponseWithServerError(ctx, err)
 		return
 	}
-	zone, err := coredns.NewService().CreateZone(ctx.Request.Context(), req.Domain)
+	service, _, err := d.service(ctx)
+	if err != nil {
+		d.JsonResponseWithServerError(ctx, err)
+		return
+	}
+	zone, err := service.CreateZone(ctx.Request.Context(), req.Domain)
 	if err != nil {
 		d.JsonResponseWithServerError(ctx, err)
 		return
@@ -48,7 +66,12 @@ func (d DNS) CreateZone(ctx *gin.Context) {
 }
 
 func (d DNS) DeleteZone(ctx *gin.Context) {
-	if err := coredns.NewService().DeleteZone(ctx.Request.Context(), ctx.Param("domain")); err != nil {
+	service, _, err := d.service(ctx)
+	if err != nil {
+		d.JsonResponseWithServerError(ctx, err)
+		return
+	}
+	if err := service.DeleteZone(ctx.Request.Context(), ctx.Param("domain")); err != nil {
 		d.JsonResponseWithServerError(ctx, err)
 		return
 	}
@@ -56,7 +79,12 @@ func (d DNS) DeleteZone(ctx *gin.Context) {
 }
 
 func (d DNS) Records(ctx *gin.Context) {
-	records, err := coredns.NewService().ListRecords(ctx.Request.Context(), ctx.Param("domain"))
+	service, _, err := d.service(ctx)
+	if err != nil {
+		d.JsonResponseWithServerError(ctx, err)
+		return
+	}
+	records, err := service.ListRecords(ctx.Request.Context(), ctx.Param("domain"))
 	if err != nil {
 		d.JsonResponseWithServerError(ctx, err)
 		return
@@ -69,7 +97,12 @@ func (d DNS) CreateRecord(ctx *gin.Context) {
 	if !ok {
 		return
 	}
-	record, err := coredns.NewService().CreateRecord(ctx.Request.Context(), ctx.Param("domain"), record)
+	service, _, err := d.service(ctx)
+	if err != nil {
+		d.JsonResponseWithServerError(ctx, err)
+		return
+	}
+	record, err = service.CreateRecord(ctx.Request.Context(), ctx.Param("domain"), record)
 	if err != nil {
 		d.JsonResponseWithServerError(ctx, err)
 		return
@@ -87,7 +120,12 @@ func (d DNS) UpdateRecord(ctx *gin.Context) {
 	if !ok {
 		return
 	}
-	record, err := coredns.NewService().UpdateRecord(ctx.Request.Context(), ctx.Param("domain"), id, record)
+	service, _, err := d.service(ctx)
+	if err != nil {
+		d.JsonResponseWithServerError(ctx, err)
+		return
+	}
+	record, err = service.UpdateRecord(ctx.Request.Context(), ctx.Param("domain"), id, record)
 	if err != nil {
 		d.JsonResponseWithServerError(ctx, err)
 		return
@@ -96,7 +134,12 @@ func (d DNS) UpdateRecord(ctx *gin.Context) {
 }
 
 func (d DNS) DeleteRecord(ctx *gin.Context) {
-	if err := coredns.NewService().DeleteRecord(ctx.Request.Context(), ctx.Param("domain"), ctx.Param("id")); err != nil {
+	service, _, err := d.service(ctx)
+	if err != nil {
+		d.JsonResponseWithServerError(ctx, err)
+		return
+	}
+	if err := service.DeleteRecord(ctx.Request.Context(), ctx.Param("domain"), ctx.Param("id")); err != nil {
 		d.JsonResponseWithServerError(ctx, err)
 		return
 	}
@@ -104,7 +147,16 @@ func (d DNS) DeleteRecord(ctx *gin.Context) {
 }
 
 func (d DNS) Server(ctx *gin.Context) {
-	status, err := coredns.NewService().ServerStatus(ctx.Request.Context())
+	service, isK3k, err := d.service(ctx)
+	if err != nil {
+		d.JsonResponseWithServerError(ctx, err)
+		return
+	}
+	if isK3k {
+		d.JsonResponseWithoutError(ctx, k3kDNSServerStatus())
+		return
+	}
+	status, err := service.ServerStatus(ctx.Request.Context())
 	if err != nil {
 		d.JsonResponseWithServerError(ctx, err)
 		return
@@ -121,7 +173,16 @@ func (d DNS) UpdateServer(ctx *gin.Context) {
 		d.JsonResponseWithServerError(ctx, err)
 		return
 	}
-	status, err := coredns.NewService().SetServerEnabled(ctx.Request.Context(), req.Enabled)
+	service, isK3k, err := d.service(ctx)
+	if err != nil {
+		d.JsonResponseWithServerError(ctx, err)
+		return
+	}
+	if isK3k {
+		d.JsonResponseWithServerError(ctx, errK3kDNSServerUnsupported)
+		return
+	}
+	status, err := service.SetServerEnabled(ctx.Request.Context(), req.Enabled)
 	if err != nil {
 		d.JsonResponseWithServerError(ctx, err)
 		return
@@ -136,4 +197,21 @@ func (d DNS) bindRecord(ctx *gin.Context) (coredns.Record, bool) {
 		return coredns.Record{}, false
 	}
 	return req, true
+}
+
+func (d DNS) service(ctx *gin.Context) (*coredns.Service, bool, error) {
+	token := ctx.MustGet("k8s_token").(string)
+	k8sToken := k8s.NewK8sToken(token)
+	if !k8sToken.IsK3kCluster() {
+		return coredns.NewService(), false, nil
+	}
+	sdk, err := k8s.NewK8sClient().Channel(token)
+	if err != nil {
+		return nil, true, err
+	}
+	return coredns.NewServiceWithSdk(sdk), true, nil
+}
+
+func k3kDNSServerStatus() coredns.ServerStatus {
+	return coredns.ServerStatus{ServiceName: coredns.PublicDNSServiceName}
 }

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
-	permissionservice "github.com/w7panel/w7panel/common/service/permission"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	apiclientv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/apiclient/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

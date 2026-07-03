@@ -474,6 +474,7 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 		"w7.cc/ticket":                   p.Ticket,
 		"meta.helm.sh/release-name":      p.GetReleaseName(),
 		"meta.helm.sh/release-namespace": p.GetNamespace(),
+		"w7.cc/panel-install-url":        p.PanelUrl,
 	}
 	// if !p.IsUpgrade() {
 	result["w7.cc/domains"] = string(domainsJson)

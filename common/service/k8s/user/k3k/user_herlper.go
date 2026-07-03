@@ -7,70 +7,47 @@ import (
 
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
-	console2 "github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	permissionservice "github.com/w7panel/w7panel/common/service/permission"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	userservice "github.com/w7panel/w7panel/common/service/user"
+	"github.com/w7panel/w7panel/k8s/pkg/apis/user/v1alpha1"
 
 	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
-	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func LoginByServiceAccount(client *k8s.Sdk, sa *v1.ServiceAccount, seconds int64, updateK3kUser bool, cvmName string) (string, bool, error) {
-	userCRD, err := userservice.Get(client.Ctx, client, sa.Name)
-	if err != nil {
-		return "", false, err
-	}
-	k3kUser := types.NewK3kUser(userCRD.ToTyped())
-	isK3kUser := false
-	// if k3kUser.IsClusterUser() {
-	// 	isK3kUser = true
-	// 	if sa.Annotations[types.K3K_CLUSTER_POLICY_VERSION] == "" {
-	// 		sa.Annotations[types.K3K_CLUSTER_POLICY_VERSION] = "1"
-	// 	}
-	// 	policyName, ok := sa.Annotations[types.K3K_CLUSTER_POLICY]
-	// 	if ok {
-	// 		sa.Annotations[types.K3K_CLUSTER_POLICY_VERSION] = types.GetPolicyVersion(policyName)
-	// 	}
-	// }
-	// if refreshCdToken {
+func LoginByUser(client *k8s.Sdk, crdUser *v1alpha1.User, seconds int64, updateK3kUser bool, cvmName string, realSa string) (string, error) {
 
-	// }
-	k8s.NewK8sClient().Clear(sa.Name, cvmName)
-	_, err = RefreshK3kUser(k3kUser, client, updateK3kUser)
+	k3kUser := types.NewK3kUser(crdUser)
+
+	k8s.NewK8sClient().Clear(crdUser.Name, cvmName)
+
+	_, err := RefreshK3kUser(k3kUser, client, updateK3kUser)
 	if err != nil {
-		return "", false, err
+		return "", err
 	}
 
-	token, err := client.CreateTokenRequest(sa.Name, seconds, k3kUser.GetTokenAud(cvmName))
+	token, err := client.CreateTokenRequest(realSa, seconds, k3kUser.GetTokenAud(cvmName))
 	if err != nil {
-		return "", false, err
+		return "", err
 	}
 	// 标记最后登录时间 为了触发面板代理重建
 	if k3kUser.IsFounder() {
 		go console.RegisterLicenseSite(k3kUser.Name)
-		go func() {
-			// 刷新license
-			err = console2.VerifyDefaultLicense(true)
-			if err != nil {
-				slog.Error("刷新license失败", "err", err)
-			}
-		}()
 	}
 
 	go SignLastLoginTime(client, k3kUser)
 	//刷新控制台token
 	go func() {
-		err := console.RefreshCDTokenUseOpenid(sa.Name)
+		err := console.RefreshCDTokenUseOpenid(k3kUser.Name)
 		if err != nil {
 			slog.Warn("刷新CDToken失败", "err", err)
 		}
 	}()
 
-	return token, isK3kUser, nil
+	return token, nil
 }
 
 func SignLastLoginTime(sdk *k8s.Sdk, user *types.K3kUser) error {

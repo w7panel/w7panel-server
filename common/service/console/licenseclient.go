@@ -132,26 +132,20 @@ func (api *LicenseClient) setLicenseClean(license *License, cleanCert bool) erro
 	return err
 }
 
-func (c *LicenseClient) CreateLicenseSite(saName string, ignoreExits bool) (*License, error) {
+func (c *LicenseClient) CreateLicenseSite(userName string, ignoreExits bool) (*License, error) {
 	if !ignoreExits {
 		license, err := c.GetLicense()
 		if err == nil {
 			return license, err
 		}
 	}
-	sa, err := c.sdk.GetServiceAccount(c.sdk.GetNamespace(), saName)
-	if err != nil {
-		return nil, err
-	}
-	if sa.Labels["w7.cc/user-mode"] != "founder" {
-		return nil, errors.New("非创始人账号无法创建站点")
-	}
+
 	clusterUniquId, err := c.sdk.GetClusterId()
 	if err != nil {
 		return nil, err
 	}
 
-	config, err := c.w7config.Get(saName)
+	config, err := c.w7config.Get(userName)
 	if err != nil {
 		slog.Error("获取配置失败")
 		return nil, err
@@ -166,7 +160,7 @@ func (c *LicenseClient) CreateLicenseSite(saName string, ignoreExits bool) (*Lic
 	if err != nil {
 		return nil, err
 	}
-	license.FounderSaName = saName //创始人账号
+	license.FounderSaName = userName //创始人账号
 	SetCurrentLicense(license)
 	// console.License = license
 	err = c.SetLicense(license)

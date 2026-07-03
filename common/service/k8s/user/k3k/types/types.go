@@ -1,13 +1,7 @@
 package types
 
 import (
-	"time"
-
-	"github.com/w7corp/sdk-open-cloud-go/service"
-	"github.com/w7panel/w7panel/common/service/k8s"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/json"
 )
 
 const K3K_MENU_FOUNDER_NAME = "founder"
@@ -98,7 +92,7 @@ const (
 	W7_OVER_RESOURCE      = "w7.cc/over-resource"      //
 	W7_OVER_BASE_RESOURCE = "w7.cc/over-base-resource" //首次购买资源
 	W7_LOGIN_TIME         = "w7.cc/login-time"
-	W7_CVM_NAME           = "w7.cc/cvm-name" //当前请求中cvm名称
+	W7_CKM_NAME           = "w7.cc/ckm-name" //当前请求中ckm名称
 )
 
 const Bandwidth v1.ResourceName = "bandwidth"
@@ -106,122 +100,91 @@ const DataStorageSize v1.ResourceName = "data.storage"     // 数据存储大小
 const SysStorageSize v1.ResourceName = "sys.storage"       // 系统存储大小
 const ExpandStorageSize v1.ResourceName = "expand.storage" // 系统存储大小
 
-type ConsoleOAuthAccessToken struct {
-	*service.ResultAccessToken
+var K3K_MENU_FOUNDER_RULES = []string{
+	"cluster",
+	"cluster/panel",
+	"cluster/resource",
+	"cluster/dns",
+	"app",
+	"app/apps",
+	"app/apps/add",
+	"app/apps/edit",
+	"app/apps/delete",
+	"app/cronjob",
+	"app/cronjob/add",
+	"app/cronjob/edit",
+	"app/cronjob/delete",
+	"app/rvproxy",
+	"app/rvproxy/add",
+	"app/rvproxy/edit",
+	"app/rvproxy/delete",
+	"app/database",
+	"app/database/add",
+	"app/database/delete",
+	"app/gpustack",
+	"storage",
+	"storage/disk",
+	"storage/disk/add",
+	"storage/disk/edit",
+	"storage/disk/delete",
+	"storage/zone",
+	"zpk",
+	"sitemanage",
+	"system",
+	"system/cloud",
+	"system/license",
+	"system/audit",
+	"person/order-center",
+	"person/cost-center",
+	"cluster/nodes",
+	"cluster/nodes/add",
+	"cluster/nodes/registries",
+	"cluster/nodes-image-list",
+	"cluster/nodes/gpu",
+	"cluster/nodes/memory",
+	"usermanage/usermanage-whitedomain",
+	"usermanage",
+	"usermanage/users",
+	"usermanage/usergroup",
+	"usermanage/permission",
+	"usermanage/quota",
+	"usermanage/site-setting",
+	"usermanage/usermanage-system",
 }
 
-func NewConsoleOAuthAccessToken(jsonStr string) (*ConsoleOAuthAccessToken, error) {
-	var result ConsoleOAuthAccessToken
-	err := json.Unmarshal([]byte(jsonStr), &result)
-	if err != nil {
-		return nil, err
-	}
-	return &result, nil
-}
-func NewConsoleOAuthAccessToken2(rt *service.ResultAccessToken) *ConsoleOAuthAccessToken {
-	return &ConsoleOAuthAccessToken{ResultAccessToken: rt}
-}
-func (c *ConsoleOAuthAccessToken) IsExpired() bool {
-	return c.ExpireTime < time.Now().Second()
-}
-func (c *ConsoleOAuthAccessToken) ToString() string {
-	result, err := json.Marshal(c)
-	if err != nil {
-		return ""
-	}
-	return string(result)
-}
-
-var saVersions = make(map[string]string)
-var policyVersions = make(map[string]string)
-
-func DelSaVersion(name string) {
-	delete(saVersions, name)
-}
-func SetSaVersion(name string, version string) {
-	if version == "" {
-		version = "1"
-	}
-	saVersions[name] = version
-}
-
-func GetSaVersion(name string) string {
-	if v, ok := saVersions[name]; ok {
-		return v
-	}
-	return "1"
-}
-func SetPolicyVersion(name string, version string) {
-	if version == "" {
-		version = "1"
-	}
-	policyVersions[name] = version
-}
-func GetPolicyVersion(name string) string {
-	if v, ok := policyVersions[name]; ok {
-		return v
-	}
-	return "1"
-}
-func DelPolicyVersion(name string) {
-	delete(policyVersions, name)
-}
-
-func NeedRelogin(token *k8s.K8sToken) bool {
-	userName, err := token.GetUserName()
-	if err != nil {
-		return false
-	}
-	// if token.GetLockVersion() != GetSaVersion(saName) || token.GetK3kPolicyVersion() != GetPolicyVersion(token.GetPolicyName()) {
-	if token.GetLockVersion() != GetSaVersion(userName) {
-		return true
-	}
-	return false
-}
-
-var K3kregCnf = `
-mirrors:
-  registry.local.w7.cc:
-  docker.io:
-    endpoint:
-      - "https://mirror.ccs.tencentyun.com"
-      - "https://registry.cn-hangzhou.aliyuncs.com"
-      - "https://docker.m.daocloud.io"
-      - "https://docker.1panel.live"
-  quay.io:
-    endpoint:
-      - "https://quay.m.daocloud.io"
-      - "https://quay.dockerproxy.com"
-  gcr.io:
-    endpoint:
-      - "https://gcr.m.daocloud.io"
-      - "https://gcr.dockerproxy.com"
-  ghcr.io:
-    endpoint:
-      - "https://ghcr.m.daocloud.io"
-      - "https://ghcr.dockerproxy.com"
-  k8s.gcr.io:
-    endpoint:
-      - "https://k8s-gcr.m.daocloud.io"
-      - "https://k8s.dockerproxy.com"
-  registry.k8s.io:
-    endpoint:
-      - "https://k8s.m.daocloud.io"
-      - "https://k8s.dockerproxy.com"
-  mcr.microsoft.com:
-    endpoint:
-      - "https://mcr.m.daocloud.io"
-      - "https://mcr.dockerproxy.com"
-  nvcr.io:
-    endpoint:
-      - "https://nvcr.m.daocloud.io"
-  "*":
-
-`
-
-type VirtualClusterPolicy struct {
-	metav1.ObjectMeta `json:"metadata"`
-	metav1.TypeMeta   `json:",inline"`
+var OLD_MENU = []string{
+	"cluster",
+	"cluster-panel",
+	"app",
+	"app-apps",
+	"app-apps-add",
+	"app-apps-edit",
+	"app-apps-delete",
+	"app-cronjob",
+	"app-cronjob-add",
+	"app-cronjob-edit",
+	"app-cronjob-delete",
+	"app-rvproxy",
+	"app-rvproxy-add",
+	"app-rvproxy-edit",
+	"app-rvproxy-delete",
+	"app-dblist",
+	"app-dblist-add",
+	"app-dblist-delete",
+	"app-gpustack",
+	"storage",
+	"storage-node",
+	"storage-node-add",
+	"storage-node-edit",
+	"storage-node-delete",
+	"storage-zone",
+	"zpk",
+	"sitemanage",
+	"system",
+	"system-cloud",
+	"system-order-center",
+	"system-cost-center",
+	"system-license",
 }
 
 func boolToString(b bool) string {

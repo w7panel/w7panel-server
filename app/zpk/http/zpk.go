@@ -147,6 +147,7 @@ func (self Zpk) Install(http *gin.Context) {
 		ClusterId          string                `json:"clusterId"`          // 集群ID
 		IsTrandition       bool                  `json:"isTrandition"`       // 是否传统应用
 		ZipUrl             string                `json:"zipUrl"`             // 代码包地址
+		PanelUrl           string                `json:"panelUrl"`           // 安装时候的面板地址
 
 	}
 
@@ -226,21 +227,12 @@ func (self Zpk) Install(http *gin.Context) {
 		// 	slog.Warn("create site error may not need secret", "err", err)
 		// }
 	}
+	if params.PanelUrl != "" {
+		mPackage.PanelUrl = params.PanelUrl
+	}
 	if params.IsTrandition {
 		mPackage.ZipUrl = params.ZipUrl
-		// entry := ""
-		// if len(params.InstallOptions) > 0 {
-		// 	for _, v := range params.InstallOptions[0].EnvKv {
-		// 		if v.Name == "ENTRY" {
-		// 			entry = v.Value
-		// 		}
-		// 	}
-		// }
-		// mPackage.Manifest.Platform.Container.Shells = append(mPackage.Manifest.Platform.Container.Shells, types.Shell{
-		// 	Type:  "install",
-		// 	Title: "部署",
-		// 	Shell: "/home/createsite.sh %CODE_ZIP_URL% " + entry,
-		// })
+
 	}
 
 	//随机k8s deployment name
