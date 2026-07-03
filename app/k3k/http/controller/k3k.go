@@ -70,11 +70,14 @@ func (self K3k) Info(http *gin.Context) {
 		return
 	}
 	// rootSdk := k8s.NewK8sClient().Sdk
-	if user != nil {
+	if user == nil {
 		result := map[string]string{}
 		self.JsonResponseWithoutError(http, result)
 		return
 	}
+	result := user.ToArray1()
+	self.JsonResponseWithoutError(http, result)
+
 }
 
 func boolString(v bool) string {
