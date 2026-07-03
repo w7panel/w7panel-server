@@ -31,6 +31,7 @@ type ManifestPackage struct {
 	HelmUrl                  string                      `json:"helmUrl"`
 	ZipUrl                   string                      `json:"zipUrl"`
 	OciUrl                   string                      `json:"ociUrl"`
+	PanelUrl                 string                      `json:"panelUrl"`
 	WebZipUrl                map[string]string           `json:"webZipUrl"`
 	Version                  Version                     `json:"version"`
 	Children                 map[string]*ManifestPackage `json:"children"`
