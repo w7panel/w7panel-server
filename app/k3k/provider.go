@@ -50,7 +50,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			k3kGroup.GET("/ckm", middleware.Auth{}.Process, controller2.Ckm{}.List)                          // cvm列表 新
 			k3kGroup.GET("/ckm/v1/:namespace/info/:name", middleware.Auth{}.Process, controller2.Ckm{}.Info) // cvm详情 新
 
-			k3kGroup.POST("/cvm/:namespace/action/:name/login", middleware.Auth{}.Process, controller2.K3k{}.LoginCvm) // cvm 登录
+			// k3kGroup.POST("/cvm/:namespace/action/:name/login", middleware.Auth{}.Process, controller2.K3k{}.LoginCvm) // cvm 登录
 
 		}
 

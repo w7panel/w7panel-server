@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -257,9 +258,45 @@ func (u *k3kUser) GetCkmName() string {
 	return u.ckmName
 }
 
-func (u *k3kUser) ToArray1() map[string]string {
+func (u *k3kUser) ToArray() map[string]string {
 
-	return map[string]string{
-		"uid": u.Name,
+	result := map[string]string{
+		K3K_USER_MODE:    u.Spec.UserMode,
+		"w7.cc/username": u.Name,
+		K3K_NAME:         u.Name,
+		K3K_NAMESPACE:    u.GetK3kNamespace(),
+		K3K_DEBUG:        boolString(u.Spec.Features.Debug),
+		W7_FILE_EDITTOR:  boolString(u.Spec.Features.Fileeditor),
+		W7_WEB_SHELL:     boolString(u.Spec.Features.Webshell),
+		W7_MENU:          mustJSON(u.Spec.MenuRules),
+		// 前端没有使用不返回
+		// "w7.cc/api":          mustJSON(permissionservice.APIRulesToMap(u.Spec.APIRules)),
+		W7_DOMAIN_WHITE_LIST: mustJSON(u.Spec.DomainWhiteList),
+		W7_DEMO_USER:         boolString(u.Spec.DemoUser),
+		W7_ROLE:              u.Spec.Role,
+		"w7.cc/has-password": boolString(u.Spec.PasswordHash != ""),
 	}
+	if u.IsCkmReqUser() {
+		result[W7_CKM_NAME] = u.GetCkmName()
+	}
+	return result
+}
+
+func boolString(v bool) string {
+	if v {
+		return "true"
+	}
+	return "false"
+}
+
+func mustJSON(v interface{}) string {
+	data, err := json.Marshal(v)
+	if err != nil {
+		slog.Error("json marshal error", "error", err)
+		return "[]"
+	}
+	if data == nil || string(data) == "null" {
+		return "[]"
+	}
+	return string(data)
 }
