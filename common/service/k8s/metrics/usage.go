@@ -30,40 +30,20 @@ func (k *K3kUsage) GetResourceUsage(k8stoken *k8s.K8sToken) (cpuUsage, memoryUsa
 		if err != nil {
 			return cpuUsage, memoryUsage, allocatedCPU, allocatedMemory, err
 		}
-		client, err := k8s.NewK8sClient().GetK3kClusterSdkByConfig(cfg)
+		cpuUsage, memoryUsage, err = k.k3kMetricsUsage(cfg)
 		if err != nil {
 			return resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, nil
 		}
-		configmap, err := client.ClientSet.CoreV1().ConfigMaps("default").Get(client.Ctx, "metrics", metav1.GetOptions{})
-		if err != nil {
-			return resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, nil
-		}
-		cpuValue, _ := strconv.ParseInt(configmap.Data["cpu"], 10, 64)
-		memoryValue, _ := strconv.ParseInt(configmap.Data["memory"], 10, 64)
-		cpuUsage = *resource.NewMilliQuantity(cpuValue, resource.DecimalSI)
-		memoryUsage = *resource.NewQuantity(memoryValue, resource.BinarySI)
-
 	} else {
-		// Get node metrics
-		nodeMetrics := NodeMetrics.GetLatestMetrics()
-		for _, metric := range nodeMetrics {
-			cpuUsage.Add(*resource.NewMilliQuantity(metric.CPUUsage, resource.DecimalSI))
-			memoryUsage.Add(*resource.NewQuantity(metric.MemoryUsage, resource.BinarySI))
-		}
+		cpuUsage, memoryUsage = k.nodeMetricsUsage()
 	}
 
-	// Get allocated resources
-	// var allocatedCPU, allocatedMemory resource.Quantity
 	if k8stoken.IsK3kCluster() {
 		cvm, err := k.getCvm(k8stoken.GetCvmName(), k8stoken.GetNamespace())
 		if err != nil {
 			return cpuUsage, memoryUsage, allocatedCPU, allocatedMemory, nil
 		}
-		allocatedCPU = resource.MustParse(fmt.Sprintf("%d", cvm.Status.EffectiveResource.CPU))
-		allocatedMemory = resource.MustParse(fmt.Sprintf("%dGi", cvm.Status.EffectiveResource.Memory))
-		if allocatedCPU.IsZero() || allocatedMemory.IsZero() {
-			allocatedCPU, allocatedMemory, _ = k.nodeAllocate(allocatedCPU, allocatedMemory)
-		}
+		allocatedCPU, allocatedMemory, _ = k.cvmAllocatedResource(cvm)
 	} else {
 		allocatedCPU, allocatedMemory, _ = k.nodeAllocate(allocatedCPU, allocatedMemory)
 	}
@@ -73,34 +53,53 @@ func (k *K3kUsage) GetResourceUsage(k8stoken *k8s.K8sToken) (cpuUsage, memoryUsa
 
 // 救援模式token 不是cvm token 是用户token 需要单独查cvm
 func (k *K3kUsage) GetResourceCvmUsage(cvm *cvmv1alpha1.Ckm) (cpuUsage, memoryUsage resource.Quantity, allocatedCPU, allocatedMemory resource.Quantity, err error) {
-
 	cfg := &k8s.K3kConfig{
 		Name:      cvm.GetK3kName(),
 		Namespace: cvm.GetNamespace(),
 		ApiServer: "",
 		CvmName:   cvm.Name,
 	}
-	client, err := k8s.NewK8sClient().GetK3kClusterSdkByConfig(cfg)
+	cpuUsage, memoryUsage, err = k.k3kMetricsUsage(cfg)
 	if err != nil {
 		return resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, nil
 	}
-	configmap, err := client.ClientSet.CoreV1().ConfigMaps("default").Get(client.Ctx, "metrics", metav1.GetOptions{})
-	if err != nil {
-		return resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, nil
-	}
-	cpuValue, _ := strconv.ParseInt(configmap.Data["cpu"], 10, 64)
-	memoryValue, _ := strconv.ParseInt(configmap.Data["memory"], 10, 64)
-	cpuUsage = *resource.NewMilliQuantity(cpuValue, resource.DecimalSI)
-	memoryUsage = *resource.NewQuantity(memoryValue, resource.BinarySI)
 
-	allocatedCPU = resource.MustParse(fmt.Sprintf("%d", cvm.Status.EffectiveResource.CPU))
-	allocatedMemory = resource.MustParse(fmt.Sprintf("%dGi", cvm.Status.EffectiveResource.Memory))
-	if allocatedCPU.IsZero() || allocatedMemory.IsZero() {
-		allocatedCPU, allocatedMemory, _ = k.nodeAllocate(allocatedCPU, allocatedMemory)
-	}
+	allocatedCPU, allocatedMemory, _ = k.cvmAllocatedResource(cvm)
 
 	return cpuUsage, memoryUsage, allocatedCPU, allocatedMemory, nil
 }
+
+func (k *K3kUsage) k3kMetricsUsage(cfg *k8s.K3kConfig) (resource.Quantity, resource.Quantity, error) {
+	client, err := k8s.NewK8sClient().GetK3kClusterSdkByConfig(cfg)
+	if err != nil {
+		return resource.Quantity{}, resource.Quantity{}, err
+	}
+	configmap, err := client.ClientSet.CoreV1().ConfigMaps("default").Get(client.Ctx, "metrics", metav1.GetOptions{})
+	if err != nil {
+		return resource.Quantity{}, resource.Quantity{}, err
+	}
+	cpuValue, _ := strconv.ParseInt(configmap.Data["cpu"], 10, 64)
+	memoryValue, _ := strconv.ParseInt(configmap.Data["memory"], 10, 64)
+	return *resource.NewMilliQuantity(cpuValue, resource.DecimalSI), *resource.NewQuantity(memoryValue, resource.BinarySI), nil
+}
+
+func (k *K3kUsage) nodeMetricsUsage() (cpuUsage, memoryUsage resource.Quantity) {
+	for _, metric := range NodeMetrics.GetLatestMetrics() {
+		cpuUsage.Add(*resource.NewMilliQuantity(metric.CPUUsage, resource.DecimalSI))
+		memoryUsage.Add(*resource.NewQuantity(metric.MemoryUsage, resource.BinarySI))
+	}
+	return cpuUsage, memoryUsage
+}
+
+func (k *K3kUsage) cvmAllocatedResource(cvm *cvmv1alpha1.Ckm) (allocatedCPU, allocatedMemory resource.Quantity, err error) {
+	allocatedCPU = resource.MustParse(fmt.Sprintf("%d", cvm.Status.EffectiveResource.CPU))
+	allocatedMemory = resource.MustParse(fmt.Sprintf("%dGi", cvm.Status.EffectiveResource.Memory))
+	if allocatedCPU.IsZero() || allocatedMemory.IsZero() {
+		return k.nodeAllocate(allocatedCPU, allocatedMemory)
+	}
+	return allocatedCPU, allocatedMemory, nil
+}
+
 func (k *K3kUsage) getCvm(cvmName, ns string) (*cvmv1alpha1.Ckm, error) {
 	cvm := &cvmv1alpha1.Ckm{}
 	sigClient, err := k.sdk.ToSigClient()
