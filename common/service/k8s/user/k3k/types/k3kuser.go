@@ -277,6 +277,7 @@ func (u *k3kUser) ToArray() map[string]string {
 		"w7.cc/has-password": boolString(u.Spec.PasswordHash != ""),
 	}
 	if u.IsCkmReqUser() {
+		oldAndNewMenu := append(K3K_MENU_FOUNDER_RULES, u.Spec.MenuRules...)
 		result["w7.cc/is-ckm-req"] = "true"
 		result[W7_CKM_NAME] = u.GetCkmName()
 		result["ckm-namespace"] = u.GetK3kNamespace()
@@ -284,6 +285,7 @@ func (u *k3kUser) ToArray() map[string]string {
 		result["w7.cc/is-ckm-req"] = "true"
 		result["w7.cc/cvm-name"] = u.GetCkmName()
 		result["w7.cc/cvm-namespace"] = u.GetK3kNamespace()
+		result["w7.cc/menu"] = mustJSON(oldAndNewMenu) // 兼容新 旧面板
 	}
 	return result
 }

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
-	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -34,8 +33,7 @@ func SetupServiceAccountController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
 // K3kServiceAccountController reconciles ServiceAccount objects
 type ServiceAccountController struct {
 	client.Client
-	Scheme    *runtime.Scheme
-	k3kClient *k3ktypes.K3kClient
+	Scheme *runtime.Scheme
 }
 
 func (r *ServiceAccountController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
