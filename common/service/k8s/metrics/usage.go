@@ -6,12 +6,16 @@ import (
 	"strconv"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+)
+
+const (
+	ckmControllerVersionLabel    = "ckm.w7.cc/controller-version"
+	ckmControllerVersionV1Alpha2 = "v1alpha2"
 )
 
 type K3kUsage struct {
@@ -27,15 +31,12 @@ func NewK3kUsage(sdk *k8s.Sdk) *K3kUsage {
 // GetResourceUsage returns the CPU and memory usage for a user, along with the total percentage of allocated resources.
 func (k *K3kUsage) GetResourceUsage(k8stoken *k8s.K8sToken) (cpuUsage, memoryUsage resource.Quantity, allocatedCPU, allocatedMemory resource.Quantity, err error) {
 
-	ckm := &v1alpha1.Ckm{}
 	if k8stoken.IsK3kCluster() {
-		cvm, err := k.getCvm(k8stoken.GetCvmName(), k8stoken.GetNamespace())
+		ckm, err := k.getCvm(k8stoken.GetCvmName(), k8stoken.GetNamespace())
 		if err != nil {
 			return cpuUsage, memoryUsage, allocatedCPU, allocatedMemory, nil
 		}
-		ckm = cvm
-	}
-	if k8stoken.IsK3kCluster() {
+
 		cfg, err := k8stoken.GetK3kConfig()
 		if err != nil {
 			return cpuUsage, memoryUsage, allocatedCPU, allocatedMemory, err
@@ -44,14 +45,10 @@ func (k *K3kUsage) GetResourceUsage(k8stoken *k8s.K8sToken) (cpuUsage, memoryUsa
 		if err != nil {
 			return resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, nil
 		}
-	} else {
-		cpuUsage, memoryUsage = k.nodeMetricsUsage()
-	}
-
-	if k8stoken.IsK3kCluster() {
 
 		allocatedCPU, allocatedMemory, _ = k.cvmAllocatedResource(ckm)
 	} else {
+		cpuUsage, memoryUsage = k.nodeMetricsUsage()
 		allocatedCPU, allocatedMemory, _ = k.nodeAllocate(allocatedCPU, allocatedMemory)
 	}
 
@@ -66,7 +63,7 @@ func (k *K3kUsage) GetResourceCvmUsage(cvm *cvmv1alpha1.Ckm) (cpuUsage, memoryUs
 		ApiServer: "",
 		CvmName:   cvm.Name,
 	}
-	cpuUsage, memoryUsage, err = k.k3kMetricsUsage(cfg)
+	cpuUsage, memoryUsage, err = k.k3kMetricsUsage(cfg, cvm)
 	if err != nil {
 		return resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, nil
 	}
@@ -81,6 +78,9 @@ func (k *K3kUsage) k3kMetricsUsage(cfg *k8s.K3kConfig, ckm *cvmv1alpha1.Ckm) (re
 	if err != nil {
 		return resource.Quantity{}, resource.Quantity{}, err
 	}
+	if isCkmControllerV1Alpha2(ckm) {
+		return k.topNodeMetricsUsage(client)
+	}
 	configmap, err := client.ClientSet.CoreV1().ConfigMaps("default").Get(client.Ctx, "metrics", metav1.GetOptions{})
 	if err != nil {
 		return resource.Quantity{}, resource.Quantity{}, err
@@ -88,6 +88,29 @@ func (k *K3kUsage) k3kMetricsUsage(cfg *k8s.K3kConfig, ckm *cvmv1alpha1.Ckm) (re
 	cpuValue, _ := strconv.ParseInt(configmap.Data["cpu"], 10, 64)
 	memoryValue, _ := strconv.ParseInt(configmap.Data["memory"], 10, 64)
 	return *resource.NewMilliQuantity(cpuValue, resource.DecimalSI), *resource.NewQuantity(memoryValue, resource.BinarySI), nil
+}
+
+func isCkmControllerV1Alpha2(ckm *cvmv1alpha1.Ckm) bool {
+	if ckm == nil {
+		return false
+	}
+	return ckm.Labels[ckmControllerVersionLabel] == ckmControllerVersionV1Alpha2
+}
+
+func (k *K3kUsage) topNodeMetricsUsage(sdk *k8s.Sdk) (cpuUsage, memoryUsage resource.Quantity, err error) {
+	metricsClient, err := sdk.ToMetricsClient()
+	if err != nil {
+		return resource.Quantity{}, resource.Quantity{}, err
+	}
+	nodeMetrics, err := metricsClient.MetricsV1beta1().NodeMetricses().List(sdk.Ctx, metav1.ListOptions{})
+	if err != nil {
+		return resource.Quantity{}, resource.Quantity{}, err
+	}
+	for _, node := range nodeMetrics.Items {
+		cpuUsage.Add(*node.Usage.Cpu())
+		memoryUsage.Add(*node.Usage.Memory())
+	}
+	return cpuUsage, memoryUsage, nil
 }
 
 func (k *K3kUsage) nodeMetricsUsage() (cpuUsage, memoryUsage resource.Quantity) {
