@@ -309,33 +309,3 @@ func (self Console) Proxy(gin *gin.Context) {
 	}()
 	proxy.ServeHTTP(gin.Writer, gin.Request)
 }
-
-func (self Console) ProxyCouponCode(gin *gin.Context) {
-
-	sdkclient, err := console.NewDefaultSdkClient()
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-	var code = gin.Param("code")
-	if code == "" {
-		gin.AbortWithStatus(403)
-	}
-	token := gin.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
-	policyName := k8sToken.GetPolicyName()
-
-	path := fmt.Sprintf("/api/thirdparty-cd/k8s-offline/sdk/coupon/%s", code)
-	proxy, err := sdkclient.Proxy(path, "?groupname="+policyName)
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-	defer func() {
-		//golang issue 23643
-		if r := recover(); r != nil {
-			slog.Error("客户端已断开连接", "error", r)
-		}
-	}()
-	proxy.ServeHTTP(gin.Writer, gin.Request)
-}

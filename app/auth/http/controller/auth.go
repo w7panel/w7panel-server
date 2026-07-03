@@ -15,6 +15,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	userservice "github.com/w7panel/w7panel/common/service/user"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
@@ -199,8 +200,14 @@ func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Contex
 	if role == "" {
 		role = u.Spec.UserMode
 	}
-	audiences := []string{u.Name, role, u.Spec.ConsoleId, ckmName, execSA, "https://kubernetes.default.svc.cluster.local", "k3s"}
-	token, err := sdk.CreateTokenRequest(execSA, seconds, audiences)
+	// audiences := []string{u.Name, role, u.Spec.ConsoleId, ckmName, execSA, "https://kubernetes.default.svc.cluster.local", "k3s"}
+	// token, err := sdk.CreateTokenRequest(execSA, seconds, audiences)
+	// if err != nil {
+	// 	auditservice.RecordLoginFailure(http, u.Name, loginMethod, err)
+	// 	self.JsonResponseWithError(http, err, 500)
+	// 	return
+	// }
+	token, err := k3k.LoginByUser(sdk, u.ToTyped(), seconds, true, ckmName, execSA)
 	if err != nil {
 		auditservice.RecordLoginFailure(http, u.Name, loginMethod, err)
 		self.JsonResponseWithError(http, err, 500)

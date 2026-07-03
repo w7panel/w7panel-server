@@ -69,7 +69,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			// 不需要创始人权限
 			// localApiGroup.GET("/console/code/:code", middleware.Auth{}.Process, controller2.Console{}.ProxyCouponCode)
 			// localApiGroup.Any("/console/proxy/*path", middleware.Auth{}.Process, controller2.Console{}.Proxy)
-			localApiGroup.GET("/console/code/:code", middleware.Auth{}.Process, controller2.Console{}.ProxyCouponCode)
+
 			localApiGroup.Any("/console/proxy/*path", middleware.Auth{}.Process, controller2.Console{}.Proxy)
 			localApiGroup.GET("/permissions/routes", middleware.Auth{}.Process, func(ctx *gin.Context) {
 				ctx.JSON(200, gin.H{
