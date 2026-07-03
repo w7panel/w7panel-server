@@ -17,7 +17,7 @@ var Z = []string{"%STORAGE_RW_MODE%", "%STORAGE_SIZE%", "%STORAGE_CLASS_NAME%", 
 type Manifest struct {
 	Application Application        `json:"application"`
 	Platform    Platform           `json:"platform"`
-	V           intstr.IntOrString `json:"v"`
+	Version     intstr.IntOrString `json:"version"`
 	Bindings    []Bindings         `json:"bindings"`
 	WebApp      WebApp             `json:"webapp"`
 	Type        string             `json:"type"` //tradition 列表不显示

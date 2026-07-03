@@ -326,7 +326,7 @@ func (p *PackageApp) GetLabels() map[string]string {
 		"app":                              p.GetName(),
 		"w7.cc/install-id":                 p.InstallId,
 		"w7.cc/suffix":                     p.GetSuffix(),
-		"w7.cc/manifest-version":           p.Manifest.V.String(),
+		"w7.cc/manifest-version":           p.Manifest.Version.String(),
 	}
 	if p.Parent != nil {
 		result["w7.cc/parent"] = p.Parent.GetName()
