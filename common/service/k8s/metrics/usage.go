@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -25,12 +26,21 @@ func NewK3kUsage(sdk *k8s.Sdk) *K3kUsage {
 
 // GetResourceUsage returns the CPU and memory usage for a user, along with the total percentage of allocated resources.
 func (k *K3kUsage) GetResourceUsage(k8stoken *k8s.K8sToken) (cpuUsage, memoryUsage resource.Quantity, allocatedCPU, allocatedMemory resource.Quantity, err error) {
+
+	ckm := &v1alpha1.Ckm{}
+	if k8stoken.IsK3kCluster() {
+		cvm, err := k.getCvm(k8stoken.GetCvmName(), k8stoken.GetNamespace())
+		if err != nil {
+			return cpuUsage, memoryUsage, allocatedCPU, allocatedMemory, nil
+		}
+		ckm = cvm
+	}
 	if k8stoken.IsK3kCluster() {
 		cfg, err := k8stoken.GetK3kConfig()
 		if err != nil {
 			return cpuUsage, memoryUsage, allocatedCPU, allocatedMemory, err
 		}
-		cpuUsage, memoryUsage, err = k.k3kMetricsUsage(cfg)
+		cpuUsage, memoryUsage, err = k.k3kMetricsUsage(cfg, ckm)
 		if err != nil {
 			return resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, resource.Quantity{}, nil
 		}
@@ -39,11 +49,8 @@ func (k *K3kUsage) GetResourceUsage(k8stoken *k8s.K8sToken) (cpuUsage, memoryUsa
 	}
 
 	if k8stoken.IsK3kCluster() {
-		cvm, err := k.getCvm(k8stoken.GetCvmName(), k8stoken.GetNamespace())
-		if err != nil {
-			return cpuUsage, memoryUsage, allocatedCPU, allocatedMemory, nil
-		}
-		allocatedCPU, allocatedMemory, _ = k.cvmAllocatedResource(cvm)
+
+		allocatedCPU, allocatedMemory, _ = k.cvmAllocatedResource(ckm)
 	} else {
 		allocatedCPU, allocatedMemory, _ = k.nodeAllocate(allocatedCPU, allocatedMemory)
 	}
@@ -69,7 +76,7 @@ func (k *K3kUsage) GetResourceCvmUsage(cvm *cvmv1alpha1.Ckm) (cpuUsage, memoryUs
 	return cpuUsage, memoryUsage, allocatedCPU, allocatedMemory, nil
 }
 
-func (k *K3kUsage) k3kMetricsUsage(cfg *k8s.K3kConfig) (resource.Quantity, resource.Quantity, error) {
+func (k *K3kUsage) k3kMetricsUsage(cfg *k8s.K3kConfig, ckm *cvmv1alpha1.Ckm) (resource.Quantity, resource.Quantity, error) {
 	client, err := k8s.NewK8sClient().GetK3kClusterSdkByConfig(cfg)
 	if err != nil {
 		return resource.Quantity{}, resource.Quantity{}, err
