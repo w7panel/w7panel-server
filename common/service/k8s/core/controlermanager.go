@@ -10,6 +10,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/privatedns"
 	"github.com/w7panel/w7panel/common/service/k8s/service"
 	"github.com/w7panel/w7panel/common/service/k8s/site"
+	"github.com/w7panel/w7panel/common/service/k8s/user"
 	webhooklocal "github.com/w7panel/w7panel/common/service/k8s/webhook"
 	permissionservice "github.com/w7panel/w7panel/common/service/permission"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
@@ -81,6 +82,11 @@ func StartControlManager() error {
 	err = permissionservice.SetupPermissionController(mgr, sdk)
 	if err != nil {
 		slog.Error("setup permission controller failed", "err", err)
+		return err
+	}
+	err = user.SetupServiceAccountController(mgr, sdk)
+	if err != nil {
+		slog.Error("setup service account controller failed", "err", err)
 		return err
 	}
 	if facade.GetConfig().GetBool("higress.watch") {
