@@ -9,19 +9,19 @@ import (
 
 func WebHookPid(pod *corev1.Pod) {
 	time.AfterFunc(time.Second*5, func() {
-		if len(pod.Status.ContainerStatuses) == 0 {
+		if len(pod.Status.ContainerStatuses) != 1 {
 			return
 		}
 		if pod.Annotations == nil {
 			pod.Annotations = map[string]string{}
 		}
 		//如果已经设置 直接返回
-		containerId := pod.Status.ContainerStatuses[0].ContainerID
-		annoContainerId, ok := pod.Annotations["w7.cc/container-id"]
-		if ok && annoContainerId == containerId {
+		status := pod.Status.ContainerStatuses[0]
+		containerIDs, err := getAnnotationMap(pod, containerIDsAnnotation)
+		if err == nil && sameContainerID(containerIDs[status.Name], status.ContainerID) {
 			return
 		}
-		_, err := LoadPid(pod)
+		_, err = LoadPid(pod)
 		if err != nil {
 			slog.Error("load pid error", "error", err)
 		}
