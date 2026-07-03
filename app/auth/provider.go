@@ -6,7 +6,7 @@ import (
 	controller2 "github.com/w7panel/w7panel/app/auth/http/controller"
 	k3kController "github.com/w7panel/w7panel/app/k3k/http/controller"
 	"github.com/w7panel/w7panel/common/middleware"
-	permissionservice "github.com/w7panel/w7panel/common/service/permission"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
 )

@@ -6,7 +6,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
+	permissionservice "github.com/w7panel/w7panel/common/service/permission"
+	userservice "github.com/w7panel/w7panel/common/service/user"
+	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 

@@ -303,7 +303,7 @@ func TestIsBuiltin(t *testing.T) {
 func TestBuiltinAdminPermissionsDoNotGrantFounderWildcards(t *testing.T) {
 	for _, name := range []string{"super.yaml", "api.yaml"} {
 		t.Run(name, func(t *testing.T) {
-			data, err := os.ReadFile(filepath.Join("..", "..", "..", "kodata", "yaml", "permission", name))
+			data, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "kodata", "yaml", "permission", name))
 			if err != nil {
 				if os.IsNotExist(err) {
 					t.Skipf("builtin permission file %s does not exist", name)
@@ -453,7 +453,7 @@ func TestBuiltinSuperRBACRestrictsSensitiveResourcesToReadOnly(t *testing.T) {
 
 func loadBuiltinPermission(t *testing.T, name string) *configv1alpha1.Permission {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "kodata", "yaml", "permission", name))
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "kodata", "yaml", "permission", name))
 	if err != nil {
 		t.Fatalf("read builtin permission %s: %v", name, err)
 	}
