@@ -56,6 +56,11 @@ kubectl patch wasmplugin w7-white-domain -n higress-system --type=merge -p '{"sp
 
 echo "create权限 不使用apply" 
 # kubectl get permission founder >/dev/null 2>&1 || kubectl apply -f $KO_DATA_PATH/yaml/permission/founder.yaml --server-side
+kubectl annotate serviceaccount "${SERVICE_ACCOUNT_NAME:-w7panel-offline}" -n "${NAMESPACE:-default}" w7.cc/menu-name- --overwrite || true
+kubectl delete permission tech --ignore-not-found
+kubectl delete configmap tech -n default --ignore-not-found
+kubectl delete configmap k3k.permission.tech -n default --ignore-not-found
+kubectl delete configmap permission.tech -n default --ignore-not-found
 kubectl create -f $KO_DATA_PATH/yaml/permission || echo "已存在"
 
 # 系统内置权限直接替换，自定义权限不在该目录中

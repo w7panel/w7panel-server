@@ -324,7 +324,7 @@ func TestBuiltinAdminPermissionsDoNotGrantFounderWildcards(t *testing.T) {
 	}
 }
 
-func TestBuiltinNormalPermissionKeepsMinimumAppDirectAccess(t *testing.T) {
+func TestBuiltinNormalPermissionHasNoPanelOrKubernetesPermission(t *testing.T) {
 	p := loadBuiltinPermission(t, "normal.yaml")
 	api := APIMap(p)
 
@@ -334,31 +334,8 @@ func TestBuiltinNormalPermissionKeepsMinimumAppDirectAccess(t *testing.T) {
 	if len(p.Spec.RBACRules) != 0 {
 		t.Fatalf("normal rbacRules = %v, want empty", p.Spec.RBACRules)
 	}
-
-	allowed := []struct {
-		method string
-		path   string
-	}{
-		{method: "GET", path: "/panel-api/v1/k3k/info"},
-		{method: "GET", path: "/panel-api/v1/auth/userinfo"},
-		{method: "GET", path: "/panel-api/v1/auth/console/info"},
-		{method: "POST", path: "/panel-api/v1/auth/refresh-token2"},
-		{method: "GET", path: "/panel-api/v1/microapp/top"},
-		{method: "GET", path: "/panel-api/v1/microapp/demo/info"},
-		{method: "GET", path: "/panel-api/v1/microapp/demo/frontprops"},
-		{method: "POST", path: "/panel-api/v1/microapp/demo/proxy/api/data"},
-		{method: "GET", path: "/panel-api/v1/static/demo/status"},
-		{method: "POST", path: "/panel-api/v1/static/default/download/demo"},
-		{method: "GET", path: "/panel-api/v1/static/proxy/zpk/demo/v1/frontend/index.js"},
-		{method: "GET", path: "/panel-api/v1/namespaces/default/services/demo/proxy/api"},
-		{method: "POST", path: "/panel-api/v1/namespaces/default/pods/demo/proxy/api"},
-	}
-	for _, tt := range allowed {
-		t.Run("allow "+tt.method+" "+tt.path, func(t *testing.T) {
-			if !MatchAPI(api, tt.method, tt.path) {
-				t.Fatalf("normal permission should allow %s %s", tt.method, tt.path)
-			}
-		})
+	if len(api) != 0 {
+		t.Fatalf("normal apiRules = %v, want empty", api)
 	}
 
 	denied := []struct {
@@ -380,6 +357,47 @@ func TestBuiltinNormalPermissionKeepsMinimumAppDirectAccess(t *testing.T) {
 				t.Fatalf("normal permission should deny %s %s", tt.method, tt.path)
 			}
 		})
+	}
+}
+
+func TestBuiltinAPIRBACAllowsRegularResourcesOnly(t *testing.T) {
+	p := loadBuiltinPermission(t, "api.yaml")
+
+	for _, item := range []struct {
+		group    string
+		resource string
+		verb     string
+	}{
+		{group: "", resource: "pods", verb: "create"},
+		{group: "", resource: "configmaps", verb: "update"},
+		{group: "", resource: "secrets", verb: "delete"},
+		{group: "", resource: "services", verb: "patch"},
+		{group: "apps", resource: "deployments", verb: "create"},
+		{group: "batch", resource: "jobs", verb: "delete"},
+		{group: "networking.k8s.io", resource: "ingresses", verb: "update"},
+	} {
+		if !rbacAllows(p.Spec.RBACRules, item.group, item.resource, item.verb) {
+			t.Fatalf("api rbac should allow %s for %s/%s", item.verb, item.group, item.resource)
+		}
+	}
+
+	for _, item := range []struct {
+		group    string
+		resource string
+	}{
+		{group: "apiextensions.k8s.io", resource: "customresourcedefinitions"},
+		{group: "", resource: "namespaces"},
+		{group: "", resource: "serviceaccounts"},
+		{group: "w7panel.w7.com", resource: "permissions"},
+	} {
+		if !rbacAllows(p.Spec.RBACRules, item.group, item.resource, "get") {
+			t.Fatalf("api rbac should allow read for %s/%s", item.group, item.resource)
+		}
+		for _, verb := range []string{"create", "update", "patch", "delete"} {
+			if rbacAllows(p.Spec.RBACRules, item.group, item.resource, verb) {
+				t.Fatalf("api rbac must not allow %s for %s/%s", verb, item.group, item.resource)
+			}
+		}
 	}
 }
 
