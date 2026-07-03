@@ -9,7 +9,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/console"
 	console2 "github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	permissionservice "github.com/w7panel/w7panel/common/service/permission"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	userservice "github.com/w7panel/w7panel/common/service/user"
 
 	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
