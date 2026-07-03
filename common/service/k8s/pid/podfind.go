@@ -20,27 +20,22 @@ func newPodFind(root, client *kubernetes.Clientset) *podFind {
 }
 
 func (f *podFind) GetVirtualClusterNodePod(namespace, hostIp string) (*corev1.Pod, error) {
-	nodes, err := f.client.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
+
+	// ckmName := k3kConfig.CvmName
+	// podName := k3kConfig.GetK3kServer0Name()
+	pods, err := f.root.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
+		slog.Error("tty k3k list pods error", "err", err)
 		return nil, err
+	} else {
+
 	}
-	podName := ""
-	for _, node := range nodes.Items {
-		for _, address := range node.Status.Addresses {
-			if address.Address == hostIp {
-				podName = node.Name
-				break
-			}
+	for _, pod := range pods.Items {
+		if pod.Status.PodIP == hostIp { //PodIP 就是虚拟集群的节点IP
+			return &pod, nil
 		}
 	}
-	if podName == "" {
-		return nil, fmt.Errorf("not found node")
-	}
-	pod, err := f.root.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return pod, nil
+	return nil, fmt.Errorf("not found virtual cluster pod")
 }
 
 func (f *podFind) GetPanelAgentPod(hostIp string) (*corev1.Pod, error) {

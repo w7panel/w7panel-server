@@ -359,13 +359,24 @@ func (self PodExec) Tty(http *gin.Context) {
 			self.JsonResponseWithServerError(http, err)
 			return
 		}
+		ckmName := k3kConfig.CvmName
+		podName := k3kConfig.GetK3kServer0Name()
+		pods, err := client.ClientSet.CoreV1().Pods(k3kConfig.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: "cluster=" + ckmName})
+		if err != nil {
+			slog.Error("tty k3k list pods error", "err", err)
+		} else {
+			for _, pod := range pods.Items {
+				podName = pod.Name
+			}
+		}
+
 		// clientsdk, err := client.Channel(token)
 		// if err != nil {
 		// 	self.JsonResponseWithServerError(http, err)
 		// 	return
 		// }
 		params.Shell = "/bin/sh" //k3k pod 只支持 /bin/sh
-		err = client.RunExec(session, k3kConfig.Namespace, k3kConfig.GetK3kServer0Name(), k3kConfig.GetK3kServer0ContainerName(), []string{params.Shell}, true)
+		err = client.RunExec(session, k3kConfig.Namespace, podName, k3kConfig.GetK3kServer0ContainerName(), []string{params.Shell}, true)
 		if err != nil {
 			reason := "upstream_close"
 			if errors.Is(ctx.Err(), context.DeadlineExceeded) {

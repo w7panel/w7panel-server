@@ -84,7 +84,7 @@ func (self Images) Remove(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
-
+	params.Force = true
 	err = registry.ImagesRemove(http, client, []string{params.Target}, params.Force, params.Async)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)

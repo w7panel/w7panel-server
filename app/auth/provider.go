@@ -33,10 +33,10 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		{
 			oidcGroup.Any("/.well-known/openid-configuration", controller2.Oidc{}.Discovery)
 			oidcGroup.Any("/jwks", controller2.Oidc{}.Handle)
-			oidcGroup.POST("/register", controller2.Oidc{}.RegisterClient)
-			oidcGroup.GET("/register/:clientId", controller2.Oidc{}.GetClient)
-			oidcGroup.PUT("/register/:clientId", controller2.Oidc{}.UpdateClient)
-			oidcGroup.DELETE("/register/:clientId", controller2.Oidc{}.DeleteClient)
+			// oidcGroup.POST("/register", controller2.Oidc{}.RegisterClient)
+			// oidcGroup.GET("/register/:clientId", controller2.Oidc{}.GetClient)
+			// oidcGroup.PUT("/register/:clientId", controller2.Oidc{}.UpdateClient)
+			// oidcGroup.DELETE("/register/:clientId", controller2.Oidc{}.DeleteClient)
 
 			oidcGroup.Any("/authorize", controller2.Oidc{}.Handle)
 			oidcGroup.Any("/token", controller2.Oidc{}.Handle)
