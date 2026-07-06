@@ -40,7 +40,7 @@ ingress:
     enabled: true
     secretName: w7panel-noauth-tls
   certManager:
-    enabled: false
+    enabled: true
     issuer:
       create: false
       name: w7-letsencrypt-prod
