@@ -1,11 +1,13 @@
 package pid
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/terminal"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type pid struct {
@@ -61,7 +63,7 @@ func (p *pid) Handle(param PidParam) (*PidResult, error) {
 		if err != nil {
 			return nil, err
 		}
-		err = checkPodRunning(clusterPod)
+		err = checkPodRunning(clusterPod, "", "")
 		if err != nil {
 			return nil, err
 		}
@@ -71,34 +73,35 @@ func (p *pid) Handle(param PidParam) (*PidResult, error) {
 			slog.Error("get  daemonsetPod err", "err", err)
 			return nil, err
 		}
-		err = checkPodRunning(daemonsetPod)
-		if err != nil {
-			return nil, err
-		}
-		// clusterPodKey := cacheKey(clusterPod)
-		// val, ok := pidCache.Get(clusterPodKey)
-		clusterPodContainerId := clusterPod.Status.ContainerStatuses[0].ContainerID
-		clusterPodPid, err := GetContainerPid(daemonsetPod, clusterPod, clusterPodContainerId, true, p.rootSdk) //20260616 新修改
-		// clusterPodPid, err := GetContainerPid(daemonsetPod, clusterPod, param.ContainerId, false, p.rootSdk) 之前为啥对 //TODO ???
+		err = checkPodRunning(daemonsetPod, "", "")
 		if err != nil {
 			return nil, err
 		}
 
-		pid = clusterPodPid
-		if param.ContainerId != "" && param.FromPodName != "" {
+		// clusterPodContainerId := clusterPod.Status.ContainerStatuses[0].ContainerID
+		// clusterPodPid, err := GetContainerPid(daemonsetPod, clusterPod, clusterPodContainerId, true, p.rootSdk) //20260616 新修改
+		// // clusterPodPid, err := GetContainerPid(daemonsetPod, clusterPod, param.ContainerId, false, p.rootSdk) 之前为啥对 //TODO ???
+		// if err != nil {
+		// 	return nil, err
+		// }
+
+		// pid = clusterPodPid
+		if param.FromPodName != "" {
 			//为啥前端传containerId 为了获取pid, 后期因要从annnatation获取pid缓存, 所以需要查询k3kInnerPod
 			k3kInnerPod, err := podfindApi.GetFromPod(param.FromPodName, param.Namespace, true)
 			if err != nil {
 				return nil, err
 			}
-			k3kInnerPodPid, err := GetContainerPid(clusterPod, k3kInnerPod, param.ContainerId, false, p.rootSdk) //必须rootsdk
+			k3kInnerPodPid, containerName, err := GetContainerPid(clusterPod, k3kInnerPod, param.FromPodContainerName, param.ContainerId, false, p.rootSdk) //必须rootsdk
 			if err != nil {
 				return nil, err
 			}
-			subPid = k3kInnerPodPid
+			_ = p.patchContainerPid(p.clientSdk, k3kInnerPod, containerName, param.ContainerId, k3kInnerPodPid)
+			pid = k3kInnerPodPid
+			param.FromPodContainerName = containerName
 		}
-		agentPod = daemonsetPod
-		proxyIp = daemonsetPod.Status.PodIP
+		agentPod = clusterPod
+		// proxyIp = daemonsetPod.Status.PodIP //20260624 子集群直接使用middleware proxy.go来转发请求
 	} else {
 		podfindApi := newPodFind(p.rootSdk.ClientSet, p.rootSdk.ClientSet)
 		daemonsetPod, err := p.rootSdk.GetDaemonsetAgentPod(p.rootSdk.GetNamespace(), param.HostIp)
@@ -106,18 +109,20 @@ func (p *pid) Handle(param PidParam) (*PidResult, error) {
 			slog.Error("get  daemonsetPod err", "err", err)
 			return nil, err
 		}
-		if param.ContainerId != "" && param.FromPodName != "" {
+		if param.FromPodName != "" {
 
 			//为啥前端传containerId 为了获取pid, 后期因要从annnatation获取pid缓存, 所以需要查询k3kInnerPod
 			rootPod, err := podfindApi.GetFromPod(param.FromPodName, param.Namespace, true)
 			if err != nil {
 				return nil, err
 			}
-			rootPid, err := GetContainerPid(daemonsetPod, rootPod, param.ContainerId, true, p.rootSdk)
+			rootPid, containerName, err := GetContainerPid(daemonsetPod, rootPod, param.FromPodContainerName, param.ContainerId, true, p.rootSdk)
 			if err != nil {
 				return nil, err
 			}
+			_ = p.patchContainerPid(p.rootSdk, rootPod, containerName, param.ContainerId, rootPid)
 			pid = rootPid
+			param.FromPodContainerName = containerName
 
 		}
 		agentPod = daemonsetPod
@@ -134,13 +139,36 @@ func (p *pid) Handle(param PidParam) (*PidResult, error) {
 		}
 	}
 	return &PidResult{
-		Pid:      pid,
-		SubPid:   subPid,
-		ProxyIp:  proxyIp,
-		AgentPod: agentPod,
-		Pwd:      pwd,
+		Pid:           pid,
+		SubPid:        subPid,
+		ProxyIp:       proxyIp,
+		AgentPod:      agentPod,
+		ContainerName: param.FromPodContainerName,
+		Pwd:           pwd,
 	}, nil
 
+}
+
+func (self *pid) patchContainerPid(sdk *k8s.Sdk, pod *corev1.Pod, containerName, containerId string, pid int) error {
+	if sdk == nil || pod == nil || containerName == "" || pid == 0 {
+		return nil
+	}
+	status, err := resolveContainerStatus(pod, containerName, containerId)
+	if err != nil {
+		return err
+	}
+	latest, err := sdk.ClientSet.CoreV1().Pods(pod.Namespace).Get(context.Background(), pod.Name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	if latest.Annotations == nil {
+		latest.Annotations = map[string]string{}
+	}
+	if err := setAnnotationContainerPid(latest, status.Name, status.ContainerID, pid); err != nil {
+		return err
+	}
+	_, err = sdk.ClientSet.CoreV1().Pods(latest.Namespace).Update(context.Background(), latest, metav1.UpdateOptions{})
+	return err
 }
 
 func (self *pid) GetPwd(params PidParam) (string, error) {
