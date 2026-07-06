@@ -131,3 +131,5 @@ k3s-registry:
 
 webhook:
   enabled: ${WEBHOOK_ENABLED-false}
+  certManager:
+    enabled: ${WEBHOOK_CERT_MANAGER_ENABLED-true}
