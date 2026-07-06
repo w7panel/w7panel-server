@@ -44,15 +44,36 @@ func TestIDMapperMapsHostAndContainerIDs(t *testing.T) {
 }
 
 func TestIDMapperFallsBackToIdentity(t *testing.T) {
-	mapper := &IDMapper{
-		uidRanges: parseIDMap("0 100000 10\n"),
-	}
+	mapper := &IDMapper{}
 
 	if got := mapper.HostToContainerUID(42); got != 42 {
 		t.Fatalf("HostToContainerUID fallback mismatch: got=%d want=42", got)
 	}
 	if got := mapper.ContainerToHostGID(42); got != 42 {
 		t.Fatalf("ContainerToHostGID fallback mismatch: got=%d want=42", got)
+	}
+	if got, ok := mapper.TryContainerToHostUID(42); !ok || got != 42 {
+		t.Fatalf("TryContainerToHostUID fallback mismatch: got=(%d,%v) want=(42,true)", got, ok)
+	}
+}
+
+func TestIDMapperDoesNotUseIdentityForUnmappedIDs(t *testing.T) {
+	mapper := &IDMapper{
+		uidRanges: parseIDMap("0 100000 10\n"),
+		gidRanges: parseIDMap("0 200000 10\n"),
+	}
+
+	if got := mapper.HostToContainerUID(42); got != OverflowID {
+		t.Fatalf("HostToContainerUID unmapped mismatch: got=%d want=%d", got, OverflowID)
+	}
+	if got := mapper.HostToContainerGID(42); got != OverflowID {
+		t.Fatalf("HostToContainerGID unmapped mismatch: got=%d want=%d", got, OverflowID)
+	}
+	if _, ok := mapper.TryContainerToHostUID(42); ok {
+		t.Fatal("TryContainerToHostUID should fail for unmapped ID")
+	}
+	if _, ok := mapper.TryContainerToHostGID(42); ok {
+		t.Fatal("TryContainerToHostGID should fail for unmapped ID")
 	}
 }
 

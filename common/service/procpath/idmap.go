@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+const OverflowID uint32 = 65534
+
 type IDMapper struct {
 	uidRanges []idMapRange
 	gidRanges []idMapRange
@@ -39,18 +41,36 @@ func GetIDMapPaths(pid, subPid string) (string, string) {
 }
 
 func (m *IDMapper) HostToContainerUID(uid uint32) uint32 {
-	return mapHostToContainer(m.uidRanges, uid)
+	mapped, ok := mapHostToContainer(m.uidRanges, uid)
+	if !ok {
+		return OverflowID
+	}
+	return mapped
 }
 
 func (m *IDMapper) HostToContainerGID(gid uint32) uint32 {
-	return mapHostToContainer(m.gidRanges, gid)
+	mapped, ok := mapHostToContainer(m.gidRanges, gid)
+	if !ok {
+		return OverflowID
+	}
+	return mapped
 }
 
 func (m *IDMapper) ContainerToHostUID(uid uint32) uint32 {
-	return mapContainerToHost(m.uidRanges, uid)
+	mapped, _ := m.TryContainerToHostUID(uid)
+	return mapped
 }
 
 func (m *IDMapper) ContainerToHostGID(gid uint32) uint32 {
+	mapped, _ := m.TryContainerToHostGID(gid)
+	return mapped
+}
+
+func (m *IDMapper) TryContainerToHostUID(uid uint32) (uint32, bool) {
+	return mapContainerToHost(m.uidRanges, uid)
+}
+
+func (m *IDMapper) TryContainerToHostGID(gid uint32) (uint32, bool) {
 	return mapContainerToHost(m.gidRanges, gid)
 }
 
@@ -91,20 +111,26 @@ func parseIDMap(data string) []idMapRange {
 	return ranges
 }
 
-func mapHostToContainer(ranges []idMapRange, id uint32) uint32 {
+func mapHostToContainer(ranges []idMapRange, id uint32) (uint32, bool) {
+	if ranges == nil {
+		return id, true
+	}
 	for _, item := range ranges {
 		if id >= item.hostID && id-item.hostID < item.size {
-			return item.containerID + (id - item.hostID)
+			return item.containerID + (id - item.hostID), true
 		}
 	}
-	return id
+	return 0, false
 }
 
-func mapContainerToHost(ranges []idMapRange, id uint32) uint32 {
+func mapContainerToHost(ranges []idMapRange, id uint32) (uint32, bool) {
+	if ranges == nil {
+		return id, true
+	}
 	for _, item := range ranges {
 		if id >= item.containerID && id-item.containerID < item.size {
-			return item.hostID + (id - item.containerID)
+			return item.hostID + (id - item.containerID), true
 		}
 	}
-	return id
+	return 0, false
 }

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,8 +16,8 @@ type PermissionAgent struct {
 }
 
 type ownerIDMapper interface {
-	ContainerToHostUID(uid uint32) uint32
-	ContainerToHostGID(gid uint32) uint32
+	TryContainerToHostUID(uid uint32) (uint32, bool)
+	TryContainerToHostGID(gid uint32) (uint32, bool)
 }
 
 func (c PermissionAgent) Chmod(http *gin.Context) {
@@ -103,7 +104,11 @@ func (c PermissionAgent) Chown(http *gin.Context) {
 			return
 		}
 
-		uid, gid = mapOwnerToHost(parseOwner(parts), procpath.NewIDMapper(pid, subpid))
+		uid, gid, err = mapOwnerToHost(parseOwner(parts), procpath.NewIDMapper(pid, subpid))
+		if err != nil {
+			c.JsonResponseWithError(http, err, 400)
+			return
+		}
 	}
 
 	if params.Recursive {
@@ -127,19 +132,27 @@ func (c PermissionAgent) Chown(http *gin.Context) {
 	c.JsonSuccessResponse(http)
 }
 
-func mapOwnerToHost(owner ownerInfo, mapper ownerIDMapper) (int, int) {
+func mapOwnerToHost(owner ownerInfo, mapper ownerIDMapper) (int, int, error) {
 	uid := owner.uid
 	gid := owner.gid
 	if mapper == nil {
-		return uid, gid
+		return uid, gid, nil
 	}
 	if uid != -1 {
-		uid = int(mapper.ContainerToHostUID(uint32(uid)))
+		mapped, ok := mapper.TryContainerToHostUID(uint32(uid))
+		if !ok {
+			return 0, 0, fmt.Errorf("uid %d is outside user namespace mapping", uid)
+		}
+		uid = int(mapped)
 	}
 	if gid != -1 {
-		gid = int(mapper.ContainerToHostGID(uint32(gid)))
+		mapped, ok := mapper.TryContainerToHostGID(uint32(gid))
+		if !ok {
+			return 0, 0, fmt.Errorf("gid %d is outside user namespace mapping", gid)
+		}
+		gid = int(mapped)
 	}
-	return uid, gid
+	return uid, gid, nil
 }
 
 type ownerInfo struct {
