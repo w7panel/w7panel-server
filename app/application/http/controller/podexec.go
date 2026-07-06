@@ -369,6 +369,12 @@ func (self PodExec) Tty(http *gin.Context) {
 				podName = pod.Name
 			}
 		}
+
+		// clientsdk, err := client.Channel(token)
+		// if err != nil {
+		// 	self.JsonResponseWithServerError(http, err)
+		// 	return
+		// }
 		params.Shell = "/bin/sh" //k3k pod 只支持 /bin/sh
 		err = client.RunExec(session, k3kConfig.Namespace, podName, k3kConfig.GetK3kServer0ContainerName(), []string{params.Shell}, true)
 		if err != nil {
@@ -471,8 +477,10 @@ func (self PodExec) GetNodePid(http *gin.Context) {
 		return
 	}
 	type VParam struct {
-		Namespace string `form:"namespace" binding:"required"`
-		PodName   string `form:"podName" binding:"required"`
+		Namespace     string `form:"namespace" binding:"required"`
+		PodName       string `form:"podName" binding:"required"`
+		ContainerName string `form:"containerName"`
+		ContainerId   string `form:"containerId"`
 	}
 	params := VParam{}
 	if !self.Validate(http, &params) {
@@ -490,13 +498,14 @@ func (self PodExec) GetNodePid(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	pid, err := pid.GetContainerPid(agentPod, agentPod, pod.Status.ContainerStatuses[0].ContainerID, true, sdk)
+	pid, containerName, err := pid.GetContainerPid(agentPod, pod, params.ContainerName, params.ContainerId, true, sdk)
 	// pid, err := shell.GetPid(agentPod, pod.Status.ContainerStatuses[0].ContainerID, true, sdk)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
 	self.JsonResponse(http, gin.H{
-		"pid": pid,
+		"pid":           pid,
+		"containerName": containerName,
 	}, nil, 200)
 }
