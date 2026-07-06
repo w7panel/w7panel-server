@@ -65,3 +65,10 @@ func TestMapOwnerToHostFailsForUnmappedIDs(t *testing.T) {
 		t.Fatal("expected unmapped gid error")
 	}
 }
+
+func TestNewPermissionIDMapperSkipsChildAgent(t *testing.T) {
+	t.Setenv("IS_CHILD", "true")
+	if mapper := newPermissionIDMapper("1", ""); mapper != nil {
+		t.Fatal("child agent should not use uid/gid namespace mapper")
+	}
+}

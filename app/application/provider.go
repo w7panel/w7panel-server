@@ -236,7 +236,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			gpuGroup.POST("/gpustack/worker", controller2.Gpu{}.CreateGpuStackWorker)
 		}
 		for _, method := range webdavMethods {
-			//subpid 废弃
 			// engine.Handle(method, "/panel-api/v1/files/webdav-agent/:pid/subagent/:subpid/agent/*path", middleware.Auth{}.Process, controller2.Webdav{}.HandlePidSubPid)
 
 			engine.Handle(method, "/panel-api/v1/files/webdav-agent/:pid/agent/*path", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Webdav{}.HandlePid)
