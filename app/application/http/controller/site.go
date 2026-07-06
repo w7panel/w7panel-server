@@ -5,9 +5,9 @@ import (
 	microappsettingv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/microappsetting/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/site"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
@@ -137,19 +137,7 @@ func boolString(value bool) string {
 }
 
 func getGlobalMicroAppSetting(http *gin.Context, sdk *k8s.Sdk) (*microappsettingv1alpha1.MicroAppSetting, error) {
-	sigClient, err := sdk.ToSigClient()
-	if err != nil {
-		return nil, err
-	}
-	setting := &microappsettingv1alpha1.MicroAppSetting{}
-	err = sigClient.Get(http.Request.Context(), types.NamespacedName{
-		Name:      globalMicroAppSettingName,
-		Namespace: sdk.GetNamespace(),
-	}, setting)
-	if err != nil {
-		return nil, err
-	}
-	return setting, nil
+	return site.GetGlobalMicroAppSetting(http, sdk)
 }
 
 func (self Site) Lianxi(http *gin.Context) {
