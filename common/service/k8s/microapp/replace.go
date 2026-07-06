@@ -3,12 +3,20 @@ package microapp
 import (
 	"context"
 	"errors"
+<<<<<<< HEAD
 	"log/slog"
 	"strings"
 
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
+=======
+	"strings"
+
+	"github.com/w7panel/w7panel/common/service/console"
+	"github.com/w7panel/w7panel/common/service/k8s/k3k"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/k3k/types"
+>>>>>>> dev-1.1.80
 	"github.com/w7panel/w7panel/common/service/oidc"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 )
@@ -106,9 +114,9 @@ func GetCloudAccessToken(openId string) (string, error) {
 		}
 		return token.Token, err
 		// })
-		if err != nil {
-			return "", err
-		}
+		// if err != nil {
+		// 	return "", err
+		// }
 		// return result.(string), nil
 	}
 	return "", errors.New("openId is empty")

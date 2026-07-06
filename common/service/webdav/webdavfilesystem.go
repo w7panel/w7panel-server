@@ -13,7 +13,8 @@ import (
 
 type WebDAVFileSystem struct {
 	webdav.FileSystem
-	dir string
+	dir      string
+	idMapper IDMapper
 }
 
 func (fs WebDAVFileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
@@ -22,7 +23,7 @@ func (fs WebDAVFileSystem) OpenFile(ctx context.Context, name string, flag int, 
 		slog.Error("webdav OpenFile failed", "name", name, "flag", flag, "perm", perm, "error", err)
 		return nil, err
 	}
-	return NewWebDAVFile(file, fs.dir, name), err
+	return NewWebDAVFileWithIDMapper(file, fs.dir, name, fs.idMapper), err
 }
 
 func (fs WebDAVFileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
@@ -127,5 +128,9 @@ func copyFile(srcPath, dstPath string, mode os.FileMode) error {
 }
 
 func NewWebDAVFileSystem(fs webdav.FileSystem, dir string) WebDAVFileSystem {
-	return WebDAVFileSystem{fs, dir}
+	return WebDAVFileSystem{FileSystem: fs, dir: dir}
+}
+
+func NewWebDAVFileSystemWithIDMapper(fs webdav.FileSystem, dir string, idMapper IDMapper) WebDAVFileSystem {
+	return WebDAVFileSystem{FileSystem: fs, dir: dir, idMapper: idMapper}
 }

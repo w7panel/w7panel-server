@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,6 +13,11 @@ import (
 
 type PermissionAgent struct {
 	controller.Abstract
+}
+
+type ownerIDMapper interface {
+	TryContainerToHostUID(uid uint32) (uint32, bool)
+	TryContainerToHostGID(gid uint32) (uint32, bool)
 }
 
 func (c PermissionAgent) Chmod(http *gin.Context) {
@@ -98,12 +104,10 @@ func (c PermissionAgent) Chown(http *gin.Context) {
 			return
 		}
 
-		parsed := parseOwner(parts)
-		if parsed.uid != -1 {
-			uid = parsed.uid
-		}
-		if parsed.gid != -1 {
-			gid = parsed.gid
+		uid, gid, err = mapOwnerToHost(parseOwner(parts), procpath.NewIDMapper(pid, subpid))
+		if err != nil {
+			c.JsonResponseWithError(http, err, 400)
+			return
 		}
 	}
 
@@ -126,6 +130,29 @@ func (c PermissionAgent) Chown(http *gin.Context) {
 	}
 
 	c.JsonSuccessResponse(http)
+}
+
+func mapOwnerToHost(owner ownerInfo, mapper ownerIDMapper) (int, int, error) {
+	uid := owner.uid
+	gid := owner.gid
+	if mapper == nil {
+		return uid, gid, nil
+	}
+	if uid != -1 {
+		mapped, ok := mapper.TryContainerToHostUID(uint32(uid))
+		if !ok {
+			return 0, 0, fmt.Errorf("uid %d is outside user namespace mapping", uid)
+		}
+		uid = int(mapped)
+	}
+	if gid != -1 {
+		mapped, ok := mapper.TryContainerToHostGID(uint32(gid))
+		if !ok {
+			return 0, 0, fmt.Errorf("gid %d is outside user namespace mapping", gid)
+		}
+		gid = int(mapped)
+	}
+	return uid, gid, nil
 }
 
 type ownerInfo struct {

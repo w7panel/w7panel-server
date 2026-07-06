@@ -134,6 +134,9 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 	if path == "" {
 		path = "/"
 	}
+	if path == "/" {
+		path = "/index.html"
+	}
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
