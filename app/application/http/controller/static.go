@@ -134,11 +134,14 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 	if path == "" {
 		path = "/"
 	}
+	if path == "/" {
+		path = "/index.html"
+	}
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
 	ignoreLocal := os.Getenv("STATIC_IGNORE_LOCAL") == "true"
-	// 优先从本地文件系统获取静态资源
+
 	if appgroup.DownStaticStatus(identifie, version, "") == appgroup.DOWNLOAD_SUCCESS && !ignoreLocal {
 		microappPath := facade.Config.GetString("static.microapp_path")
 		localFile, found, err := resolveMicroappLocalFile(microappPath, identifie, version, path)
@@ -152,6 +155,26 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 			return
 		}
 		ctx.Header(frontendSourceHeader, "local")
+		// // 客户端支持 gzip 时压缩后返回，减少传输体积
+		// if strings.Contains(ctx.GetHeader("Accept-Encoding"), "gzip") {
+		// 	data, err := os.ReadFile(localFile)
+		// 	if err != nil {
+		// 		slog.Error("读取本地文件失败", "path", localFile, "error", err)
+		// 		ctx.String(http.StatusInternalServerError, err.Error())
+		// 		return
+		// 	}
+		// 	var buf bytes.Buffer
+		// 	gz := gzip.NewWriter(&buf)
+		// 	if _, err := gz.Write(data); err != nil {
+		// 		slog.Error("gzip压缩失败", "error", err)
+		// 		ctx.String(http.StatusInternalServerError, err.Error())
+		// 		return
+		// 	}
+		// 	gz.Close()
+		// 	ctx.Header("Content-Encoding", "gzip")
+		// 	ctx.Data(http.StatusOK, http.DetectContentType(data), buf.Bytes())
+		// 	return
+		// }
 		ctx.File(localFile)
 		return
 	}
@@ -216,6 +239,12 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 		req.URL.Host = remoteUrl.Host
 		req.URL.Path = remotePath
 		req.URL.RawPath = ""
+		acceptEncoding := req.Header.Get("Accept-Encoding")
+		if acceptEncoding != "" {
+			req.Header.Del("Accept-Encoding")
+			req.Header.Add("Accept-Encoding", "gzip")
+		}
+
 		if ticket != "" {
 			req.URL.RawQuery = "ticket=" + url.QueryEscape(ticket)
 		} else {
