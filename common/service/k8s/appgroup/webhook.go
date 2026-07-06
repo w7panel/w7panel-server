@@ -36,8 +36,7 @@ func init() {
 }
 
 func getappgroup(client sigclient.Client, ingress *networkingv1.Ingress) (*v1alpha1.AppGroup, error) {
-	if ingress.Labels != nil && ingress.Labels["group"] != "" {
-		groupName := ingress.Labels["group"]
+	if groupName := getGroupName(ingress); groupName != "" {
 		appgroup, err := GetAppgroup(groupName, ingress.Namespace, client)
 		if err != nil {
 			return nil, err
@@ -45,6 +44,13 @@ func getappgroup(client sigclient.Client, ingress *networkingv1.Ingress) (*v1alp
 		return appgroup, err
 	}
 	return nil, errors.New("no group")
+}
+
+func getGroupName(ingress *networkingv1.Ingress) string {
+	if ingress.Labels == nil {
+		return ""
+	}
+	return getResourceGroupName(ingress.Labels)
 }
 
 func getUrl(ingress *networkingv1.Ingress) string {

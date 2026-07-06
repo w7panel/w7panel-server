@@ -9,6 +9,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -156,6 +157,12 @@ func (c *EventQueue) OnEvent(obj interface{}, eventType string, isInit bool) {
 		typeMeta = metav1.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: "v1",
+		}
+		c.queue.Add(NewK8sResourceEvent(typeMeta, v.ObjectMeta, eventType, isInit).ToString())
+	case *networkingv1.Ingress:
+		typeMeta = metav1.TypeMeta{
+			Kind:       "Ingress",
+			APIVersion: "networking.k8s.io/v1",
 		}
 		c.queue.Add(NewK8sResourceEvent(typeMeta, v.ObjectMeta, eventType, isInit).ToString())
 	case *v1alpha1.AppGroup:

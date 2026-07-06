@@ -25,49 +25,6 @@ func (g *appgroupWrapper) SetParent(parent *appgroupWrapper) {
 	g.parent = parent
 }
 
-func (g *appgroupWrapper) AddStatusItem(item v1alpha1.AppGroupItemStatus) {
-	if g.Status.Items == nil {
-		g.Status.Items = []v1alpha1.AppGroupItemStatus{}
-	}
-	if item.Kind != "Job" {
-		contains := lo.ContainsBy(g.Status.Items, func(i v1alpha1.AppGroupItemStatus) bool {
-			return i.Name == item.Name && i.Kind == item.Kind && i.ApiVersion == item.ApiVersion
-		})
-		if contains {
-			// g.Status.Items = lo.Reject(g.Status.Items, func(i v1alpha1.AppGroupItemStatus, _ int) bool {
-			// 	return i.Name == item.Name && i.Kind == item.Kind && i.ApiVersion == item.ApiVersion
-			// })
-			for i, v := range g.Status.Items {
-				if v.Name == item.Name && v.Kind == item.Kind && v.ApiVersion == item.ApiVersion {
-					g.Status.Items[i] = item
-				}
-				if i == 0 && v.Title != "" && v.Kind != "Job" {
-					if g.Spec.Title == "" {
-						g.Spec.Title = v.Title
-					}
-					// g.Spec.Title = v.Title
-				}
-			}
-		} else {
-			g.Status.Items = append(g.Status.Items, item)
-		}
-		g.changed = true
-
-	}
-	// for i, v := range g.Status.Items {
-	// 	if i == 0 && v.Title != "" && v.Kind != "Job" {
-	// 		g.Spec.Title = v.Title
-	// 	}
-	// }
-	g.FixDeployItem(item)
-	if g.parent != nil {
-		g.parent.AddStatusItem(item)
-	}
-	if g.Status.Ready {
-		NotifyInstalled(g.AppGroup)
-	}
-}
-
 func (g *appgroupWrapper) FixDeployItem(item v1alpha1.AppGroupItemStatus) {
 	for in, v1 := range g.Status.DeployItems {
 		for i, v := range v1.ResourceList {
@@ -81,9 +38,47 @@ func (g *appgroupWrapper) FixDeployItem(item v1alpha1.AppGroupItemStatus) {
 	}
 	g.changed = true
 	g.AppGroup.ComputeStatus()
+
+	if g.parent != nil {
+		g.parent.FixDeployItem(item)
+	}
 }
 
-func (g *appgroupWrapper) RemoveStatusItem(item v1alpha1.AppGroupItemStatus) {
+func (g *appgroupWrapper) SyncStatusItem(item v1alpha1.AppGroupItemStatus) {
+	g.upsertStatusItem(item)
+	g.AppGroup.ComputeStatus()
+	if g.parent != nil {
+		g.parent.SyncStatusItem(item)
+	}
+}
+
+func (g *appgroupWrapper) RemoveSyncedStatusItem(item v1alpha1.AppGroupItemStatus) {
+	g.removeStatusItem(item)
+	g.AppGroup.ComputeStatus()
+	if g.parent != nil {
+		g.parent.RemoveSyncedStatusItem(item)
+	}
+}
+
+func (g *appgroupWrapper) upsertStatusItem(item v1alpha1.AppGroupItemStatus) {
+	if g.Status.Items == nil {
+		g.Status.Items = []v1alpha1.AppGroupItemStatus{}
+	}
+	for i, v := range g.Status.Items {
+		if v.Name == item.Name && v.Kind == item.Kind && v.ApiVersion == item.ApiVersion {
+			g.Status.Items[i] = item
+			g.changed = true
+			return
+		}
+		if i == 0 && v.Title != "" && v.Kind != "Job" && g.Spec.Title == "" {
+			g.Spec.Title = v.Title
+		}
+	}
+	g.Status.Items = append(g.Status.Items, item)
+	g.changed = true
+}
+
+func (g *appgroupWrapper) removeStatusItem(item v1alpha1.AppGroupItemStatus) {
 	if g.Status.Items == nil {
 		return
 	}
@@ -91,6 +86,10 @@ func (g *appgroupWrapper) RemoveStatusItem(item v1alpha1.AppGroupItemStatus) {
 	g.Status.Items = lo.Reject(g.Status.Items, func(i v1alpha1.AppGroupItemStatus, _ int) bool {
 		return i.Name == item.Name && i.Kind == item.Kind && i.ApiVersion == item.ApiVersion
 	})
+}
+
+func (g *appgroupWrapper) RemoveStatusItem(item v1alpha1.AppGroupItemStatus) {
+	g.removeStatusItem(item)
 	// 安装记录也移除
 	for in, v1 := range g.Status.DeployItems {
 		contains := lo.ContainsBy(v1.ResourceList, func(i v1alpha1.ResourceInfo) bool {

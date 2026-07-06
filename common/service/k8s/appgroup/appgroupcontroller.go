@@ -18,6 +18,7 @@ import (
 	appsv1lister "k8s.io/client-go/listers/apps/v1"
 	batchv1lister "k8s.io/client-go/listers/batch/v1"
 	corev1lister "k8s.io/client-go/listers/core/v1"
+	networkingv1lister "k8s.io/client-go/listers/networking/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -36,12 +37,14 @@ type AppController struct {
 	StatefulSetInformer        cache.SharedIndexInformer
 	JobInformer                cache.SharedIndexInformer
 	SecretInformer             cache.SharedIndexInformer
+	IngressInformer            cache.SharedIndexInformer
 	EventInformer              cache.SharedIndexInformer
 	DeploymentLister           appsv1lister.DeploymentLister
 	DaemonSetLister            appsv1lister.DaemonSetLister
 	StatefulSetLister          appsv1lister.StatefulSetLister
 	JobLister                  batchv1lister.JobLister
 	SecretLister               corev1lister.SecretLister
+	IngressLister              networkingv1lister.IngressLister
 	queue                      *EventQueue
 	helmworkload               *HelmWorkload
 }
@@ -94,6 +97,7 @@ func NewAppController(sdk *k8s.Sdk) (*AppController, error) {
 	gctrl.WatchStatefulSets()
 	gctrl.WatchJob()
 	gctrl.WatchSecret()
+	gctrl.WatchIngress()
 	gctrl.WatchAppGroup()
 	// gctrl.WatchEvent()
 
@@ -103,6 +107,9 @@ func NewAppController(sdk *k8s.Sdk) (*AppController, error) {
 	manager.DaemonSetLister = gctrl.DaemonSetLister
 	manager.StatefulSetLister = gctrl.StatefulSetLister
 	manager.JobLister = gctrl.JobLister
+	manager.IngressLister = gctrl.IngressLister
+	manager.AppGroupItemResourceTracked.RegisterWorkloads(gctrl.DeploymentLister, gctrl.StatefulSetLister, gctrl.DaemonSetLister)
+	manager.AppGroupItemResourceTracked.RegisterIngress(gctrl.IngressLister)
 	groupApi.SetLister(gctrl.AppGroupLister)
 	gctrl.WorkloadManager = manager
 	manager.SetGroupLister(gctrl.AppGroupLister)
@@ -120,6 +127,7 @@ func NewAppController(sdk *k8s.Sdk) (*AppController, error) {
 	gctrl.StatefulSetInformer.AddEventHandler(gctrl.queue)
 	gctrl.JobInformer.AddEventHandler(gctrl.queue)
 	gctrl.SecretInformer.AddEventHandler(gctrl.queue)
+	gctrl.IngressInformer.AddEventHandler(gctrl.queue)
 	gctrl.AppGroupInformer.AddEventHandler(gctrl.queue)
 	// gctrl.EventInformer.AddEventHandler(gctrl.queue)
 
@@ -150,6 +158,7 @@ func (s *AppController) Start() error {
 		s.StatefulSetInformer.HasSynced,
 		s.JobInformer.HasSynced,
 		s.SecretInformer.HasSynced,
+		s.IngressInformer.HasSynced,
 		// s.EventInformer.HasSynced,
 		// ingressInformer.HasSynced,
 		// configMapInformer.HasSynced,
@@ -203,6 +212,12 @@ func (s *AppController) WatchSecret() {
 	s.SecretInformer = informer.Informer()
 	s.SecretLister = corev1lister.NewSecretLister(s.SecretInformer.GetIndexer())
 
+}
+
+func (s *AppController) WatchIngress() {
+	informer := s.KubeInformerFactory.Networking().V1().Ingresses()
+	s.IngressInformer = informer.Informer()
+	s.IngressLister = networkingv1lister.NewIngressLister(s.IngressInformer.GetIndexer())
 }
 
 func (s *AppController) WatchAppGroup() {

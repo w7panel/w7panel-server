@@ -24,6 +24,7 @@ import (
 	appsv1lister "k8s.io/client-go/listers/apps/v1"
 	batchv1lister "k8s.io/client-go/listers/batch/v1"
 	corev1lister "k8s.io/client-go/listers/core/v1"
+	networkingv1lister "k8s.io/client-go/listers/networking/v1"
 )
 
 var oldAppGroupGVR = schema.GroupVersionResource{
@@ -33,16 +34,18 @@ var oldAppGroupGVR = schema.GroupVersionResource{
 }
 
 type WorkloadManager struct {
-	groupApi          *AppGroupApi
-	helm              *k8s.Helm
-	sdk               *k8s.Sdk
-	AppGroupLister    v1alpha1Lister.AppGroupLister
-	DeploymentLister  appsv1lister.DeploymentLister
-	DaemonSetLister   appsv1lister.DaemonSetLister
-	StatefulSetLister appsv1lister.StatefulSetLister
-	JobLister         batchv1lister.JobLister
-	SecretLister      corev1lister.SecretLister
-	helmworkload      *HelmWorkload
+	groupApi                    *AppGroupApi
+	helm                        *k8s.Helm
+	sdk                         *k8s.Sdk
+	AppGroupLister              v1alpha1Lister.AppGroupLister
+	DeploymentLister            appsv1lister.DeploymentLister
+	DaemonSetLister             appsv1lister.DaemonSetLister
+	StatefulSetLister           appsv1lister.StatefulSetLister
+	JobLister                   batchv1lister.JobLister
+	SecretLister                corev1lister.SecretLister
+	IngressLister               networkingv1lister.IngressLister
+	helmworkload                *HelmWorkload
+	AppGroupItemResourceTracked *AppGroupItemResourceTracked
 }
 
 func NewWorkLoadTestManager() *WorkloadManager {
@@ -59,9 +62,10 @@ func NewWorkLoadTestManager() *WorkloadManager {
 
 func NewWorkloadManager(groupApi *AppGroupApi, helm *k8s.Helm) *WorkloadManager {
 	return &WorkloadManager{
-		groupApi: groupApi,
-		helm:     helm,
-		sdk:      groupApi.sdk,
+		groupApi:                    groupApi,
+		helm:                        helm,
+		sdk:                         groupApi.sdk,
+		AppGroupItemResourceTracked: NewAppGroupItemResourceTracked(),
 	}
 }
 
@@ -78,17 +82,20 @@ func NewWorkloadManagerWithLister(groupApi *AppGroupApi, helm *k8s.Helm,
 	job batchv1lister.JobLister,
 	secret corev1lister.SecretLister,
 ) *WorkloadManager {
-	return &WorkloadManager{
-		groupApi:          groupApi,
-		helm:              helm,
-		sdk:               groupApi.sdk,
-		AppGroupLister:    groupLister,
-		DeploymentLister:  deployment,
-		StatefulSetLister: statefulset,
-		DaemonSetLister:   daemonset,
-		JobLister:         job,
-		SecretLister:      secret,
+	manager := &WorkloadManager{
+		groupApi:                    groupApi,
+		helm:                        helm,
+		sdk:                         groupApi.sdk,
+		AppGroupLister:              groupLister,
+		DeploymentLister:            deployment,
+		StatefulSetLister:           statefulset,
+		DaemonSetLister:             daemonset,
+		JobLister:                   job,
+		SecretLister:                secret,
+		AppGroupItemResourceTracked: NewAppGroupItemResourceTracked(),
 	}
+	manager.AppGroupItemResourceTracked.RegisterWorkloads(deployment, statefulset, daemonset)
+	return manager
 }
 
 func (d *WorkloadManager) GetGroupName(ds WorkloadWrapperInterface) string {
@@ -194,8 +201,7 @@ func (d *WorkloadManager) HandleQueue(key interface{}) error {
 		secret, err := d.GetSecretFromRO(evt.Kind, evt.Namespace, evt.Name)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				slog.Error("get from ro error", "error", err)
-				// return d.HandleSecret(secret, true)
+				return nil
 			}
 			// slog.Error("get from ro error", "error", err)
 			return nil
@@ -216,78 +222,94 @@ func (d *WorkloadManager) HandleQueue(key interface{}) error {
 		return d.HandleAppGroup(group, false, evt.IsInit)
 	}
 
-	ds, err := d.GetFromRO(evt.Kind, evt.Namespace, evt.Name)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			workload := NewWorkloadFromEvent(evt)
-			return d.HandleWorkload(NewWorkloadWrapper(workload), true)
-		}
-		slog.Error("get from ro error", "error", err)
-		return nil
+	if d.AppGroupItemResourceTracked.isAppGroupResourceTrackedKind(evt.Kind) {
+		err = d.handleAppGroupResourceTrackedEvent(evt, d.GetAppGroupResourceTrackedGroupWrappers(evt))
+		slog.Error("handleAppGroupResourceTrackedEvent error", "error", err, "event", evt)
 	}
-	return d.HandleWorkload(ds, evt.EventType == "delete")
+
+	if isWorkloadKind(evt.Kind) {
+		ds, err := d.GetFromRO(evt.Kind, evt.Namespace, evt.Name)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				workload := NewWorkloadFromEvent(evt)
+				return d.HandleWorkload(NewWorkloadWrapper(workload), true)
+			}
+			slog.Error("get from ro error", "error", err)
+			return nil
+		}
+		return d.HandleWorkload(ds, evt.EventType == "delete")
+	}
+
+	return nil
 }
 
 func (d *WorkloadManager) HandleWorkload(ds WorkloadWrapperInterface, delete bool) error {
 	slog.Debug("handle workload", "workload", ds.Name())
-	group := d.GetAppGroupWrapper(ds)
-	// if !group.exists && ds.IsHelm() {
-	// 	return nil
-	// }
-	itemStatus := ds.ToItemStatus()
-	if delete {
-		if itemStatus.Kind != "Job" {
-			d.fixSvc(ds, true)
-		}
-		if group.IsExists() {
-			group.RemoveStatusItem(itemStatus)
-			if itemStatus.Kind != "Job" {
-				_, err := d.groupApi.Persist(group)
-				if err != nil {
-					slog.Error("delete group error", "error", err)
-					return err
-				}
-				return nil
-			}
-		}
-		return nil
-	}
-	if itemStatus.Kind == "Job" {
-		if !group.exists {
-			return nil
-		}
-		group.FixDeployItem(itemStatus)
-		if group.changed {
-			_, err := d.groupApi.Persist(group)
-			if err != nil {
-				slog.Error("update group error", "error", err)
-				return err
-			}
-		}
-	} else {
-		// 如果是helm应用 helmworkload 需要预先新建应用组appgroup
-		if ds.IsHelm() && !group.exists {
-			return nil
-		}
-		lb := ds.Labels()
-		//兼容 operator 管理的应用 同步到appgroup
-		managerBy, ok := lb["app.kubernetes.io/managed-by"]
-		if ok && managerBy != "Helm" && !group.exists {
-			return nil
-		}
 
-		group.AddStatusItem(itemStatus)
-		_, err := d.groupApi.Persist(group)
-		if err != nil {
-			slog.Error("update group error", "error", err)
-			return err
-		}
-	}
+	itemStatus := ds.ToItemStatus()
 	if itemStatus.Kind != "Job" {
 		d.fixSvc(ds, delete)
 	}
+	if delete {
+		return nil
+	}
+
+	group := d.GetAppGroupWrapper(ds)
+	if group == nil || !group.exists {
+		return nil
+	}
+
+	group.FixDeployItem(itemStatus)
+	_, err := d.groupApi.Persist(group)
+	if err != nil {
+		slog.Error("update group error", "error", err)
+		return err
+	}
+
+	if itemStatus.Kind != "Job" {
+		notifyInstalledForReadyGroups(group)
+	}
+
 	return nil
 
+}
+
+func (d *WorkloadManager) handleAppGroupResourceTrackedEvent(evt *K8sResourceEvent, groups []*appgroupWrapper) error {
+	for _, group := range groups {
+		if err := d.AppGroupItemResourceTracked.handleAppGroupResourceTrackedEvent(evt, group); err != nil {
+			return err
+		}
+		if group != nil && group.IsChange() {
+			if _, err := d.groupApi.Persist(group); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (d *WorkloadManager) GetAppGroupResourceTrackedGroupWrappers(resource interface{}) []*appgroupWrapper {
+	obj, ok := resource.(metav1.Object)
+	if !ok {
+		return nil
+	}
+	groupNames := getResourceGroupNames(obj)
+	groups := make([]*appgroupWrapper, 0, len(groupNames))
+	for _, groupName := range groupNames {
+		groups = append(groups, d.groupApi.GetAppGroupWrapper(obj.GetNamespace(), groupName, v1alpha1.AppGroupSpec{}))
+	}
+	return groups
+}
+
+func notifyInstalledForReadyGroups(group *appgroupWrapper) {
+	for current := group; current != nil; current = current.parent {
+		if !current.Status.Ready {
+			continue
+		}
+		if err := NotifyInstalled(current.AppGroup); err != nil {
+			slog.Error("notify installed error", "error", err)
+		}
+	}
 }
 
 // secret 只修改spec 中logo isHelm 字段
@@ -403,6 +425,12 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 			}
 		}
 
+	}
+	wrapper := NewAppGroupWrapper(group, true)
+	if scanChanged, err := d.AppGroupItemResourceTracked.scanAppGroupResourceTracked(wrapper); err != nil {
+		slog.Error("scan appgroup resource tracked error", "error", err)
+	} else if scanChanged {
+		changed = true
 	}
 	if changed {
 		_, err := d.groupApi.UpdateAppGroup(group.Namespace, group)
@@ -572,5 +600,14 @@ func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) {
 	err = sigClient.Delete(d.sdk.Ctx, mc, &sigclient.DeleteOptions{})
 	if err != nil {
 		slog.Error("failed to delete microapp", slog.String("error", err.Error()))
+	}
+}
+
+func isWorkloadKind(kind string) bool {
+	switch kind {
+	case "Deployment", "StatefulSet", "DaemonSet", "Job":
+		return true
+	default:
+		return false
 	}
 }
