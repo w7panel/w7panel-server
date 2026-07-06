@@ -1,11 +1,13 @@
 package webhook
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -15,12 +17,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 const (
-	CertDir  = "/tmp/k8s-webhook-server/serving-certs"
-	certFile = "tls.crt"
-	keyFile  = "tls.key"
+	CertDir                 = "/tmp/k8s-webhook-server/serving-certs"
+	certFile                = "tls.crt"
+	keyFile                 = "tls.key"
+	certValidityDuration    = 365 * 24 * time.Hour
+	certRenewBeforeDuration = 30 * 24 * time.Hour
 )
 const CERT_SECRET_NAME = "webhook-cert"
 
@@ -73,28 +78,62 @@ func (c *cert) WriteToFile() error {
 }
 
 type webhookcert struct {
-	sdk *k8s.Sdk
+	ctx       context.Context
+	namespace string
+	secrets   typedcorev1.SecretInterface
 }
 
 func NewCert(sdk *k8s.Sdk) *webhookcert {
+	namespace := sdk.GetNamespace()
 	return &webhookcert{
-		sdk: sdk,
+		ctx:       sdk.Ctx,
+		namespace: namespace,
+		secrets:   sdk.ClientSet.CoreV1().Secrets(namespace),
 	}
 }
 
 func (c *webhookcert) GetCert(host string) (*cert, error) {
-	secret, err := c.sdk.ClientSet.CoreV1().Secrets(c.sdk.GetNamespace()).Get(c.sdk.Ctx, getSecret(), metav1.GetOptions{})
+	secret, err := c.secrets.Get(c.ctx, getSecret(), metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return c.CreateCert(host)
 		}
 		return nil, err
 	}
+	certPEM := secret.Data["tls.crt"]
+	keyPEM := secret.Data["tls.key"]
+	if !shouldReuseCert(certPEM, keyPEM, time.Now()) {
+		return c.CreateCert(host)
+	}
+
 	return &cert{
-		Cert: string(secret.Data["tls.crt"]),
-		Key:  string(secret.Data["tls.key"]),
+		Cert: string(certPEM),
+		Key:  string(keyPEM),
 	}, nil
 }
+
+func shouldReuseCert(certPEM, keyPEM []byte, now time.Time) bool {
+	if len(certPEM) == 0 || len(keyPEM) == 0 {
+		return false
+	}
+	parsed, err := parseCertificate(certPEM)
+	if err != nil {
+		return false
+	}
+	return parsed.NotAfter.After(now.Add(certRenewBeforeDuration))
+}
+
+func parseCertificate(certPEM []byte) (*x509.Certificate, error) {
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return nil, fmt.Errorf("decode certificate pem")
+	}
+	if block.Type != "CERTIFICATE" {
+		return nil, fmt.Errorf("unexpected certificate pem type %q", block.Type)
+	}
+	return x509.ParseCertificate(block.Bytes)
+}
+
 func (c *webhookcert) CreateCert(host string) (*cert, error) {
 	// Generate private key
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -114,7 +153,7 @@ func (c *webhookcert) CreateCert(host string) (*cert, error) {
 			CommonName: host,
 		},
 		NotBefore: time.Now(),
-		NotAfter:  time.Now().Add(365 * 24 * time.Hour),
+		NotAfter:  time.Now().Add(certValidityDuration),
 		KeyUsage:  x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage: []x509.ExtKeyUsage{
 			x509.ExtKeyUsageServerAuth,
@@ -147,7 +186,8 @@ func (c *webhookcert) CreateCert(host string) (*cert, error) {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: getSecret(),
+			Name:      getSecret(),
+			Namespace: c.namespace,
 		},
 		Data: map[string][]byte{
 			"tls.crt": certPEM,
@@ -156,10 +196,10 @@ func (c *webhookcert) CreateCert(host string) (*cert, error) {
 	}
 
 	// Create or update secret
-	_, err = c.sdk.ClientSet.CoreV1().Secrets(c.sdk.GetNamespace()).Create(c.sdk.Ctx, secret, metav1.CreateOptions{})
+	_, err = c.secrets.Create(c.ctx, secret, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
-			_, err = c.sdk.ClientSet.CoreV1().Secrets(c.sdk.GetNamespace()).Update(c.sdk.Ctx, secret, metav1.UpdateOptions{})
+			_, err = c.secrets.Update(c.ctx, secret, metav1.UpdateOptions{})
 			if err != nil {
 				return nil, err
 			}

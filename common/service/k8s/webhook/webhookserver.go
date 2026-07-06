@@ -2,11 +2,13 @@ package webhook
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"sync"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,22 +22,35 @@ var (
 )
 
 func Prepare(sdk *k8s.Sdk) error {
-	if err := ensureCertificates(sdk.GetNamespace()); err != nil {
+	mutete := NewWebHookMutate(sdk)
+	namespace := sdk.GetNamespace()
+
+	if facade.Config.GetBool("webhook.certManager.enabled") {
+		injectCAFrom := fmt.Sprintf("%s/%s", namespace, getCertificateName())
+		if err := mutete.CreateOrUpdateWithCertManager(injectCAFrom, svcName, namespace, getHookName(), getOperations()); err != nil {
+			slog.Error("create or update webhook failed")
+			return err
+		}
+		if err := mutete.CreateOrUpdateWithCertManager(injectCAFrom, svcName, namespace, getHookCrdName(), getCrdOperations()); err != nil {
+			slog.Error("create or update webhook failed")
+			return err
+		}
+		return nil
+	}
+
+	if err := ensureCertificates(namespace); err != nil {
 		return err
 	}
 	caBound, err := os.ReadFile("/tmp/k8s-webhook-server/serving-certs/tls.crt")
 	if err != nil {
 		return err
 	}
-	// sdk := k8s.NewK8sClient().Sdk
-	mutete := NewWebHookMutate(sdk)
-	err = mutete.CreateOrUpdate(caBound, svcName, sdk.GetNamespace(), getHookName(), getOperations())
-	if err != nil {
+
+	if err := mutete.CreateOrUpdate(caBound, svcName, namespace, getHookName(), getOperations()); err != nil {
 		slog.Error("create or update webhook failed")
 		return err
 	}
-	err = mutete.CreateOrUpdate(caBound, svcName, sdk.GetNamespace(), getHookCrdName(), getCrdOperations())
-	if err != nil {
+	if err := mutete.CreateOrUpdate(caBound, svcName, namespace, getHookCrdName(), getCrdOperations()); err != nil {
 		slog.Error("create or update webhook failed")
 		return err
 	}
