@@ -8,7 +8,11 @@ metadata:
   labels:
     {{- include "w7panel-cloudnoauth.labels" . | nindent 4 }}
 spec:
+  {{- if .Values.ingress.certManager.issuer.selfSigned }}
   selfSigned: {}
+  {{- else }}
+  {{- fail "ingress.certManager.issuer.create=true requires ingress.certManager.issuer.selfSigned=true or an existing external issuerRef" }}
+  {{- end }}
 ---
 {{- end }}
 {{- if .Values.ingress.certManager.certificate.create }}
