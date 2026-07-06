@@ -1,9 +1,28 @@
 1. Proxy service:
    {{ include "w7panel-cloudnoauth.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
 
-2. Panel DNS is managed by another component.
-   Expected record: api.w7.cc CNAME {{ include "w7panel-cloudnoauth.serviceFQDN" . }}
+2. Ingress:
+   {{- if .Values.ingress.enabled }}
+   https://{{ .Values.ingress.host }} -> {{ include "w7panel-cloudnoauth.fullname" . }}:{{ .Values.service.port }}
+   {{- if .Values.ingress.tls.enabled }}
+   TLS secret: {{ .Values.ingress.tls.secretName }}
+   {{- if and .Values.ingress.certManager.enabled .Values.ingress.certManager.certificate.create }}
+   TLS managed by cert-manager Certificate, renewBefore={{ .Values.ingress.certManager.certificate.renewBefore }}
+   {{- end }}
+   {{- end }}
+   {{- else }}
+   disabled
+   {{- end }}
 
-3. Check health:
+3. Private DNS:
+   {{- if .Values.privateDNS.enabled }}
+   {{- $serviceFQDN := printf "%s." (include "w7panel-cloudnoauth.serviceFQDN" .) }}
+   {{- $defaultTargetFQDN := ternary .Values.ingress.gatewayServiceFQDN $serviceFQDN .Values.ingress.enabled }}
+   {{ .Values.privateDNS.domain }} CNAME {{ default $defaultTargetFQDN .Values.privateDNS.targetFQDN }}
+   {{- else }}
+   disabled
+   {{- end }}
+
+4. Check health:
    kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
    kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "w7panel-cloudnoauth.fullname" . }} 8000:{{ .Values.service.port }}

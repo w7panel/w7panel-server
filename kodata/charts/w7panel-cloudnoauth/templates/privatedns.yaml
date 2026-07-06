@@ -8,6 +8,7 @@ metadata:
 spec:
   domain: {{ .Values.privateDNS.domain | quote }}
   records:
+    {{- if .Values.privateDNS.records }}
     {{- range .Values.privateDNS.records }}
     - name: {{ .name | quote }}
       type: {{ .type | quote }}
@@ -18,5 +19,13 @@ spec:
       {{- if .mxPriority }}
       mxPriority: {{ .mxPriority }}
       {{- end }}
+    {{- end }}
+    {{- else }}
+    {{- $serviceFQDN := printf "%s." (include "w7panel-cloudnoauth.serviceFQDN" .) }}
+    {{- $defaultTargetFQDN := ternary .Values.ingress.gatewayServiceFQDN $serviceFQDN .Values.ingress.enabled }}
+    - name: "@"
+      type: "CNAME"
+      value: {{ default $defaultTargetFQDN .Values.privateDNS.targetFQDN | quote }}
+      ttl: 60
     {{- end }}
 {{- end }}

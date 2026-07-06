@@ -29,6 +29,33 @@ service:
   targetPort: http
   annotations: {}
 
+ingress:
+  enabled: true
+  className: higress
+  annotations: {}
+  host: api.w7.cc
+  path: /
+  pathType: Prefix
+  tls:
+    enabled: true
+    secretName: w7panel-noauth-tls
+  certManager:
+    enabled: true
+    issuer:
+      create: true
+      name: ""
+      kind: Issuer
+      group: cert-manager.io
+    certificate:
+      create: true
+      name: ""
+      duration: 87600h
+      renewBefore: 720h
+      privateKey:
+        algorithm: RSA
+        size: 2048
+  gatewayServiceFQDN: higress-gateway.higress-system.svc.cluster.local.
+
 containerPort: 80
 panelNamespace: ""
 
@@ -81,8 +108,5 @@ privateDNS:
   enabled: true
   name: api-w7-cc
   domain: api.w7.cc
-  records:
-    - name: "@"
-      type: CNAME
-      value: "{{ include \"w7panel-cloudnoauth.serviceFQDN\" . }}."
-      ttl: 60
+  targetFQDN: ""
+  records: []
