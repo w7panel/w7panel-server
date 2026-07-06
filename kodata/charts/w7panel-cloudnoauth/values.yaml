@@ -30,7 +30,7 @@ service:
   annotations: {}
 
 ingress:
-  enabled: true
+  enabled: false
   className: higress
   annotations: {}
   host: api.w7.cc
