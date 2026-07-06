@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: zpk.w7.cc/public/w7panel-cloudnoauth
   pullPolicy: IfNotPresent
-  tag: v1.0.10
+  tag: v1.0.11
 
 imagePullSecrets: []
 nameOverride: ""
