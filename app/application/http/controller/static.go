@@ -137,8 +137,9 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-
-	if appgroup.DownStaticStatus(identifie, version, "") == appgroup.DOWNLOAD_SUCCESS {
+	ignoreLocal := os.Getenv("STATIC_IGNORE_LOCAL") == "true"
+	// 优先从本地文件系统获取静态资源
+	if appgroup.DownStaticStatus(identifie, version, "") == appgroup.DOWNLOAD_SUCCESS && !ignoreLocal {
 		microappPath := facade.Config.GetString("static.microapp_path")
 		localFile, found, err := resolveMicroappLocalFile(microappPath, identifie, version, path)
 		if err != nil {
