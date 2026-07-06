@@ -190,3 +190,41 @@ spec:
     - get
     - list
     - watch
+  - apiGroups:
+    - ''
+    resources:
+    - configmaps
+    - endpoints
+    - events
+    - persistentvolumeclaims
+    - pods
+    - pods/attach
+    - pods/exec
+    - pods/log
+    - pods/portforward
+    - pods/proxy
+    - replicationcontrollers
+    - replicationcontrollers/scale
+    - secrets
+    - services
+    - services/proxy
+    verbs:
+    - '*'
+  - apiGroups:
+    - apps
+    resources:
+    - '*'
+    verbs:
+    - '*'
+  - apiGroups:
+    - batch
+    resources:
+    - '*'
+    verbs:
+    - '*'
+  - apiGroups:
+    - networking.k8s.io
+    resources:
+    - '*'
+    verbs:
+    - '*'
