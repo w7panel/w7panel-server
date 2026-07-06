@@ -4,8 +4,20 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
+	"syscall"
 	"testing"
 )
+
+type offsetIDMapper struct{}
+
+func (offsetIDMapper) HostToContainerUID(uid uint32) uint32 {
+	return uid + 1000
+}
+
+func (offsetIDMapper) HostToContainerGID(gid uint32) uint32 {
+	return gid + 2000
+}
 
 func TestGetFileTypeAndEditable(t *testing.T) {
 	tests := []struct {
@@ -85,6 +97,7 @@ func TestWebDAVFileReadSeek_ReturnErrorWhenNotEditable(t *testing.T) {
 
 	wf := NewWebDAVFile(f, tmpDir, "/special")
 	wf.fileInfo = &WebDAVFileInfo{FileInfo: mustStat(t, targetPath), editable: false, fileType: "device"}
+	wf.statOnce.Do(func() {})
 
 	buf := make([]byte, 16)
 	if _, err := wf.Read(buf); err == nil {
@@ -95,6 +108,43 @@ func TestWebDAVFileReadSeek_ReturnErrorWhenNotEditable(t *testing.T) {
 	}
 	if !errors.Is(errSpecialFileNotReadable, errSpecialFileNotReadable) {
 		t.Fatal("sentinel error should be comparable")
+	}
+}
+
+func TestWebDAVFileEnsureStat_MapsUIDAndGID(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "webdav-file-idmap")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
+
+	targetPath := filepath.Join(tmpDir, "child.txt")
+	if err := os.WriteFile(targetPath, []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := os.Open(targetPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = f.Close() })
+
+	wf := NewWebDAVFileWithIDMapper(f, tmpDir, "/child.txt", offsetIDMapper{})
+	if err := wf.ensureStat(); err != nil {
+		t.Fatal(err)
+	}
+
+	sysstat, ok := wf.fileInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		t.Fatal("expected syscall.Stat_t")
+	}
+	wantUID := strconv.FormatUint(uint64(sysstat.Uid+1000), 10)
+	wantGID := strconv.FormatUint(uint64(sysstat.Gid+2000), 10)
+	if wf.fileInfo.uid != wantUID {
+		t.Fatalf("uid mismatch: got=%s want=%s", wf.fileInfo.uid, wantUID)
+	}
+	if wf.fileInfo.gid != wantGID {
+		t.Fatalf("gid mismatch: got=%s want=%s", wf.fileInfo.gid, wantGID)
 	}
 }
 

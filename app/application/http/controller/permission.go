@@ -14,6 +14,11 @@ type PermissionAgent struct {
 	controller.Abstract
 }
 
+type ownerIDMapper interface {
+	ContainerToHostUID(uid uint32) uint32
+	ContainerToHostGID(gid uint32) uint32
+}
+
 func (c PermissionAgent) Chmod(http *gin.Context) {
 	pid := http.Param("pid")
 	subpid := http.Param("subpid")
@@ -98,13 +103,7 @@ func (c PermissionAgent) Chown(http *gin.Context) {
 			return
 		}
 
-		parsed := parseOwner(parts)
-		if parsed.uid != -1 {
-			uid = parsed.uid
-		}
-		if parsed.gid != -1 {
-			gid = parsed.gid
-		}
+		uid, gid = mapOwnerToHost(parseOwner(parts), procpath.NewIDMapper(pid, subpid))
 	}
 
 	if params.Recursive {
@@ -126,6 +125,21 @@ func (c PermissionAgent) Chown(http *gin.Context) {
 	}
 
 	c.JsonSuccessResponse(http)
+}
+
+func mapOwnerToHost(owner ownerInfo, mapper ownerIDMapper) (int, int) {
+	uid := owner.uid
+	gid := owner.gid
+	if mapper == nil {
+		return uid, gid
+	}
+	if uid != -1 {
+		uid = int(mapper.ContainerToHostUID(uint32(uid)))
+	}
+	if gid != -1 {
+		gid = int(mapper.ContainerToHostGID(uint32(gid)))
+	}
+	return uid, gid
 }
 
 type ownerInfo struct {
