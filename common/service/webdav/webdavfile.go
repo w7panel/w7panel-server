@@ -23,6 +23,7 @@ type WebDAVFile struct {
 	webdav.File
 	rootDir  string
 	reqPath  string
+	idMapper IDMapper
 	fileInfo *WebDAVFileInfo
 	statOnce sync.Once
 	statErr  error
@@ -31,6 +32,11 @@ type WebDAVFile struct {
 const (
 	MaxDirEntries = 5000
 )
+
+type IDMapper interface {
+	HostToContainerUID(uid uint32) uint32
+	HostToContainerGID(gid uint32) uint32
+}
 
 func (f *WebDAVFile) Readdir(count int) ([]os.FileInfo, error) {
 	if count > 0 && count > MaxDirEntries {
@@ -47,6 +53,10 @@ func (f *WebDAVFile) Readdir(count int) ([]os.FileInfo, error) {
 
 func NewWebDAVFile(file webdav.File, rootDir, reqPath string) *WebDAVFile {
 	return &WebDAVFile{File: file, rootDir: rootDir, reqPath: reqPath}
+}
+
+func NewWebDAVFileWithIDMapper(file webdav.File, rootDir, reqPath string, idMapper IDMapper) *WebDAVFile {
+	return &WebDAVFile{File: file, rootDir: rootDir, reqPath: reqPath, idMapper: idMapper}
 }
 
 // 必须返回WebDAVFileInfo， 否则ContentType() 触发不了
@@ -68,8 +78,14 @@ func (f *WebDAVFile) ensureStat() error {
 		f.fileInfo.pem = fmt.Sprintf("%o", stat.Mode().Perm())
 		sysstat, ok := stat.Sys().(*syscall.Stat_t)
 		if ok {
-			f.fileInfo.gid = fmt.Sprintf("%d", sysstat.Gid)
-			f.fileInfo.uid = fmt.Sprintf("%d", sysstat.Uid)
+			uid := sysstat.Uid
+			gid := sysstat.Gid
+			if f.idMapper != nil {
+				uid = f.idMapper.HostToContainerUID(uid)
+				gid = f.idMapper.HostToContainerGID(gid)
+			}
+			f.fileInfo.gid = fmt.Sprintf("%d", gid)
+			f.fileInfo.uid = fmt.Sprintf("%d", uid)
 		}
 
 		fullPath := filepath.Clean(filepath.Join(f.rootDir, strings.TrimPrefix(f.reqPath, "/")))
@@ -107,11 +123,13 @@ func (f *WebDAVFile) ensureStat() error {
 
 func getFileTypeAndEditable(mode os.FileMode) (string, bool) {
 
+	if mode&os.ModeCharDevice != 0 || mode&os.ModeDevice != 0 {
+		return "device", false
+	}
+
 	switch mode.Type() {
 	case os.ModeSymlink:
 		return "symlink", true
-	case os.ModeDevice, os.ModeCharDevice:
-		return "device", false
 	case os.ModeNamedPipe:
 		return "fifo", false
 	case os.ModeSocket:

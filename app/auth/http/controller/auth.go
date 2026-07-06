@@ -15,8 +15,8 @@ import (
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/site"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
-	"github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	userservice "github.com/w7panel/w7panel/common/service/user"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
@@ -154,24 +154,15 @@ func (self Auth) consoleUser(ctx context.Context, sdk *k8s.Sdk, userInfo *clouds
 		return nil, err
 	}
 
-	client, err := sdk.ToSigClient()
+	globalConfig, err := site.GetGlobalMicroAppSetting(ctx, sdk)
 	if err != nil {
 		return nil, err
 	}
-	kconfig, err := types.NewK3kClient(client).GetK3kConfigSetting(sdk.GetNamespace())
-	if err != nil {
-		return nil, err
-	}
-	if !kconfig.AllowConsoleRegister {
+
+	if !globalConfig.Spec.Login.RegistrationEnabled {
 		return nil, errors.New("不允许控制台注册")
 	}
-	permissionName := policyName
-	if permissionName == "" {
-		permissionName = kconfig.DefaultPermissionName
-	}
-	if permissionName == "" {
-		permissionName = "normal"
-	}
+	permissionName := "normal"
 
 	name := "console-" + consoleID
 	u, err := userservice.CreateWithHash(ctx, sdk, name, userservice.Spec{

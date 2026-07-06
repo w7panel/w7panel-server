@@ -15,7 +15,7 @@ type Webdav struct {
 	controller.Abstract
 }
 
-func (c Webdav) handleWithPermissionPreservation(ctx *gin.Context, prefix string, fs webdav.FileSystem, rootDir string) {
+func (c Webdav) handleWithPermissionPreservation(ctx *gin.Context, prefix string, fs webdav.FileSystem, rootDir string, idMapper webdavapi.IDMapper) {
 	// userGroup := webdav1.GetUserGroup(pid)
 
 	relPath := ctx.Request.URL.Path[len(prefix):]
@@ -26,7 +26,7 @@ func (c Webdav) handleWithPermissionPreservation(ctx *gin.Context, prefix string
 	if dir, ok := fs.(webdav.Dir); ok {
 		dirStr = string(dir)
 	}
-	webdavFileSystem := webdavapi.NewWebDAVFileSystem(fs, dirStr)
+	webdavFileSystem := webdavapi.NewWebDAVFileSystemWithIDMapper(fs, dirStr, idMapper)
 	hander := webdav.Handler{
 		Prefix:     prefix,
 		FileSystem: webdavFileSystem,
@@ -45,7 +45,7 @@ func (c Webdav) HandlePid(ctx *gin.Context) {
 	webDirPath := procpath.GetRootPath(pid)
 	c.handleWithPermissionPreservation(ctx,
 		"/panel-api/v1/files/webdav-agent/"+pid+"/agent",
-		webdav.Dir(webDirPath), webDirPath)
+		webdav.Dir(webDirPath), webDirPath, procpath.NewIDMapper(pid, ""))
 }
 
 func (c Webdav) HandlePidSubPid(ctx *gin.Context) {
@@ -58,11 +58,11 @@ func (c Webdav) HandlePidSubPid(ctx *gin.Context) {
 	}
 	c.handleWithPermissionPreservation(ctx,
 		prefix,
-		webdav.Dir(webDirPath), webDirPath)
+		webdav.Dir(webDirPath), webDirPath, procpath.NewIDMapper(pid, subpid))
 }
 
 func (c Webdav) HandleTest(ctx *gin.Context) {
 	c.handleWithPermissionPreservation(ctx,
 		"/panel-api/v1/files/webdav-test",
-		webdav.Dir("/"), "/")
+		webdav.Dir("/"), "/", nil)
 }

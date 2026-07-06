@@ -106,9 +106,9 @@ func GetCloudAccessToken(openId string) (string, error) {
 		}
 		return token.Token, err
 		// })
-		if err != nil {
-			return "", err
-		}
+		// if err != nil {
+		// 	return "", err
+		// }
 		// return result.(string), nil
 	}
 	return "", errors.New("openId is empty")

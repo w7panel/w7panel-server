@@ -571,7 +571,6 @@ func (c *SdkClient) CreatePanelOrder(urlValues url.Values) (*PayResult, error) {
 	}
 	return result, err
 }
-
 func (c *SdkClient) OpenIdToCloudAccessToken(openId string) (*PassportToken, error) {
 	result := &PassportToken{}
 	urlvalues := url.Values{}
