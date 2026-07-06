@@ -168,6 +168,21 @@ timezone: "Asia/Shanghai"
 
 webhook:
   enabled: true
+  certManager:
+    enabled: true
+    issuer:
+      create: true
+      name: ""
+      kind: Issuer
+      group: cert-manager.io
+      selfSigned: true
+    certificate:
+      name: ""
+      duration: 8760h
+      renewBefore: 720h
+      privateKey:
+        algorithm: RSA
+        size: 2048
 storage:
   enabled: false
   storageClassName: "longhorn"

@@ -36,6 +36,13 @@ func getSecret() string {
 	return svcName + "-webhook-tls"
 }
 
+func getCertificateName() string {
+	if name, ok := os.LookupEnv("WEBHOOK_CERT_MANAGER_CERTIFICATE_NAME"); ok && name != "" {
+		return name
+	}
+	return getSecret()
+}
+
 func getHookName() string {
 	return svcName + "-webhook"
 }
