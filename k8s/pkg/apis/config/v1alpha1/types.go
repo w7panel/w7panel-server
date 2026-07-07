@@ -9,13 +9,6 @@ type ConfigSpec struct {
 	Data map[string]string `json:"data"`
 }
 
-type LicenseSpec struct {
-	AppId         string `json:"appId"`
-	AppSecret     string `json:"appSecret"`
-	FounderSaName string `json:"founderSaName"`
-	License       string `json:"license,omitempty"`
-}
-
 type OverSellingConfigSpec struct {
 	CPU          int32 `json:"cpu"`
 	Memory       int32 `json:"memory"`
@@ -116,24 +109,6 @@ type K3sConfigList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []K3sConfig `json:"items"`
-}
-
-// +genclient
-// +genclient:nonNamespaced
-// +kubebuilder:resource:path=licenses,scope=Cluster
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type License struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              LicenseSpec `json:"spec"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type LicenseList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-
-	Items []License `json:"items"`
 }
 
 // +genclient

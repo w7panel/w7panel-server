@@ -4,14 +4,18 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	userv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/user/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type LicenseClient struct {
@@ -39,9 +43,24 @@ func NewLicenseClient(api config.W7ConfigRepositoryInterface, sdk *k8s.Sdk) *Lic
 }
 
 func (api *LicenseClient) GetLicense() (*License, error) {
+	license, err := api.getUserLicense()
+	if err == nil {
+		return license, nil
+	}
+	if !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+
 	obj, err := api.sdk.GetConfigCRD(api.sdk.Ctx, k8s.LicenseGVR, k8s.LicenseName)
 	if err == nil {
-		return licenseFromCRDSpec(k8s.ParseLicenseCRDSpec(obj))
+		license, err := licenseFromCRDSpec(k8s.ParseLicenseCRDSpec(obj))
+		if err != nil {
+			return nil, err
+		}
+		if err := api.SetLicense(license); err != nil {
+			return nil, err
+		}
+		return license, nil
 	}
 	if !apierrors.IsNotFound(err) {
 		return nil, err
@@ -51,7 +70,7 @@ func (api *LicenseClient) GetLicense() (*License, error) {
 	if err != nil {
 		return nil, err
 	}
-	license, err := licenseFromSecret(secret)
+	license, err = licenseFromSecret(secret)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +78,24 @@ func (api *LicenseClient) GetLicense() (*License, error) {
 		return nil, err
 	}
 	return license, nil
+}
+
+func (api *LicenseClient) getUserLicense() (*License, error) {
+	list, err := api.sdk.DynamicClient().Resource(userv1alpha1.GVR).List(api.sdk.Ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for i := range list.Items {
+		spec, ok, err := userLicenseSpec(&list.Items[i])
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			continue
+		}
+		return licenseFromCRDSpec(spec)
+	}
+	return nil, apierrors.NewNotFound(schema.GroupResource{Group: userv1alpha1.GVR.Group, Resource: userv1alpha1.GVR.Resource}, k8s.LicenseName)
 }
 
 func licenseFromSecret(secret *corev1.Secret) (*License, error) {
@@ -110,6 +147,35 @@ func licenseCRDSpec(license *License) k8s.LicenseCRDSpec {
 	return spec
 }
 
+func userLicenseSpec(obj *unstructured.Unstructured) (k8s.LicenseCRDSpec, bool, error) {
+	spec, ok, err := unstructured.NestedMap(obj.Object, "spec", "license")
+	if err != nil || !ok {
+		return k8s.LicenseCRDSpec{}, ok, err
+	}
+	return k8s.LicenseCRDSpec{
+		AppId:         stringValue(spec["appId"]),
+		AppSecret:     stringValue(spec["appSecret"]),
+		FounderSaName: stringValue(spec["founderSaName"]),
+		License:       stringValue(spec["license"]),
+	}, true, nil
+}
+
+func userLicenseSpecMap(spec k8s.LicenseCRDSpec) map[string]interface{} {
+	return map[string]interface{}{
+		"appId":         spec.AppId,
+		"appSecret":     spec.AppSecret,
+		"founderSaName": spec.FounderSaName,
+		"license":       spec.License,
+	}
+}
+
+func stringValue(v interface{}) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
+}
+
 func (api *LicenseClient) SetLicense(license *License) error {
 	return api.setLicenseClean(license, false)
 }
@@ -123,12 +189,24 @@ func (api *LicenseClient) CleanLicense() error {
 }
 
 func (api *LicenseClient) setLicenseClean(license *License, cleanCert bool) error {
+	if license == nil {
+		return errors.New("license is nil")
+	}
+	if license.FounderSaName == "" {
+		return errors.New("founder service account name is empty")
+	}
 	spec := licenseCRDSpec(license)
 	if cleanCert {
 		spec.License = ""
 	}
-	obj := k8s.NewLicenseCRD(k8s.LicenseName, spec)
-	_, err := api.sdk.DynamicClient().Resource(k8s.LicenseGVR).Apply(api.sdk.Ctx, k8s.LicenseName, obj, metav1.ApplyOptions{FieldManager: "w7panel", Force: true})
+	obj, err := api.sdk.DynamicClient().Resource(userv1alpha1.GVR).Get(api.sdk.Ctx, license.FounderSaName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	if err := unstructured.SetNestedMap(obj.Object, userLicenseSpecMap(spec), "spec", "license"); err != nil {
+		return fmt.Errorf("failed to set user license spec: %w", err)
+	}
+	_, err = api.sdk.DynamicClient().Resource(userv1alpha1.GVR).Update(api.sdk.Ctx, obj, metav1.UpdateOptions{})
 	return err
 }
 

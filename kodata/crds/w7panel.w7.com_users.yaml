@@ -83,7 +83,7 @@ spec:
                 type: string
               consoleNickname:
                 type: string
-              w7Config:
+              cloud:
                 type: object
                 properties:
                   thirdpartyCDToken:
@@ -107,6 +107,21 @@ spec:
                     type: string
                   debugValue:
                     type: string
+              license:
+                type: object
+                properties:
+                  appId:
+                    type: string
+                  appSecret:
+                    type: string
+                  founderSaName:
+                    type: string
+                  license:
+                    type: string
+                required:
+                - appId
+                - appSecret
+                - founderSaName
               loginTime:
                 type: string
             required:

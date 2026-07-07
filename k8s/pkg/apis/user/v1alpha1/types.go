@@ -21,8 +21,16 @@ type UserSpec struct {
 	ConsoleId       string                             `json:"consoleId,omitempty"`
 	ConsoleOpenid   string                             `json:"consoleOpenid,omitempty"`
 	ConsoleNickname string                             `json:"consoleNickname,omitempty"`
-	W7Config        *W7Config                          `json:"w7Config,omitempty"`
+	Cloud           *W7Config                          `json:"cloud,omitempty"`
+	License         *LicenseSpec                       `json:"license,omitempty"`
 	LoginTime       string                             `json:"loginTime,omitempty"`
+}
+
+type LicenseSpec struct {
+	AppId         string `json:"appId"`
+	AppSecret     string `json:"appSecret"`
+	FounderSaName string `json:"founderSaName"`
+	License       string `json:"license,omitempty"`
 }
 
 type W7Config struct {

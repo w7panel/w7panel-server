@@ -92,20 +92,6 @@ func NewConfigCRD(kind, name string, labels map[string]string, data map[string]s
 	return obj
 }
 
-func NewLicenseCRD(name string, spec LicenseCRDSpec) *unstructured.Unstructured {
-	obj := &unstructured.Unstructured{}
-	obj.SetAPIVersion(ConfigCRDGroup + "/" + ConfigCRDVersion)
-	obj.SetKind("License")
-	obj.SetName(name)
-	obj.Object["spec"] = map[string]interface{}{
-		"appId":         spec.AppId,
-		"appSecret":     spec.AppSecret,
-		"founderSaName": spec.FounderSaName,
-		"license":       spec.License,
-	}
-	return obj
-}
-
 func ParseLicenseCRDSpec(obj *unstructured.Unstructured) LicenseCRDSpec {
 	appId, _, _ := unstructured.NestedString(obj.Object, "spec", "appId")
 	appSecret, _, _ := unstructured.NestedString(obj.Object, "spec", "appSecret")

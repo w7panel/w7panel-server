@@ -61,6 +61,8 @@ var userGVR = schema.GroupVersionResource{
 	Resource: "users",
 }
 
+const userCloudConfigField = "cloud"
+
 func SetVerifyType(name, verifyType string) {
 	LicenseVerify.Store(name, verifyType)
 }
@@ -243,14 +245,14 @@ func (c *w7ConfigRepository) secretToW7config(secret *v1.Secret, name string) *W
 func (c *w7ConfigRepository) Get(name string) (*W7Config, error) {
 	obj, err := c.DynamicClient().Resource(userGVR).Get(c.Ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return &W7Config{Name: name}, fmt.Errorf("failed to get user w7-config: %w", err)
+		return &W7Config{Name: name}, fmt.Errorf("failed to get user cloud config: %w", err)
 	}
-	config, ok, err := unstructured.NestedMap(obj.Object, "spec", "w7Config")
+	config, ok, err := nestedUserCloudConfig(obj)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
-		return &W7Config{Name: name}, fmt.Errorf("not found w7 config for user: %s", name)
+		return &W7Config{Name: name}, fmt.Errorf("not found cloud config for user: %s", name)
 	}
 	return userConfigToW7Config(name, config)
 }
@@ -258,11 +260,11 @@ func (c *w7ConfigRepository) Get(name string) (*W7Config, error) {
 func (c *w7ConfigRepository) List() ([]*W7Config, error) {
 	list, err := c.DynamicClient().Resource(userGVR).List(c.Ctx, metav1.ListOptions{})
 	if err != nil {
-		return []*W7Config{}, fmt.Errorf("failed to list user w7-config: %w", err)
+		return []*W7Config{}, fmt.Errorf("failed to list user cloud config: %w", err)
 	}
 	configs := []*W7Config{}
 	for i := range list.Items {
-		config, ok, err := unstructured.NestedMap(list.Items[i].Object, "spec", "w7Config")
+		config, ok, err := nestedUserCloudConfig(&list.Items[i])
 		if err != nil || !ok {
 			continue
 		}
@@ -284,12 +286,12 @@ func (c *w7ConfigRepository) GetByConsoleId(consoleId string) (*W7Config, error)
 		if currentConsoleId != consoleId {
 			continue
 		}
-		config, ok, err := unstructured.NestedMap(list.Items[i].Object, "spec", "w7Config")
+		config, ok, err := nestedUserCloudConfig(&list.Items[i])
 		if err != nil {
 			return nil, err
 		}
 		if !ok {
-			return &W7Config{Name: list.Items[i].GetName()}, fmt.Errorf("not found w7 config for user: %s", list.Items[i].GetName())
+			return &W7Config{Name: list.Items[i].GetName()}, fmt.Errorf("not found cloud config for user: %s", list.Items[i].GetName())
 		}
 		return userConfigToW7Config(list.Items[i].GetName(), config)
 	}
@@ -367,7 +369,7 @@ func (c *w7ConfigRepository) setUserConfig(config *W7Config) error {
 	if err != nil {
 		return err
 	}
-	if err := unstructured.SetNestedMap(obj.Object, configMap, "spec", "w7Config"); err != nil {
+	if err := setNestedUserCloudConfig(obj, configMap); err != nil {
 		return err
 	}
 	if config.UserInfo != nil {
@@ -392,6 +394,14 @@ func (c *w7ConfigRepository) setUserConfig(config *W7Config) error {
 	}
 	_, err = c.DynamicClient().Resource(userGVR).Update(c.Ctx, obj, metav1.UpdateOptions{})
 	return err
+}
+
+func nestedUserCloudConfig(obj *unstructured.Unstructured) (map[string]interface{}, bool, error) {
+	return unstructured.NestedMap(obj.Object, "spec", userCloudConfigField)
+}
+
+func setNestedUserCloudConfig(obj *unstructured.Unstructured, config map[string]interface{}) error {
+	return unstructured.SetNestedMap(obj.Object, config, "spec", userCloudConfigField)
 }
 
 func w7ConfigToUserConfig(config *W7Config) (map[string]interface{}, error) {
@@ -425,7 +435,7 @@ func w7ConfigToUserConfig(config *W7Config) (map[string]interface{}, error) {
 
 func userConfigToW7Config(name string, config map[string]interface{}) (*W7Config, error) {
 	if config == nil {
-		return &W7Config{Name: name}, fmt.Errorf("not found w7 config for user: %s", name)
+		return &W7Config{Name: name}, fmt.Errorf("not found cloud config for user: %s", name)
 	}
 	var cert *x509.Certificate
 	license := stringValue(config["license"])
