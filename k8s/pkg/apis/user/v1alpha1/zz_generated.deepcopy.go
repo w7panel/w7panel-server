@@ -108,8 +108,8 @@ func (in *UserSpec) DeepCopyInto(out *UserSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.W7Config != nil {
-		in, out := &in.W7Config, &out.W7Config
+	if in.Cloud != nil {
+		in, out := &in.Cloud, &out.Cloud
 		*out = new(W7Config)
 		(*in).DeepCopyInto(*out)
 	}

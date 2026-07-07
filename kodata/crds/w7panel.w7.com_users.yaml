@@ -83,7 +83,7 @@ spec:
                 type: string
               consoleNickname:
                 type: string
-              w7Config:
+              cloud:
                 type: object
                 properties:
                   thirdpartyCDToken:
