@@ -79,7 +79,11 @@ func readIDMap(path string) []idMapRange {
 	if err != nil {
 		return nil
 	}
-	return parseIDMap(string(data))
+	ranges := parseIDMap(string(data))
+	if len(ranges) == 0 {
+		return nil
+	}
+	return ranges
 }
 
 func parseIDMap(data string) []idMapRange {

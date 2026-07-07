@@ -57,6 +57,43 @@ func TestIDMapperFallsBackToIdentity(t *testing.T) {
 	}
 }
 
+func TestIDMapperFallsBackToIdentityForEmptyParsedMaps(t *testing.T) {
+	tmpDir := t.TempDir()
+	uidMap := filepath.Join(tmpDir, "uid_map")
+	gidMap := filepath.Join(tmpDir, "gid_map")
+	if err := os.WriteFile(uidMap, []byte("invalid\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(gidMap, []byte("invalid\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	mapper := NewIDMapperFromPaths(uidMap, gidMap)
+	if got := mapper.HostToContainerUID(0); got != 0 {
+		t.Fatalf("HostToContainerUID empty map fallback mismatch: got=%d want=0", got)
+	}
+	if got := mapper.HostToContainerGID(1000); got != 1000 {
+		t.Fatalf("HostToContainerGID empty map fallback mismatch: got=%d want=1000", got)
+	}
+}
+
+func TestIDMapperMapsHostUsersTrueIdentityRange(t *testing.T) {
+	mapper := &IDMapper{
+		uidRanges: parseIDMap("0 0 4294967295\n"),
+		gidRanges: parseIDMap("0 0 4294967295\n"),
+	}
+
+	if got := mapper.HostToContainerUID(0); got != 0 {
+		t.Fatalf("HostToContainerUID root mismatch: got=%d want=0", got)
+	}
+	if got := mapper.HostToContainerUID(1000); got != 1000 {
+		t.Fatalf("HostToContainerUID user mismatch: got=%d want=1000", got)
+	}
+	if got, ok := mapper.TryContainerToHostGID(1000); !ok || got != 1000 {
+		t.Fatalf("TryContainerToHostGID user mismatch: got=(%d,%v) want=(1000,true)", got, ok)
+	}
+}
+
 func TestIDMapperDoesNotUseIdentityForUnmappedIDs(t *testing.T) {
 	mapper := &IDMapper{
 		uidRanges: parseIDMap("0 100000 10\n"),

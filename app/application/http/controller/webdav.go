@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/procpath"
 	webdavapi "github.com/w7panel/w7panel/common/service/webdav"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
@@ -45,7 +46,7 @@ func (c Webdav) HandlePid(ctx *gin.Context) {
 	webDirPath := procpath.GetRootPath(pid)
 	c.handleWithPermissionPreservation(ctx,
 		"/panel-api/v1/files/webdav-agent/"+pid+"/agent",
-		webdav.Dir(webDirPath), webDirPath, procpath.NewIDMapper(pid, ""))
+		webdav.Dir(webDirPath), webDirPath, newWebDAVIDMapper(pid, ""))
 }
 
 func (c Webdav) HandlePidSubPid(ctx *gin.Context) {
@@ -58,11 +59,18 @@ func (c Webdav) HandlePidSubPid(ctx *gin.Context) {
 	}
 	c.handleWithPermissionPreservation(ctx,
 		prefix,
-		webdav.Dir(webDirPath), webDirPath, procpath.NewIDMapper(pid, subpid))
+		webdav.Dir(webDirPath), webDirPath, newWebDAVIDMapper(pid, subpid))
 }
 
 func (c Webdav) HandleTest(ctx *gin.Context) {
 	c.handleWithPermissionPreservation(ctx,
 		"/panel-api/v1/files/webdav-test",
 		webdav.Dir("/"), "/", nil)
+}
+
+func newWebDAVIDMapper(pid, subpid string) webdavapi.IDMapper {
+	if helper.IsChildAgent() {
+		return nil
+	}
+	return procpath.NewIDMapper(pid, subpid)
 }
