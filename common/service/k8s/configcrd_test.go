@@ -1,8 +1,12 @@
 package k8s
 
-import "testing"
+import (
+	"testing"
 
-func TestLicenseCRDSpecRoundTrip(t *testing.T) {
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+)
+
+func TestParseLegacyLicenseCRDSpec(t *testing.T) {
 	want := LicenseCRDSpec{
 		AppId:         "app",
 		AppSecret:     "secret",
@@ -10,16 +14,7 @@ func TestLicenseCRDSpecRoundTrip(t *testing.T) {
 		License:       "Y2VydA==",
 	}
 
-	obj := NewLicenseCRD(LicenseName, want)
-	if obj.GetAPIVersion() != ConfigCRDGroup+"/"+ConfigCRDVersion {
-		t.Fatalf("apiVersion = %q", obj.GetAPIVersion())
-	}
-	if obj.GetKind() != "License" {
-		t.Fatalf("kind = %q", obj.GetKind())
-	}
-	if obj.GetName() != LicenseName {
-		t.Fatalf("name = %q", obj.GetName())
-	}
+	obj := legacyLicenseCRD(want)
 
 	got := ParseLicenseCRDSpec(obj)
 	if got != want {
@@ -27,8 +22,8 @@ func TestLicenseCRDSpecRoundTrip(t *testing.T) {
 	}
 }
 
-func TestNewLicenseCRDAllowsEmptyLicense(t *testing.T) {
-	obj := NewLicenseCRD(LicenseName, LicenseCRDSpec{
+func TestParseLegacyLicenseCRDSpecAllowsEmptyLicense(t *testing.T) {
+	obj := legacyLicenseCRD(LicenseCRDSpec{
 		AppId:         "app",
 		AppSecret:     "secret",
 		FounderSaName: "admin",
@@ -38,6 +33,20 @@ func TestNewLicenseCRDAllowsEmptyLicense(t *testing.T) {
 	if got.License != "" {
 		t.Fatalf("license = %q, want empty", got.License)
 	}
+}
+
+func legacyLicenseCRD(spec LicenseCRDSpec) *unstructured.Unstructured {
+	obj := &unstructured.Unstructured{}
+	obj.SetAPIVersion(ConfigCRDGroup + "/" + ConfigCRDVersion)
+	obj.SetKind("License")
+	obj.SetName(LicenseName)
+	obj.Object["spec"] = map[string]interface{}{
+		"appId":         spec.AppId,
+		"appSecret":     spec.AppSecret,
+		"founderSaName": spec.FounderSaName,
+		"license":       spec.License,
+	}
+	return obj
 }
 
 func TestOverSellingConfigCRDSpecRoundTrip(t *testing.T) {
