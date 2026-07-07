@@ -85,7 +85,7 @@ func TestOnAddIngressSyncsDomainOnly(t *testing.T) {
 	assert.Empty(t, got.Status.Items)
 }
 
-func TestGetResourceGroupNamesSupportsVisibleGroups(t *testing.T) {
+func TestGetResourceGroupNamesIgnoresVisibleGroups(t *testing.T) {
 	obj := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
@@ -95,8 +95,8 @@ func TestGetResourceGroupNamesSupportsVisibleGroups(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, []string{"owner", "site-a"}, getResourceGroupNames(obj))
-	assert.True(t, resourceVisibleInGroup(obj, "site-a"))
+	assert.Equal(t, []string{"owner"}, getResourceGroupNames(obj))
+	assert.False(t, resourceVisibleInGroup(obj, "site-a"))
 	assert.False(t, resourceVisibleInGroup(obj, "site"))
 }
 

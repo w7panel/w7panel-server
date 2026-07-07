@@ -1,14 +1,6 @@
 package appgroup
 
-import (
-	"strings"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-const (
-	visibleGroupsKey = "w7.cc/visible-groups"
-)
+import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 func getResourceGroupName(labels map[string]string) string {
 	if labels == nil {
@@ -44,19 +36,12 @@ func getResourceGroupNames(obj metav1.Object) []string {
 	labels := obj.GetLabels()
 	if labels != nil {
 		add(labels["group"], labels["w7.cc/group-name"], labels["w7.cc/release-name"], labels["app.kubernetes.io/instance"], labels["w7.cc/suffix"])
-		add(splitGroupNames(labels[visibleGroupsKey])...)
 	}
 	annotations := obj.GetAnnotations()
 	if annotations != nil {
 		add(annotations["meta.helm.sh/release-name"])
 	}
 	return names
-}
-
-func splitGroupNames(value string) []string {
-	return strings.FieldsFunc(value, func(r rune) bool {
-		return r == ',' || r == ';' || r == ' ' || r == '\t' || r == '\n'
-	})
 }
 
 func containsString(values []string, value string) bool {
