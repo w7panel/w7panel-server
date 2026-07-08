@@ -17,6 +17,7 @@ import (
 
 const (
 	higressReleaseName   = "higress"
+	higressGroupName     = "w7panel-higress"
 	higressNamespace     = "higress-system"
 	higressTargetVersion = "2.1.6"
 )
@@ -81,7 +82,7 @@ func shouldRunHigressUpgradeShell(sdk *k8s.Sdk) (bool, error) {
 		return false, err
 	}
 
-	_, err = groupApi.GetAppGroup("default", higressReleaseName)
+	_, err = groupApi.GetAppGroup("default", higressGroupName)
 	if err == nil {
 		return false, nil
 	}
