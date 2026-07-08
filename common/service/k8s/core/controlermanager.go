@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/buildimage"
+	"github.com/w7panel/w7panel/common/service/k8s/higress"
 	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/w7panel/w7panel/common/service/k8s/privatedns"
 	"github.com/w7panel/w7panel/common/service/k8s/service"
@@ -89,13 +90,12 @@ func StartControlManager() error {
 		slog.Error("setup service account controller failed", "err", err)
 		return err
 	}
-	if facade.GetConfig().GetBool("higress.watch") {
-		// slog.Info("higress watch enabled") //走webhook
-		// err := higress.SetupManager(mgr, sdk)
-		// if err != nil {
-		// 	slog.Error("setup higress controllers failed", "err", err)
-		// 	return err
-		// }
+	if facade.GetConfig().GetBool("higress.watch") || !facade.GetConfig().GetBool("webhook.enabled") {
+		err := higress.SetupManager(mgr, sdk)
+		if err != nil {
+			slog.Error("setup higress controllers failed", "err", err)
+			return err
+		}
 	}
 
 	if facade.GetConfig().GetBool("buildimage.enabled") {
