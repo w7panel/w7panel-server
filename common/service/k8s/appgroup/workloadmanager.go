@@ -254,20 +254,26 @@ func (d *WorkloadManager) HandleWorkload(ds WorkloadWrapperInterface, delete boo
 		return nil
 	}
 
-	//兼容 operator 管理的应用 同步到appgroup
-	managerBy, ok := ds.Labels()["app.kubernetes.io/managed-by"]
 	group := d.GetAppGroupWrapper(ds)
+	//job 如果 获取到的 group不存在， 跳过
+	if itemStatus.Kind == "Job" {
+		if group == nil || !group.exists {
+			return nil
+		}
+	}
+
+	//兼容 operator 管理的应用 同步到appgroup
+	//非 helm 安装的单应用 这里会跳过，d.groupApi.Persist(group) 会新建 appgroup出来
+	managerBy, ok := ds.Labels()["app.kubernetes.io/managed-by"]
 	if group == nil || (ds.IsHelm() && !group.exists) || (ok && managerBy != "Helm" && !group.exists) {
 		return nil
 	}
 
 	group.FixDeployItem(itemStatus)
-	if group.changed {
-		_, err := d.groupApi.Persist(group)
-		if err != nil {
-			slog.Error("update group error", "error", err)
-			return err
-		}
+	_, err := d.groupApi.Persist(group)
+	if err != nil {
+		slog.Error("update group error", "error", err)
+		return err
 	}
 
 	if itemStatus.Kind != "Job" {
