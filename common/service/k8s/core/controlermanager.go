@@ -90,7 +90,8 @@ func StartControlManager() error {
 		slog.Error("setup service account controller failed", "err", err)
 		return err
 	}
-	if facade.GetConfig().GetBool("higress.watch") || !facade.GetConfig().GetBool("webhook.enabled") {
+	//webhook 和 higress 用一个
+	if facade.GetConfig().GetBool("higress.watch") && !facade.GetConfig().GetBool("webhook.enabled") {
 		err := higress.SetupManager(mgr, sdk)
 		if err != nil {
 			slog.Error("setup higress controllers failed", "err", err)
