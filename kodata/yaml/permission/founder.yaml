@@ -26,6 +26,15 @@ spec:
   - app/rvproxy/add
   - app/rvproxy/edit
   - app/rvproxy/delete
+  - gateway
+  - gateway/rvproxy
+  - gateway/rvproxy/add
+  - gateway/rvproxy/edit
+  - gateway/rvproxy/delete
+  - gateway/aiproxy
+  - gateway/aiproxy/add
+  - gateway/aiproxy/edit
+  - gateway/aiproxy/delete
   - app/database
   - app/database/add
   - app/database/delete

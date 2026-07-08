@@ -11,6 +11,7 @@ spec:
   menuRules:
   - cluster/*
   - app/*
+  - gateway/*
   - storage/*
   - zpk
   - system/cloud
@@ -306,6 +307,13 @@ spec:
     - '*'
   - apiGroups:
     - networking.k8s.io
+    resources:
+    - '*'
+    verbs:
+    - '*'
+  - apiGroups:
+    - networking.higress.io
+    - extensions.higress.io
     resources:
     - '*'
     verbs:
