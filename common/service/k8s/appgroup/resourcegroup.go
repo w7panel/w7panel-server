@@ -1,6 +1,14 @@
 package appgroup
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	"strings"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	groupNamesKey = "w7.cc/group-names"
+)
 
 func getResourceGroupName(labels map[string]string) string {
 	if labels == nil {
@@ -18,7 +26,10 @@ func getResourceGroupName(labels map[string]string) string {
 	if labels["app.kubernetes.io/instance"] != "" {
 		return labels["app.kubernetes.io/instance"]
 	}
-	return labels["w7.cc/suffix"]
+	if labels["w7.cc/suffix"] != "" {
+		return labels["w7.cc/suffix"]
+	}
+	return ""
 }
 
 func getResourceGroupNames(obj metav1.Object) []string {
@@ -36,12 +47,19 @@ func getResourceGroupNames(obj metav1.Object) []string {
 	labels := obj.GetLabels()
 	if labels != nil {
 		add(labels["group"], labels["w7.cc/group-name"], labels["w7.cc/release-name"], labels["app.kubernetes.io/instance"], labels["w7.cc/suffix"])
+		add(splitGroupNames(labels[groupNamesKey])...)
 	}
 	annotations := obj.GetAnnotations()
 	if annotations != nil {
 		add(annotations["meta.helm.sh/release-name"])
 	}
 	return names
+}
+
+func splitGroupNames(value string) []string {
+	return strings.FieldsFunc(value, func(r rune) bool {
+		return r == ',' || r == ';' || r == ' ' || r == '\t' || r == '\n'
+	})
 }
 
 func containsString(values []string, value string) bool {
@@ -51,18 +69,6 @@ func containsString(values []string, value string) bool {
 		}
 	}
 	return false
-}
-
-func sameStringSet(left, right []string) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for _, item := range left {
-		if !containsString(right, item) {
-			return false
-		}
-	}
-	return true
 }
 
 func resourceVisibleInGroup(obj metav1.Object, groupName string) bool {

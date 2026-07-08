@@ -224,7 +224,7 @@ func (d *WorkloadManager) HandleQueue(key interface{}) error {
 
 	if d.AppGroupItemResourceTracked.isAppGroupResourceTrackedKind(evt.Kind) {
 		err = d.handleAppGroupResourceTrackedEvent(evt, d.GetAppGroupResourceTrackedGroupWrappers(evt))
-		slog.Error("handleAppGroupResourceTrackedEvent error", "error", err, "event", evt)
+		slog.Info("handleAppGroupResourceTrackedEvent complete", "error", err, "event", evt)
 	}
 
 	if isWorkloadKind(evt.Kind) {
@@ -254,16 +254,20 @@ func (d *WorkloadManager) HandleWorkload(ds WorkloadWrapperInterface, delete boo
 		return nil
 	}
 
+	//兼容 operator 管理的应用 同步到appgroup
+	managerBy, ok := ds.Labels()["app.kubernetes.io/managed-by"]
 	group := d.GetAppGroupWrapper(ds)
-	if group == nil || !group.exists {
+	if group == nil || (ds.IsHelm() && !group.exists) || (ok && managerBy != "Helm" && !group.exists) {
 		return nil
 	}
 
 	group.FixDeployItem(itemStatus)
-	_, err := d.groupApi.Persist(group)
-	if err != nil {
-		slog.Error("update group error", "error", err)
-		return err
+	if group.changed {
+		_, err := d.groupApi.Persist(group)
+		if err != nil {
+			slog.Error("update group error", "error", err)
+			return err
+		}
 	}
 
 	if itemStatus.Kind != "Job" {
