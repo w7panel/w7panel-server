@@ -16,10 +16,9 @@ import (
 )
 
 const (
-	higressReleaseName   = "higress"
-	higressGroupName     = "w7panel-higress"
-	higressNamespace     = "higress-system"
-	higressTargetVersion = "2.1.6"
+	higressReleaseName = "higress"
+	higressGroupName   = "w7panel-higress"
+	higressNamespace   = "higress-system"
 )
 
 type HigressUpgrade struct {
@@ -61,7 +60,7 @@ func (c HigressUpgrade) Handle(cmd *cobra.Command, args []string) {
 	}
 
 	scriptPath := filepath.Join(koDataPath, "shell", "upgradehigress.sh")
-	stdout, stderr, err := helper.Runsh("bash", scriptPath, higressTargetVersion)
+	stdout, stderr, err := helper.Runsh("bash", scriptPath, version)
 	if stdout != "" {
 		slog.Info("higress upgrade shell stdout", "output", stdout)
 	}
@@ -69,11 +68,11 @@ func (c HigressUpgrade) Handle(cmd *cobra.Command, args []string) {
 		slog.Warn("higress upgrade shell stderr", "output", stderr)
 	}
 	if err != nil {
-		slog.Error("run higress upgrade shell error", "script", scriptPath, "currentVersion", version, "targetVersion", higressTargetVersion, "err", err)
+		slog.Error("run higress upgrade shell error", "script", scriptPath, "currentVersion", version, "targetVersion", version, "err", err)
 		return
 	}
 
-	slog.Info("higress upgrade shell success", "script", scriptPath, "currentVersion", version, "targetVersion", higressTargetVersion)
+	slog.Info("higress upgrade shell success", "script", scriptPath, "currentVersion", version, "targetVersion", version)
 }
 
 func shouldRunHigressUpgradeShell(sdk *k8s.Sdk) (bool, error) {

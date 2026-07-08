@@ -1,34 +1,32 @@
 #!/bin/bash
 set -euo pipefail
 
-VERSION="${1:-${VERSION:-2.1.6}}"
+VERSION="${1:-${VERSION:-2.2.3}}"
 KO_DATA_PATH="${KO_DATA_PATH:-./kodata}"
-CHART_PATH="${KO_DATA_PATH}/charts/higress-${VERSION}.tgz"
+# CHART_PATH="${KO_DATA_PATH}/charts/higress-${VERSION}.tgz"
 
-if [ ! -f "$CHART_PATH" ]; then
-  echo "higress chart not found: $CHART_PATH" >&2
-  exit 1
-fi
+# if [ ! -f "$CHART_PATH" ]; then
+#   echo "higress chart not found: $CHART_PATH" >&2
+#   exit 1
+# fi
 
-helm upgrade higress "$CHART_PATH" \
-  --namespace higress-system \
-  --create-namespace \
-  --version "v${VERSION}" \
-  --set global.ingressClass=higress \
-  --set higress-core.gateway.replicas=1 \
-  --set higress-core.gateway.resources.limits.cpu=0 \
-  --set higress-core.gateway.resources.limits.memory=0 \
-  --set higress-core.gateway.resources.requests.cpu=0 \
-  --set higress-core.gateway.resources.requests.memory=0 \
-  --set higress-core.controller.replicas=1 \
-  --set higress-core.controller.resources.requests.cpu=0 \
-  --set higress-core.controller.resources.requests.memory=0 \
-  --set higress-core.controller.resources.limits.cpu=0 \
-  --set higress-core.controller.resources.limits.memory=0 \
-  --set higress-core.pilot.replicaCount=1 \
-  --set higress-core.pilot.resources.requests.cpu=0 \
-  --set higress-core.pilot.resources.requests.memory=0 \
-  --set higress-console.replicaCount=0 \
-  --set higress-console.resources.requests.cpu=0 \
-  --set higress-console.resources.requests.memory=0 \
-  --install
+for resource in \
+  helmchart/higress
+do
+  if ! kubectl -n kube-system get "$resource" >/dev/null 2>&1; then
+    echo "skip missing resource: $resource"
+    continue
+  fi
+
+  kubectl -n kube-system label "$resource" \
+    app.kubernetes.io/managed-by=Helm \
+    --overwrite
+
+  kubectl -n kube-system annotate "$resource" \
+    meta.helm.sh/release-name=w7panel-higress \
+    meta.helm.sh/release-namespace=default \
+    --overwrite
+done
+
+helm upgrade w7panel-higress "https://cdn.w7.cc/w7panel/charts/higress/w7panel-higress-${VERSION}.tgz" --install
+# helm upgrade w7panel-higress $KO_DATA_PATH/charts/w7panel-higress-2.2.3.tgz --install
