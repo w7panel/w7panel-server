@@ -289,6 +289,9 @@ func (d *WorkloadManager) handleAppGroupResourceTrackedEvent(evt *K8sResourceEve
 		if err := d.AppGroupItemResourceTracked.handleAppGroupResourceTrackedEvent(evt, group); err != nil {
 			return err
 		}
+		if err := d.AppGroupItemResourceTracked.syncAppGroupResourceTrackedDerivedState(evt, group); err != nil {
+			return err
+		}
 		if group != nil && group.IsChange() {
 			if _, err := d.groupApi.Persist(group); err != nil {
 				return err
@@ -440,6 +443,11 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 	if scanChanged, err := d.AppGroupItemResourceTracked.scanAppGroupResourceTracked(wrapper); err != nil {
 		slog.Error("scan appgroup resource tracked error", "error", err)
 	} else if scanChanged {
+		changed = true
+	}
+	if err := d.AppGroupItemResourceTracked.syncAllAppGroupResourceTrackedDerivedState(wrapper); err != nil {
+		slog.Error("sync appgroup resource tracked derived state error", "error", err)
+	} else if wrapper.IsChange() {
 		changed = true
 	}
 	if changed {

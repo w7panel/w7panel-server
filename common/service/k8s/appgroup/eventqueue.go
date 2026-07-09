@@ -189,6 +189,22 @@ func (c *EventQueue) AddAfter(event *K8sResourceEvent, duration time.Duration) {
 	c.queue.AddAfter(event.ToString(), duration)
 }
 
+func sameStringSet(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	values := map[string]struct{}{}
+	for _, item := range a {
+		values[item] = struct{}{}
+	}
+	for _, item := range b {
+		if _, ok := values[item]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
 func ParseEvent(obj interface{}) (*K8sResourceEvent, error) {
 	keystr, ok := obj.(string)
 	if !ok {

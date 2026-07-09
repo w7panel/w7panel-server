@@ -19,6 +19,7 @@ type appGroupResourceTrackedScanner struct {
 	Get        func(namespace, name string) (metav1.Object, error)
 	List       func(namespace string, selector labels.Selector) ([]metav1.Object, error)
 	ItemStatus func(evt *K8sResourceEvent, obj metav1.Object) v1alpha1.AppGroupItemStatus
+	SyncGroup  func(evt *K8sResourceEvent, group *appgroupWrapper) error
 }
 
 type AppGroupItemResourceTracked struct {
@@ -150,6 +151,9 @@ func (d *AppGroupItemResourceTracked) RegisterIngress(lister networkingv1lister.
 			}
 			return result, nil
 		},
+		SyncGroup: func(evt *K8sResourceEvent, group *appgroupWrapper) error {
+			return syncAppGroupDomains(evt, group, lister)
+		},
 	})
 }
 
@@ -163,12 +167,14 @@ func (d *AppGroupItemResourceTracked) GetAppGroupResourceTrackedFromRO(kind, nam
 
 func (d *AppGroupItemResourceTracked) handleAppGroupResourceTrackedEvent(evt *K8sResourceEvent, group *appgroupWrapper) error {
 	if evt.EventType == "delete" {
-		return d.HandleAppGroupResourceTracked(evt, group, &evt.ObjectMeta, true)
+		obj := &evt.ObjectMeta
+		return d.HandleAppGroupResourceTracked(evt, group, obj, true)
 	}
 	resource, err := d.GetAppGroupResourceTrackedFromRO(evt.Kind, evt.Namespace, evt.Name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return d.HandleAppGroupResourceTracked(evt, group, &evt.ObjectMeta, true)
+			obj := &evt.ObjectMeta
+			return d.HandleAppGroupResourceTracked(evt, group, obj, true)
 		}
 		slog.Error("get appgroup resource tracked from ro error", "error", err)
 		return nil
@@ -195,6 +201,29 @@ func (d *AppGroupItemResourceTracked) syncAppGroupResourceTrackedWrapper(group *
 		group.RemoveSyncedStatusItem(item)
 	} else {
 		group.SyncStatusItem(item)
+	}
+	return nil
+}
+
+func (d *AppGroupItemResourceTracked) syncAppGroupResourceTrackedDerivedState(evt *K8sResourceEvent, group *appgroupWrapper) error {
+	if evt == nil {
+		return nil
+	}
+	scanner, ok := d.appGroupResourceTrackedScanner(evt.Kind)
+	if !ok || scanner.SyncGroup == nil {
+		return nil
+	}
+	return scanner.SyncGroup(evt, group)
+}
+
+func (d *AppGroupItemResourceTracked) syncAllAppGroupResourceTrackedDerivedState(group *appgroupWrapper) error {
+	for _, scanner := range d.appGroupResourceTrackedScanners() {
+		if scanner.SyncGroup == nil {
+			continue
+		}
+		if err := scanner.SyncGroup(nil, group); err != nil {
+			return err
+		}
 	}
 	return nil
 }
