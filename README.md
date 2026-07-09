@@ -102,6 +102,16 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 - **应用部署** - Helm, Docker Compose, YAML
 - **集群管理** - 节点、资源对象管理
 
+## 维护命令
+
+```bash
+# 将旧 kube-system/coredns-custom 私有 DNS 配置迁移为 PrivateDNS CRD
+w7panel privatedns-upgrade
+
+# 如需用旧 CoreDNS 配置覆盖已有 PrivateDNS CRD
+w7panel privatedns-upgrade --overwrite
+```
+
 ## API 接口
 
 详见 [API 文档](../docs/api/README.md)
