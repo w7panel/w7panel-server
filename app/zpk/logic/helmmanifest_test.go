@@ -32,7 +32,3 @@ func TestHelmManifestApp(t *testing.T) {
 	assert.Equal(t, "test", manifest.Platform.Container.StartParams[0].Name)
 	assert.Equal(t, "test", manifest.Platform.Container.StartParams[0].ValuesText)
 }
-
-func TestHelmManifestApp(t *testing.T) {
-	
-}
