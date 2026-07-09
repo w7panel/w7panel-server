@@ -267,7 +267,6 @@ func doSync(client sigclient.Client, ing *networkingv1.Ingress, delete bool) {
 }
 
 func OnAdd(client sigclient.Client, ingress *networkingv1.Ingress) {
-	appgroup.OnAddIngress(client, ingress)
 	if !isMain(ingress) {
 		return
 	}

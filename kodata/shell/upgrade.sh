@@ -5,6 +5,9 @@ echo "导入crd"
 kubectl apply -f $KO_DATA_PATH/crds --server-side
 sh $KO_DATA_PATH/shell/migrate-crd-groups.sh
 
+echo "升级私有DNS"
+w7panel privatedns-upgrade
+
 echo "升级用户"
 w7panel user-upgrade 
 

@@ -289,6 +289,9 @@ func (d *WorkloadManager) handleAppGroupResourceTrackedEvent(evt *K8sResourceEve
 		if err := d.AppGroupItemResourceTracked.handleAppGroupResourceTrackedEvent(evt, group); err != nil {
 			return err
 		}
+		if err := d.AppGroupItemResourceTracked.syncAppGroupResourceTrackedDerivedState(evt, group); err != nil {
+			return err
+		}
 		if group != nil && group.IsChange() {
 			if _, err := d.groupApi.Persist(group); err != nil {
 				return err
@@ -442,6 +445,11 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 	} else if scanChanged {
 		changed = true
 	}
+	if err := d.AppGroupItemResourceTracked.syncAllAppGroupResourceTrackedDerivedState(wrapper); err != nil {
+		slog.Error("sync appgroup resource tracked derived state error", "error", err)
+	} else if wrapper.IsChange() {
+		changed = true
+	}
 	if changed {
 		_, err := d.groupApi.UpdateAppGroup(group.Namespace, group)
 		if err != nil {
@@ -518,34 +526,13 @@ func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) {
 
 	slog.Info("start delete workload")
 	for _, workload := range group.Status.Items {
-		item := workload.Kind
-
-		switch item {
-		case "Deployment":
-			err := d.sdk.ClientSet.AppsV1().Deployments(group.Namespace).Delete(context.TODO(), workload.Name, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("failed to delete deployment", slog.String("error", err.Error()))
-			}
-		case "DaemonSet":
-			err := d.sdk.ClientSet.AppsV1().DaemonSets(group.Namespace).Delete(context.TODO(), workload.Name, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("failed to delete daemonset", slog.String("error", err.Error()))
-			}
-		case "StatefulSet":
-			err := d.sdk.ClientSet.AppsV1().StatefulSets(group.Namespace).Delete(context.TODO(), workload.Name, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("failed to delete statefulset", slog.String("error", err.Error()))
-			}
-		case "CronJob":
-			err := d.sdk.ClientSet.BatchV1beta1().CronJobs(group.Namespace).Delete(context.TODO(), workload.Name, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("failed to delete cronjob", slog.String("error", err.Error()))
-			}
-		case "Job":
-			err := d.sdk.ClientSet.BatchV1().Jobs(group.Namespace).Delete(context.TODO(), workload.Name, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("failed to delete job", slog.String("error", err.Error()))
-			}
+		if err := d.deleteAppGroupStatusItemResource(group.Namespace, workload); err != nil {
+			slog.Error("failed to delete appgroup status item",
+				slog.String("apiVersion", workload.ApiVersion),
+				slog.String("kind", workload.Kind),
+				slog.String("name", workload.Name),
+				slog.String("error", err.Error()),
+			)
 		}
 		//清理service
 		err := d.sdk.ClientSet.CoreV1().Services(group.Namespace).Delete(context.TODO(), workload.Name, metav1.DeleteOptions{})
@@ -611,6 +598,53 @@ func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) {
 	if err != nil {
 		slog.Error("failed to delete microapp", slog.String("error", err.Error()))
 	}
+}
+
+func (d *WorkloadManager) deleteAppGroupStatusItemResource(namespace string, item appv1.AppGroupItemStatus) error {
+	if item.Name == "" || item.Kind == "" {
+		return nil
+	}
+
+	switch item.Kind {
+	case "Deployment":
+		return d.sdk.ClientSet.AppsV1().Deployments(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "DaemonSet":
+		return d.sdk.ClientSet.AppsV1().DaemonSets(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "StatefulSet":
+		return d.sdk.ClientSet.AppsV1().StatefulSets(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "CronJob":
+		if item.ApiVersion == "batch/v1" {
+			return d.sdk.ClientSet.BatchV1().CronJobs(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+		}
+		return d.sdk.ClientSet.BatchV1beta1().CronJobs(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "Job":
+		return d.sdk.ClientSet.BatchV1().Jobs(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "Ingress":
+		return d.sdk.ClientSet.NetworkingV1().Ingresses(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "Service":
+		return d.sdk.ClientSet.CoreV1().Services(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "Secret":
+		return d.sdk.ClientSet.CoreV1().Secrets(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "ConfigMap":
+		return d.sdk.ClientSet.CoreV1().ConfigMaps(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "PersistentVolumeClaim":
+		return d.sdk.ClientSet.CoreV1().PersistentVolumeClaims(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "ServiceAccount":
+		return d.sdk.ClientSet.CoreV1().ServiceAccounts(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	default:
+		return d.deleteAppGroupStatusItemWithDynamicClient(namespace, item)
+	}
+}
+
+func (d *WorkloadManager) deleteAppGroupStatusItemWithDynamicClient(namespace string, item appv1.AppGroupItemStatus) error {
+	if item.ApiVersion == "" || d.sdk == nil || d.sdk.DynamicClient() == nil {
+		return nil
+	}
+	mapping, err := d.sdk.GetRestMapping(item.ApiVersion, item.Kind)
+	if err != nil {
+		return err
+	}
+	return d.sdk.DynamicClient().Resource(mapping.Resource).Namespace(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
 }
 
 func isWorkloadKind(kind string) bool {

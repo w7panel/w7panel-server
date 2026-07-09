@@ -40,6 +40,7 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(consoleShell.SiteSettingUpgrade))  //旧站点配置升级
 	console.RegisterCommand(new(consoleShell.UserUpgrade))         //旧用户升级
 	console.RegisterCommand(new(consoleShell.W7ConfigUpgrade))     //旧 w7-config 升级
+	console.RegisterCommand(new(consoleShell.PrivateDNSUpgrade))   //旧私有 DNS 升级
 	console.RegisterCommand(new(consoleShell.Build))
 	console.RegisterCommand(new(consoleShell.BeianCheck))      //备案检查
 	console.RegisterCommand(new(consoleShell.TestUploadChunk)) // 测试分片上传功能
@@ -179,16 +180,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/pinyin", middleware.Auth{}.Process, controller2.Util{}.Pinyin)                    // pinyin
 			localApiGroup.GET("/dnsip", middleware.Auth{}.Process, controller2.Util{}.DnsIp)
 			localApiGroup.GET("/dns-cname", middleware.Auth{}.Process, controller2.Util{}.DnsCName)
-			localApiGroup.GET("/dns/info", middleware.Auth{}.Process, controller2.DNS{}.Info)
-			localApiGroup.GET("/dns/zones", middleware.Auth{}.Process, controller2.DNS{}.Zones)
-			localApiGroup.POST("/dns/zones", middleware.Auth{}.Process, controller2.DNS{}.CreateZone)
-			localApiGroup.DELETE("/dns/zones/:domain", middleware.Auth{}.Process, controller2.DNS{}.DeleteZone)
-			localApiGroup.GET("/dns/zones/:domain/records", middleware.Auth{}.Process, controller2.DNS{}.Records)
-			localApiGroup.POST("/dns/zones/:domain/records", middleware.Auth{}.Process, controller2.DNS{}.CreateRecord)
-			localApiGroup.PUT("/dns/zones/:domain/records/:id", middleware.Auth{}.Process, controller2.DNS{}.UpdateRecord)
-			localApiGroup.DELETE("/dns/zones/:domain/records/:id", middleware.Auth{}.Process, controller2.DNS{}.DeleteRecord)
-			localApiGroup.GET("/dns/server", middleware.Auth{}.Process, controller2.DNS{}.Server)
-			localApiGroup.PUT("/dns/server", middleware.Auth{}.Process, controller2.DNS{}.UpdateServer)
 			localApiGroup.GET("/myip", middleware.Auth{}.Process, controller2.Util{}.MyIp)
 			localApiGroup.POST("/db-conn-test", middleware.Auth{}.Process, controller2.Util{}.DbConnTest) // 数据库连接测试
 			localApiGroup.POST("/ping-etcd", middleware.Auth{}.Process, controller2.Util{}.PintEtcd)      // etcd连接测试
