@@ -72,6 +72,10 @@ func (u *UpgradeCheck) Check(namespace string, groupname string) *UpgradeInfo {
 	if err != nil {
 		return NotUpgrade
 	}
+	// 修复crd 变更后 helmcmd.go annotations 字段丢失问题
+	if group.Spec.ZpkUrl == "" && (group.Spec.Identifie == "w7panel-offline" || group.Spec.Identifie == "w7panel_offline") {
+		group.Spec.ZpkUrl = "https://zpk.w7.cc/zpk/respo/info/w7panel_offline"
+	}
 	if group.Spec.ZpkUrl != "" {
 		result, err := u.CheckZpk(group)
 		if err != nil {
