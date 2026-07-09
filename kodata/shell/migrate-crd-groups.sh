@@ -30,7 +30,7 @@ migrate_resource() {
         names="$($KUBECTL get "${old_resource}" -n "${namespace}" -o json | jq -r '.items[]?.metadata.name')"
         for name in ${names}; do
             case "${name}" in
-                longhorn|w7panel-longhorn)
+                longhorn|w7panel-longhorn|w7panel-offline)
                     echo "skip ${old_resource} namespace/${namespace}/${name}: old CRD is not migrated"
                     continue
                     ;;
