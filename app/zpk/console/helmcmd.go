@@ -64,7 +64,7 @@ func (c HelmCmd) Handle(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 		return
 	}
-	if (chart.Metadata.Annotations == nil) || (len(helmOp.annotations) == 0) {
+	if chart.Metadata.Annotations == nil {
 		chart.Metadata.Annotations = make(map[string]string)
 	}
 	if helmOp.annotations != nil && len(helmOp.annotations) > 0 {
