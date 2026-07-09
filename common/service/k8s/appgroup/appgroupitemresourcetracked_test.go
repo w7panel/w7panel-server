@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	appsv1lister "k8s.io/client-go/listers/apps/v1"
+	networkingv1lister "k8s.io/client-go/listers/networking/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -151,4 +152,121 @@ func TestScanAppGroupResourceTrackedUsesWorkloadScannerStatus(t *testing.T) {
 			DeployStatus:      v1alpha1.StatusDeployed,
 		},
 	}, group.Status.Items)
+}
+
+func TestSyncAppGroupDomainsFromIngressStatusItems(t *testing.T) {
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	assert.NoError(t, indexer.Add(&networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ing-primary",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"cert-manager.io/cluster-issuer": "w7-letsencrypt-prod",
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{{
+				Host: "demo.example.com",
+				IngressRuleValue: networkingv1.IngressRuleValue{
+					HTTP: &networkingv1.HTTPIngressRuleValue{
+						Paths: []networkingv1.HTTPIngressPath{
+							{Path: "/"},
+							{Path: "/admin"},
+						},
+					},
+				},
+			}},
+		},
+	}))
+	assert.NoError(t, indexer.Add(&networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ing-duplicate",
+			Namespace: "default",
+		},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{{
+				Host: "demo.example.com",
+				IngressRuleValue: networkingv1.IngressRuleValue{
+					HTTP: &networkingv1.HTTPIngressRuleValue{
+						Paths: []networkingv1.HTTPIngressPath{
+							{Path: "admin"},
+							{Path: "/api"},
+						},
+					},
+				},
+			}},
+		},
+	}))
+
+	tracker := NewAppGroupItemResourceTracked()
+	tracker.RegisterIngress(networkingv1lister.NewIngressLister(indexer))
+	group := &v1alpha1.AppGroup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"w7.cc/domains": `["http://stale.example.com"]`,
+			},
+		},
+		Status: v1alpha1.AppGroupStatus{
+			Items: []v1alpha1.AppGroupItemStatus{
+				{ApiVersion: "networking.k8s.io/v1", Kind: "Ingress", Name: "ing-primary", Ready: true},
+				{ApiVersion: "networking.k8s.io/v1", Kind: "Ingress", Name: "ing-duplicate", Ready: true},
+			},
+		},
+	}
+	wrapper := NewAppGroupWrapper(group, true)
+
+	err := tracker.syncAllAppGroupResourceTrackedDerivedState(wrapper)
+
+	assert.NoError(t, err)
+	assert.True(t, wrapper.IsChange())
+	assert.Equal(t, []string{
+		"https://demo.example.com",
+		"https://demo.example.com/admin",
+		"http://demo.example.com/api",
+	}, group.GetDomains())
+}
+
+func TestSyncAppGroupDomainsAcceptsEventObject(t *testing.T) {
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	tracker := NewAppGroupItemResourceTracked()
+	tracker.RegisterIngress(networkingv1lister.NewIngressLister(indexer))
+	ingress := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ing-current",
+			Namespace: "default",
+		},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{{
+				Host: "current.example.com",
+				IngressRuleValue: networkingv1.IngressRuleValue{
+					HTTP: &networkingv1.HTTPIngressRuleValue{
+						Paths: []networkingv1.HTTPIngressPath{{Path: "/"}},
+					},
+				},
+			}},
+		},
+	}
+	assert.NoError(t, indexer.Add(ingress))
+	group := &v1alpha1.AppGroup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Status: v1alpha1.AppGroupStatus{
+			Items: []v1alpha1.AppGroupItemStatus{
+				{ApiVersion: "networking.k8s.io/v1", Kind: "Ingress", Name: "ing-current", Ready: true},
+			},
+		},
+	}
+	evt := NewK8sResourceEvent(metav1.TypeMeta{
+		Kind:       "Ingress",
+		APIVersion: "networking.k8s.io/v1",
+	}, ingress.ObjectMeta, "update", false)
+
+	err := tracker.syncAppGroupResourceTrackedDerivedState(evt, NewAppGroupWrapper(group, true))
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"http://current.example.com"}, group.GetDomains())
 }
