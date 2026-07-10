@@ -5,6 +5,13 @@ echo "导入crd"
 kubectl apply -f $KO_DATA_PATH/crds --server-side
 sh $KO_DATA_PATH/shell/migrate-crd-groups.sh
 
+echo "导入webhook公共CA"
+if kubectl get namespace cert-manager >/dev/null 2>&1 && kubectl get crd certificates.cert-manager.io >/dev/null 2>&1 && kubectl get crd clusterissuers.cert-manager.io >/dev/null 2>&1; then
+  kubectl apply -f $KO_DATA_PATH/yaml/webhook-ca.yaml
+else
+  echo "cert-manager未就绪，跳过webhook公共CA"
+fi
+
 echo "升级私有DNS"
 w7panel privatedns-upgrade
 

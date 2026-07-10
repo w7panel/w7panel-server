@@ -1,10 +1,11 @@
 {{- if and .Values.webhook.enabled .Values.webhook.certManager.enabled }}
 {{- $fullname := include "helm.fullname" . }}
-{{- $issuerName := default (printf "%s-webhook-selfsigned" $fullname) .Values.webhook.certManager.issuer.name }}
+{{- $issuerName := default "webhook-ca-issuer" .Values.webhook.certManager.issuer.name }}
+{{- $issuerKind := default "ClusterIssuer" .Values.webhook.certManager.issuer.kind }}
 {{- $certificateName := default (printf "%s-webhook-tls" $fullname) .Values.webhook.certManager.certificate.name }}
 {{- if .Values.webhook.certManager.issuer.create }}
 apiVersion: cert-manager.io/v1
-kind: Issuer
+kind: {{ $issuerKind }}
 metadata:
   name: {{ $issuerName | quote }}
   labels:
@@ -30,9 +31,11 @@ spec:
   dnsNames:
     - {{ printf "%s.%s.svc" $fullname .Release.Namespace | quote }}
     - {{ printf "%s.%s.svc.cluster.local" $fullname .Release.Namespace | quote }}
+  usages:
+    - server auth
   issuerRef:
     name: {{ $issuerName | quote }}
-    kind: {{ .Values.webhook.certManager.issuer.kind | quote }}
+    kind: {{ $issuerKind | quote }}
     group: {{ .Values.webhook.certManager.issuer.group | quote }}
   privateKey:
     algorithm: {{ .Values.webhook.certManager.certificate.privateKey.algorithm | quote }}

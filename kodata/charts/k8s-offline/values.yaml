@@ -171,9 +171,9 @@ webhook:
   certManager:
     enabled: true
     issuer:
-      create: true
-      name: ""
-      kind: Issuer
+      create: false
+      name: webhook-ca-issuer
+      kind: ClusterIssuer
       group: cert-manager.io
       selfSigned: true
     certificate:

@@ -62,6 +62,13 @@ helm get notes cert-manager -n cert-manager || helm upgrade cert-manager $KO_DAT
      --set webhook.timeoutSeconds=4 \
      --install
 
+echo "导入webhook公共CA"
+if kubectl --kubeconfig=${KUBECONFIG_PATH} get namespace cert-manager >/dev/null 2>&1 && kubectl --kubeconfig=${KUBECONFIG_PATH} get crd certificates.cert-manager.io >/dev/null 2>&1 && kubectl --kubeconfig=${KUBECONFIG_PATH} get crd clusterissuers.cert-manager.io >/dev/null 2>&1; then
+     kubectl --kubeconfig=${KUBECONFIG_PATH} apply -f $KO_DATA_PATH/yaml/webhook-ca.yaml
+else
+     echo "cert-manager未就绪，跳过webhook公共CA"
+fi
+
 echo "更新cert-manager w7-letsencrypt-prod"
 
 kubectl get ClusterIssuer/w7-letsencrypt-prod || kubectl --kubeconfig=${KUBECONFIG_PATH} apply -f - <<EOF
