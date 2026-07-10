@@ -179,7 +179,9 @@ func (self Zpk) Install(http *gin.Context) {
 	repo := logic.NewRepo(repoUrl, params.ThirdpartyCDToken, "")
 	if err == nil {
 		repo.SetUpgrade(true)
-		repo.SetCurVersion(appgroupObj.Spec.Version)
+		if appgroupObj != nil {
+			repo.SetCurVersion(appgroupObj.Spec.Version)
+		}
 	}
 	repo.SetPanelToken(token)
 	// os.Setenv("KUBERNETES_SERVICE_HOST", "172.16.1.13")

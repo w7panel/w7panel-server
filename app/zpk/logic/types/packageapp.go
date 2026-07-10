@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -139,10 +138,13 @@ func NewPackage(mPackage *ManifestPackage, installOptions []InstallOption,
 	suffix := getSuffix(releaseName)
 	for _, installOption := range installOptions {
 		findPackage := mPackage.GetChildren(installOption.Identifie)
-		//
-		if reflect.ValueOf(findPackage).IsZero() {
+		if findPackage == nil {
 			continue
 		}
+		// //
+		// if reflect.ValueOf(findPackage).IsZero() {
+		// 	continue
+		// }
 		installOption.ReleaseName = strings.ToLower(releaseName)
 		// installOption.ServiceAccountName = releaseName
 		installOption.InstallId = installId
