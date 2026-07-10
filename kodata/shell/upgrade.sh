@@ -93,13 +93,6 @@ w7panel metrics:upgrade
 
 echo "域名解析配置"
 w7panel domain-config
-kubectl get jobs -n default -o json \
-  | jq -r '.items[]
-    | select(
-        any(.status.conditions[]?; (.type == "Complete" or .type == "Failed") and .status == "True")
-      )
-    | .metadata.name' \
-  | xargs -r kubectl delete job -n default
 
 
 
@@ -114,3 +107,22 @@ kubectl delete appgroups.w7panel.w7.com/longhorn --wait=false --ignore-not-found
 
 echo "longhorn 升级到面板中"
 w7panel longhornupgrade
+
+
+echo "clear completed jobs and pod..."
+
+kubectl get jobs -n default -o json \
+  | jq -r '.items[]
+    | select(
+        any(.status.conditions[]?; (.type == "Complete" or .type == "Failed") and .status == "True")
+      )
+    | .metadata.name' \
+  | xargs -r kubectl delete job -n default
+
+echo "Deleting completed pods..."
+
+kubectl get pods -n default -o json \
+  | jq -r '.items[]
+    | select(.status.phase == "Succeeded" or .status.phase == "Failed")
+    | .metadata.name' \
+  | xargs -r kubectl delete pod -n default
