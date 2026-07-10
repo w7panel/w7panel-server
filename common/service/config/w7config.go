@@ -282,7 +282,7 @@ func (c *w7ConfigRepository) GetByConsoleId(consoleId string) (*W7Config, error)
 		return &W7Config{}, fmt.Errorf("failed to get user by console id: %w", err)
 	}
 	for i := range list.Items {
-		currentConsoleId, _, _ := unstructured.NestedString(list.Items[i].Object, "spec", "consoleId")
+		currentConsoleId := nestedCloudId(&list.Items[i])
 		if currentConsoleId != consoleId {
 			continue
 		}
@@ -373,27 +373,39 @@ func (c *w7ConfigRepository) setUserConfig(config *W7Config) error {
 		return err
 	}
 	if config.UserInfo != nil {
-		consoleId, _, _ := unstructured.NestedString(obj.Object, "spec", "consoleId")
-		if consoleId == "" {
-			if err := unstructured.SetNestedField(obj.Object, strconv.Itoa(config.UserInfo.UserId), "spec", "consoleId"); err != nil {
+		cloudId, _, _ := unstructured.NestedString(obj.Object, "spec", "cloudId")
+		if cloudId == "" {
+			if err := unstructured.SetNestedField(obj.Object, strconv.Itoa(config.UserInfo.UserId), "spec", "cloudId"); err != nil {
 				return err
 			}
 		}
-		consoleOpenid, _, _ := unstructured.NestedString(obj.Object, "spec", "consoleOpenid")
-		if consoleOpenid == "" {
-			if err := unstructured.SetNestedField(obj.Object, config.UserInfo.OpenId, "spec", "consoleOpenid"); err != nil {
+		cloudOpenid, _, _ := unstructured.NestedString(obj.Object, "spec", "cloudOpenid")
+		if cloudOpenid == "" {
+			if err := unstructured.SetNestedField(obj.Object, config.UserInfo.OpenId, "spec", "cloudOpenid"); err != nil {
 				return err
 			}
 		}
-		consoleNickname, _, _ := unstructured.NestedString(obj.Object, "spec", "consoleNickname")
-		if consoleNickname == "" {
-			if err := unstructured.SetNestedField(obj.Object, config.UserInfo.Nickname, "spec", "consoleNickname"); err != nil {
+		cloudNickname, _, _ := unstructured.NestedString(obj.Object, "spec", "cloudNickname")
+		if cloudNickname == "" {
+			if err := unstructured.SetNestedField(obj.Object, config.UserInfo.Nickname, "spec", "cloudNickname"); err != nil {
 				return err
 			}
 		}
+		unstructured.RemoveNestedField(obj.Object, "spec", "consoleId")
+		unstructured.RemoveNestedField(obj.Object, "spec", "consoleOpenid")
+		unstructured.RemoveNestedField(obj.Object, "spec", "consoleNickname")
 	}
 	_, err = c.DynamicClient().Resource(userGVR).Update(c.Ctx, obj, metav1.UpdateOptions{})
 	return err
+}
+
+func nestedCloudId(obj *unstructured.Unstructured) string {
+	cloudId, _, _ := unstructured.NestedString(obj.Object, "spec", "cloudId")
+	if cloudId != "" {
+		return cloudId
+	}
+	consoleId, _, _ := unstructured.NestedString(obj.Object, "spec", "consoleId")
+	return consoleId
 }
 
 func nestedUserCloudConfig(obj *unstructured.Unstructured) (map[string]interface{}, bool, error) {

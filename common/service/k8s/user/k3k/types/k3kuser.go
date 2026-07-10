@@ -55,8 +55,8 @@ func labelsFromUser(user *userv1alpha1.User) map[string]string {
 	labels[W7_USER_MODE] = role
 	labels[W7_ROLE] = role
 	labels[W7_DEMO_USER] = boolToString(user.Spec.DemoUser)
-	if user.Spec.ConsoleId != "" {
-		labels[W7_CONSOLE_ID] = user.Spec.ConsoleId
+	if user.Spec.CloudId != "" {
+		labels[W7_CONSOLE_ID] = user.Spec.CloudId
 	}
 	return labels
 }
@@ -178,15 +178,15 @@ func (u *k3kUser) GetTokenAud(cvmName string) []string {
 }
 
 func (u *k3kUser) GetConsoleId() string {
-	return u.Spec.ConsoleId
+	return u.Spec.CloudId
 }
 
 func (u *k3kUser) GetConsoleOpenId() string {
-	return u.Spec.ConsoleOpenid
+	return u.Spec.CloudOpenid
 }
 
 func (u *k3kUser) GetNickName() string {
-	return u.Spec.ConsoleNickname
+	return u.Spec.CloudNickname
 }
 
 func (u *k3kUser) GetDomainWhiteList1() string {
@@ -204,9 +204,9 @@ func (u *k3kUser) IsCustomPermission() bool {
 
 func (u *k3kUser) ReplaceW7Config(config *config.W7Config) {
 	if config != nil && config.UserInfo != nil {
-		u.Spec.ConsoleId = strconv.Itoa(config.UserInfo.UserId)
-		u.Spec.ConsoleOpenid = config.UserInfo.OpenId
-		u.Spec.ConsoleNickname = config.UserInfo.Nickname
+		u.Spec.CloudId = strconv.Itoa(config.UserInfo.UserId)
+		u.Spec.CloudOpenid = config.UserInfo.OpenId
+		u.Spec.CloudNickname = config.UserInfo.Nickname
 
 	}
 }

@@ -18,9 +18,9 @@ type UserSpec struct {
 	Features        configv1alpha1.PermissionFeatures  `json:"features,omitempty"`
 	DomainWhiteList []configv1alpha1.DomainWhiteItem   `json:"domainWhiteList,omitempty"`
 	DemoUser        bool                               `json:"demoUser,omitempty"`
-	ConsoleId       string                             `json:"consoleId,omitempty"`
-	ConsoleOpenid   string                             `json:"consoleOpenid,omitempty"`
-	ConsoleNickname string                             `json:"consoleNickname,omitempty"`
+	CloudId         string                             `json:"cloudId,omitempty"`
+	CloudOpenid     string                             `json:"cloudOpenid,omitempty"`
+	CloudNickname   string                             `json:"cloudNickname,omitempty"`
 	Cloud           *W7Config                          `json:"cloud,omitempty"`
 	License         *LicenseSpec                       `json:"license,omitempty"`
 	LoginTime       string                             `json:"loginTime,omitempty"`
