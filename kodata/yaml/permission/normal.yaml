@@ -25,6 +25,10 @@ spec:
         -
             method:
                 - get
+            path: /panel-api/v1/microapp/*/frontprops
+        -
+            method:
+                - get
             path: /panel-api/v1/microapp/*/info
         -
             method:
@@ -34,6 +38,10 @@ spec:
                 - create
                 - update
             path: /panel-api/v1/microapp/*/proxy/*
+        -
+            method:
+                - get
+            path: /panel-api/v1/microapp/global-frontprops
         -
             method:
                 - get
