@@ -15,12 +15,48 @@ import (
 var Z = []string{"%STORAGE_RW_MODE%", "%STORAGE_SIZE%", "%STORAGE_CLASS_NAME%", "%DOMAIN_URL%", "%DOMAIN_SSL_URL%", "%DOMAIN_HOST%"}
 
 type Manifest struct {
-	Application Application        `json:"application"`
-	Platform    Platform           `json:"platform"`
-	Version     intstr.IntOrString `json:"version"`
-	Bindings    []Bindings         `json:"bindings"`
-	WebApp      WebApp             `json:"webapp"`
-	Type        string             `json:"type"` //tradition 列表不显示
+	Application Application     `json:"application"`
+	Platform    Platform        `json:"platform"`
+	Version     ManifestVersion `json:"version"`
+	Bindings    []Bindings      `json:"bindings"`
+	WebApp      WebApp          `json:"webapp"`
+	Type        string          `json:"type"` //tradition 列表不显示
+}
+
+type ManifestVersion struct {
+	intstr.IntOrString
+}
+
+func (v *ManifestVersion) UnmarshalJSON(data []byte) error {
+	var raw any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	switch value := raw.(type) {
+	case float64:
+		v.IntOrString = intstr.FromInt32(int32(value))
+	case string:
+		v.IntOrString = intstr.FromString(value)
+	case map[string]any:
+		for _, key := range []string{"name", "version", "value"} {
+			if str, ok := value[key].(string); ok {
+				v.IntOrString = intstr.FromString(str)
+				return nil
+			}
+		}
+		for _, key := range []string{"id", "formula_id"} {
+			if num, ok := value[key].(float64); ok {
+				v.IntOrString = intstr.FromInt32(int32(num))
+				return nil
+			}
+		}
+		v.IntOrString = intstr.FromString("")
+	case nil:
+		v.IntOrString = intstr.FromString("")
+	}
+
+	return nil
 }
 
 type Menu struct {
