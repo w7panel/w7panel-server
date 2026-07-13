@@ -57,7 +57,7 @@ func (m *MicroAppReplace) Replace(ctx context.Context, data map[string]string, r
 	}
 	accessToken := ""
 	if requireAccessToken {
-		token, err := m.getAccessToken(ctx)
+		token, err := m.GetAccessToken(ctx)
 		if err != nil {
 			return result
 		}
@@ -88,7 +88,8 @@ func (m *MicroAppReplace) Replace(ctx context.Context, data map[string]string, r
 	return result
 }
 
-func (m *MicroAppReplace) getAccessToken(ctx context.Context) (string, error) {
+// GetAccessToken creates an OIDC access token for the current micro-app user.
+func (m *MicroAppReplace) GetAccessToken(ctx context.Context) (string, error) {
 	server, err := oidc.GetServer()
 	if err != nil {
 		return "", err
