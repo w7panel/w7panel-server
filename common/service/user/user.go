@@ -66,7 +66,7 @@ func GetByConsoleID(ctx context.Context, sdk *k8s.Sdk, consoleID string) (*User,
 	}
 	for i := range list.Items {
 		u, err := FromUnstructured(&list.Items[i])
-		if err == nil && u.Spec.ConsoleId == consoleID {
+		if err == nil && u.Spec.CloudId == consoleID {
 			return u, nil
 		}
 	}
@@ -76,6 +76,7 @@ func GetByConsoleID(ctx context.Context, sdk *k8s.Sdk, consoleID string) (*User,
 func FromUnstructured(obj *unstructured.Unstructured) (*User, error) {
 	spec := Spec{}
 	if raw, ok := obj.Object["spec"].(map[string]interface{}); ok {
+		normalizeLegacyCloudFields(raw)
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(raw, &spec); err != nil {
 			return nil, err
 		}
@@ -225,16 +226,16 @@ func ToServiceAccount(u *User, namespace string) *corev1.ServiceAccount {
 		"w7.cc/api":                   mustJSON(permissionservice.APIRulesToMap(u.Spec.APIRules)),
 		k3ktypes.W7_MENU:              mustJSON(u.Spec.MenuRules),
 		"w7.cc/login-time":            u.Spec.LoginTime,
-		"w7.cc/console-openid":        u.Spec.ConsoleOpenid,
-		"w7.cc/console-nickname":      u.Spec.ConsoleNickname,
+		"w7.cc/console-openid":        u.Spec.CloudOpenid,
+		"w7.cc/console-nickname":      u.Spec.CloudNickname,
 	}
 	labels := map[string]string{
 		k3ktypes.W7_USER_MODE: role(u),
 		k3ktypes.W7_ROLE:      role(u),
 		"w7.cc/demo-user":     boolString(u.Spec.DemoUser),
 	}
-	if u.Spec.ConsoleId != "" {
-		labels[k3ktypes.W7_CONSOLE_ID] = u.Spec.ConsoleId
+	if u.Spec.CloudId != "" {
+		labels[k3ktypes.W7_CONSOLE_ID] = u.Spec.CloudId
 	}
 	return &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
 		Name:        u.Name,
@@ -267,9 +268,9 @@ func FromServiceAccount(sa *corev1.ServiceAccount) Spec {
 		},
 		DomainWhiteList: whiteList,
 		DemoUser:        labels["w7.cc/demo-user"] == "true",
-		ConsoleId:       labels[k3ktypes.W7_CONSOLE_ID],
-		ConsoleOpenid:   annotations["w7.cc/console-openid"],
-		ConsoleNickname: annotations["w7.cc/console-nickname"],
+		CloudId:         labels[k3ktypes.W7_CONSOLE_ID],
+		CloudOpenid:     annotations["w7.cc/console-openid"],
+		CloudNickname:   annotations["w7.cc/console-nickname"],
 		LoginTime:       annotations["w7.cc/login-time"],
 	})
 }
@@ -285,6 +286,24 @@ func MigrateServiceAccounts(ctx context.Context, sdk *k8s.Sdk) error {
 			continue
 		}
 		if _, err := CreateWithHash(ctx, sdk, sa.Name, FromServiceAccount(sa)); err != nil && !apierrors.IsAlreadyExists(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func MigrateLegacyConsoleFields(ctx context.Context, sdk *k8s.Sdk) error {
+	list, err := sdk.DynamicClient().Resource(GVR).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for i := range list.Items {
+		obj := &list.Items[i]
+		changed := migrateLegacyConsoleFields(obj)
+		if !changed {
+			continue
+		}
+		if _, err := sdk.DynamicClient().Resource(GVR).Update(ctx, obj, metav1.UpdateOptions{}); err != nil {
 			return err
 		}
 	}
@@ -326,6 +345,47 @@ func normalizeSpec(name string, spec Spec) Spec {
 		spec.PermissionName = permissionservice.FounderPermissionName
 	}
 	return spec
+}
+
+func normalizeLegacyCloudFields(spec map[string]interface{}) {
+	copyStringIfEmpty(spec, "cloudId", "consoleId")
+	copyStringIfEmpty(spec, "cloudOpenid", "consoleOpenid")
+	copyStringIfEmpty(spec, "cloudNickname", "consoleNickname")
+}
+
+func migrateLegacyConsoleFields(obj *unstructured.Unstructured) bool {
+	spec, ok := obj.Object["spec"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	_, hadConsoleId := spec["consoleId"]
+	_, hadConsoleOpenid := spec["consoleOpenid"]
+	_, hadConsoleNickname := spec["consoleNickname"]
+	hadLegacy := hadConsoleId || hadConsoleOpenid || hadConsoleNickname
+	normalizeLegacyCloudFields(spec)
+	delete(spec, "consoleId")
+	delete(spec, "consoleOpenid")
+	delete(spec, "consoleNickname")
+	return hadLegacy
+}
+
+func copyStringIfEmpty(spec map[string]interface{}, to, from string) {
+	if stringFromMap(spec, to) != "" {
+		return
+	}
+	value := stringFromMap(spec, from)
+	if value == "" {
+		return
+	}
+	spec[to] = value
+}
+
+func stringFromMap(values map[string]interface{}, key string) string {
+	value, ok := values[key].(string)
+	if !ok {
+		return ""
+	}
+	return value
 }
 
 func role(u *User) string {

@@ -148,10 +148,10 @@ func fakeLookupUser(_ context.Context, subject string) (*k3ktypes.K3kUser, error
 	return k3ktypes.NewK3kUser(&userv1alpha1.User{
 		ObjectMeta: metav1.ObjectMeta{Name: subject},
 		Spec: userv1alpha1.UserSpec{
-			UserMode:        "normal",
-			Role:            "normal",
-			ConsoleId:       "10001",
-			ConsoleNickname: subject,
+			UserMode:      "normal",
+			Role:          "normal",
+			CloudId:       "10001",
+			CloudNickname: subject,
 		},
 	}), nil
 }

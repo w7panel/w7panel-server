@@ -77,11 +77,11 @@ spec:
                       type: boolean
               demoUser:
                 type: boolean
-              consoleId:
+              cloudId:
                 type: string
-              consoleOpenid:
+              cloudOpenid:
                 type: string
-              consoleNickname:
+              cloudNickname:
                 type: string
               cloud:
                 type: object

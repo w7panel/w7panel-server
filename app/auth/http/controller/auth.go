@@ -166,12 +166,12 @@ func (self Auth) consoleUser(ctx context.Context, sdk *k8s.Sdk, userInfo *clouds
 
 	name := "console-" + consoleID
 	u, err := userservice.CreateWithHash(ctx, sdk, name, userservice.Spec{
-		UserMode:        "normal",
-		Role:            "normal",
-		PermissionName:  permissionName,
-		ConsoleId:       consoleID,
-		ConsoleOpenid:   userInfo.OpenId,
-		ConsoleNickname: userInfo.Nickname,
+		UserMode:       "normal",
+		Role:           "normal",
+		PermissionName: permissionName,
+		CloudId:        consoleID,
+		CloudOpenid:    userInfo.OpenId,
+		CloudNickname:  userInfo.Nickname,
 	})
 	if k8serrors.IsAlreadyExists(err) {
 		return userservice.Get(ctx, sdk, name)
@@ -191,7 +191,7 @@ func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Contex
 	if role == "" {
 		role = u.Spec.UserMode
 	}
-	// audiences := []string{u.Name, role, u.Spec.ConsoleId, ckmName, execSA, "https://kubernetes.default.svc.cluster.local", "k3s"}
+	// audiences := []string{u.Name, role, u.Spec.CloudId, ckmName, execSA, "https://kubernetes.default.svc.cluster.local", "k3s"}
 	// token, err := sdk.CreateTokenRequest(execSA, seconds, audiences)
 	// if err != nil {
 	// 	auditservice.RecordLoginFailure(http, u.Name, loginMethod, err)

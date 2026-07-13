@@ -209,6 +209,7 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 	var manifest types.Manifest
 	err = json.Unmarshal(manifestJson, &manifest)
 	if err != nil {
+		slog.Error("UnmarshalManifestErr", "err", err, "manifestStr", manifestStr)
 		return nil, err
 	}
 	manifest.GenVolumesName(make(map[string]string))

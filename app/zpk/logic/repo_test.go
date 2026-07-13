@@ -129,7 +129,7 @@ func TestUrl(t *testing.T) {
 
 // deploy://console/7201/17995
 func TestLoadRepo(t *testing.T) {
-	repo := NewRepo("deploy://console/7201/17995", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..", "")
+	repo := NewRepo("deploy://console/7201/17995", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2NvbnNvbGUudzcuY2MvYXBpL3RoaXJkcGFydHktY2QvazhzLW9mZmxpbmUvb3BlbmlkLXRvLWNkLXRva2VuIiwiaWF0IjoxNzgzNjY4NjM0LCJleHAiOjE3ODM2NzQwMzQsIm5iZiI6MTc4MzY2ODYzNCwianRpIjoiN3FrMzlNTm1HWlV5N3V0SiIsInN1YiI6Ijc2MDUyIiwicHJ2IjoiZjBkMTkwZjdhZjJlODdjZTZmMDE2YWE4MjA1MGZjNzBmMjNmNTk1YyIsIm9wZW5faWQiOiJDSmd0X2hSMlZzRDdoX1Ftc0FBZ3pBIiwiZm91bmRlcl9vcGVuaWQiOiJDSmd0X2hSMlZzRDdoX1Ftc0FBZ3pBIiwicm9sZV9pZGVudGlmeSI6ImZvdW5kZXIiLCJvcmlnaW5fYXBwaWQiOiIzMTQ4OTkiLCJuaWNrbmFtZSI6InRtcCIsInVzZXJfaWQiOjc2MDUyLCJpc192YWxpZCI6dHJ1ZX0.KUdZ_J0X2_zrUili5gCYFm1toKFuCu2a9Rly91yO5Wk", "")
 	manifest, err := repo.Load()
 	if err != nil {
 		t.Error(err)

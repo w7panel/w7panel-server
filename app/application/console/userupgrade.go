@@ -30,5 +30,9 @@ func (c UserUpgrade) Handle(cmd *cobra.Command, args []string) {
 		slog.Error("升级用户失败", "error", err)
 		return
 	}
+	if err := userservice.MigrateLegacyConsoleFields(context.Background(), sdk); err != nil {
+		slog.Error("迁移用户cloud字段失败", "error", err)
+		return
+	}
 	slog.Info("升级用户完成")
 }
