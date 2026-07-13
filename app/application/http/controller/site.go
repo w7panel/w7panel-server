@@ -6,6 +6,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/site"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
@@ -222,7 +223,22 @@ func (self Site) Registries(http *gin.Context) {
 		return
 	}
 	if configMap.Data["default.cnf"] != "" {
-		self.JsonResponseWithoutError(http, configMap.Data["default.cnf"])
+		cfg := configMap.Data["default.cnf"]
+		_, err := helper.YamlParse([]byte(cfg))
+		if err != nil {
+			self.JsonResponseWithoutError(http, "")
+			return
+		}
+		//TO yaml string
+
+		// cfg2, err := yaml.Marshal(result)
+		// if err != nil {
+		// 	self.JsonResponseWithoutError(http, "")
+		// 	return
+		// }
+		http.String(200, string(cfg))
+		return
+
 	}
 
 	self.JsonResponseWithoutError(http, "")
