@@ -39,7 +39,8 @@ func initRegistries(k8sClient *k8s.Sdk) error {
 		ryaml = []byte("")
 	}
 	clabels := map[string]string{
-		"data-hash": "init",
+		"data-hash":    "init",
+		"w7.cc/noauth": "true",
 	}
 	//有的话 不处理
 	// configmap, err := k8sClient.ClientSet.CoreV1().ConfigMaps(k8sClient.GetNamespace()).Get(k8sClient.Ctx, "registries", metav1.GetOptions{})
