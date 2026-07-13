@@ -133,3 +133,20 @@ func (self Site) NoAuthConfigMap(http *gin.Context) {
 	self.JsonResponseWithoutError(http, configMap)
 
 }
+
+func (self Site) Registries(http *gin.Context) {
+	sdk := k8s.NewK8sClient()
+	name := http.Param("name")
+
+	configMap, err := sdk.ClientSet.CoreV1().ConfigMaps(sdk.GetNamespace()).Get(http, name, metav1.GetOptions{})
+	if err != nil {
+		self.JsonResponseWithoutError(http, corev1.ConfigMap{})
+		return
+	}
+	if configMap.Data["default.cnf"] != "" {
+		self.JsonResponseWithoutError(http, configMap.Data["default.cnf"])
+	}
+
+	self.JsonResponseWithoutError(http, "")
+
+}
