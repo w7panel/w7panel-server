@@ -85,6 +85,10 @@ func (c *longhornclient) GetNodeList() (*longhornV1beta2.NodeList, error) {
 	return c.client.LonghornV1beta2().Nodes(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
 }
 
+func (c *longhornclient) GetNode(name string) (*longhornV1beta2.Node, error) {
+	return c.client.LonghornV1beta2().Nodes(c.namespace).Get(c.sdk.Ctx, name, v1.GetOptions{})
+}
+
 func (c *longhornclient) DeleteNode(name string) error {
 	return c.client.LonghornV1beta2().Nodes(c.namespace).Delete(c.sdk.Ctx, name, v1.DeleteOptions{})
 }
@@ -246,6 +250,12 @@ func longhornVolumeApiAction(volumeName string, action string, json string) erro
 		return errors.New(response.String())
 	}
 	return nil
+}
+
+// RemoveReplica removes a replica through the Longhorn API. Deleting the CR
+// directly bypasses Longhorn's volume-controller cleanup path.
+func RemoveReplica(volumeName string, replicaName string) error {
+	return longhornVolumeApiAction(volumeName, "replicaRemove", `{"name":"`+replicaName+`"}`)
 }
 
 /**

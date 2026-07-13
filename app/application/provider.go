@@ -144,6 +144,9 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		apiGroup := engine.Group("/panel-api/v1") //.Use(middleware.Cors{}.Process)
 		{
 			apiGroup.GET("/namespaces", middleware.Auth{}.Process, controller2.Namespaces{}.GetList)
+			apiGroup.GET("/cluster/nodes/:name/longhorn-replicas", middleware.Auth{}.Process, controller2.Nodes{}.GetLonghornReplicas)
+			apiGroup.POST("/cluster/nodes/:name/longhorn-replicas/delete", middleware.Auth{}.Process, controller2.Nodes{}.DeleteLonghornReplicas)
+			apiGroup.DELETE("/cluster/nodes/:name", middleware.Auth{}.Process, controller2.Nodes{}.Delete)
 			apiGroup.GET("/helm/releases", middleware.Auth{}.Process, controller2.Helm{}.List)
 			apiGroup.GET("/helm/releases/:name", middleware.Auth{}.Process, controller2.Helm{}.Info)
 			apiGroup.POST("/helm/releases/:name", middleware.Auth{}.Process, controller2.Helm{}.InstallUseRepo)
