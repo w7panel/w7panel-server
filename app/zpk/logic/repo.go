@@ -15,6 +15,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
+	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -161,6 +162,13 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 	req := helper.RetryHttpClient().R().SetAuthToken(token)
 	if self.panelToken != "" {
 		req.SetHeader("X-W7Panel-Token", self.panelToken)
+		replace, err := microapp.NewMicroAppReplace(self.panelToken)
+		if err == nil && replace.GetConsoleOpenId() != "" {
+			cloudAccessToken, err := microapp.GetCloudAccessToken(replace.GetConsoleOpenId())
+			if err == nil {
+				req.SetHeader("X-Cloud-AccessToken", cloudAccessToken)
+			}
+		}
 	}
 	if self.upgrade {
 		req.SetQueryParam("is_upgrade", "1")
