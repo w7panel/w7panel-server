@@ -150,7 +150,7 @@ func main() {
 	new(metricsapp.Provider).Register(httpServer, newApp.GetConsole())
 	new(zpk.Provider).Register(httpServer, newApp.GetConsole())
 	new(k3k.Provider).Register(httpServer, newApp.GetConsole())
-	new(k3sregistry.Provider).Register(httpServer)
+	new(k3sregistry.Provider).Register(httpServer, newApp.GetConsole())
 
 	httpServer.RegisterRouters(func(engine *gin.Engine) {
 		engine.NoRoute(commonmiddleware.Html{}.Process)

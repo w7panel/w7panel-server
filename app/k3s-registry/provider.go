@@ -2,15 +2,23 @@ package k3sregistry
 
 import (
 	"github.com/gin-gonic/gin"
+	registryconsole "github.com/w7panel/w7panel/app/k3s-registry/console"
 	"github.com/w7panel/w7panel/app/k3s-registry/http/controller"
 	"github.com/w7panel/w7panel/common/middleware"
+	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
 )
 
 type Provider struct{}
 
-func (p Provider) Register(httpServer *httpserver.Server) {
+func (p Provider) Register(httpServer *httpserver.Server, commandConsole console.Console) {
+	commandConsole.RegisterCommand(new(registryconsole.ImagesList))
+	commandConsole.RegisterCommand(new(registryconsole.ImagesTag))
+	commandConsole.RegisterCommand(new(registryconsole.ImagesRemove))
+	commandConsole.RegisterCommand(new(registryconsole.ImagesLabel))
+	commandConsole.RegisterCommand(new(registryconsole.ImagesImport))
+
 	p.RegisterHttpRoutes(httpServer)
 
 }
