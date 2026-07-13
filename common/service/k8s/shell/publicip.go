@@ -12,7 +12,7 @@ import (
 func (s *k3sConfigController) loadPublicIp(node *v1.Node) error {
 	loadIp, ok := node.Labels["w7.cc/load-public-ip"]
 	if !ok || loadIp != "true" {
-		slog.Debug("not need load public ip")
+		slog.Error("not need load public ip")
 		return nil
 	}
 	if isCurrentDaemonsetNode(node) {
