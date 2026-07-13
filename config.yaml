@@ -66,7 +66,7 @@ privatedns:
   enabled: ${PRIVATEDNS_ENABLED-false}
 oidc:
   enabled: ${OIDC_ENABLED-true}
-  issuer: ${OIDC_ISSUER-}
+  issuer: ${OIDC_ISSUER-http://w7panel.default.svc.cluster.local:8000/panel-api/v1/oidc}
   cookie_domain: ${OIDC_COOKIE_DOMAIN-}
   cookie_secure: ${OIDC_COOKIE_SECURE-false}
   signing_key_pem: ${OIDC_SIGNING_KEY_PEM-}
