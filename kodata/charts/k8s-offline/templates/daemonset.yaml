@@ -34,8 +34,10 @@ spec:
           type: ""
       - name: cd-socket
         hostPath:
-          path: /var/run/k3s/containerd/containerd.sock
-          type: Socket    
+          # Mount the directory instead of the socket file. containerd recreates
+          # its socket on restart; a file mount would keep pointing at the old inode.
+          path: /var/run/k3s/containerd
+          type: Directory
       # - name: cd-data
       #   hostPath:
       #     path: /var/lib/rancher/k3s/agent/containerd
@@ -92,7 +94,7 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}  
           volumeMounts:
             - name: cd-socket
-              mountPath: /var/run/k3s/containerd/containerd.sock
+              mountPath: /var/run/k3s/containerd
             # - name: cd-data
             #   mountPath: /var/lib/rancher/k3s/agent/containerd  
             #   mountPropagation: HostToContainer
@@ -101,7 +103,4 @@ spec:
               mountPropagation: HostToContainer
             - name: host-root
               mountPath: /host  
-{{- end }}            
-
-
-        
+{{- end }}
