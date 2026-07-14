@@ -50,6 +50,9 @@ spec:
             method:
                 - get
             path: /panel-api/v1/static/*/status
+        -   method:
+                - create
+            path: /panel-api/v1/oidc/js-code        
     domainWhiteList: []
     features:
         debug: false
