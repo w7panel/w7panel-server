@@ -263,6 +263,27 @@ func TestApplyToServiceAccountBackfillsFounderDefaults(t *testing.T) {
 	}
 }
 
+func TestFounderFallbackIncludesGatewayPluginPermissions(t *testing.T) {
+	menu := MenuRules(founderFallback())
+	for _, want := range []string{
+		"gateway/plugins",
+		"gateway/plugins/add",
+		"gateway/plugins/edit",
+		"gateway/plugins/delete",
+	} {
+		found := false
+		for _, item := range menu {
+			if item == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("founder menu does not include %q", want)
+		}
+	}
+}
+
 func TestIsBuiltin(t *testing.T) {
 	tests := []struct {
 		name string

@@ -101,6 +101,7 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 - **权限管理** - chmod, chown 操作
 - **应用部署** - Helm, Docker Compose, YAML
 - **集群管理** - 节点、资源对象管理
+- **网关插件权限** - 为创始人默认权限注册网关插件查看、新建、编辑和删除菜单权限
 
 ## 维护命令
 
