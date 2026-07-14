@@ -1,10 +1,12 @@
 package longhorn
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 	longhornV1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
@@ -13,6 +15,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -91,6 +94,85 @@ func (c *longhornclient) GetNode(name string) (*longhornV1beta2.Node, error) {
 
 func (c *longhornclient) DeleteNode(name string) error {
 	return c.client.LonghornV1beta2().Nodes(c.namespace).Delete(c.sdk.Ctx, name, v1.DeleteOptions{})
+}
+
+// DeleteNodeWhenReady waits until Longhorn has observed that the Kubernetes
+// node is gone and all replicas and engines have left the node. These are the
+// same conditions enforced by Longhorn's validating webhook.
+func (c *longhornclient) DeleteNodeWhenReady(ctx context.Context, name string, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	lastState := "Longhorn 节点状态尚未同步"
+
+	for {
+		node, err := c.GetNode(name)
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		if node.Spec.AllowScheduling {
+			node.Spec.AllowScheduling = false
+			if _, err = c.UpdateNode(node); err != nil {
+				return err
+			}
+		}
+
+		replicas, err := c.GetReplicaList()
+		if err != nil {
+			return err
+		}
+		replicaCount := 0
+		for _, replica := range replicas.Items {
+			if replica.Spec.NodeID == name {
+				replicaCount++
+			}
+		}
+
+		engines, err := c.GetEngineList()
+		if err != nil {
+			return err
+		}
+		engineCount := 0
+		for _, engine := range engines.Items {
+			if engine.Spec.NodeID == name {
+				engineCount++
+			}
+		}
+
+		readyStatus := longhornV1beta2.ConditionStatusUnknown
+		readyReason := ""
+		for _, condition := range node.Status.Conditions {
+			if condition.Type == string(longhornV1beta2.NodeConditionTypeReady) {
+				readyStatus = condition.Status
+				readyReason = condition.Reason
+				break
+			}
+		}
+		statusReadyForDeletion := readyStatus != longhornV1beta2.ConditionStatusTrue &&
+			(readyReason == string(longhornV1beta2.NodeConditionReasonKubernetesNodeGone) ||
+				readyReason == string(longhornV1beta2.NodeConditionReasonManagerPodMissing))
+		lastState = fmt.Sprintf("Ready=%s, Reason=%s, Replica=%d, Engine=%d", readyStatus, readyReason, replicaCount, engineCount)
+
+		if statusReadyForDeletion && !node.Spec.AllowScheduling && replicaCount == 0 && engineCount == 0 {
+			err = c.DeleteNode(name)
+			if err == nil || apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("等待 Longhorn 节点 %s 清理超时（%s）: %w", name, lastState, ctx.Err())
+		case <-ticker.C:
+		}
+	}
 }
 
 func (c *longhornclient) GetK8sNodeList() (*corev1.NodeList, error) {

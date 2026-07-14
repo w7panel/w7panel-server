@@ -127,7 +127,13 @@ func WebHookNode(node *v1.Node) bool {
 
 func WebHookDeleteNode(node *v1.Node) {
 	time.AfterFunc(time.Second*1, func() {
-		lclient.DeleteNode(node.Name)
+		if lclient == nil {
+			slog.Error("longhorn delete node skipped: client is not initialized", "node", node.Name)
+			return
+		}
+		if err := lclient.DeleteNodeWhenReady(context.Background(), node.Name, 30*time.Second); err != nil {
+			slog.Error("longhorn delete node error", "node", node.Name, "error", err)
+		}
 	})
 }
 

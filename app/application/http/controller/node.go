@@ -2,6 +2,8 @@ package controller
 
 import (
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -96,7 +98,9 @@ func (self Nodes) GetLonghornReplicas(http *gin.Context) {
 }
 
 func (self Nodes) DeleteLonghornReplicas(http *gin.Context) {
-	params := struct{ Force bool `json:"force"` }{}
+	params := struct {
+		Force bool `json:"force"`
+	}{}
 	if err := http.ShouldBindJSON(&params); err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
@@ -165,12 +169,23 @@ func (self Nodes) Delete(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if err := client.DeleteNode(name); err != nil && !apierrors.IsNotFound(err) {
+	longhornNode, err := client.GetNode(name)
+	if err == nil && longhornNode.Spec.AllowScheduling {
+		longhornNode.Spec.AllowScheduling = false
+		if _, err = client.UpdateNode(longhornNode); err != nil {
+			self.JsonResponseWithServerError(http, err)
+			return
+		}
+	} else if err != nil && !apierrors.IsNotFound(err) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if err := sdk.ClientSet.CoreV1().Nodes().Delete(sdk.Ctx, name, metav1.DeleteOptions{}); err != nil {
+	if err := sdk.ClientSet.CoreV1().Nodes().Delete(sdk.Ctx, name, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	if err := client.DeleteNodeWhenReady(http.Request.Context(), name, 30*time.Second); err != nil {
+		self.JsonResponseWithServerError(http, fmt.Errorf("Kubernetes 节点已删除，等待 Longhorn 节点清理失败，请重试: %w", err))
 		return
 	}
 	self.JsonResponseWithoutError(http, gin.H{"name": name})
