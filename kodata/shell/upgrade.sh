@@ -55,7 +55,7 @@ echo "创建默认pvc"
 kubectl create -f $KO_DATA_PATH/yaml/default-volume.yaml || echo "已存在default-volume"
 
 echo "域名白名单插件"
-kubectl create -f $KO_DATA_PATH/yaml/w7-white-domain.yaml || echo "已存在wasmplugin w7-white-domain"
+kubectl create -f $KO_DATA_PATH/yaml/wasm/w7-white-domain.yaml || echo "已存在wasmplugin w7-white-domain"
 
 kubectl patch wasmplugin w7-white-domain -n higress-system --type=merge -p '{"spec":{"url":"http://w7panel-offline.default.svc:8000/ui/wasm/plugin-domain-1.0.2.wasm"}}'
 
@@ -116,7 +116,7 @@ w7panel longhornupgrade
 
 echo "限流配置"
 # apply -f 会覆盖原有配置 所以使用create 
-kubectl create -f $KO_DATA_PATH/yaml/longhorn/cluster-key-rate-limit.yaml || echo "已存在longhorn cluster-key-rate-limit"
+kubectl create -f $KO_DATA_PATH/yaml/wasm/cluster-key-rate-limit.yaml || echo "已存在longhorn cluster-key-rate-limit"
 
 
 echo "安装/升级cloudnoauth"
