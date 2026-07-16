@@ -520,7 +520,7 @@ func SyncSecretHttp(secret *corev1.Secret) error {
 	if !ok {
 		return nil
 	}
-	if sync != "true" {
+	if ok && sync != "true" {
 		return nil
 	}
 	if secret.Type != corev1.SecretTypeTLS {
