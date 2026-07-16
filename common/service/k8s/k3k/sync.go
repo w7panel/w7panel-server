@@ -516,13 +516,13 @@ func SyncToChildSecret(secret *corev1.Secret) error {
 	return nil
 }
 func SyncSecretHttp(secret *corev1.Secret) error {
-	sync, ok := os.LookupEnv("SYNC_SECRET")
-	if !ok {
-		return nil
-	}
-	if ok && sync != "true" {
-		return nil
-	}
+	// sync, ok := os.LookupEnv("SYNC_SECRET")
+	// if !ok {
+	// 	return nil
+	// }
+	// if ok && sync != "true" {
+	// 	return nil
+	// }
 	if secret.Type != corev1.SecretTypeTLS {
 		return nil
 	}
