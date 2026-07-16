@@ -143,8 +143,10 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		isExpanding, expandErrstr := longhorn.IsVolumeExpanding(&volume, engineList)
 		isLock, nodeId := longhorn.IsVolumeLock(&volume, vtList)
 		attchNodeId := longhorn.VolumeAttachNodeId(&volume, vtList)
+		state := string(volume.Status.State)
 		if os.Getenv("MOCK_LONGHORN_LOCK") == "true" {
 			isLock = true //test
+			state = "attaching"
 		}
 		// isLock = true //test
 		// isExpanding = true
@@ -158,7 +160,7 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 			SnapShotSize:      longhorn.GetSnapshopSize(volume.Name, snapList),
 			IsExpanding:       isExpanding,
 			ExpandErr:         expandErrstr,
-			State:             string(volume.Status.State),
+			State:             state,
 			VolumeName:        volume.Name,
 			IsLock:            strconv.FormatBool(isLock),
 			LockNodeId:        nodeId,
