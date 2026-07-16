@@ -1,0 +1,61 @@
+app:
+  identify: w7panel-pluginratelimit
+  title: higress限流
+gatewayPlugin:
+  configSchema: null
+  defaultConfig: {}
+  hasFrontend: true
+  runtime:
+    phase: UNSPECIFIED_PHASE
+    priority: 20
+    url: oci://higress-registry.cn-hangzhou.cr.aliyuncs.com/plugins/cluster-key-rate-limit:1.0.0
+  supportGlobal: true
+  supportRule: true
+
+
+backend_config:
+- backend_port: 0
+  backend_url: ""
+  frontend_props: {}
+  load_mode: static_hosting
+  proxy_request:
+    headers: null
+    query: null
+  role: founder
+  type: external
+- backend_port: 0
+  backend_url: ""
+  frontend_props: {}
+  load_mode: static_hosting
+  proxy_request:
+    headers: null
+    query: null
+  role: normal
+  type: external
+bindings:
+- menu:
+  - displayorder: 0
+    do: '#/response-redis'
+    icon: ""
+    icon_svg: null
+    is_default: 1
+    location: normal
+    parent: ""
+    title: 通用设置
+  name: founder
+  status: 1
+  support: thirdparty_cd
+  title: 创始人
+- menu:
+  - displayorder: 0
+    do: '#/rate-limit'
+    icon: ""
+    icon_svg: null
+    is_default: 1
+    location: normal
+    parent: ""
+    title: 限流管理
+  name: normal
+  status: 1
+  support: thirdparty_cd
+  title: 普通用户

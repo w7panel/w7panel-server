@@ -54,13 +54,6 @@ echo "创建默认pvc"
 # install.sh 已使用最新版面板 不需要判断longhorn是否存在
 kubectl create -f $KO_DATA_PATH/yaml/default-volume.yaml || echo "已存在default-volume"
 
-echo "域名白名单插件"
-kubectl create -f $KO_DATA_PATH/yaml/wasm/w7-white-domain.yaml || echo "已存在wasmplugin w7-white-domain"
-
-kubectl patch wasmplugin w7-white-domain -n higress-system --type=merge -p '{"spec":{"url":"http://w7panel-offline.default.svc:8000/ui/wasm/plugin-domain-1.0.2.wasm"}}'
-
-
-
 # echo "API示例代码"
 # kubectl apply -f $KO_DATA_PATH/yaml/code
 
@@ -92,6 +85,15 @@ echo "higress config"
 # higress 可能未启动成功 导致crd未创建 job设置重试3次
 kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
 
+echo "安装/升级制品版域名和限流插件"
+helm upgrade --namespace default w7panel-pluginwhitedomain $KO_DATA_PATH/charts/w7panel-pluginwhitedomain --install --timeout 600s
+helm upgrade --namespace default w7panel-pluginratelimit $KO_DATA_PATH/charts/w7panel-pluginratelimit --install --timeout 600s
+DOMAIN_TARGET_GROUP=w7panel-pluginwhitedomain \
+RATE_LIMIT_TARGET_GROUP=w7panel-pluginratelimit \
+TARGET_WAIT_SECONDS=600 \
+DELETE_LEGACY=true \
+sh $KO_DATA_PATH/shell/upgrade-wasm-plugins.sh all
+
 
 
 # kubectl create secret generic k3k.addon --from-file=manifests.yaml=$KO_DATA_PATH/yaml/k3k/k3k.addon.yaml --dry-run=client -o yaml | kubectl apply -f - || echo "已存在k3k.addon"
@@ -113,11 +115,6 @@ w7panel domain-config
 
 echo "longhorn 升级到面板中"
 w7panel longhornupgrade
-
-echo "限流配置"
-# apply -f 会覆盖原有配置 所以使用create 
-kubectl create -f $KO_DATA_PATH/yaml/wasm/cluster-key-rate-limit.yaml || echo "已存在longhorn cluster-key-rate-limit"
-
 
 echo "安装/升级cloudnoauth"
 helm upgrade --namespace default w7panel-cloudnoauth $KO_DATA_PATH/charts/w7panel-cloudnoauth --install --timeout 600s

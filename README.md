@@ -113,6 +113,29 @@ w7panel privatedns-upgrade
 w7panel privatedns-upgrade --overwrite
 ```
 
+### 迁移旧版 Higress 插件
+
+面板升级会通过内置 Helm Chart 自动安装或升级以下插件：
+
+- `w7panel-pluginwhitedomain`：域名插件
+- `w7panel-pluginratelimit`：限流插件
+
+随后自动将历史内置 WasmPlugin 的用户配置迁移到制品资源。维护命令为：
+
+```bash
+# 自动安装或升级两个内置 Chart
+helm upgrade --namespace default w7panel-pluginwhitedomain "$KO_DATA_PATH/charts/w7panel-pluginwhitedomain" --install --timeout 600s
+helm upgrade --namespace default w7panel-pluginratelimit "$KO_DATA_PATH/charts/w7panel-pluginratelimit" --install --timeout 600s
+
+# 等待制品资源就绪并迁移旧配置
+DOMAIN_TARGET_GROUP=w7panel-pluginwhitedomain \
+RATE_LIMIT_TARGET_GROUP=w7panel-pluginratelimit \
+DELETE_LEGACY=true \
+sh "$KO_DATA_PATH/shell/upgrade-wasm-plugins.sh" all
+```
+
+迁移脚本会备份旧资源、迁移全局及域名规则配置、切换插件并校验结果，失败时自动恢复旧插件。面板自动升级在校验成功后会删除旧资源；新集群没有旧资源时，只为制品插件补充稳定的逻辑标签。手工执行脚本未设置 `DELETE_LEGACY=true` 时，仍会保留已停用的旧资源，便于调试。
+
 ## API 接口
 
 详见 [API 文档](../docs/api/README.md)
