@@ -286,6 +286,7 @@ func (u *k3kUser) ToArray() map[string]string {
 		result["w7.cc/cvm-name"] = u.GetCkmName()
 		result["w7.cc/cvm-namespace"] = u.GetK3kNamespace()
 		result["w7.cc/menu"] = mustJSON(oldAndNewMenu) // 兼容新 旧面板
+		result[W7_SERVER0_POD_NAME] = u.Annotations[W7_SERVER0_POD_NAME]
 	}
 	return result
 }
