@@ -528,6 +528,9 @@ func (u *k3kUser) GetClusterServer0PvcName() string {
 }
 
 func (u *k3kUser) GetServer0Name() string {
+	if u.Annotations[W7_SERVER0_POD_NAME] != "" {
+		return u.Annotations[W7_SERVER0_POD_NAME]
+	}
 	return u.GetK3kNamespace() + "-server-0"
 }
 
