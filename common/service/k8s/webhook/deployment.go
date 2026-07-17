@@ -17,6 +17,6 @@ func (m *ResourceMutator) handleDeployment(ctx context.Context, req admission.Re
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 	ResetImage(deployment.Namespace, deployment.Name, "Deployment", deployment.Annotations)
-	return admission.Allowed("无需修改 deployment")
 
+	return admission.Allowed("无需修改 deployment")
 }

@@ -198,10 +198,19 @@ func (u *Ckm) GetK3kSecretTokenName() string {
 	return "k3k-" + u.Name + "-token"
 }
 func (u *Ckm) computeDefault() {
-	u.Status.Server0PodName = "k3k-" + u.Name + "-server-0"
-	u.Status.Server0ContainerName = "k3k-" + u.Name + "-server"
-	u.Status.K3kStatufulSetName = "k3k-" + u.Name + "-server"
-	u.Status.RescueJobName = u.GetRescueJobName()
+	if u.Status.Server0PodName == "" {
+		u.Status.Server0PodName = "k3k-" + u.Name + "-server-0"
+	}
+	if u.Status.Server0ContainerName == "" {
+		u.Status.Server0ContainerName = "k3k-" + u.Name + "-server"
+	}
+	if u.Status.K3kStatufulSetName == "" {
+		u.Status.K3kStatufulSetName = "k3k-" + u.Name + "-server"
+	}
+	if u.Status.RescueJobName == "" {
+		u.Status.RescueJobName = u.GetRescueJobName()
+	}
+
 	//是否可以删除
 }
 func (u *Ckm) computeBuy() {
