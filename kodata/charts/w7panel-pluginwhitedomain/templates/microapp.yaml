@@ -22,7 +22,7 @@
 
 {{- $fullName := include "__cur__.fullname" . -}}
 
-apiVersion: microapp.w7.cc/v1alpha1
+apiVersion: w7panel.w7.com/v1alpha1
 kind: MicroApp
 metadata:
   name: {{ $releaseName }}
