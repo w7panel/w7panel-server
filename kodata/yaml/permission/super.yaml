@@ -8,6 +8,7 @@ spec:
   title: 管理员
   type: builtin
   role: super
+  # Tenant and system management menus are intentionally omitted; cloud registration remains available.
   menuRules:
   - cluster/*
   - app/*
@@ -35,6 +36,8 @@ spec:
   - storage/disk/add
   - storage/disk/edit
   - storage/disk/delete
+  # Sensitive tenant and system-management APIs are intentionally omitted.
+  # Cloud registration is provided by the allowed auth/console routes below.
   apiRules:
   - path: /panel-api/v1/auth/console/*
     method:
@@ -243,6 +246,32 @@ spec:
     fileeditor: true
     webshell: true
   rbacRules:
+  # Sensitive cluster and panel configuration is visible but immutable to administrators.
+  - apiGroups:
+    - apiextensions.k8s.io
+    resources:
+    - customresourcedefinitions
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ''
+    resources:
+    - namespaces
+    - serviceaccounts
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - w7panel.w7.com
+    resources:
+    - '*'
+    verbs:
+    - get
+    - list
+    - watch
   - apiGroups:
     - ''
     resources:
