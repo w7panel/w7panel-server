@@ -33,7 +33,7 @@ func setupArtifactController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
 	}
 	reconciler := &ArtifactReconciler{
 		Client: mgr.GetClient(), Scheme: mgr.GetScheme(), installer: installer,
-		slots: newLeaseSlots(mgr.GetClient(), sdk.GetNamespace()),
+		slots: newLeaseSlotsWithReader(mgr.GetAPIReader(), mgr.GetClient(), sdk.GetNamespace()),
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&bootstrapv1.ArtifactInstallation{}).
@@ -101,20 +101,48 @@ func (r *ArtifactReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 	if installed != nil && installed.State == installedArtifactDeleting {
-		return r.requeueWithStatus(ctx, installation, bootstrapv1.BootstrapPhaseBlocked, "等待对应应用删除完成", 5*time.Second)
-	}
-	if installed != nil && normalizeIdentifie(installed.Identifie) != normalizeIdentifie(installation.Spec.Artifact.Identifie) {
-		return ctrl.Result{}, r.updateStatus(ctx, installation, bootstrapv1.BootstrapPhaseFailed,
-			fmt.Sprintf("已安装应用 %s/%s identifie=%q 与 Profile 的 %q 冲突", installed.Namespace, installed.Name, installed.Identifie, installation.Spec.Artifact.Identifie), nil, true)
-	}
-	if installed != nil {
 		if installation.Status.OperationID != "" && r.slots != nil {
 			_ = r.slots.release(ctx, installation.Status.OperationID)
 		}
-		return ctrl.Result{}, r.updateStatus(ctx, installation, bootstrapv1.BootstrapPhaseReady, "已存在对应应用，跳过版本检查", installed, true)
+		return r.requeueWithStatus(ctx, installation, bootstrapv1.BootstrapPhaseBlocked, "等待对应应用删除完成", 5*time.Second)
+	}
+	if installed != nil && normalizeIdentifie(installed.Identifie) != normalizeIdentifie(installation.Spec.Artifact.Identifie) {
+		if installation.Status.OperationID != "" && r.slots != nil {
+			_ = r.slots.release(ctx, installation.Status.OperationID)
+		}
+		return ctrl.Result{}, r.updateStatus(ctx, installation, bootstrapv1.BootstrapPhaseFailed,
+			fmt.Sprintf("已安装应用 %s/%s identifie=%q 与 Profile 的 %q 冲突", installed.Namespace, installed.Name, installed.Identifie, installation.Spec.Artifact.Identifie), nil, true)
+	}
+	if installed != nil && installed.State == installedArtifactReady {
+		if installation.Status.OperationID != "" && r.slots != nil {
+			_ = r.slots.release(ctx, installation.Status.OperationID)
+		}
+		return ctrl.Result{}, r.updateStatus(ctx, installation, bootstrapv1.BootstrapPhaseReady, "AppGroup 已安装完成", installed, true)
+	}
+	if installed != nil && installed.State == installedArtifactFailed {
+		if installation.Status.OperationID != "" && r.slots != nil {
+			_ = r.slots.release(ctx, installation.Status.OperationID)
+		}
+		if installation.Status.Phase == bootstrapv1.BootstrapPhaseFailed && installation.Status.RetryCount >= settings.MaxRetries {
+			return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+		}
+		return r.retry(ctx, installation, settings, errors.New("AppGroup 安装失败"))
+	}
+	if installed != nil && installed.State == installedArtifactInstalling {
+		if installation.Status.Phase == bootstrapv1.BootstrapPhaseFailed && installation.Status.RetryCount >= settings.MaxRetries {
+			return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+		}
+		if installation.Status.Phase == bootstrapv1.BootstrapPhaseInstalling && installation.Status.OperationID != "" {
+			return r.waitForAppGroup(ctx, installation, settings)
+		}
+		return r.waitForExistingAppGroup(ctx, installation, settings)
 	}
 	if installation.Status.ObservedProfileRevision == installation.Spec.ProfileRevision && terminalPhase(installation.Status.Phase) {
 		return ctrl.Result{}, nil
+	}
+	operationInProgress := installation.Status.Phase == bootstrapv1.BootstrapPhaseInstalling && installation.Status.OperationID != ""
+	if operationInProgress {
+		return r.waitForAppGroup(ctx, installation, settings)
 	}
 
 	ready, message, err := r.dependenciesReady(ctx, installation)
@@ -123,11 +151,6 @@ func (r *ArtifactReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	if !ready {
 		return r.requeueWithStatus(ctx, installation, bootstrapv1.BootstrapPhaseBlocked, message, 10*time.Second)
-	}
-
-	operationInProgress := installation.Status.Phase == bootstrapv1.BootstrapPhaseInstalling
-	if operationInProgress {
-		return r.waitForAppGroup(ctx, installation, settings)
 	}
 
 	operation := operationID(installation)
@@ -140,7 +163,6 @@ func (r *ArtifactReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	phase := bootstrapv1.BootstrapPhaseInstalling
-	base := installation.DeepCopy()
 	now := metav1.Now()
 	installation.Status.ObservedProfileRevision = installation.Spec.ProfileRevision
 	installation.Status.Phase = phase
@@ -148,11 +170,18 @@ func (r *ArtifactReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	installation.Status.StartedAt = &now
 	installation.Status.CompletedAt = nil
 	installation.Status.Message = "已提交 ZPK 安装操作"
-	if err := r.Status().Patch(ctx, installation, client.MergeFrom(base)); err != nil {
-		_ = r.slots.release(ctx, operation)
+	if err := r.Status().Update(ctx, installation); err != nil {
+		// A conflict usually means another replica claimed this same logical
+		// operation. It must keep the shared slot; releasing it here would steal
+		// that replica's concurrency permit.
+		if !apierrors.IsConflict(err) {
+			_ = r.slots.release(ctx, operation)
+		}
 		return ctrl.Result{}, err
 	}
-	if err := r.installer.Install(ctx, installation); err != nil {
+	installCtx, cancel := context.WithTimeout(ctx, settings.TimeoutPerArtifact)
+	defer cancel()
+	if err := r.installer.Install(installCtx, installation); err != nil {
 		_ = r.slots.release(ctx, operation)
 		if errors.Is(err, errArtifactAlreadyExists) {
 			return r.requeueWithStatus(ctx, installation, bootstrapv1.BootstrapPhasePending, "已检测到对应应用，正在重新确认", time.Second)
@@ -172,6 +201,11 @@ func (r *ArtifactReconciler) reconcileDeletion(ctx context.Context, installation
 	}
 	if err := r.installer.Uninstall(ctx, installation); err != nil {
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, err
+	}
+	if installation.Status.OperationID != "" && r.slots != nil {
+		if err := r.slots.release(ctx, installation.Status.OperationID); err != nil {
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, fmt.Errorf("释放 Bootstrap 安装并发槽: %w", err)
+		}
 	}
 	base := installation.DeepCopy()
 	controllerutil.RemoveFinalizer(installation, bootstrapv1.ArtifactFinalizer)
@@ -215,9 +249,29 @@ func (r *ArtifactReconciler) waitForAppGroup(ctx context.Context, installation *
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, err
 }
 
+func (r *ArtifactReconciler) waitForExistingAppGroup(ctx context.Context, installation *bootstrapv1.ArtifactInstallation, settings effectiveProfile) (ctrl.Result, error) {
+	if installation.Status.StartedAt != nil && time.Since(installation.Status.StartedAt.Time) > settings.TimeoutPerArtifact {
+		return r.retry(ctx, installation, settings, fmt.Errorf("等待已有 AppGroup 就绪超过 %s", settings.TimeoutPerArtifact))
+	}
+	base := installation.DeepCopy()
+	installation.Status.ObservedProfileRevision = installation.Spec.ProfileRevision
+	installation.Status.Phase = bootstrapv1.BootstrapPhaseInstalling
+	installation.Status.Message = "等待已有 AppGroup 安装完成"
+	if installation.Status.StartedAt == nil {
+		now := metav1.Now()
+		installation.Status.StartedAt = &now
+	}
+	if err := r.Status().Patch(ctx, installation, client.MergeFrom(base)); err != nil {
+		return ctrl.Result{}, err
+	}
+	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+}
+
 func (r *ArtifactReconciler) retry(ctx context.Context, installation *bootstrapv1.ArtifactInstallation, settings effectiveProfile, cause error) (ctrl.Result, error) {
 	base := installation.DeepCopy()
-	installation.Status.RetryCount++
+	if installation.Status.RetryCount < settings.MaxRetries {
+		installation.Status.RetryCount++
+	}
 	installation.Status.Message = cause.Error()
 	installation.Status.StartedAt = nil
 	if installation.Status.RetryCount >= settings.MaxRetries {
@@ -233,7 +287,9 @@ func (r *ArtifactReconciler) retry(ctx context.Context, installation *bootstrapv
 	}
 	if installation.Status.Phase == bootstrapv1.BootstrapPhaseFailed {
 		slog.Error("Bootstrap 应用执行失败", "profile", installation.Spec.ProfileRef.Name, "application", installation.Spec.Artifact.Name, "error", cause)
-		return ctrl.Result{}, nil
+		// AppGroup may be repaired manually after reaching the retry limit. Keep a
+		// low-frequency observation so the Bootstrap status can recover to Ready.
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 	delay := time.Duration(1<<min(installation.Status.RetryCount, 6)) * time.Second
 	return ctrl.Result{RequeueAfter: delay}, nil

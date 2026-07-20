@@ -11,7 +11,9 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	appgroupv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	bootstrapv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrap/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -24,8 +26,10 @@ type artifactInstaller interface {
 type installedArtifactState string
 
 const (
-	installedArtifactPresent  installedArtifactState = "Present"
-	installedArtifactDeleting installedArtifactState = "Deleting"
+	installedArtifactInstalling installedArtifactState = "Installing"
+	installedArtifactReady      installedArtifactState = "Ready"
+	installedArtifactFailed     installedArtifactState = "Failed"
+	installedArtifactDeleting   installedArtifactState = "Deleting"
 )
 
 var (
@@ -55,7 +59,7 @@ func newZPKArtifactInstaller(sdk *k8s.Sdk) (*zpkArtifactInstaller, error) {
 	return &zpkArtifactInstaller{sdk: sdk, panelToken: config.BearerToken}, nil
 }
 
-func (i *zpkArtifactInstaller) load(reference bootstrapv1.ArtifactReference) (*zpktypes.ManifestPackage, error) {
+func (i *zpkArtifactInstaller) load(ctx context.Context, reference bootstrapv1.ArtifactReference) (*zpktypes.ManifestPackage, error) {
 	if strings.HasPrefix(reference.Source, "oci://") {
 		return nil, errors.New("当前 ZPK 加载器尚不支持 OCI BootstrapProfile source")
 	}
@@ -64,7 +68,7 @@ func (i *zpkArtifactInstaller) load(reference bootstrapv1.ArtifactReference) (*z
 	if reference.Version != "" {
 		repo.SetTargetVersion(reference.Version)
 	}
-	pack, err := repo.Load()
+	pack, err := repo.LoadContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("加载制品 %q: %w", reference.Source, err)
 	}
@@ -91,10 +95,7 @@ func (i *zpkArtifactInstaller) Lookup(ctx context.Context, installation *bootstr
 		}
 		return nil, fmt.Errorf("查询 AppGroup %s/%s: %w", key.Namespace, key.Name, err)
 	}
-	state := installedArtifactPresent
-	if !group.DeletionTimestamp.IsZero() {
-		state = installedArtifactDeleting
-	}
+	state := appGroupArtifactState(group)
 	return &installedArtifact{
 		Name: group.Name, Namespace: group.Namespace,
 		Identifie: group.Spec.Identifie, Version: group.Spec.Version,
@@ -103,17 +104,30 @@ func (i *zpkArtifactInstaller) Lookup(ctx context.Context, installation *bootstr
 	}, nil
 }
 
+func appGroupArtifactState(group *appgroupv1.AppGroup) installedArtifactState {
+	switch {
+	case !group.DeletionTimestamp.IsZero():
+		return installedArtifactDeleting
+	case group.Status.DeployStatus == appgroupv1.StatusFailed || group.Status.ComputeDeployIsFailed():
+		return installedArtifactFailed
+	case group.Status.Ready && group.Status.DeployStatus == appgroupv1.StatusDeployed:
+		return installedArtifactReady
+	default:
+		return installedArtifactInstalling
+	}
+}
+
 func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *bootstrapv1.ArtifactInstallation) error {
 	if effectiveArtifactType(installation.Spec.Artifact.Type) != bootstrapv1.ArtifactTypeZPK {
 		return fmt.Errorf("制品类型 %q 当前不支持", installation.Spec.Artifact.Type)
 	}
 	reference := installation.Spec.Artifact
-	pack, err := i.load(reference)
+	pack, err := i.load(ctx, reference)
 	if err != nil {
 		return err
 	}
 
-	if _, err := i.sdk.CreateNamespace(installation.Spec.Target.Namespace); err != nil && !apierrors.IsAlreadyExists(err) {
+	if _, err := i.sdk.ClientSet.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: installation.Spec.Target.Namespace}}, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
 		return fmt.Errorf("创建命名空间 %q: %w", installation.Spec.Target.Namespace, err)
 	}
 	options := make([]zpktypes.InstallOption, 0, len(pack.Children)+1)
@@ -158,7 +172,9 @@ func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *bootst
 		child.RealToken = i.panelToken
 		child.K8sToken = packages.Root.K8sToken
 	}
-	installer := logic.NewInstall(i.sdk, packages)
+	scopedSDK := *i.sdk
+	scopedSDK.Ctx = ctx
+	installer := logic.NewInstall(&scopedSDK, packages)
 	if installer == nil {
 		return errors.New("初始化 ZPK 安装器失败")
 	}

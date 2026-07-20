@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -101,24 +102,28 @@ func (self *repo) getConsoleUrl() string {
 	return self.baseConsoleUrl + "config?url=" + self.repoUrl
 }
 
-func (self *repo) loadPackageFromConsole() (*types.ManifestPackage, error) {
+func (self *repo) loadPackageFromConsole(ctx context.Context) (*types.ManifestPackage, error) {
 	self.IsConsole = true
 	consoleUrl := self.getConsoleUrl()
 	token := self.token
-	return self.loadPackageByHttp(consoleUrl, token, true)
+	return self.loadPackageByHttp(ctx, consoleUrl, token, true)
 }
 func (self *repo) Load() (*types.ManifestPackage, error) {
+	return self.LoadContext(context.Background())
+}
+
+func (self *repo) LoadContext(ctx context.Context) (*types.ManifestPackage, error) {
 	scheme := getSourceUri(self.repoUrl)
 	if scheme == "" {
 		return nil, errors.New("uri is not valid")
 	}
 
 	if scheme == "http" || scheme == "https" {
-		return self.loadPackageByHttp(self.repoUrl, self.token, true)
+		return self.loadPackageByHttp(ctx, self.repoUrl, self.token, true)
 	} else if scheme == "memory" {
 		return self.loadPackageByHelmMemory(self.repoUrl)
 	} else {
-		return self.loadPackageFromConsole()
+		return self.loadPackageFromConsole(ctx)
 	}
 
 }
@@ -161,10 +166,10 @@ func (self *repo) PreInstall(clusterId string) (*console.PreInstall, error) {
 
 }
 
-func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*types.ManifestPackage, error) {
+func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token string, isParent bool) (*types.ManifestPackage, error) {
 	// 发送http请求 从uri获取json 数据
 	requestURI := helper.RemoveQueryParam(uri, "reinstall")
-	req := helper.RetryHttpClient().R().SetAuthToken(token)
+	req := helper.RetryHttpClient().R().SetContext(ctx).SetAuthToken(token)
 	if self.panelToken != "" {
 		req.SetHeader("X-W7Panel-Token", self.panelToken)
 		replace, err := microapp.NewMicroAppReplace(self.panelToken)
@@ -188,7 +193,7 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 		req.SetQueryParam("version", self.targetVersion)
 	}
 	if isParent {
-		req.SetQueryParam("reinstall", strconv.FormatBool(self.isFormulaMissingInCurrentPanel(uri)))
+		req.SetQueryParam("reinstall", strconv.FormatBool(self.isFormulaMissingInCurrentPanel(ctx, uri)))
 	}
 	resp, err := req.Get(requestURI)
 	if err != nil {
@@ -265,7 +270,7 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 			if isNewZpk {
 				ldurl = uri2.Scheme + "://" + uri2.Host + "/zpk/respo/info/" + rootIdentifie
 			}
-			parent, err := self.loadPackageByHttp(ldurl, self.token, false)
+			parent, err := self.loadPackageByHttp(ctx, ldurl, self.token, false)
 			if err != nil {
 				slog.Error("LoadParentErr", "err", err)
 			}
@@ -285,7 +290,7 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 		p.RequireInstall = true
 	}
 	if isParent && p.HelmUrl == "" { //旧版才加载子应用
-		_ = self.LoadDependsByPackage(p)
+		_ = self.LoadDependsByPackage(ctx, p)
 	}
 	p.Children = make(map[string]*types.ManifestPackage)
 	// LoadDependsByPackage 接口权限问题 改为使用InstallFormulas 全部返回 所以需要mock 子应用manifest
@@ -317,13 +322,15 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 	return p, nil
 }
 
-func (self *repo) isFormulaMissingInCurrentPanel(uri string) bool {
+func (self *repo) isFormulaMissingInCurrentPanel(ctx context.Context, uri string) bool {
 	identifie := formulaIdentifieFromInfoURL(uri)
 	if identifie == "" {
 		return false
 	}
 	sdk := k8s.NewK8sClient().Sdk
-	api, err := appgroup.NewAppGroupApi(sdk)
+	scopedSDK := *sdk
+	scopedSDK.Ctx = ctx
+	api, err := appgroup.NewAppGroupApi(&scopedSDK)
 	if err != nil {
 		slog.Warn("init appgroup api failed", "identifie", identifie, "err", err)
 		return false
@@ -364,7 +371,7 @@ func formulaIdentifieFromInfoURL(rawURL string) string {
 	return ""
 }
 
-func (self repo) LoadDependsByPackage(p *types.ManifestPackage) error {
+func (self repo) LoadDependsByPackage(ctx context.Context, p *types.ManifestPackage) error {
 	p.RequireInstall = true
 	// 初始化依赖列表
 	p.Children = make(map[string]*types.ManifestPackage)
@@ -376,7 +383,7 @@ func (self repo) LoadDependsByPackage(p *types.ManifestPackage) error {
 		}
 		// 下载依赖
 		uri := depend.GetLoadUrl(p)
-		child, err := self.loadPackageByHttp(uri, self.token, false)
+		child, err := self.loadPackageByHttp(ctx, uri, self.token, false)
 		if err != nil {
 			slog.Warn("LoadDependsByPackage", "err", err)
 			continue

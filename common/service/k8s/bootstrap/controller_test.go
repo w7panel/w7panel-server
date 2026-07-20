@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -22,6 +23,8 @@ type fakeArtifactInstaller struct {
 	installed      *installedArtifact
 	lookupErr      error
 	err            error
+	installTimeout time.Duration
+	waitForCancel  bool
 }
 
 func (f *fakeArtifactInstaller) Lookup(context.Context, *bootstrapv1.ArtifactInstallation) (*installedArtifact, error) {
@@ -29,8 +32,15 @@ func (f *fakeArtifactInstaller) Lookup(context.Context, *bootstrapv1.ArtifactIns
 	return f.installed, f.lookupErr
 }
 
-func (f *fakeArtifactInstaller) Install(context.Context, *bootstrapv1.ArtifactInstallation) error {
+func (f *fakeArtifactInstaller) Install(ctx context.Context, _ *bootstrapv1.ArtifactInstallation) error {
 	f.installCalls++
+	if deadline, ok := ctx.Deadline(); ok {
+		f.installTimeout = time.Until(deadline)
+	}
+	if f.waitForCancel {
+		<-ctx.Done()
+		return ctx.Err()
+	}
 	return f.err
 }
 
@@ -72,6 +82,50 @@ func TestLeaseSlotsLimitConcurrency(t *testing.T) {
 	acquired, err = slots.acquire(ctx, "profile", "operation-two", 1, time.Minute)
 	if err != nil || !acquired {
 		t.Fatalf("acquire after release = %v, %v", acquired, err)
+	}
+}
+
+func TestAppGroupArtifactStateRequiresReadyAndDeployed(t *testing.T) {
+	tests := []struct {
+		name   string
+		group  *appgroupv1.AppGroup
+		wanted installedArtifactState
+	}{
+		{
+			name:   "ready and deployed",
+			group:  &appgroupv1.AppGroup{Status: appgroupv1.AppGroupStatus{Ready: true, DeployStatus: appgroupv1.StatusDeployed}},
+			wanted: installedArtifactReady,
+		},
+		{
+			name:   "ready flag before deploy completion",
+			group:  &appgroupv1.AppGroup{Status: appgroupv1.AppGroupStatus{Ready: true, DeployStatus: appgroupv1.StatusDeploying}},
+			wanted: installedArtifactInstalling,
+		},
+		{
+			name:   "deployed before workloads ready",
+			group:  &appgroupv1.AppGroup{Status: appgroupv1.AppGroupStatus{Ready: false, DeployStatus: appgroupv1.StatusDeployed}},
+			wanted: installedArtifactInstalling,
+		},
+		{
+			name:   "failed",
+			group:  &appgroupv1.AppGroup{Status: appgroupv1.AppGroupStatus{DeployStatus: appgroupv1.StatusFailed}},
+			wanted: installedArtifactFailed,
+		},
+		{
+			name: "deleting takes precedence",
+			group: &appgroupv1.AppGroup{
+				ObjectMeta: metav1.ObjectMeta{DeletionTimestamp: &metav1.Time{Time: time.Now()}},
+				Status:     appgroupv1.AppGroupStatus{Ready: true, DeployStatus: appgroupv1.StatusDeployed},
+			},
+			wanted: installedArtifactDeleting,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := appGroupArtifactState(test.group); got != test.wanted {
+				t.Fatalf("appGroupArtifactState() = %q, want %q", got, test.wanted)
+			}
+		})
 	}
 }
 
@@ -152,10 +206,15 @@ func TestReconcileDeletionUsesArtifactInstaller(t *testing.T) {
 		Spec: bootstrapv1.ArtifactInstallationSpec{
 			Target: bootstrapv1.ArtifactTarget{ReleaseName: "one", Namespace: "default"},
 		},
+		Status: bootstrapv1.ArtifactInstallationStatus{OperationID: "operation-one"},
+	}
+	lease := &coordinationv1.Lease{
+		ObjectMeta: metav1.ObjectMeta{Name: "bootstrap-default-profile-slot", Namespace: "default", Labels: map[string]string{"w7.cc/bootstrap-slot": "true"}},
+		Spec:       coordinationv1.LeaseSpec{HolderIdentity: ptr.To("operation-one")},
 	}
 	installer := &fakeArtifactInstaller{}
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(installation).Build()
-	reconciler := &ArtifactReconciler{Client: k8sClient, Scheme: scheme, installer: installer}
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(installation, lease).Build()
+	reconciler := &ArtifactReconciler{Client: k8sClient, Scheme: scheme, installer: installer, slots: newLeaseSlots(k8sClient, "default")}
 
 	if _, err := reconciler.reconcileDeletion(context.Background(), installation); err != nil {
 		t.Fatal(err)
@@ -171,6 +230,12 @@ func TestReconcileDeletionUsesArtifactInstaller(t *testing.T) {
 		if finalizer == bootstrapv1.ArtifactFinalizer {
 			t.Fatalf("artifact finalizer was not removed: %v", updated.Finalizers)
 		}
+	}
+	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: lease.Name, Namespace: lease.Namespace}, lease); err != nil {
+		t.Fatal(err)
+	}
+	if lease.Spec.HolderIdentity == nil || *lease.Spec.HolderIdentity != "" {
+		t.Fatalf("lease holder = %v, want released during deletion", lease.Spec.HolderIdentity)
 	}
 }
 
@@ -210,9 +275,132 @@ func TestArtifactReconcilerInstallsUnspecifiedVersionWithoutPreResolving(t *test
 	if installer.installCalls != 1 {
 		t.Fatalf("install calls=%d, want 1", installer.installCalls)
 	}
+	if installer.installTimeout <= 0 || installer.installTimeout > defaultArtifactTimeout {
+		t.Fatalf("install timeout = %s, want a positive timeout no greater than %s", installer.installTimeout, defaultArtifactTimeout)
+	}
 }
 
-func TestArtifactReconcilerTreatsExistingAppGroupAsInstalledRegardlessOfVersionOrStatus(t *testing.T) {
+func TestArtifactReconcilerHoldsLeaseUntilAppGroupReady(t *testing.T) {
+	scheme := bootstrapTestScheme(t)
+	artifact := bootstrapv1.BootstrapArtifact{
+		Name: "one", Identifie: "one", Source: "https://zpk.w7.cc/info/one", ReleaseName: "one", Namespace: "default",
+	}
+	profile := &bootstrapv1.BootstrapProfile{
+		ObjectMeta: metav1.ObjectMeta{Name: "default-profile", UID: types.UID("profile-uid")},
+		Spec: bootstrapv1.BootstrapProfileSpec{
+			Revision:  "1.0.0-1",
+			Strategy:  bootstrapv1.BootstrapStrategy{MaxConcurrent: 1},
+			Artifacts: []bootstrapv1.BootstrapArtifact{artifact},
+		},
+	}
+	installation := &bootstrapv1.ArtifactInstallation{
+		ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name), Finalizers: []string{bootstrapv1.ArtifactFinalizer}},
+		Spec:       effectiveArtifact(profile, artifact),
+	}
+	installer := &fakeArtifactInstaller{}
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).
+		WithStatusSubresource(profile, installation).
+		WithObjects(profile, installation).
+		Build()
+	reconciler := &ArtifactReconciler{
+		Client: k8sClient, Scheme: scheme, installer: installer,
+		slots: newLeaseSlots(k8sClient, "default"),
+	}
+	request := ctrl.Request{NamespacedName: types.NamespacedName{Name: installation.Name}}
+
+	if _, err := reconciler.Reconcile(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	lease := &coordinationv1.Lease{}
+	leaseKey := types.NamespacedName{Name: slotLeaseName(profile.Name, 0), Namespace: "default"}
+	if err := k8sClient.Get(context.Background(), leaseKey, lease); err != nil {
+		t.Fatal(err)
+	}
+	if lease.Spec.HolderIdentity == nil || *lease.Spec.HolderIdentity == "" {
+		t.Fatal("expected install operation to hold the concurrency lease")
+	}
+
+	installer.installed = &installedArtifact{
+		Name: "one", Namespace: "default", Identifie: "one", State: installedArtifactInstalling,
+	}
+	if result, err := reconciler.Reconcile(context.Background(), request); err != nil || result.RequeueAfter == 0 {
+		t.Fatalf("poll installing AppGroup = %#v, %v", result, err)
+	}
+	if err := k8sClient.Get(context.Background(), leaseKey, lease); err != nil {
+		t.Fatal(err)
+	}
+	if lease.Spec.HolderIdentity == nil || *lease.Spec.HolderIdentity == "" {
+		t.Fatal("lease was released before AppGroup became ready")
+	}
+
+	installer.installed.State = installedArtifactReady
+	if _, err := reconciler.Reconcile(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	if err := k8sClient.Get(context.Background(), leaseKey, lease); err != nil {
+		t.Fatal(err)
+	}
+	if lease.Spec.HolderIdentity == nil || *lease.Spec.HolderIdentity != "" {
+		t.Fatalf("lease holder = %v, want released after AppGroup ready", lease.Spec.HolderIdentity)
+	}
+}
+
+func TestArtifactReconcilerCancelsInstallAtArtifactTimeout(t *testing.T) {
+	scheme := bootstrapTestScheme(t)
+	artifact := bootstrapv1.BootstrapArtifact{
+		Name: "one", Identifie: "one", Source: "https://zpk.w7.cc/info/one", ReleaseName: "one", Namespace: "default",
+	}
+	profile := &bootstrapv1.BootstrapProfile{
+		ObjectMeta: metav1.ObjectMeta{Name: "default-profile", UID: types.UID("profile-uid")},
+		Spec: bootstrapv1.BootstrapProfileSpec{
+			Revision:  "1.0.0-1",
+			Strategy:  bootstrapv1.BootstrapStrategy{MaxConcurrent: 1, TimeoutPerArtifact: metav1.Duration{Duration: 20 * time.Millisecond}},
+			Artifacts: []bootstrapv1.BootstrapArtifact{artifact},
+		},
+	}
+	installation := &bootstrapv1.ArtifactInstallation{
+		ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name), Finalizers: []string{bootstrapv1.ArtifactFinalizer}},
+		Spec:       effectiveArtifact(profile, artifact),
+	}
+	installer := &fakeArtifactInstaller{waitForCancel: true}
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).
+		WithStatusSubresource(profile, installation).
+		WithObjects(profile, installation).
+		Build()
+	reconciler := &ArtifactReconciler{
+		Client: k8sClient, Scheme: scheme, installer: installer,
+		slots: newLeaseSlots(k8sClient, "default"),
+	}
+
+	started := time.Now()
+	result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: installation.Name}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if time.Since(started) > time.Second {
+		t.Fatal("install did not stop promptly at timeout")
+	}
+	if result.RequeueAfter == 0 {
+		t.Fatal("timed out install was not scheduled for retry")
+	}
+	updated := &bootstrapv1.ArtifactInstallation{}
+	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: installation.Name}, updated); err != nil {
+		t.Fatal(err)
+	}
+	if updated.Status.Phase != bootstrapv1.BootstrapPhasePending || updated.Status.RetryCount != 1 {
+		t.Fatalf("status after timeout = %#v, want Pending with one retry", updated.Status)
+	}
+	lease := &coordinationv1.Lease{}
+	leaseKey := types.NamespacedName{Name: slotLeaseName(profile.Name, 0), Namespace: "default"}
+	if err := k8sClient.Get(context.Background(), leaseKey, lease); err != nil {
+		t.Fatal(err)
+	}
+	if lease.Spec.HolderIdentity == nil || *lease.Spec.HolderIdentity != "" {
+		t.Fatalf("lease holder = %v, want released after timeout", lease.Spec.HolderIdentity)
+	}
+}
+
+func TestArtifactReconcilerWaitsForExistingAppGroupToBecomeReady(t *testing.T) {
 	scheme := bootstrapTestScheme(t)
 	artifact := bootstrapv1.BootstrapArtifact{
 		Name: "one", Identifie: "one", Source: "https://zpk.w7.cc/info/one", ReleaseName: "one", Namespace: "default", Version: "2.0.0",
@@ -239,7 +427,7 @@ func TestArtifactReconcilerTreatsExistingAppGroupAsInstalledRegardlessOfVersionO
 	}
 	installer := &fakeArtifactInstaller{installed: &installedArtifact{
 		Name: group.Name, Namespace: group.Namespace,
-		Identifie: group.Spec.Identifie, Version: group.Spec.Version, State: installedArtifactPresent,
+		Identifie: group.Spec.Identifie, Version: group.Spec.Version, State: installedArtifactInstalling,
 	}}
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).
 		WithStatusSubresource(profile, installation).
@@ -254,17 +442,75 @@ func TestArtifactReconcilerTreatsExistingAppGroupAsInstalledRegardlessOfVersionO
 	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: installation.Name}, updated); err != nil {
 		t.Fatal(err)
 	}
+	if updated.Status.Phase != bootstrapv1.BootstrapPhaseInstalling {
+		t.Fatalf("phase = %q, want %q while AppGroup is installing; status=%#v", updated.Status.Phase, bootstrapv1.BootstrapPhaseInstalling, updated.Status)
+	}
+	installer.installed.State = installedArtifactReady
+	if _, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: installation.Name}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: installation.Name}, updated); err != nil {
+		t.Fatal(err)
+	}
 	if updated.Status.Phase != bootstrapv1.BootstrapPhaseReady {
-		t.Fatalf("phase = %q, want %q; status=%#v", updated.Status.Phase, bootstrapv1.BootstrapPhaseReady, updated.Status)
+		t.Fatalf("phase = %q, want %q after AppGroup becomes ready; status=%#v", updated.Status.Phase, bootstrapv1.BootstrapPhaseReady, updated.Status)
 	}
 	if updated.Status.InstalledVersion != group.Spec.Version {
 		t.Fatalf("installed version = %q, want existing AppGroup version %q", updated.Status.InstalledVersion, group.Spec.Version)
 	}
-	if installer.lookupCalls != 1 {
-		t.Fatalf("lookup calls=%d, want 1", installer.lookupCalls)
+	if installer.lookupCalls != 2 {
+		t.Fatalf("lookup calls=%d, want 2", installer.lookupCalls)
 	}
 	if installer.installCalls != 0 {
 		t.Fatalf("install calls=%d, want no artifact operation", installer.installCalls)
+	}
+}
+
+func TestArtifactReconcilerTimesOutExistingAppGroup(t *testing.T) {
+	scheme := bootstrapTestScheme(t)
+	artifact := bootstrapv1.BootstrapArtifact{
+		Name: "one", Identifie: "one", Source: "https://zpk.w7.cc/info/one", ReleaseName: "one", Namespace: "default",
+	}
+	profile := &bootstrapv1.BootstrapProfile{
+		ObjectMeta: metav1.ObjectMeta{Name: "default-profile", UID: types.UID("profile-uid")},
+		Spec: bootstrapv1.BootstrapProfileSpec{
+			Revision:  "1.0.0-1",
+			Strategy:  bootstrapv1.BootstrapStrategy{MaxRetries: 1, TimeoutPerArtifact: metav1.Duration{Duration: time.Second}},
+			Artifacts: []bootstrapv1.BootstrapArtifact{artifact},
+		},
+	}
+	startedAt := metav1.NewTime(time.Now().Add(-2 * time.Second))
+	installation := &bootstrapv1.ArtifactInstallation{
+		ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name), Finalizers: []string{bootstrapv1.ArtifactFinalizer}},
+		Spec:       effectiveArtifact(profile, artifact),
+		Status: bootstrapv1.ArtifactInstallationStatus{
+			ObservedProfileRevision: profile.Spec.Revision,
+			Phase:                   bootstrapv1.BootstrapPhaseInstalling,
+			StartedAt:               &startedAt,
+		},
+	}
+	installer := &fakeArtifactInstaller{installed: &installedArtifact{
+		Name: "one", Namespace: "default", Identifie: "one", State: installedArtifactInstalling,
+	}}
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).
+		WithStatusSubresource(profile, installation).
+		WithObjects(profile, installation).
+		Build()
+	reconciler := &ArtifactReconciler{Client: k8sClient, Scheme: scheme, installer: installer}
+
+	result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: installation.Name}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.RequeueAfter == 0 {
+		t.Fatal("failed existing AppGroup should remain observable")
+	}
+	updated := &bootstrapv1.ArtifactInstallation{}
+	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: installation.Name}, updated); err != nil {
+		t.Fatal(err)
+	}
+	if updated.Status.Phase != bootstrapv1.BootstrapPhaseFailed || updated.Status.RetryCount != 1 {
+		t.Fatalf("status after existing AppGroup timeout = %#v", updated.Status)
 	}
 }
 
