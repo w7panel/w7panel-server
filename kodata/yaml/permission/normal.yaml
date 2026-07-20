@@ -46,6 +46,10 @@ spec:
             method:
                 - get
             path: /panel-api/v1/microapp/top
+                -
+        -   method:
+                - create
+            path: /panel-api/v1/static/*/download/*    
         -
             method:
                 - get
