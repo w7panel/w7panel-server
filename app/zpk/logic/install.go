@@ -160,6 +160,9 @@ func (z *Install) InstallUseJob(name, namespace string, shellType types.ShellTyp
 	for _, job := range jobs {
 		_, err = z.sdk.ClientSet.BatchV1().Jobs(root.GetNamespace()).Create(z.sdk.Ctx, job, metav1.CreateOptions{})
 		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				continue
+			}
 			slog.Error("create job error", slog.String("error", err.Error()))
 			return err
 		}
@@ -337,7 +340,7 @@ func (z *Install) CreateOrUpdateGroup(namespace, name string, items []v1alpha1.D
 
 func (z *Install) UnInstall(name, namespace string) error {
 	helmApi := k8s.NewHelm(z.sdk)
-	_, err := helmApi.UnInstall(namespace, name)
+	_, err := helmApi.UnInstall(name, namespace)
 	if err != nil {
 		return err
 	}

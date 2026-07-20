@@ -120,7 +120,7 @@ start() {
 
     # 验证服务是否启动成功
     if kill -0 "$PID" 2>/dev/null; then
-        if curl -s http://localhost:8080/ > /dev/null 2>&1; then
+        if curl -s http://localhost:8000/ > /dev/null 2>&1; then
             log_info "服务启动成功 (PID: $PID)"
             log_info "日志文件: $LOG_FILE"
             return 0
@@ -217,8 +217,8 @@ status() {
         ps -p "$PID" -o pid,ppid,stat,%cpu,%mem,cmd 2>/dev/null || true
         
         # 检查端口
-        if curl -s http://localhost:8080/ > /dev/null 2>&1; then
-            log_info "HTTP 服务正常 (http://localhost:8080)"
+        if curl -s http://localhost:8000/ > /dev/null 2>&1; then
+            log_info "HTTP 服务正常 (http://localhost:8000)"
         else
             log_warn "HTTP 服务异常"
         fi

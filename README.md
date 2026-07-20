@@ -92,7 +92,8 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 | `CAPTCHA_ENABLED` | true | 验证码开关 |
 | `KO_DATA_PATH` | ./kodata | 静态资源路径 |
 | `KUBECONFIG` | ./kubeconfig.yaml | K8S 配置 |
-| `W7PANEL_OFFLINE_HTTP_SERVER_PORT` | 8080 | HTTP 端口 |
+| `W7PANEL_HTTP_SERVER_PORT` | 8000 | HTTP 端口 |
+| `BOOTSTRAP_ALLOWED_SOURCE_HOSTS` | zpk.w7.cc | 额外允许的预装制品源主机，多个值以逗号分隔 |
 
 ## 主要功能
 
@@ -100,8 +101,19 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 - **压缩/解压** - 支持 zip, tar, tar.gz, tar.xz
 - **权限管理** - chmod, chown 操作
 - **应用部署** - Helm, Docker Compose, YAML
+- **预装制品协调** - 通过 BootstrapProfile 同步 ArtifactInstallation，按依赖、版本与并发策略复用 ZPK/AppGroup 安装
 - **集群管理** - 节点、资源对象管理
 - **网关插件权限** - 为创始人默认权限注册网关插件查看、新建、编辑和删除菜单权限
+
+### BootstrapProfile 预装制品
+
+控制器在 `k8s.watch=true` 时随共享 Controller Manager 启动。CRD 清单位于 `kodata/crds/bootstrap.w7.cc_*.yaml`，详细字段、状态机和示例见 [BootstrapProfile 预装制品方案](../docs/src/development/bootstrap-profile-artifact-installation.md)。
+
+当前自动安装执行器仅支持 HTTPS ZPK 源。`type` 作为执行器扩展点，未填写时兼容默认为 `ZPK`，当前其他类型会在 Profile 校验阶段被拒绝。Profile 里声明的每个 artifact 都会安装，不再使用 `enabled`/`required`。ZPK 可通过 `installOptions.helmValues` 为其内部 Helm 首次安装提供默认参数；已存在对应 AppGroup 时 Bootstrap 直接跳过，不执行自动升级。OCI 地址仍未开放执行。默认只允许 `zpk.w7.cc`，额外 HTTPS 主机需显式配置：
+
+```bash
+export BOOTSTRAP_ALLOWED_SOURCE_HOSTS=zpk.example.com,registry.example.com
+```
 
 ## 维护命令
 

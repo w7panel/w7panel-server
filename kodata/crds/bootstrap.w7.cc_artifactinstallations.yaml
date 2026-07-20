@@ -1,0 +1,164 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: artifactinstallations.bootstrap.w7.cc
+spec:
+  group: bootstrap.w7.cc
+  names:
+    kind: ArtifactInstallation
+    listKind: ArtifactInstallationList
+    plural: artifactinstallations
+    shortNames:
+    - ainstall
+    singular: artifactinstallation
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.profileRef.name
+      name: Profile
+      type: string
+    - jsonPath: .spec.profileRevision
+      name: Revision
+      type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              allowDowngrade:
+                type: boolean
+              artifact:
+                properties:
+                  identifie:
+                    type: string
+                  name:
+                    type: string
+                  source:
+                    type: string
+                  type:
+                    enum:
+                    - ZPK
+                    type: string
+                  version:
+                    type: string
+                required:
+                - identifie
+                - name
+                - source
+                type: object
+              dependsOn:
+                items:
+                  type: string
+                type: array
+              failurePolicy:
+                type: string
+              installOptions:
+                properties:
+                  helmValues:
+                    additionalProperties:
+                      type: string
+                    type: object
+                type: object
+              profileRef:
+                properties:
+                  name:
+                    type: string
+                  uid:
+                    type: string
+                required:
+                - name
+                - uid
+                type: object
+              profileRevision:
+                type: string
+              reinstallPolicy:
+                enum:
+                - Required
+                type: string
+              removalPolicy:
+                enum:
+                - Uninstall
+                type: string
+              target:
+                properties:
+                  namespace:
+                    type: string
+                  releaseName:
+                    type: string
+                required:
+                - namespace
+                - releaseName
+                type: object
+            required:
+            - artifact
+            - failurePolicy
+            - profileRef
+            - profileRevision
+            - reinstallPolicy
+            - removalPolicy
+            - target
+            type: object
+          status:
+            properties:
+              appGroup:
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                type: object
+              completedAt:
+                format: date-time
+                type: string
+              installedVersion:
+                type: string
+              message:
+                type: string
+              observedProfileRevision:
+                type: string
+              operationID:
+                type: string
+              phase:
+                type: string
+              requestedVersion:
+                type: string
+              resolvedVersion:
+                type: string
+              retryCount:
+                format: int32
+                type: integer
+              startedAt:
+                format: date-time
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

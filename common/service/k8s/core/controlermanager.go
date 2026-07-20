@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/bootstrap"
 	"github.com/w7panel/w7panel/common/service/k8s/buildimage"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
 	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
@@ -88,6 +89,11 @@ func StartControlManager() error {
 	err = user.SetupServiceAccountController(mgr, sdk)
 	if err != nil {
 		slog.Error("setup service account controller failed", "err", err)
+		return err
+	}
+	err = bootstrap.SetupControllers(mgr, sdk)
+	if err != nil {
+		slog.Error("setup bootstrap controllers failed", "err", err)
 		return err
 	}
 	//webhook 和 higress 用一个

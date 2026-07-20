@@ -19,11 +19,11 @@
 	./runtime/main test:upload-chunk --pid=<process_id> --subPid=<sub_process_id>
 
 	# 指定 API 地址
-	./runtime/main test:upload-chunk --baseURL=http://127.0.0.1:8080
+	./runtime/main test:upload-chunk --baseURL=http://127.0.0.1:8000
 
 参数说明:
 
-	--baseURL      API 基础 URL，默认 http://localhost:8080
+	--baseURL      API 基础 URL，默认 http://localhost:8000
 	--fileSize     生成的测试文件大小（字节），默认 10MB
 	--chunkSize    分片大小（字节），默认 1MB
 	--fileName     文件名，默认 test-chunk-upload.bin

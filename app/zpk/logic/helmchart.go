@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -73,6 +74,14 @@ func (h *HelmChart) GetValues() (map[string]interface{}, error) {
 	for _, params := range h.Root.Manifest.Platform.Container.StartParams {
 		optValues.Values = append(optValues.Values, params.Name+"="+params.ValuesText)
 	}
+	keys := make([]string, 0, len(h.Root.HelmValues))
+	for key := range h.Root.HelmValues {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		optValues.Values = append(optValues.Values, key+"="+h.Root.HelmValues[key])
+	}
 	// for _, env := range h.Root.Manifest.Platform.Container.Env {
 	// 	optValues.Values = append(optValues.Values, env.Name+"="+env.Value)
 	// }
@@ -110,6 +119,14 @@ func fillHelmSet(packageApp *types.PackageApp, childName string, ignore []string
 	for _, env := range packageApp.Manifest.Platform.Container.Env {
 		set += " --set '" + childName + env.Name + "=" + env.Value + "'"
 	}
+	keys := make([]string, 0, len(packageApp.HelmValues))
+	for key := range packageApp.HelmValues {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		set += " --set " + shellQuote(childName+key+"="+packageApp.HelmValues[key])
+	}
 
 	if packageApp.PvcName != "" {
 		// set += " --set PVC_NAME=" + (packageApp.PvcName)
@@ -141,6 +158,10 @@ func fillHelmSet(packageApp *types.PackageApp, childName string, ignore []string
 		set += " --set " + childName + "fullnameOverride=" + packageApp.GetName()
 	}
 	return set
+}
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }
 func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp) *batchv1.Job {
 	// releaseName := packageApp.GetReleaseName()

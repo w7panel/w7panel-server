@@ -69,6 +69,7 @@ type InstallOption struct {
 	IsChildApp               bool                 `json:"isChild"`              //是否IsChildApp
 	IsUpgrade                bool                 `json:"isUpgrade"`            //是否更新模式
 	Annotations              map[string]string    `json:"annotations"`          //注解
+	HelmValues               map[string]string    `json:"helmValues,omitempty"` //首次安装使用的 Helm 默认参数
 	ServiceAccountName       string               `json:"serviceAccountName"`   //ServiceAccountName
 	BuildImageSuccessUrl     string               `json:"buildImageSuccessUrl"` //ServiceAccountName
 	ParentReleaseName        string               `json:"parentReleaseName"`    // 父节点发布名
