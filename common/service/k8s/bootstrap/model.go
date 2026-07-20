@@ -255,7 +255,10 @@ func validateSource(raw string) error {
 			return errors.New("source 不能在查询参数中包含凭据，请使用 Secret 引用")
 		}
 	}
-	allowed := map[string]struct{}{"zpk.w7.cc": {}}
+	allowed := map[string]struct{}{
+		"zpk.w7.cc":            {},
+		"zpk.fan.b2.sz.w7.com": {},
+	}
 	for _, host := range strings.Split(os.Getenv("BOOTSTRAP_ALLOWED_SOURCE_HOSTS"), ",") {
 		host = strings.TrimSpace(strings.ToLower(host))
 		if host != "" {

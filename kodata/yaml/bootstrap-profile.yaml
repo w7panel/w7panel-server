@@ -1,0 +1,43 @@
+apiVersion: bootstrap.w7.cc/v1alpha1
+kind: BootstrapProfile
+metadata:
+  name: w7panel-default
+spec:
+  # 修改预装应用清单时必须同步递增 revision。
+  revision: "1.1.76-1"
+  strategy:
+    maxConcurrent: 2
+    maxRetries: 3
+    timeoutPerArtifact: 10m
+  defaults:
+    failurePolicy: Continue
+  artifacts:
+    - name: pluginwhitedomain
+      type: ZPK
+      identifie: w7panel-pluginwhitedomain
+      source: https://zpk.fan.b2.sz.w7.com/zpk/respo/info/w7panel-pluginwhitedomain
+      releaseName: w7panel-pluginwhitedomain
+      namespace: default
+      installOptions:
+        annotations:
+          w7.cc/deny-delete: "true"
+
+    - name: pluginratelimit
+      type: ZPK
+      identifie: w7panel-pluginratelimit
+      source: https://zpk.fan.b2.sz.w7.com/zpk/respo/info/w7panel-pluginratelimit
+      releaseName: w7panel-pluginratelimit
+      namespace: default
+      installOptions:
+        annotations:
+          w7.cc/deny-delete: "true"
+
+    - name: cloudnoauth
+      type: ZPK
+      identifie: w7panel-cloudnoauth
+      source: https://zpk.w7.cc/zpk/respo/info/w7panel_cloudnoauth
+      releaseName: w7panel-cloudnoauth
+      namespace: default
+      installOptions:
+        annotations:
+          w7.cc/deny-delete: "true"

@@ -93,7 +93,7 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 | `KO_DATA_PATH` | ./kodata | 静态资源路径 |
 | `KUBECONFIG` | ./kubeconfig.yaml | K8S 配置 |
 | `W7PANEL_HTTP_SERVER_PORT` | 8000 | HTTP 端口 |
-| `BOOTSTRAP_ALLOWED_SOURCE_HOSTS` | zpk.w7.cc | 额外允许的预装制品源主机，多个值以逗号分隔 |
+| `BOOTSTRAP_ALLOWED_SOURCE_HOSTS` | - | 额外允许的预装制品源主机，多个值以逗号分隔；内置允许 `zpk.w7.cc` 和 `zpk.fan.b2.sz.w7.com` |
 
 ## 主要功能
 
@@ -109,7 +109,7 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 
 控制器在 `k8s.watch=true` 时随共享 Controller Manager 启动。CRD 清单位于 `kodata/crds/bootstrap.w7.cc_*.yaml`，详细字段、状态机和示例见 [BootstrapProfile 预装制品方案](../docs/src/development/bootstrap-profile-artifact-installation.md)。
 
-当前自动安装执行器仅支持 HTTPS ZPK 源。`type` 作为执行器扩展点，未填写时兼容默认为 `ZPK`，当前其他类型会在 Profile 校验阶段被拒绝。Profile 里声明的每个 artifact 都会安装，不再使用 `enabled`/`required`。ZPK 可通过 `installOptions.helmValues` 提供内部 Helm 首次安装参数，并通过 `installOptions.annotations` 透传 AppGroup 和工作负载注解；已存在对应 AppGroup 时 Bootstrap 直接跳过，不执行自动升级。用户主动删除 AppGroup 后不会自动重装，直到 Profile revision 再次更新。OCI 地址仍未开放执行。默认只允许 `zpk.w7.cc`，额外 HTTPS 主机需显式配置：
+当前自动安装执行器仅支持 HTTPS ZPK 源。`type` 作为执行器扩展点，未填写时兼容默认为 `ZPK`，当前其他类型会在 Profile 校验阶段被拒绝。Profile 里声明的每个 artifact 都会安装，不再使用 `enabled`/`required`。ZPK 可通过 `installOptions.helmValues` 提供内部 Helm 首次安装参数，并通过 `installOptions.annotations` 透传 AppGroup 和工作负载注解；已存在对应 AppGroup 时 Bootstrap 直接跳过，不执行自动升级。用户主动删除 AppGroup 后不会自动重装，直到 Profile revision 再次更新。OCI 地址仍未开放执行。内置允许 `zpk.w7.cc` 和 `zpk.fan.b2.sz.w7.com`，其他 HTTPS 主机需显式配置：
 
 ```bash
 export BOOTSTRAP_ALLOWED_SOURCE_HOSTS=zpk.example.com,registry.example.com
@@ -125,19 +125,23 @@ w7panel privatedns-upgrade
 w7panel privatedns-upgrade --overwrite
 ```
 
-### 迁移旧版 Higress 插件
+### 内置应用与旧版 Higress 插件迁移
 
-面板升级会通过内置 Helm Chart 自动安装或升级以下插件：
+升级脚本会应用 `kodata/yaml/bootstrap-profile.yaml`，由 BootstrapProfile 安装以下内置应用：
 
 - `w7panel-pluginwhitedomain`：域名插件
 - `w7panel-pluginratelimit`：限流插件
+- `w7panel-cloudnoauth`：CloudNoAuth
 
 随后自动将历史内置 WasmPlugin 的用户配置迁移到制品资源。维护命令为：
 
 ```bash
-# 自动安装或升级两个内置 Chart
-helm upgrade --namespace default w7panel-pluginwhitedomain "$KO_DATA_PATH/charts/w7panel-pluginwhitedomain" --install --timeout 600s
-helm upgrade --namespace default w7panel-pluginratelimit "$KO_DATA_PATH/charts/w7panel-pluginratelimit" --install --timeout 600s
+# 创建或更新内置预装清单
+kubectl apply -f "$KO_DATA_PATH/yaml/bootstrap-profile.yaml" --server-side
+
+# 查看安装状态
+kubectl get bootstrapprofile w7panel-default
+kubectl get artifactinstallation -l w7.cc/bootstrap-profile=w7panel-default
 
 # 等待制品资源就绪并迁移旧配置
 DOMAIN_TARGET_GROUP=w7panel-pluginwhitedomain \
@@ -146,7 +150,7 @@ DELETE_LEGACY=true \
 sh "$KO_DATA_PATH/shell/upgrade-wasm-plugins.sh" all
 ```
 
-迁移脚本会备份旧资源、迁移全局及域名规则配置、切换插件并校验结果，失败时自动恢复旧插件。面板自动升级在校验成功后会删除旧资源；新集群没有旧资源时，只为制品插件补充稳定的逻辑标签。手工执行脚本未设置 `DELETE_LEGACY=true` 时，仍会保留已停用的旧资源，便于调试。
+基础 Higress 由集群安装流程预先提供，不属于该 Profile。修改内置应用清单时必须同步递增 BootstrapProfile 的 `spec.revision`。迁移脚本会备份旧资源、迁移全局及域名规则配置、切换插件并校验结果，失败时自动恢复旧插件。面板自动升级在校验成功后会删除旧资源；新集群没有旧资源时，只为制品插件补充稳定的逻辑标签。手工执行脚本未设置 `DELETE_LEGACY=true` 时，仍会保留已停用的旧资源，便于调试。
 
 ## API 接口
 

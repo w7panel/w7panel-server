@@ -1,8 +1,48 @@
-cert-manager-v1.19.2.tgz 子集群安装cert-manager用
-k3k-0.3.5.tgz upgrade.sh 使用(集群云主机上线会去掉)
-victoria-metrics-operator-0.43.0.tgz metricsinstall.go中 使用
+# kodata/charts 说明
 
-w7panel-longhorn 商店longhorn应用
-kubeblocks-cluster 商店集群cluster mysql redis mongdb应用
-k8s-offline-metrics 商店监控应用
-gpustack 商店gpustack应用
+该目录保存运行时需要读取的 Helm Chart 源码和离线依赖包，不是主面板 Chart 的维护目录。主面板 Chart 位于仓库根目录 `charts/w7panel/`。
+
+## Chart 源码目录
+
+| 目录 | 用途 |
+|------|------|
+| `cni/` | CNI、Multus 等集群网络组件模板 |
+| `gpustack/` | 应用商店中的 GPUStack 应用 Chart |
+| `k8s-offline/` | 离线版面板部署 Chart；与根目录主 Chart 分开维护 |
+
+修改这些目录后应至少执行：
+
+```bash
+helm lint kodata/charts/cni
+helm lint kodata/charts/gpustack
+helm lint kodata/charts/k8s-offline
+```
+
+## 离线依赖包
+
+| 文件 | 调用方或用途 |
+|------|--------------|
+| `cert-manager-v1.19.2.tgz` | `kodata/shell/k3k-agent-upgrade.sh` 安装子集群 cert-manager |
+| `higress-2.1.6.tgz` | `kodata/shell/k3k-agent-upgrade.sh` 安装子集群 Higress |
+| `higress-2.2.3.tgz` | 保留的 Higress 离线包；当前仓库没有直接调用方，删除前需确认外部部署流程 |
+| `victoria-metrics-operator-0.43.0.tgz` | `app/application/console/metricsinstall.go` 安装 VictoriaMetrics Operator |
+
+更新压缩包时，必须同步修改调用方中的文件名和版本，不能只替换本目录文件。
+
+## BootstrapProfile 管理的内置应用
+
+以下应用不再维护 `kodata/charts/w7panel-*` 本地 Chart，而是由 `kodata/yaml/bootstrap-profile.yaml` 声明并通过 ZPK 首次安装：
+
+- `w7panel-pluginwhitedomain`
+- `w7panel-pluginratelimit`
+- `w7panel-cloudnoauth`
+
+基础 `w7panel-higress` 由集群初始化流程预先安装，不属于 BootstrapProfile。
+
+修改内置应用清单时必须同步递增 `BootstrapProfile.spec.revision`，并运行：
+
+```bash
+go test ./common/service/k8s/bootstrap
+```
+
+新增内置应用时优先使用 BootstrapProfile，不要重新增加 `w7panel-*` 本地 Chart 或在 `upgrade.sh` 中直接执行 `helm upgrade`。
