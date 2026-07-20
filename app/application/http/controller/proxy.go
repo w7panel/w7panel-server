@@ -13,6 +13,7 @@ import (
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/w7panel/w7panel/common/service/oidc"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
@@ -257,13 +258,8 @@ func (self Proxy) ProxyAddr(http *gin.Context) {
 }
 
 func (self Proxy) Kubeconfig(gin *gin.Context) {
-	client, err := k8s.NewK8sClient().Channel(gin.MustGet("k8s_token").(string))
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
 	apiServerUrl := gin.Query("apiServerUrl")
-	config, err := client.ToKubeconfig(apiServerUrl)
+	config, err := k8s.NewK8sClient().ToKubeconfigForServiceAccount(apiServerUrl, permissionservice.APIPermissionName)
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
