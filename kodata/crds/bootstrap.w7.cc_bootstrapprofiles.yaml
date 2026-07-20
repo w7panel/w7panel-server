@@ -49,8 +49,6 @@ spec:
               artifacts:
                 items:
                   properties:
-                    allowDowngrade:
-                      type: boolean
                     dependsOn:
                       items:
                         type: string
@@ -61,6 +59,10 @@ spec:
                       type: string
                     installOptions:
                       properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          type: object
                         helmValues:
                           additionalProperties:
                             type: string
@@ -70,15 +72,7 @@ spec:
                       type: string
                     namespace:
                       type: string
-                    reinstallPolicy:
-                      enum:
-                      - Required
-                      type: string
                     releaseName:
-                      type: string
-                    removalPolicy:
-                      enum:
-                      - Uninstall
                       type: string
                     source:
                       type: string
@@ -101,17 +95,7 @@ spec:
                 x-kubernetes-list-type: map
               defaults:
                 properties:
-                  allowDowngrade:
-                    type: boolean
                   failurePolicy:
-                    type: string
-                  reinstallPolicy:
-                    enum:
-                    - Required
-                    type: string
-                  removalPolicy:
-                    enum:
-                    - Uninstall
                     type: string
                 type: object
               revision:
@@ -215,9 +199,6 @@ spec:
                     format: int32
                     type: integer
                   ready:
-                    format: int32
-                    type: integer
-                  skipped:
                     format: int32
                     type: integer
                   total:

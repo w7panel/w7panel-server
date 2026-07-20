@@ -17,15 +17,29 @@ import (
 
 type artifactInstaller interface {
 	Lookup(context.Context, *bootstrapv1.ArtifactInstallation) (*installedArtifact, error)
-	InstallOrUpgrade(context.Context, *bootstrapv1.ArtifactInstallation) error
-	Uninstall(context.Context, string, string) error
+	Install(context.Context, *bootstrapv1.ArtifactInstallation) error
+	Uninstall(context.Context, *bootstrapv1.ArtifactInstallation) error
 }
+
+type installedArtifactState string
+
+const (
+	installedArtifactPresent  installedArtifactState = "Present"
+	installedArtifactDeleting installedArtifactState = "Deleting"
+)
+
+var (
+	errArtifactAlreadyExists = errors.New("artifact already exists")
+	errArtifactDeleting      = errors.New("artifact is deleting")
+)
 
 type installedArtifact struct {
 	Name      string
 	Namespace string
 	Identifie string
 	Version   string
+	State     installedArtifactState
+	Owned     bool
 }
 
 type zpkArtifactInstaller struct {
@@ -48,7 +62,7 @@ func (i *zpkArtifactInstaller) load(reference bootstrapv1.ArtifactReference) (*z
 	repo := logic.NewRepo(reference.Source, "", "")
 	repo.SetPanelToken(i.panelToken)
 	if reference.Version != "" {
-		repo.SetCurVersion(reference.Version)
+		repo.SetTargetVersion(reference.Version)
 	}
 	pack, err := repo.Load()
 	if err != nil {
@@ -77,16 +91,19 @@ func (i *zpkArtifactInstaller) Lookup(ctx context.Context, installation *bootstr
 		}
 		return nil, fmt.Errorf("查询 AppGroup %s/%s: %w", key.Namespace, key.Name, err)
 	}
+	state := installedArtifactPresent
 	if !group.DeletionTimestamp.IsZero() {
-		return nil, nil
+		state = installedArtifactDeleting
 	}
 	return &installedArtifact{
 		Name: group.Name, Namespace: group.Namespace,
 		Identifie: group.Spec.Identifie, Version: group.Spec.Version,
+		State: state,
+		Owned: isArtifactOwner(group.Annotations, installation),
 	}, nil
 }
 
-func (i *zpkArtifactInstaller) InstallOrUpgrade(ctx context.Context, installation *bootstrapv1.ArtifactInstallation) error {
+func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *bootstrapv1.ArtifactInstallation) error {
 	if effectiveArtifactType(installation.Spec.Artifact.Type) != bootstrapv1.ArtifactTypeZPK {
 		return fmt.Errorf("制品类型 %q 当前不支持", installation.Spec.Artifact.Type)
 	}
@@ -100,22 +117,21 @@ func (i *zpkArtifactInstaller) InstallOrUpgrade(ctx context.Context, installatio
 		return fmt.Errorf("创建命名空间 %q: %w", installation.Spec.Target.Namespace, err)
 	}
 	options := make([]zpktypes.InstallOption, 0, len(pack.Children)+1)
-	helmValues := installation.Spec.InstallOptions.HelmValues
-	sigClient, err := i.sdk.ToSigClient()
+	current, err := i.Lookup(ctx, installation)
 	if err != nil {
-		return fmt.Errorf("创建 AppGroup 客户端: %w", err)
+		return err
 	}
-	existingGroup := &appgroupv1.AppGroup{}
-	if err := sigClient.Get(ctx, client.ObjectKey{Name: installation.Spec.Target.ReleaseName, Namespace: installation.Spec.Target.Namespace}, existingGroup); err == nil {
-		// Profile 中的 Helm 参数是首次安装默认值，升级不覆盖用户当前 Values。
-		helmValues = nil
-	} else if !apierrors.IsNotFound(err) {
-		return fmt.Errorf("查询 AppGroup %s/%s: %w", installation.Spec.Target.Namespace, installation.Spec.Target.ReleaseName, err)
+	if current != nil {
+		if current.State == installedArtifactDeleting {
+			return errArtifactDeleting
+		}
+		return errArtifactAlreadyExists
 	}
 	options = append(options, zpktypes.InstallOption{
-		Identifie:  pack.Manifest.Application.Identifie,
-		Replicas:   1,
-		HelmValues: cloneStringMap(helmValues),
+		Identifie:   pack.Manifest.Application.Identifie,
+		Replicas:    1,
+		HelmValues:  cloneStringMap(installation.Spec.InstallOptions.HelmValues),
+		Annotations: artifactInstallAnnotations(installation),
 	})
 	for name, child := range pack.Children {
 		replicas := int32(0)
@@ -146,8 +162,8 @@ func (i *zpkArtifactInstaller) InstallOrUpgrade(ctx context.Context, installatio
 	if installer == nil {
 		return errors.New("初始化 ZPK 安装器失败")
 	}
-	if err := installer.InstallOrUpgrade(installation.Spec.Target.ReleaseName, installation.Spec.Target.Namespace); err != nil {
-		return fmt.Errorf("执行 ZPK InstallOrUpgrade: %w", err)
+	if err := installer.Install(installation.Spec.Target.ReleaseName, installation.Spec.Target.Namespace); err != nil {
+		return fmt.Errorf("执行 ZPK Install: %w", err)
 	}
 	return nil
 }
@@ -163,18 +179,42 @@ func cloneStringMap(source map[string]string) map[string]string {
 	return result
 }
 
-func (i *zpkArtifactInstaller) Uninstall(ctx context.Context, releaseName, namespace string) error {
+func (i *zpkArtifactInstaller) Uninstall(ctx context.Context, installation *bootstrapv1.ArtifactInstallation) error {
+	current, err := i.Lookup(ctx, installation)
+	if err != nil {
+		return err
+	}
+	if current == nil || current.State == installedArtifactDeleting || !current.Owned {
+		return nil
+	}
 	sigClient, err := i.sdk.ToSigClient()
 	if err != nil {
 		return fmt.Errorf("创建 AppGroup 客户端: %w", err)
 	}
 	group := &appgroupv1.AppGroup{}
-	group.Name = releaseName
-	group.Namespace = namespace
+	group.Name = current.Name
+	group.Namespace = current.Namespace
 	if err := sigClient.Delete(ctx, group); err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("删除 AppGroup %s/%s: %w", namespace, releaseName, err)
+		return fmt.Errorf("删除 AppGroup %s/%s: %w", current.Namespace, current.Name, err)
 	}
 	return nil
+}
+
+func artifactOwner(installation *bootstrapv1.ArtifactInstallation) string {
+	return installation.Spec.ProfileRef.UID + "/" + installation.Spec.Artifact.Name
+}
+
+func artifactInstallAnnotations(installation *bootstrapv1.ArtifactInstallation) map[string]string {
+	annotations := cloneStringMap(installation.Spec.InstallOptions.Annotations)
+	if annotations == nil {
+		annotations = make(map[string]string, 1)
+	}
+	annotations[bootstrapv1.AnnotationArtifactOwner] = artifactOwner(installation)
+	return annotations
+}
+
+func isArtifactOwner(annotations map[string]string, installation *bootstrapv1.ArtifactInstallation) bool {
+	return annotations[bootstrapv1.AnnotationArtifactOwner] == artifactOwner(installation)
 }
 
 func normalizeIdentifie(value string) string {

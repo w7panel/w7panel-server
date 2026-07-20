@@ -109,7 +109,7 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 
 控制器在 `k8s.watch=true` 时随共享 Controller Manager 启动。CRD 清单位于 `kodata/crds/bootstrap.w7.cc_*.yaml`，详细字段、状态机和示例见 [BootstrapProfile 预装制品方案](../docs/src/development/bootstrap-profile-artifact-installation.md)。
 
-当前自动安装执行器仅支持 HTTPS ZPK 源。`type` 作为执行器扩展点，未填写时兼容默认为 `ZPK`，当前其他类型会在 Profile 校验阶段被拒绝。Profile 里声明的每个 artifact 都会安装，不再使用 `enabled`/`required`。ZPK 可通过 `installOptions.helmValues` 为其内部 Helm 首次安装提供默认参数；已存在对应 AppGroup 时 Bootstrap 直接跳过，不执行自动升级。OCI 地址仍未开放执行。默认只允许 `zpk.w7.cc`，额外 HTTPS 主机需显式配置：
+当前自动安装执行器仅支持 HTTPS ZPK 源。`type` 作为执行器扩展点，未填写时兼容默认为 `ZPK`，当前其他类型会在 Profile 校验阶段被拒绝。Profile 里声明的每个 artifact 都会安装，不再使用 `enabled`/`required`。ZPK 可通过 `installOptions.helmValues` 提供内部 Helm 首次安装参数，并通过 `installOptions.annotations` 透传 AppGroup 和工作负载注解；已存在对应 AppGroup 时 Bootstrap 直接跳过，不执行自动升级。用户主动删除 AppGroup 后不会自动重装，直到 Profile revision 再次更新。OCI 地址仍未开放执行。默认只允许 `zpk.w7.cc`，额外 HTTPS 主机需显式配置：
 
 ```bash
 export BOOTSTRAP_ALLOWED_SOURCE_HOSTS=zpk.example.com,registry.example.com

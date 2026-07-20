@@ -88,9 +88,7 @@ func (r *ProfileReconciler) syncInstallation(ctx context.Context, profile *boots
 		}
 		installation.Labels[bootstrapv1.LabelProfile] = profile.Name
 		installation.Labels[bootstrapv1.LabelArtifact] = artifact.Name
-		if desiredSpec.RemovalPolicy == bootstrapv1.RemovalPolicyUninstall {
-			controllerutil.AddFinalizer(installation, bootstrapv1.ArtifactFinalizer)
-		}
+		controllerutil.AddFinalizer(installation, bootstrapv1.ArtifactFinalizer)
 		return controllerutil.SetControllerReference(profile, installation, r.Scheme)
 	})
 	if err != nil {
@@ -146,14 +144,12 @@ func (r *ProfileReconciler) updateProfileStatus(ctx context.Context, profile *bo
 			continue
 		}
 		switch installation.Status.Phase {
-		case bootstrapv1.BootstrapPhaseReady, bootstrapv1.BootstrapPhaseAheadOfProfile:
+		case bootstrapv1.BootstrapPhaseReady:
 			summary.Ready++
 		case bootstrapv1.BootstrapPhaseFailed:
 			summary.Failed++
 		case bootstrapv1.BootstrapPhaseBlocked:
 			summary.Blocked++
-		case bootstrapv1.BootstrapPhaseSkipped:
-			summary.Skipped++
 		default:
 			summary.Progressing++
 		}

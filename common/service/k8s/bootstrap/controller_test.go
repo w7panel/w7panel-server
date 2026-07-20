@@ -29,12 +29,12 @@ func (f *fakeArtifactInstaller) Lookup(context.Context, *bootstrapv1.ArtifactIns
 	return f.installed, f.lookupErr
 }
 
-func (f *fakeArtifactInstaller) InstallOrUpgrade(context.Context, *bootstrapv1.ArtifactInstallation) error {
+func (f *fakeArtifactInstaller) Install(context.Context, *bootstrapv1.ArtifactInstallation) error {
 	f.installCalls++
 	return f.err
 }
 
-func (f *fakeArtifactInstaller) Uninstall(context.Context, string, string) error {
+func (f *fakeArtifactInstaller) Uninstall(context.Context, *bootstrapv1.ArtifactInstallation) error {
 	f.uninstallCalls++
 	return f.err
 }
@@ -226,8 +226,7 @@ func TestArtifactReconcilerTreatsExistingAppGroupAsInstalledRegardlessOfVersionO
 		Spec:       effectiveArtifact(profile, artifact),
 		Status: bootstrapv1.ArtifactInstallationStatus{
 			ObservedProfileRevision: profile.Spec.Revision,
-			Phase:                   bootstrapv1.BootstrapPhaseAheadOfProfile,
-			ResolvedVersion:         artifact.Version,
+			Phase:                   bootstrapv1.BootstrapPhaseFailed,
 		},
 	}
 	group := &appgroupv1.AppGroup{
@@ -240,7 +239,7 @@ func TestArtifactReconcilerTreatsExistingAppGroupAsInstalledRegardlessOfVersionO
 	}
 	installer := &fakeArtifactInstaller{installed: &installedArtifact{
 		Name: group.Name, Namespace: group.Namespace,
-		Identifie: group.Spec.Identifie, Version: group.Spec.Version,
+		Identifie: group.Spec.Identifie, Version: group.Spec.Version, State: installedArtifactPresent,
 	}}
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).
 		WithStatusSubresource(profile, installation).
@@ -284,7 +283,6 @@ func TestArtifactReconcilerWaitsForInProgressOperationWithoutAppGroupMetadata(t 
 		Spec:       effectiveArtifact(profile, artifact),
 		Status: bootstrapv1.ArtifactInstallationStatus{
 			ObservedProfileRevision: profile.Spec.Revision,
-			ResolvedVersion:         artifact.Version,
 			Phase:                   bootstrapv1.BootstrapPhaseInstalling,
 			OperationID:             "operation-one",
 			StartedAt:               &startedAt,
@@ -309,6 +307,109 @@ func TestArtifactReconcilerWaitsForInProgressOperationWithoutAppGroupMetadata(t 
 	}
 	if installer.installCalls != 0 {
 		t.Fatalf("install calls = %d, want 0 while waiting for the existing operation", installer.installCalls)
+	}
+}
+
+func TestArtifactReconcilerBlocksWhileApplicationDeleting(t *testing.T) {
+	scheme := bootstrapTestScheme(t)
+	artifact := bootstrapv1.BootstrapArtifact{
+		Name: "one", Identifie: "one", Source: "https://zpk.w7.cc/info/one", ReleaseName: "one", Namespace: "default",
+	}
+	profile := &bootstrapv1.BootstrapProfile{
+		ObjectMeta: metav1.ObjectMeta{Name: "default-profile", UID: types.UID("profile-uid")},
+		Spec:       bootstrapv1.BootstrapProfileSpec{Revision: "1.0.0-1", Artifacts: []bootstrapv1.BootstrapArtifact{artifact}},
+	}
+	installation := &bootstrapv1.ArtifactInstallation{
+		ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name), Finalizers: []string{bootstrapv1.ArtifactFinalizer}},
+		Spec:       effectiveArtifact(profile, artifact),
+		Status: bootstrapv1.ArtifactInstallationStatus{
+			ObservedProfileRevision: profile.Spec.Revision,
+			Phase:                   bootstrapv1.BootstrapPhaseReady,
+		},
+	}
+	installer := &fakeArtifactInstaller{installed: &installedArtifact{
+		Name: "one", Namespace: "default", Identifie: "one", State: installedArtifactDeleting,
+	}}
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).
+		WithStatusSubresource(profile, installation).
+		WithObjects(profile, installation).
+		Build()
+	reconciler := &ArtifactReconciler{Client: k8sClient, Scheme: scheme, installer: installer}
+
+	result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: installation.Name}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.RequeueAfter == 0 {
+		t.Fatal("expected deleting application to be requeued")
+	}
+	updated := &bootstrapv1.ArtifactInstallation{}
+	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: installation.Name}, updated); err != nil {
+		t.Fatal(err)
+	}
+	if updated.Status.Phase != bootstrapv1.BootstrapPhaseBlocked || installer.installCalls != 0 {
+		t.Fatalf("status=%#v installCalls=%d", updated.Status, installer.installCalls)
+	}
+}
+
+func TestArtifactReconcilerDoesNotReinstallDeletedReadyApplication(t *testing.T) {
+	scheme := bootstrapTestScheme(t)
+	artifact := bootstrapv1.BootstrapArtifact{
+		Name: "one", Identifie: "one", Source: "https://zpk.w7.cc/info/one", ReleaseName: "one", Namespace: "default",
+	}
+	profile := &bootstrapv1.BootstrapProfile{
+		ObjectMeta: metav1.ObjectMeta{Name: "default-profile", UID: types.UID("profile-uid")},
+		Spec:       bootstrapv1.BootstrapProfileSpec{Revision: "1.0.0-1", Artifacts: []bootstrapv1.BootstrapArtifact{artifact}},
+	}
+	installation := &bootstrapv1.ArtifactInstallation{
+		ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name), Finalizers: []string{bootstrapv1.ArtifactFinalizer}},
+		Spec:       effectiveArtifact(profile, artifact),
+		Status: bootstrapv1.ArtifactInstallationStatus{
+			ObservedProfileRevision: profile.Spec.Revision,
+			Phase:                   bootstrapv1.BootstrapPhaseReady,
+		},
+	}
+	installer := &fakeArtifactInstaller{}
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).
+		WithStatusSubresource(profile, installation).
+		WithObjects(profile, installation).
+		Build()
+	reconciler := &ArtifactReconciler{Client: k8sClient, Scheme: scheme, installer: installer}
+
+	result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: installation.Name}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Requeue || result.RequeueAfter != 0 {
+		t.Fatalf("deleted ready application must not be requeued: %#v", result)
+	}
+	if installer.installCalls != 0 {
+		t.Fatalf("install calls = %d, want 0", installer.installCalls)
+	}
+}
+
+func TestArtifactOwnership(t *testing.T) {
+	installation := &bootstrapv1.ArtifactInstallation{Spec: bootstrapv1.ArtifactInstallationSpec{
+		ProfileRef: bootstrapv1.BootstrapProfileReference{UID: "profile-uid"},
+		Artifact:   bootstrapv1.ArtifactReference{Name: "one"},
+		InstallOptions: bootstrapv1.BootstrapInstallOptions{Annotations: map[string]string{
+			"w7.cc/deny-delete":                 "true",
+			bootstrapv1.AnnotationArtifactOwner: "untrusted-value",
+		}},
+	}}
+	annotations := artifactInstallAnnotations(installation)
+	if annotations["w7.cc/deny-delete"] != "true" {
+		t.Fatalf("custom annotation was not preserved: %v", annotations)
+	}
+	if annotations[bootstrapv1.AnnotationArtifactOwner] != "profile-uid/one" {
+		t.Fatalf("owner annotation was not enforced: %v", annotations)
+	}
+	if !isArtifactOwner(annotations, installation) {
+		t.Fatal("expected matching owner annotation")
+	}
+	annotations[bootstrapv1.AnnotationArtifactOwner] = "another-profile/one"
+	if isArtifactOwner(annotations, installation) {
+		t.Fatal("unexpected ownership for adopted application")
 	}
 }
 

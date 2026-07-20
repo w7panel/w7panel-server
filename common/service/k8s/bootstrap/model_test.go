@@ -51,12 +51,12 @@ func TestValidateProfile(t *testing.T) {
 		{name: "invalid helm value rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
 			profile.Spec.Artifacts[0].InstallOptions.HelmValues = map[string]string{"service.type": "value,with,commas"}
 		}, wantErr: "helmValues"},
-		{name: "removed retain policy rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Artifacts[0].RemovalPolicy = bootstrapv1.RemovalPolicy("Retain")
-		}, wantErr: "removalPolicy"},
-		{name: "removed never policy rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Artifacts[0].ReinstallPolicy = bootstrapv1.ReinstallPolicy("Never")
-		}, wantErr: "reinstallPolicy"},
+		{name: "invalid annotation name rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
+			profile.Spec.Artifacts[0].InstallOptions.Annotations = map[string]string{"invalid key": "true"}
+		}, wantErr: "annotations"},
+		{name: "internal owner annotation rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
+			profile.Spec.Artifacts[0].InstallOptions.Annotations = map[string]string{bootstrapv1.AnnotationArtifactOwner: "other"}
+		}, wantErr: "内部维护"},
 	}
 
 	for _, test := range tests {
@@ -85,7 +85,8 @@ func TestEffectiveArtifactDefaultsTypeAndCopiesHelmValues(t *testing.T) {
 		Name: "domain", Identifie: "domain", Source: "https://zpk.w7.cc/domain",
 		ReleaseName: "domain", Namespace: "default",
 		InstallOptions: bootstrapv1.BootstrapInstallOptions{
-			HelmValues: map[string]string{"service.type": "ClusterIP"},
+			HelmValues:  map[string]string{"service.type": "ClusterIP"},
+			Annotations: map[string]string{"w7.cc/deny-delete": "true"},
 		},
 	}
 
@@ -93,34 +94,12 @@ func TestEffectiveArtifactDefaultsTypeAndCopiesHelmValues(t *testing.T) {
 	if spec.Artifact.Type != bootstrapv1.ArtifactTypeZPK {
 		t.Fatalf("artifact type = %q, want %q", spec.Artifact.Type, bootstrapv1.ArtifactTypeZPK)
 	}
-	if spec.RemovalPolicy != bootstrapv1.RemovalPolicyUninstall || spec.ReinstallPolicy != bootstrapv1.ReinstallPolicyRequired {
-		t.Fatalf("default policies = removal %q, reinstall %q", spec.RemovalPolicy, spec.ReinstallPolicy)
-	}
 	spec.InstallOptions.HelmValues["service.type"] = "LoadBalancer"
 	if artifact.InstallOptions.HelmValues["service.type"] != "ClusterIP" {
 		t.Fatal("effectiveArtifact must deep-copy helmValues")
 	}
-}
-
-func TestDecideVersion(t *testing.T) {
-	tests := []struct {
-		name           string
-		installed      string
-		target         string
-		allowDowngrade bool
-		want           versionDecision
-	}{
-		{name: "install", target: "1.0.0", want: decisionInstall},
-		{name: "same", installed: "v1.0.0", target: "1.0.0", want: decisionSkip},
-		{name: "upgrade", installed: "1.0.0", target: "1.1.0", want: decisionUpgrade},
-		{name: "ahead", installed: "2.0.0", target: "1.1.0", want: decisionAhead},
-		{name: "downgrade explicitly allowed", installed: "2.0.0", target: "1.1.0", allowDowngrade: true, want: decisionUpgrade},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			if got := decideVersion(test.installed, test.target, test.allowDowngrade); got != test.want {
-				t.Fatalf("decideVersion() = %q, want %q", got, test.want)
-			}
-		})
+	spec.InstallOptions.Annotations["w7.cc/deny-delete"] = "false"
+	if artifact.InstallOptions.Annotations["w7.cc/deny-delete"] != "true" {
+		t.Fatal("effectiveArtifact must deep-copy annotations")
 	}
 }

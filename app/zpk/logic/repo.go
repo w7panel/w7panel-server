@@ -29,6 +29,7 @@ type repo struct {
 	upgrade        bool   `json:"upgrade"`       // 是否升级包
 	checkUpgrade   bool   `json:"check_upgrade"` // 是否升级包
 	curVersion     string `json:"cur_version"`
+	targetVersion  string `json:"target_version"`
 	// loadInnerDepends bool   `json:"load_inner_depends"` // 是否加载内部依赖
 }
 
@@ -90,6 +91,10 @@ func (self *repo) SetPanelToken(token string) {
 
 func (self *repo) SetCurVersion(version string) {
 	self.curVersion = version
+}
+
+func (self *repo) SetTargetVersion(version string) {
+	self.targetVersion = version
 }
 
 func (self *repo) getConsoleUrl() string {
@@ -178,6 +183,9 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 	}
 	if self.curVersion != "" {
 		req.SetQueryParam("cur_version", self.curVersion)
+	}
+	if self.targetVersion != "" {
+		req.SetQueryParam("version", self.targetVersion)
 	}
 	if isParent {
 		req.SetQueryParam("reinstall", strconv.FormatBool(self.isFormulaMissingInCurrentPanel(uri)))

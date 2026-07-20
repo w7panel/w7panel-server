@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"reflect"
@@ -99,6 +100,9 @@ func (r *ArtifactReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	if installed != nil && installed.State == installedArtifactDeleting {
+		return r.requeueWithStatus(ctx, installation, bootstrapv1.BootstrapPhaseBlocked, "等待对应应用删除完成", 5*time.Second)
+	}
 	if installed != nil && normalizeIdentifie(installed.Identifie) != normalizeIdentifie(installation.Spec.Artifact.Identifie) {
 		return ctrl.Result{}, r.updateStatus(ctx, installation, bootstrapv1.BootstrapPhaseFailed,
 			fmt.Sprintf("已安装应用 %s/%s identifie=%q 与 Profile 的 %q 冲突", installed.Namespace, installed.Name, installed.Identifie, installation.Spec.Artifact.Identifie), nil, true)
@@ -121,13 +125,12 @@ func (r *ArtifactReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.requeueWithStatus(ctx, installation, bootstrapv1.BootstrapPhaseBlocked, message, 10*time.Second)
 	}
 
-	operationInProgress := installation.Status.Phase == bootstrapv1.BootstrapPhaseInstalling ||
-		installation.Status.Phase == bootstrapv1.BootstrapPhaseUpgrading
+	operationInProgress := installation.Status.Phase == bootstrapv1.BootstrapPhaseInstalling
 	if operationInProgress {
 		return r.waitForAppGroup(ctx, installation, settings)
 	}
 
-	operation := operationID(installation, installation.Spec.Artifact.Version)
+	operation := operationID(installation)
 	acquired, err := r.slots.acquire(ctx, profile.Name, operation, settings.MaxConcurrent, settings.TimeoutPerArtifact)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -149,8 +152,14 @@ func (r *ArtifactReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		_ = r.slots.release(ctx, operation)
 		return ctrl.Result{}, err
 	}
-	if err := r.installer.InstallOrUpgrade(ctx, installation); err != nil {
+	if err := r.installer.Install(ctx, installation); err != nil {
 		_ = r.slots.release(ctx, operation)
+		if errors.Is(err, errArtifactAlreadyExists) {
+			return r.requeueWithStatus(ctx, installation, bootstrapv1.BootstrapPhasePending, "已检测到对应应用，正在重新确认", time.Second)
+		}
+		if errors.Is(err, errArtifactDeleting) {
+			return r.requeueWithStatus(ctx, installation, bootstrapv1.BootstrapPhaseBlocked, "等待对应应用删除完成", 5*time.Second)
+		}
 		return r.retry(ctx, installation, settings, err)
 	}
 	slog.Info("Bootstrap 应用操作已提交", "profile", profile.Name, "application", installation.Spec.Artifact.Name, "operationID", operation, "phase", phase)
@@ -161,7 +170,7 @@ func (r *ArtifactReconciler) reconcileDeletion(ctx context.Context, installation
 	if !controllerutil.ContainsFinalizer(installation, bootstrapv1.ArtifactFinalizer) {
 		return ctrl.Result{}, nil
 	}
-	if err := r.installer.Uninstall(ctx, installation.Spec.Target.ReleaseName, installation.Spec.Target.Namespace); err != nil {
+	if err := r.installer.Uninstall(ctx, installation); err != nil {
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, err
 	}
 	base := installation.DeepCopy()
@@ -190,7 +199,7 @@ func (r *ArtifactReconciler) dependenciesReady(ctx context.Context, installation
 			// Continue 策略只记录失败，不阻止依赖任务。
 			continue
 		}
-		if item.Status.Phase != bootstrapv1.BootstrapPhaseReady && item.Status.Phase != bootstrapv1.BootstrapPhaseAheadOfProfile && item.Status.Phase != bootstrapv1.BootstrapPhaseSkipped {
+		if item.Status.Phase != bootstrapv1.BootstrapPhaseReady {
 			return false, fmt.Sprintf("等待依赖 %q Ready", dependency), nil
 		}
 	}

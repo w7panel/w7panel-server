@@ -49,8 +49,6 @@ spec:
             type: object
           spec:
             properties:
-              allowDowngrade:
-                type: boolean
               artifact:
                 properties:
                   identifie:
@@ -78,6 +76,10 @@ spec:
                 type: string
               installOptions:
                 properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    type: object
                   helmValues:
                     additionalProperties:
                       type: string
@@ -95,14 +97,6 @@ spec:
                 type: object
               profileRevision:
                 type: string
-              reinstallPolicy:
-                enum:
-                - Required
-                type: string
-              removalPolicy:
-                enum:
-                - Uninstall
-                type: string
               target:
                 properties:
                   namespace:
@@ -118,8 +112,6 @@ spec:
             - failurePolicy
             - profileRef
             - profileRevision
-            - reinstallPolicy
-            - removalPolicy
             - target
             type: object
           status:
@@ -143,10 +135,6 @@ spec:
               operationID:
                 type: string
               phase:
-                type: string
-              requestedVersion:
-                type: string
-              resolvedVersion:
                 type: string
               retryCount:
                 format: int32

@@ -58,24 +58,6 @@ func effectiveArtifact(profile *bootstrapv1.BootstrapProfile, artifact bootstrap
 	if failurePolicy == "" {
 		failurePolicy = bootstrapv1.FailurePolicyContinue
 	}
-	removalPolicy := artifact.RemovalPolicy
-	if removalPolicy == "" {
-		removalPolicy = profile.Spec.Defaults.RemovalPolicy
-	}
-	if removalPolicy == "" {
-		removalPolicy = bootstrapv1.RemovalPolicyUninstall
-	}
-	reinstallPolicy := artifact.ReinstallPolicy
-	if reinstallPolicy == "" {
-		reinstallPolicy = profile.Spec.Defaults.ReinstallPolicy
-	}
-	if reinstallPolicy == "" {
-		reinstallPolicy = bootstrapv1.ReinstallPolicyRequired
-	}
-	allowDowngrade := profile.Spec.Defaults.AllowDowngrade
-	if artifact.AllowDowngrade != nil {
-		allowDowngrade = *artifact.AllowDowngrade
-	}
 	return bootstrapv1.ArtifactInstallationSpec{
 		ProfileRef: bootstrapv1.BootstrapProfileReference{
 			Name: profile.Name,
@@ -93,12 +75,12 @@ func effectiveArtifact(profile *bootstrapv1.BootstrapProfile, artifact bootstrap
 			ReleaseName: artifact.ReleaseName,
 			Namespace:   artifact.Namespace,
 		},
-		FailurePolicy:   failurePolicy,
-		RemovalPolicy:   removalPolicy,
-		ReinstallPolicy: reinstallPolicy,
-		AllowDowngrade:  allowDowngrade,
-		DependsOn:       append([]string(nil), artifact.DependsOn...),
-		InstallOptions:  bootstrapv1.BootstrapInstallOptions{HelmValues: cloneStringMap(artifact.InstallOptions.HelmValues)},
+		FailurePolicy: failurePolicy,
+		DependsOn:     append([]string(nil), artifact.DependsOn...),
+		InstallOptions: bootstrapv1.BootstrapInstallOptions{
+			HelmValues:  cloneStringMap(artifact.InstallOptions.HelmValues),
+			Annotations: cloneStringMap(artifact.InstallOptions.Annotations),
+		},
 	}
 }
 
@@ -118,8 +100,13 @@ func artifactInstallationName(profileName, artifactName string) string {
 	return strings.TrimRight(name[:236], "-.") + "-" + hex.EncodeToString(sum[:8])
 }
 
-func operationID(installation *bootstrapv1.ArtifactInstallation, version string) string {
-	input := installation.Spec.ProfileRef.UID + "\x00" + installation.Spec.ProfileRevision + "\x00" + installation.Spec.Artifact.Name + "\x00" + version
+func operationID(installation *bootstrapv1.ArtifactInstallation) string {
+	input := fmt.Sprintf("%s\x00%s\x00%s\x00%s",
+		installation.Spec.ProfileRef.UID,
+		installation.Spec.ProfileRevision,
+		installation.Spec.Artifact.Name,
+		installation.Spec.Artifact.Version,
+	)
 	sum := sha256.Sum256([]byte(input))
 	// 128 bits keeps the ID collision-resistant and valid as a Kubernetes label value.
 	return hex.EncodeToString(sum[:16])
@@ -139,11 +126,7 @@ func validateProfile(profile *bootstrapv1.BootstrapProfile) error {
 	if settings.MaxConcurrent > 50 {
 		return errors.New("strategy.maxConcurrent 不能大于 50")
 	}
-	if err := validatePolicies(bootstrapv1.BootstrapArtifact{
-		FailurePolicy:   profile.Spec.Defaults.FailurePolicy,
-		RemovalPolicy:   profile.Spec.Defaults.RemovalPolicy,
-		ReinstallPolicy: profile.Spec.Defaults.ReinstallPolicy,
-	}); err != nil {
+	if err := validateFailurePolicy(profile.Spec.Defaults.FailurePolicy); err != nil {
 		return fmt.Errorf("spec.defaults: %w", err)
 	}
 
@@ -185,7 +168,10 @@ func validateProfile(profile *bootstrapv1.BootstrapProfile) error {
 		if err := validateHelmValues(artifact.InstallOptions.HelmValues); err != nil {
 			return fmt.Errorf("%s.installOptions.helmValues: %w", path, err)
 		}
-		if err := validatePolicies(artifact); err != nil {
+		if err := validateAnnotations(artifact.InstallOptions.Annotations); err != nil {
+			return fmt.Errorf("%s.installOptions.annotations: %w", path, err)
+		}
+		if err := validateFailurePolicy(artifact.FailurePolicy); err != nil {
 			return fmt.Errorf("%s: %w", path, err)
 		}
 	}
@@ -224,15 +210,27 @@ func validateHelmValues(values map[string]string) error {
 	return nil
 }
 
-func validatePolicies(artifact bootstrapv1.BootstrapArtifact) error {
-	if artifact.FailurePolicy != "" && artifact.FailurePolicy != bootstrapv1.FailurePolicyContinue && artifact.FailurePolicy != bootstrapv1.FailurePolicyStop {
-		return fmt.Errorf("failurePolicy %q 无效", artifact.FailurePolicy)
+func validateAnnotations(annotations map[string]string) error {
+	if len(annotations) > 100 {
+		return errors.New("最多允许 100 个注解")
 	}
-	if artifact.RemovalPolicy != "" && artifact.RemovalPolicy != bootstrapv1.RemovalPolicyUninstall {
-		return fmt.Errorf("removalPolicy %q 无效", artifact.RemovalPolicy)
+	for key, value := range annotations {
+		if errs := validation.IsQualifiedName(key); len(errs) > 0 {
+			return fmt.Errorf("注解名 %q 无效: %s", key, strings.Join(errs, ", "))
+		}
+		if key == bootstrapv1.AnnotationArtifactOwner {
+			return fmt.Errorf("注解 %q 由 Bootstrap 内部维护，不能自定义", key)
+		}
+		if len(value) > 16*1024 {
+			return fmt.Errorf("注解 %q 的值不能超过 16 KiB", key)
+		}
 	}
-	if artifact.ReinstallPolicy != "" && artifact.ReinstallPolicy != bootstrapv1.ReinstallPolicyRequired {
-		return fmt.Errorf("reinstallPolicy %q 无效", artifact.ReinstallPolicy)
+	return nil
+}
+
+func validateFailurePolicy(policy bootstrapv1.FailurePolicy) error {
+	if policy != "" && policy != bootstrapv1.FailurePolicyContinue && policy != bootstrapv1.FailurePolicyStop {
+		return fmt.Errorf("failurePolicy %q 无效", policy)
 	}
 	return nil
 }
@@ -310,30 +308,6 @@ func dependencyCycle(artifacts map[string]bootstrapv1.BootstrapArtifact) []strin
 	return nil
 }
 
-type versionDecision string
-
-const (
-	decisionInstall versionDecision = "Install"
-	decisionUpgrade versionDecision = "Upgrade"
-	decisionSkip    versionDecision = "Skip"
-	decisionAhead   versionDecision = "Ahead"
-)
-
-func decideVersion(installed, target string, allowDowngrade bool) versionDecision {
-	if installed == "" {
-		return decisionInstall
-	}
-	comparison := compareVersions(installed, target)
-	switch {
-	case comparison == 0:
-		return decisionSkip
-	case comparison > 0 && !allowDowngrade:
-		return decisionAhead
-	default:
-		return decisionUpgrade
-	}
-}
-
 func compareVersions(left, right string) int {
 	leftSemver, rightSemver := normalizeSemver(left), normalizeSemver(right)
 	if semver.IsValid(leftSemver) && semver.IsValid(rightSemver) {
@@ -353,9 +327,7 @@ func normalizeSemver(version string) string {
 func terminalPhase(phase bootstrapv1.BootstrapPhase) bool {
 	switch phase {
 	case bootstrapv1.BootstrapPhaseReady,
-		bootstrapv1.BootstrapPhaseFailed,
-		bootstrapv1.BootstrapPhaseSkipped,
-		bootstrapv1.BootstrapPhaseAheadOfProfile:
+		bootstrapv1.BootstrapPhaseFailed:
 		return true
 	default:
 		return false
