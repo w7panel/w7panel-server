@@ -12,6 +12,7 @@ import (
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -205,12 +206,48 @@ func TestSyncPermissionResourcesCreatesBuiltinAccountAndBinding(t *testing.T) {
 	if sa.Labels["w7.cc/permission-account"] != "true" {
 		t.Fatalf("permission account label = %q", sa.Labels["w7.cc/permission-account"])
 	}
+	secret := &corev1.Secret{}
+	if err := client.Get(context.Background(), types.NamespacedName{Name: NormalPermissionName, Namespace: "default"}, secret); !apierrors.IsNotFound(err) {
+		t.Fatalf("normal permission must not create a token secret, got err = %v", err)
+	}
 	binding := &rbacv1.ClusterRoleBinding{}
 	if err := client.Get(context.Background(), types.NamespacedName{Name: NormalPermissionName}, binding); err != nil {
 		t.Fatalf("expected builtin permission ClusterRoleBinding: %v", err)
 	}
 	if len(binding.Subjects) != 1 || binding.Subjects[0].Name != NormalPermissionName || binding.RoleRef.Name != NormalPermissionName {
 		t.Fatalf("unexpected ClusterRoleBinding: %#v", binding)
+	}
+}
+
+func TestSyncPermissionResourcesCreatesAPITokenSecret(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := rbacv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	client := fake.NewClientBuilder().WithScheme(scheme).Build()
+	p := &configv1alpha1.Permission{
+		ObjectMeta: metav1.ObjectMeta{Name: APIPermissionName},
+		Spec: configv1alpha1.PermissionSpec{
+			Type: "builtin",
+			Role: APIPermissionName,
+		},
+	}
+
+	if err := syncPermissionResources(context.Background(), client, "default", p); err != nil {
+		t.Fatalf("syncPermissionResources() error = %v", err)
+	}
+	secret := &corev1.Secret{}
+	if err := client.Get(context.Background(), types.NamespacedName{Name: APIPermissionName, Namespace: "default"}, secret); err != nil {
+		t.Fatalf("expected api token Secret: %v", err)
+	}
+	if secret.Type != corev1.SecretTypeServiceAccountToken {
+		t.Fatalf("secret type = %q, want %q", secret.Type, corev1.SecretTypeServiceAccountToken)
+	}
+	if secret.Annotations[corev1.ServiceAccountNameKey] != APIPermissionName {
+		t.Fatalf("service account annotation = %q, want %q", secret.Annotations[corev1.ServiceAccountNameKey], APIPermissionName)
 	}
 }
 
