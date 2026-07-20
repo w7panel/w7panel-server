@@ -166,31 +166,6 @@ spec:
     webshell: true
   rbacRules:
   - apiGroups:
-    - apiextensions.k8s.io
-    resources:
-    - customresourcedefinitions
-    verbs:
-    - get
-    - list
-    - watch
-  - apiGroups:
-    - ''
-    resources:
-    - namespaces
-    - serviceaccounts
-    verbs:
-    - get
-    - list
-    - watch
-  - apiGroups:
-    - w7panel.w7.com
-    resources:
-    - '*'
-    verbs:
-    - get
-    - list
-    - watch
-  - apiGroups:
     - ''
     resources:
     - configmaps
@@ -198,33 +173,54 @@ spec:
     - events
     - persistentvolumeclaims
     - pods
-    - pods/attach
-    - pods/exec
-    - pods/log
-    - pods/portforward
-    - pods/proxy
     - replicationcontrollers
-    - replicationcontrollers/scale
     - secrets
     - services
-    - services/proxy
     verbs:
-    - '*'
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
   - apiGroups:
     - apps
     resources:
-    - '*'
+    - daemonsets
+    - deployments
+    - replicasets
+    - statefulsets
     verbs:
-    - '*'
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
   - apiGroups:
     - batch
     resources:
-    - '*'
+    - cronjobs
+    - jobs
     verbs:
-    - '*'
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
   - apiGroups:
     - networking.k8s.io
     resources:
-    - '*'
+    - ingresses
     verbs:
-    - '*'
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch

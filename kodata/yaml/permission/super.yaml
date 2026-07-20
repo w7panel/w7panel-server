@@ -244,31 +244,6 @@ spec:
     webshell: true
   rbacRules:
   - apiGroups:
-    - apiextensions.k8s.io
-    resources:
-    - customresourcedefinitions
-    verbs:
-    - get
-    - list
-    - watch
-  - apiGroups:
-    - ''
-    resources:
-    - namespaces
-    - serviceaccounts
-    verbs:
-    - get
-    - list
-    - watch
-  - apiGroups:
-    - w7panel.w7.com
-    resources:
-    - '*'
-    verbs:
-    - get
-    - list
-    - watch
-  - apiGroups:
     - ''
     resources:
     - bindings
