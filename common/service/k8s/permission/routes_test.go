@@ -20,12 +20,22 @@ func TestRoutesFromGinReturnsStructuredRoutes(t *testing.T) {
 			Method: "POST",
 			Path:   "/panel-api/v1/files/webdav-test/*path",
 		},
+		{
+			Method: "PROPFIND",
+			Path:   "/panel-api/v1/files/webdav-test/*path",
+		},
+		{
+			Method: "OPTIONS",
+			Path:   "/panel-api/v1/files/webdav-test/*path",
+		},
 	})
 
 	expected := map[string]string{
-		"GET /panel-api/v1/example/*":            "get",
-		"GET /panel-api/v1/gpu/config":           "get",
-		"POST /panel-api/v1/files/webdav-test/*": "create",
+		"GET /panel-api/v1/example/*":                "get",
+		"GET /panel-api/v1/gpu/config":               "get",
+		"POST /panel-api/v1/files/webdav-test/*":     "create",
+		"PROPFIND /panel-api/v1/files/webdav-test/*": "propfind",
+		"OPTIONS /panel-api/v1/files/webdav-test/*":  "options",
 	}
 	if len(routes) != len(expected) {
 		t.Fatalf("expected %d routes, got %d", len(expected), len(routes))

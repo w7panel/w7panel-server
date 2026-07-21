@@ -9,9 +9,12 @@ import (
 
 	"github.com/w7panel/w7panel/common/service/k8s"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -79,5 +82,38 @@ func (r *PermissionController) reconcile0(ctx context.Context, req ctrl.Request)
 		logger.Error(err, "Failed to sync Permission RBAC resources")
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
+	if IsBuiltin(permission) && permission.Name == NormalPermissionName {
+		if err := r.ensureMetricsReaderAccess(ctx, permission.Name); err != nil {
+			logger.Error(err, "Failed to bind metrics reader access")
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+	}
 	return ctrl.Result{}, nil
+}
+
+func (r *PermissionController) ensureMetricsReaderAccess(ctx context.Context, username string) error {
+	if r.Client == nil {
+		return fmt.Errorf("controller-runtime client is not configured")
+	}
+
+	const clusterRoleName = "ckm-metrics-reader"
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: username + "-" + clusterRoleName,
+		},
+	}
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, clusterRoleBinding, func() error {
+		clusterRoleBinding.Subjects = []rbacv1.Subject{{
+			Kind:      "ServiceAccount",
+			Name:      username,
+			Namespace: "default",
+		}}
+		clusterRoleBinding.RoleRef = rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     clusterRoleName,
+		}
+		return nil
+	})
+	return err
 }

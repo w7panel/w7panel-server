@@ -34,6 +34,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		engine.GET("/panel-api/v1/metrics/installed", middleware.Auth{}.Process, controller2.Metrics{}.VmOperatorInstalled)
 		engine.GET("/panel-api/v1/metrics/state", middleware.Auth{}.Process, controller2.Metrics{}.MetricsState)
+		engine.GET("/panel-api/v1/metrics/query-range", middleware.Auth{}.Process, controller2.Metrics{}.QueryRange)
 	})
 }
 

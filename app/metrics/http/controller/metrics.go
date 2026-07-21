@@ -1,12 +1,17 @@
 package controller
 
 import (
+	"context"
 	"log/slog"
+	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/metrics"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 
@@ -18,6 +23,66 @@ type MetricsInstall struct {
 	Installed bool   `json:"installed"`
 	BaseUrl   string `json:"baseUrl"`
 	Namespace string `json:"namespace"`
+}
+
+var (
+	queryMetricsRange = metrics.QueryRange
+	resolveMetricsSDK = metricsSDKForToken
+)
+
+func shouldUseRootMetricsSDK(isK3k bool, clusterMode string) bool {
+	return !isK3k || clusterMode == k3ktypes.K3K_CLUSTER_MODE_SHARED
+}
+
+func metricsSDKForToken(token string, forceLocal bool) (*k8s.Sdk, error) {
+	client := k8s.NewK8sClient()
+	if forceLocal {
+		return client.Sdk, nil
+	}
+	tokenInfo := k8s.NewK8sToken(token)
+	if !tokenInfo.IsK3kCluster() {
+		return client.Sdk, nil
+	}
+
+	user, err := k3k.TokenToK3kUser(token)
+	if err != nil {
+		return nil, err
+	}
+	if shouldUseRootMetricsSDK(true, user.Labels[k3ktypes.K3K_CLUSTER_MODE]) {
+		return client.Sdk, nil
+	}
+	return client.Channel(token)
+}
+
+func (self Metrics) QueryRange(httpContext *gin.Context) {
+	query := strings.TrimSpace(httpContext.Query("query"))
+	if query == "" {
+		httpContext.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "msg": "query不能为空"})
+		return
+	}
+
+	params := map[string]string{"query": query}
+	for _, name := range []string{"start", "end", "step"} {
+		if value := strings.TrimSpace(httpContext.Query(name)); value != "" {
+			params[name] = value
+		}
+	}
+
+	local := httpContext.Query("local")
+	forceLocal := local == "1" || strings.EqualFold(local, "true")
+	sdk, err := resolveMetricsSDK(httpContext.MustGet("k8s_token").(string), forceLocal)
+	if err != nil {
+		self.JsonResponseWithServerError(httpContext, err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(httpContext.Request.Context(), 30*time.Second)
+	defer cancel()
+	data, err := queryMetricsRange(ctx, sdk, params)
+	if err != nil {
+		self.JsonResponseWithServerError(httpContext, err)
+		return
+	}
+	httpContext.Data(http.StatusOK, "application/json; charset=utf-8", data)
 }
 
 func (self Metrics) VmOperatorInstalled(http *gin.Context) {
