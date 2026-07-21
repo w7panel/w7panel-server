@@ -4,7 +4,7 @@ metadata:
   name: w7panel-default
 spec:
   # 修改预装应用清单时必须同步递增 revision。
-  revision: "1.1.76-1"
+  revision: "1.1.76-2"
   strategy:
     maxConcurrent: 2
     maxRetries: 3
@@ -20,6 +20,7 @@ spec:
       namespace: default
       installOptions:
         annotations:
+          w7.cc/official-app: "true"
           w7.cc/deny-delete: "true"
 
     - name: pluginratelimit
@@ -30,6 +31,7 @@ spec:
       namespace: default
       installOptions:
         annotations:
+          w7.cc/official-app: "true"
           w7.cc/deny-delete: "true"
 
     - name: cloudnoauth
@@ -40,4 +42,5 @@ spec:
       namespace: default
       installOptions:
         annotations:
+          w7.cc/official-app: "true"
           w7.cc/deny-delete: "true"
