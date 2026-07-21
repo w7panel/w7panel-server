@@ -72,6 +72,6 @@ func verbForHTTPMethod(method string) string {
 	case "DELETE":
 		return "delete"
 	default:
-		return ""
+		return strings.ToLower(method)
 	}
 }
