@@ -258,6 +258,30 @@ func syncPermissionResources(ctx context.Context, client client.Client, namespac
 	}); err != nil {
 		return err
 	}
+	if p.Name == APIPermissionName {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      p.Name,
+				Namespace: namespace,
+			},
+		}
+		if _, err := controllerutil.CreateOrPatch(ctx, client, secret, func() error {
+			if secret.Type != "" && secret.Type != corev1.SecretTypeServiceAccountToken {
+				return fmt.Errorf("api token secret %s has unexpected type %q", secret.Name, secret.Type)
+			}
+			if secret.Annotations == nil {
+				secret.Annotations = map[string]string{}
+			}
+			if serviceAccountName := secret.Annotations[corev1.ServiceAccountNameKey]; serviceAccountName != "" && serviceAccountName != p.Name {
+				return fmt.Errorf("api token secret %s belongs to service account %q", secret.Name, serviceAccountName)
+			}
+			secret.Type = corev1.SecretTypeServiceAccountToken
+			secret.Annotations[corev1.ServiceAccountNameKey] = p.Name
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{Name: p.Name},
 	}

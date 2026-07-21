@@ -263,6 +263,7 @@ func (u *k3kUser) ToArray() map[string]string {
 	result := map[string]string{
 		K3K_USER_MODE:    u.Spec.UserMode,
 		"w7.cc/username": u.Name,
+		"w7.cc/nickname": u.Spec.CloudNickname,
 		K3K_NAME:         u.Name,
 		K3K_NAMESPACE:    u.GetK3kNamespace(),
 		K3K_DEBUG:        boolString(u.Spec.Features.Debug),

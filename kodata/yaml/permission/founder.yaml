@@ -12,7 +12,6 @@ spec:
   - cluster
   - cluster/panel
   - cluster/resource
-  - cluster/dns
   - app
   - app/apps
   - app/apps/add
@@ -39,6 +38,7 @@ spec:
   - gateway/plugins/add
   - gateway/plugins/edit
   - gateway/plugins/delete
+  - gateway/dns
   - app/database
   - app/database/add
   - app/database/delete

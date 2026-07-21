@@ -22,12 +22,16 @@ import (
 */
 func (u *k3kUser) ReplaceCkm(ckm *cvmv1alpha1.Ckm) {
 	if ckm.Annotations == nil {
-		return
+		ckm.Annotations = make(map[string]string)
+		// return
 	}
 
 	u.Spec.Features.Debug = ckm.Annotations[K3K_DEBUG] == "true"
 	u.Spec.Features.Webshell = ckm.Annotations[W7_WEB_SHELL] == "true"
 	u.Spec.Features.Fileeditor = ckm.Annotations[W7_FILE_EDITTOR] == "true"
+	if u.Annotations == nil {
+		u.Annotations = make(map[string]string)
+	}
 	u.Annotations[W7_SERVER0_POD_NAME] = ckm.Status.Server0PodName
 
 	if ckm.Spec.Rescue { //维护模式 只给这几个权限 只能删除 不能新建编辑

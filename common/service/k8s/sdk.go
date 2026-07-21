@@ -1080,6 +1080,32 @@ func (self *Sdk) CreateServiceAccountSecret(serviceAccount string) (*corev1.Secr
 }
 
 func (self Sdk) ToKubeconfig(apiServerUrl string) (*clientcmdv1.Config, error) {
+	saName := self.GetServiceAccountName()
+	if helper.IsLocalMock() {
+		saName = helper.ServiceAccountName()
+	}
+	if saName == "" {
+		slog.Warn("saName is empty")
+		saName = facade.GetConfig().GetString("app.helm_release_name")
+	}
+	return self.toKubeconfig(apiServerUrl, saName, true)
+}
+
+// ToKubeconfigForServiceAccount generates a kubeconfig that authenticates only
+// as the explicitly selected ServiceAccount. Caller credentials are never
+// copied into the returned kubeconfig.
+func (self Sdk) ToKubeconfigForServiceAccount(apiServerUrl, serviceAccountName string) (*clientcmdv1.Config, error) {
+	serviceAccountName = strings.TrimSpace(serviceAccountName)
+	if serviceAccountName == "" {
+		return nil, fmt.Errorf("service account name is required")
+	}
+	if _, err := self.GetServiceAccount(self.namespace, serviceAccountName); err != nil {
+		return nil, fmt.Errorf("get service account %s: %w", serviceAccountName, err)
+	}
+	return self.toKubeconfig(apiServerUrl, serviceAccountName, false)
+}
+
+func (self Sdk) toKubeconfig(apiServerUrl, serviceAccountName string, includeCallerCredentials bool) (*clientcmdv1.Config, error) {
 
 	restConfig := self.restConfig
 	kubeConfig := &clientcmdv1.Config{}
@@ -1103,24 +1129,18 @@ func (self Sdk) ToKubeconfig(apiServerUrl string) (*clientcmdv1.Config, error) {
 		}
 		cluster.CertificateAuthorityData = data
 	}
-	saName := self.GetServiceAccountName()
-	// saName := "w7panel"
-	if helper.IsLocalMock() {
-		saName = helper.ServiceAccountName()
-	}
-	if saName == "" {
-		slog.Warn("saName is empty")
-		saName = facade.GetConfig().GetString("app.helm_release_name")
-	}
-	slog.Info("to kubectl sa name", "saName", saName)
-	secret, err := self.CreateServiceAccountSecret(saName)
+	slog.Info("to kubectl sa name", "saName", serviceAccountName)
+	secret, err := self.CreateServiceAccountSecret(serviceAccountName)
 	if err != nil {
 		return nil, err
 	}
 	token := secret.Data["token"] //secret是admin
 	if len(token) == 0 {
-		secret, err = self.CreateServiceAccountSecret(saName)
-		token := secret.Data["token"]
+		secret, err = self.CreateServiceAccountSecret(serviceAccountName)
+		if err != nil {
+			return nil, err
+		}
+		token = secret.Data["token"]
 		if len(token) == 0 {
 			slog.Warn("token is empty", "secretName", secret.Name)
 			return nil, fmt.Errorf("token is empty 请重试")
@@ -1128,12 +1148,13 @@ func (self Sdk) ToKubeconfig(apiServerUrl string) (*clientcmdv1.Config, error) {
 	}
 	namedcluster := clientcmdv1.NamedCluster{Name: name, Cluster: cluster}
 	// 设置用户信息
-	authInfo := clientcmdv1.AuthInfo{}
-	authInfo.ClientCertificateData = restConfig.CertData
-	authInfo.ClientKeyData = restConfig.KeyData
-	authInfo.Token = string(token) //restConfig.BearerToken
-	authInfo.Username = restConfig.Username
-	authInfo.Password = restConfig.Password
+	authInfo := clientcmdv1.AuthInfo{Token: string(token)}
+	if includeCallerCredentials {
+		authInfo.ClientCertificateData = restConfig.CertData
+		authInfo.ClientKeyData = restConfig.KeyData
+		authInfo.Username = restConfig.Username
+		authInfo.Password = restConfig.Password
+	}
 
 	namedauth := clientcmdv1.NamedAuthInfo{Name: name, AuthInfo: authInfo}
 

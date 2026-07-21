@@ -165,6 +165,7 @@ spec:
     fileeditor: true
     webshell: true
   rbacRules:
+  # Sensitive cluster and panel configuration is visible but immutable to the API account.
   - apiGroups:
     - apiextensions.k8s.io
     resources:
@@ -198,33 +199,54 @@ spec:
     - events
     - persistentvolumeclaims
     - pods
-    - pods/attach
-    - pods/exec
-    - pods/log
-    - pods/portforward
-    - pods/proxy
     - replicationcontrollers
-    - replicationcontrollers/scale
     - secrets
     - services
-    - services/proxy
     verbs:
-    - '*'
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
   - apiGroups:
     - apps
     resources:
-    - '*'
+    - daemonsets
+    - deployments
+    - replicasets
+    - statefulsets
     verbs:
-    - '*'
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
   - apiGroups:
     - batch
     resources:
-    - '*'
+    - cronjobs
+    - jobs
     verbs:
-    - '*'
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
   - apiGroups:
     - networking.k8s.io
     resources:
-    - '*'
+    - ingresses
     verbs:
-    - '*'
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
