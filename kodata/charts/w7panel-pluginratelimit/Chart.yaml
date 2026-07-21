@@ -15,6 +15,7 @@ annotations:
   w7.cc/description: "higress限流"
   title: "higress限流"
   w7.cc/deny-delete: "true"
+  w7.cc/official-app: "true"
   w7.cc/icon: "https://zpk.fan.b2.sz.w7.com/zpk/zip/icon/w7panel-pluginratelimit"
   w7.cc/zpk-url: "https://zpk.fan.b2.sz.w7.com/zpk/respo/info/w7panel-pluginratelimit"
   w7.cc/identifie: "w7panel-pluginratelimit"

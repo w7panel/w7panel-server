@@ -127,6 +127,7 @@ func (h *HelmWorkload) resourceToQueue(release *release.Release) (bool, error) {
 	return hasApp, nil
 }
 
+// 从 helm chart注解中复制到 appgroup 注解的机制下一版废弃
 func (h *HelmWorkload) releaseToAppGroup(release *release.Release) *v1alpha1Types.AppGroup {
 	annotations := release.Chart.Metadata.Annotations
 	source, ok := annotations[zpktypes.HELM_RELEASE_SOURCE]
@@ -189,6 +190,10 @@ func (h *HelmWorkload) releaseToAppGroup(release *release.Release) *v1alpha1Type
 	val5, ok5 := annotations[zpktypes.HELM_DENY_DELETE]
 	if ok5 {
 		group.Annotations[zpktypes.HELM_DENY_DELETE] = val5
+	}
+	val5, ok5 = annotations[zpktypes.HELM_OFFICAL_APP]
+	if ok5 {
+		group.Annotations[zpktypes.HELM_OFFICAL_APP] = val5
 	}
 	return group
 }
