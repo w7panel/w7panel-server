@@ -41,8 +41,8 @@ func profileSettings(profile *bootstrapv1.BootstrapProfile) effectiveProfile {
 	if profile.Spec.Strategy.MaxConcurrent > 0 {
 		settings.MaxConcurrent = profile.Spec.Strategy.MaxConcurrent
 	}
-	if profile.Spec.Strategy.MaxRetries > 0 {
-		settings.MaxRetries = profile.Spec.Strategy.MaxRetries
+	if profile.Spec.Strategy.MaxRetries != nil {
+		settings.MaxRetries = *profile.Spec.Strategy.MaxRetries
 	}
 	if profile.Spec.Strategy.TimeoutPerArtifact.Duration > 0 {
 		settings.TimeoutPerArtifact = profile.Spec.Strategy.TimeoutPerArtifact.Duration
@@ -120,7 +120,9 @@ func validateProfile(profile *bootstrapv1.BootstrapProfile) error {
 		return fmt.Errorf("Profile 名称不能作为标签值: %s", strings.Join(errs, ", "))
 	}
 	settings := profileSettings(profile)
-	if profile.Spec.Strategy.MaxConcurrent < 0 || profile.Spec.Strategy.MaxRetries < 0 || profile.Spec.Strategy.TimeoutPerArtifact.Duration < 0 {
+	if profile.Spec.Strategy.MaxConcurrent < 0 ||
+		(profile.Spec.Strategy.MaxRetries != nil && *profile.Spec.Strategy.MaxRetries < 0) ||
+		profile.Spec.Strategy.TimeoutPerArtifact.Duration < 0 {
 		return errors.New("strategy 中的数值不能为负数")
 	}
 	if settings.MaxConcurrent > 50 {

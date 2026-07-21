@@ -6,6 +6,7 @@ import (
 
 	bootstrapv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrap/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
 
 func TestValidateProfile(t *testing.T) {
@@ -71,6 +72,31 @@ func TestValidateProfile(t *testing.T) {
 			}
 			if test.wantErr != "" && (err == nil || !strings.Contains(err.Error(), test.wantErr)) {
 				t.Fatalf("validateProfile() error = %v, want substring %q", err, test.wantErr)
+			}
+		})
+	}
+}
+
+func TestProfileSettingsMaxRetries(t *testing.T) {
+	tests := []struct {
+		name       string
+		maxRetries *int32
+		want       int32
+	}{
+		{name: "omitted uses default", want: defaultMaxRetries},
+		{name: "explicit zero disables retries", maxRetries: ptr.To[int32](0), want: 0},
+		{name: "explicit value", maxRetries: ptr.To[int32](5), want: 5},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			profile := &bootstrapv1.BootstrapProfile{
+				Spec: bootstrapv1.BootstrapProfileSpec{
+					Strategy: bootstrapv1.BootstrapStrategy{MaxRetries: test.maxRetries},
+				},
+			}
+			if got := profileSettings(profile).MaxRetries; got != test.want {
+				t.Fatalf("MaxRetries = %d, want %d", got, test.want)
 			}
 		})
 	}

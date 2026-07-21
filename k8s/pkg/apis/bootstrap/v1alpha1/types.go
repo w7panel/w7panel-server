@@ -44,7 +44,7 @@ const (
 type BootstrapStrategy struct {
 	MaxConcurrent      int32           `json:"maxConcurrent,omitempty"`
 	TimeoutPerArtifact metav1.Duration `json:"timeoutPerArtifact,omitempty"`
-	MaxRetries         int32           `json:"maxRetries,omitempty"`
+	MaxRetries         *int32          `json:"maxRetries,omitempty"`
 }
 
 type BootstrapDefaults struct {

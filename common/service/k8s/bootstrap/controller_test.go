@@ -475,7 +475,7 @@ func TestArtifactReconcilerTimesOutExistingAppGroup(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "default-profile", UID: types.UID("profile-uid")},
 		Spec: bootstrapv1.BootstrapProfileSpec{
 			Revision:  "1.0.0-1",
-			Strategy:  bootstrapv1.BootstrapStrategy{MaxRetries: 1, TimeoutPerArtifact: metav1.Duration{Duration: time.Second}},
+			Strategy:  bootstrapv1.BootstrapStrategy{MaxRetries: ptr.To[int32](1), TimeoutPerArtifact: metav1.Duration{Duration: time.Second}},
 			Artifacts: []bootstrapv1.BootstrapArtifact{artifact},
 		},
 	}

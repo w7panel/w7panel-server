@@ -399,6 +399,11 @@ func (in *BootstrapProfileStatus) DeepCopy() *BootstrapProfileStatus {
 func (in *BootstrapStrategy) DeepCopyInto(out *BootstrapStrategy) {
 	*out = *in
 	out.TimeoutPerArtifact = in.TimeoutPerArtifact
+	if in.MaxRetries != nil {
+		in, out := &in.MaxRetries, &out.MaxRetries
+		*out = new(int32)
+		**out = **in
+	}
 	return
 }
 
