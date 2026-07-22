@@ -183,7 +183,7 @@ func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *instal
 	if installer == nil {
 		return errors.New("初始化 ZPK 安装器失败")
 	}
-	if err := installer.Install(installation.Spec.Target.ReleaseName, installation.Spec.Target.Namespace); err != nil {
+	if err := installer.InstallOrUpgrade(installation.Spec.Target.ReleaseName, installation.Spec.Target.Namespace); err != nil {
 		return fmt.Errorf("执行 ZPK Install: %w", err)
 	}
 	return nil
