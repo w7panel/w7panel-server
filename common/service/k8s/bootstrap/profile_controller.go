@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"time"
 
+	artifactv1 "github.com/w7panel/w7panel/k8s/pkg/apis/artifactinstallation/v1alpha1"
 	bootstrapv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrap/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,7 +26,7 @@ func setupProfileController(mgr ctrl.Manager) error {
 	reconciler := &ProfileReconciler{Client: mgr.GetClient(), Scheme: mgr.GetScheme()}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&bootstrapv1.BootstrapProfile{}).
-		Owns(&bootstrapv1.ArtifactInstallation{}).
+		Owns(&artifactv1.ArtifactInstallation{}).
 		Complete(reconciler)
 }
 
@@ -42,7 +43,7 @@ func (r *ProfileReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, r.updateInvalidProfileStatus(ctx, profile, err)
 	}
 
-	installations := &bootstrapv1.ArtifactInstallationList{}
+	installations := &artifactv1.ArtifactInstallationList{}
 	if err := r.List(ctx, installations, client.MatchingLabels{bootstrapv1.LabelProfile: profile.Name}); err != nil {
 		return ctrl.Result{}, fmt.Errorf("查询 ArtifactInstallation: %w", err)
 	}
@@ -80,7 +81,7 @@ func (r *ProfileReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 func (r *ProfileReconciler) syncInstallation(ctx context.Context, profile *bootstrapv1.BootstrapProfile, artifact bootstrapv1.BootstrapArtifact) (bool, error) {
 	desiredSpec := effectiveArtifact(profile, artifact)
-	installation := &bootstrapv1.ArtifactInstallation{ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name)}}
+	installation := &artifactv1.ArtifactInstallation{ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name)}}
 	result, err := controllerutil.CreateOrUpdate(ctx, r.Client, installation, func() error {
 		installation.Spec = desiredSpec
 		if installation.Labels == nil {
@@ -117,7 +118,7 @@ func (r *ProfileReconciler) updateInvalidProfileStatus(ctx context.Context, prof
 }
 
 func (r *ProfileReconciler) updateProfileStatus(ctx context.Context, profile *bootstrapv1.BootstrapProfile) error {
-	installations := &bootstrapv1.ArtifactInstallationList{}
+	installations := &artifactv1.ArtifactInstallationList{}
 	if err := r.List(ctx, installations, client.MatchingLabels{bootstrapv1.LabelProfile: profile.Name}); err != nil {
 		return err
 	}

@@ -107,7 +107,7 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 
 ### BootstrapProfile 预装制品
 
-控制器在 `k8s.watch=true` 时随共享 Controller Manager 启动。ArtifactInstallation 只有在对应 AppGroup 同时满足 `status.ready=true` 和 `status.deployStatus=deployed` 时才进入 Ready；安装 Lease 会持有到真实部署完成、失败或超时。Lease 抢占、续租、释放和并发槽已统一复用 `common/service/k8s/coordination/`，详细设计见 [Kubernetes Lease 协调组件](../docs/src/development/k8s-coordination.md)。CRD 清单位于 `kodata/crds/bootstrap.w7.cc_*.yaml`，字段、状态机和示例见 [BootstrapProfile 预装制品方案](../docs/src/development/bootstrap-profile-artifact-installation.md)。
+控制器在 `k8s.watch=true` 时随共享 Controller Manager 启动。BootstrapProfile 和 ArtifactInstallation 统一使用 `w7panel.w7.com/v1alpha1` API Group。ArtifactInstallation 只有在对应 AppGroup 同时满足 `status.ready=true` 和 `status.deployStatus=deployed` 时才进入 Ready；安装 Lease 会持有到真实部署完成、失败或超时。Lease 抢占、续租、释放和并发槽已统一复用 `common/service/k8s/coordination/`，详细设计见 [Kubernetes Lease 协调组件](../docs/src/development/k8s-coordination.md)。CRD 清单位于 `kodata/crds/w7panel.w7.com_bootstrapprofiles.yaml` 和 `kodata/crds/w7panel.w7.com_artifactinstallations.yaml`，字段、状态机和示例见 [BootstrapProfile 预装制品方案](../docs/src/development/bootstrap-profile-artifact-installation.md)。
 
 `spec.strategy.maxRetries` 未填写时默认重试 3 次；显式设置为 `0` 时不重试。
 

@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: artifactinstallations.bootstrap.w7.cc
+  name: artifactinstallations.w7panel.w7.com
 spec:
-  group: bootstrap.w7.cc
+  group: w7panel.w7.com
   names:
     kind: ArtifactInstallation
     listKind: ArtifactInstallationList

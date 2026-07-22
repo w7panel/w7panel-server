@@ -6,6 +6,7 @@ import (
 	"time"
 
 	appgroupv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
+	artifactv1 "github.com/w7panel/w7panel/k8s/pkg/apis/artifactinstallation/v1alpha1"
 	bootstrapv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrap/v1alpha1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,12 +28,12 @@ type fakeArtifactInstaller struct {
 	waitForCancel  bool
 }
 
-func (f *fakeArtifactInstaller) Lookup(context.Context, *bootstrapv1.ArtifactInstallation) (*installedArtifact, error) {
+func (f *fakeArtifactInstaller) Lookup(context.Context, *artifactv1.ArtifactInstallation) (*installedArtifact, error) {
 	f.lookupCalls++
 	return f.installed, f.lookupErr
 }
 
-func (f *fakeArtifactInstaller) Install(ctx context.Context, _ *bootstrapv1.ArtifactInstallation) error {
+func (f *fakeArtifactInstaller) Install(ctx context.Context, _ *artifactv1.ArtifactInstallation) error {
 	f.installCalls++
 	if deadline, ok := ctx.Deadline(); ok {
 		f.installTimeout = time.Until(deadline)
@@ -44,7 +45,7 @@ func (f *fakeArtifactInstaller) Install(ctx context.Context, _ *bootstrapv1.Arti
 	return f.err
 }
 
-func (f *fakeArtifactInstaller) Uninstall(context.Context, *bootstrapv1.ArtifactInstallation) error {
+func (f *fakeArtifactInstaller) Uninstall(context.Context, *artifactv1.ArtifactInstallation) error {
 	f.uninstallCalls++
 	return f.err
 }
@@ -53,6 +54,9 @@ func bootstrapTestScheme(t *testing.T) *runtime.Scheme {
 	t.Helper()
 	scheme := runtime.NewScheme()
 	if err := bootstrapv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := artifactv1.AddToScheme(scheme); err != nil {
 		t.Fatal(err)
 	}
 	if err := appgroupv1.AddToScheme(scheme); err != nil {
@@ -142,25 +146,25 @@ func TestProfileReconcilerSynchronizesAllArtifacts(t *testing.T) {
 			},
 		},
 	}
-	existing := &bootstrapv1.ArtifactInstallation{
+	existing := &artifactv1.ArtifactInstallation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   artifactInstallationName(profile.Name, "two"),
 			Labels: map[string]string{bootstrapv1.LabelProfile: profile.Name, bootstrapv1.LabelArtifact: "two"},
 		},
 		Spec: effectiveArtifact(profile, profile.Spec.Artifacts[1]),
 	}
-	obsolete := &bootstrapv1.ArtifactInstallation{
+	obsolete := &artifactv1.ArtifactInstallation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:       artifactInstallationName(profile.Name, "obsolete"),
 			Labels:     map[string]string{bootstrapv1.LabelProfile: profile.Name, bootstrapv1.LabelArtifact: "obsolete"},
 			Finalizers: []string{bootstrapv1.ArtifactFinalizer},
 		},
-		Spec: bootstrapv1.ArtifactInstallationSpec{
+		Spec: artifactv1.ArtifactInstallationSpec{
 			ProfileRef: bootstrapv1.BootstrapProfileReference{Name: profile.Name, UID: string(profile.UID)},
 			Artifact:   bootstrapv1.ArtifactReference{Name: "obsolete"},
 		},
 	}
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(profile, &bootstrapv1.ArtifactInstallation{}).WithObjects(profile, existing, obsolete).Build()
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(profile, &artifactv1.ArtifactInstallation{}).WithObjects(profile, existing, obsolete).Build()
 	reconciler := &ProfileReconciler{Client: k8sClient, Scheme: scheme}
 	result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: profile.Name}})
 	if err != nil {
@@ -169,7 +173,7 @@ func TestProfileReconcilerSynchronizesAllArtifacts(t *testing.T) {
 	if result.RequeueAfter == 0 {
 		t.Fatal("expected a status refresh after synchronizing resources")
 	}
-	list := &bootstrapv1.ArtifactInstallationList{}
+	list := &artifactv1.ArtifactInstallationList{}
 	if err := k8sClient.List(context.Background(), list); err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +181,7 @@ func TestProfileReconcilerSynchronizesAllArtifacts(t *testing.T) {
 		t.Fatalf("installations = %d, want 3 desired artifacts plus terminating obsolete artifact", len(list.Items))
 	}
 	for _, artifact := range profile.Spec.Artifacts {
-		installation := &bootstrapv1.ArtifactInstallation{}
+		installation := &artifactv1.ArtifactInstallation{}
 		name := artifactInstallationName(profile.Name, artifact.Name)
 		if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: name}, installation); err != nil {
 			t.Fatalf("get desired installation %q: %v", name, err)
@@ -186,7 +190,7 @@ func TestProfileReconcilerSynchronizesAllArtifacts(t *testing.T) {
 			t.Fatalf("desired installation %q finalizers = %v", name, installation.Finalizers)
 		}
 	}
-	removed := &bootstrapv1.ArtifactInstallation{}
+	removed := &artifactv1.ArtifactInstallation{}
 	removedName := artifactInstallationName(profile.Name, "obsolete")
 	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: removedName}, removed); err != nil {
 		t.Fatalf("get obsolete installation %q: %v", removedName, err)
@@ -198,15 +202,15 @@ func TestProfileReconcilerSynchronizesAllArtifacts(t *testing.T) {
 
 func TestReconcileDeletionUsesArtifactInstaller(t *testing.T) {
 	scheme := bootstrapTestScheme(t)
-	installation := &bootstrapv1.ArtifactInstallation{
+	installation := &artifactv1.ArtifactInstallation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:       "default-profile-one",
 			Finalizers: []string{bootstrapv1.ArtifactFinalizer},
 		},
-		Spec: bootstrapv1.ArtifactInstallationSpec{
+		Spec: artifactv1.ArtifactInstallationSpec{
 			Target: bootstrapv1.ArtifactTarget{ReleaseName: "one", Namespace: "default"},
 		},
-		Status: bootstrapv1.ArtifactInstallationStatus{OperationID: "operation-one"},
+		Status: artifactv1.ArtifactInstallationStatus{OperationID: "operation-one"},
 	}
 	lease := &coordinationv1.Lease{
 		ObjectMeta: metav1.ObjectMeta{Name: "bootstrap-default-profile-slot", Namespace: "default", Labels: map[string]string{"w7.cc/bootstrap-slot": "true"}},
@@ -222,7 +226,7 @@ func TestReconcileDeletionUsesArtifactInstaller(t *testing.T) {
 	if installer.uninstallCalls != 1 {
 		t.Fatalf("uninstall calls = %d, want 1", installer.uninstallCalls)
 	}
-	updated := &bootstrapv1.ArtifactInstallation{}
+	updated := &artifactv1.ArtifactInstallation{}
 	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: installation.Name}, updated); err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +252,7 @@ func TestArtifactReconcilerInstallsUnspecifiedVersionWithoutPreResolving(t *test
 		ObjectMeta: metav1.ObjectMeta{Name: "default-profile", UID: types.UID("profile-uid")},
 		Spec:       bootstrapv1.BootstrapProfileSpec{Revision: "1.0.0-1", Artifacts: []bootstrapv1.BootstrapArtifact{artifact}},
 	}
-	installation := &bootstrapv1.ArtifactInstallation{
+	installation := &artifactv1.ArtifactInstallation{
 		ObjectMeta: metav1.ObjectMeta{Name: "default-profile-one", Finalizers: []string{bootstrapv1.ArtifactFinalizer}},
 		Spec:       effectiveArtifact(profile, artifact),
 	}
@@ -262,7 +266,7 @@ func TestArtifactReconcilerInstallsUnspecifiedVersionWithoutPreResolving(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	updated := &bootstrapv1.ArtifactInstallation{}
+	updated := &artifactv1.ArtifactInstallation{}
 	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: installation.Name}, updated); err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +297,7 @@ func TestArtifactReconcilerHoldsLeaseUntilAppGroupReady(t *testing.T) {
 			Artifacts: []bootstrapv1.BootstrapArtifact{artifact},
 		},
 	}
-	installation := &bootstrapv1.ArtifactInstallation{
+	installation := &artifactv1.ArtifactInstallation{
 		ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name), Finalizers: []string{bootstrapv1.ArtifactFinalizer}},
 		Spec:       effectiveArtifact(profile, artifact),
 	}
@@ -358,7 +362,7 @@ func TestArtifactReconcilerCancelsInstallAtArtifactTimeout(t *testing.T) {
 			Artifacts: []bootstrapv1.BootstrapArtifact{artifact},
 		},
 	}
-	installation := &bootstrapv1.ArtifactInstallation{
+	installation := &artifactv1.ArtifactInstallation{
 		ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name), Finalizers: []string{bootstrapv1.ArtifactFinalizer}},
 		Spec:       effectiveArtifact(profile, artifact),
 	}
@@ -383,7 +387,7 @@ func TestArtifactReconcilerCancelsInstallAtArtifactTimeout(t *testing.T) {
 	if result.RequeueAfter == 0 {
 		t.Fatal("timed out install was not scheduled for retry")
 	}
-	updated := &bootstrapv1.ArtifactInstallation{}
+	updated := &artifactv1.ArtifactInstallation{}
 	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: installation.Name}, updated); err != nil {
 		t.Fatal(err)
 	}
@@ -409,10 +413,10 @@ func TestArtifactReconcilerWaitsForExistingAppGroupToBecomeReady(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "default-profile", UID: types.UID("profile-uid")},
 		Spec:       bootstrapv1.BootstrapProfileSpec{Revision: "1.0.0-1", Artifacts: []bootstrapv1.BootstrapArtifact{artifact}},
 	}
-	installation := &bootstrapv1.ArtifactInstallation{
+	installation := &artifactv1.ArtifactInstallation{
 		ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name), Finalizers: []string{bootstrapv1.ArtifactFinalizer}},
 		Spec:       effectiveArtifact(profile, artifact),
-		Status: bootstrapv1.ArtifactInstallationStatus{
+		Status: artifactv1.ArtifactInstallationStatus{
 			ObservedProfileRevision: profile.Spec.Revision,
 			Phase:                   bootstrapv1.BootstrapPhaseFailed,
 		},
@@ -438,7 +442,7 @@ func TestArtifactReconcilerWaitsForExistingAppGroupToBecomeReady(t *testing.T) {
 	if _, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: installation.Name}}); err != nil {
 		t.Fatal(err)
 	}
-	updated := &bootstrapv1.ArtifactInstallation{}
+	updated := &artifactv1.ArtifactInstallation{}
 	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: installation.Name}, updated); err != nil {
 		t.Fatal(err)
 	}
@@ -480,10 +484,10 @@ func TestArtifactReconcilerTimesOutExistingAppGroup(t *testing.T) {
 		},
 	}
 	startedAt := metav1.NewTime(time.Now().Add(-2 * time.Second))
-	installation := &bootstrapv1.ArtifactInstallation{
+	installation := &artifactv1.ArtifactInstallation{
 		ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name), Finalizers: []string{bootstrapv1.ArtifactFinalizer}},
 		Spec:       effectiveArtifact(profile, artifact),
-		Status: bootstrapv1.ArtifactInstallationStatus{
+		Status: artifactv1.ArtifactInstallationStatus{
 			ObservedProfileRevision: profile.Spec.Revision,
 			Phase:                   bootstrapv1.BootstrapPhaseInstalling,
 			StartedAt:               &startedAt,
@@ -505,7 +509,7 @@ func TestArtifactReconcilerTimesOutExistingAppGroup(t *testing.T) {
 	if result.RequeueAfter == 0 {
 		t.Fatal("failed existing AppGroup should remain observable")
 	}
-	updated := &bootstrapv1.ArtifactInstallation{}
+	updated := &artifactv1.ArtifactInstallation{}
 	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: installation.Name}, updated); err != nil {
 		t.Fatal(err)
 	}
@@ -524,10 +528,10 @@ func TestArtifactReconcilerWaitsForInProgressOperationWithoutAppGroupMetadata(t 
 		Spec:       bootstrapv1.BootstrapProfileSpec{Revision: "1.0.0-1", Artifacts: []bootstrapv1.BootstrapArtifact{artifact}},
 	}
 	startedAt := metav1.Now()
-	installation := &bootstrapv1.ArtifactInstallation{
+	installation := &artifactv1.ArtifactInstallation{
 		ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name), Finalizers: []string{bootstrapv1.ArtifactFinalizer}},
 		Spec:       effectiveArtifact(profile, artifact),
-		Status: bootstrapv1.ArtifactInstallationStatus{
+		Status: artifactv1.ArtifactInstallationStatus{
 			ObservedProfileRevision: profile.Spec.Revision,
 			Phase:                   bootstrapv1.BootstrapPhaseInstalling,
 			OperationID:             "operation-one",
@@ -565,10 +569,10 @@ func TestArtifactReconcilerBlocksWhileApplicationDeleting(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "default-profile", UID: types.UID("profile-uid")},
 		Spec:       bootstrapv1.BootstrapProfileSpec{Revision: "1.0.0-1", Artifacts: []bootstrapv1.BootstrapArtifact{artifact}},
 	}
-	installation := &bootstrapv1.ArtifactInstallation{
+	installation := &artifactv1.ArtifactInstallation{
 		ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name), Finalizers: []string{bootstrapv1.ArtifactFinalizer}},
 		Spec:       effectiveArtifact(profile, artifact),
-		Status: bootstrapv1.ArtifactInstallationStatus{
+		Status: artifactv1.ArtifactInstallationStatus{
 			ObservedProfileRevision: profile.Spec.Revision,
 			Phase:                   bootstrapv1.BootstrapPhaseReady,
 		},
@@ -589,7 +593,7 @@ func TestArtifactReconcilerBlocksWhileApplicationDeleting(t *testing.T) {
 	if result.RequeueAfter == 0 {
 		t.Fatal("expected deleting application to be requeued")
 	}
-	updated := &bootstrapv1.ArtifactInstallation{}
+	updated := &artifactv1.ArtifactInstallation{}
 	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: installation.Name}, updated); err != nil {
 		t.Fatal(err)
 	}
@@ -607,10 +611,10 @@ func TestArtifactReconcilerDoesNotReinstallDeletedReadyApplication(t *testing.T)
 		ObjectMeta: metav1.ObjectMeta{Name: "default-profile", UID: types.UID("profile-uid")},
 		Spec:       bootstrapv1.BootstrapProfileSpec{Revision: "1.0.0-1", Artifacts: []bootstrapv1.BootstrapArtifact{artifact}},
 	}
-	installation := &bootstrapv1.ArtifactInstallation{
+	installation := &artifactv1.ArtifactInstallation{
 		ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name), Finalizers: []string{bootstrapv1.ArtifactFinalizer}},
 		Spec:       effectiveArtifact(profile, artifact),
-		Status: bootstrapv1.ArtifactInstallationStatus{
+		Status: artifactv1.ArtifactInstallationStatus{
 			ObservedProfileRevision: profile.Spec.Revision,
 			Phase:                   bootstrapv1.BootstrapPhaseReady,
 		},
@@ -635,7 +639,7 @@ func TestArtifactReconcilerDoesNotReinstallDeletedReadyApplication(t *testing.T)
 }
 
 func TestArtifactOwnership(t *testing.T) {
-	installation := &bootstrapv1.ArtifactInstallation{Spec: bootstrapv1.ArtifactInstallationSpec{
+	installation := &artifactv1.ArtifactInstallation{Spec: artifactv1.ArtifactInstallationSpec{
 		ProfileRef: bootstrapv1.BootstrapProfileReference{UID: "profile-uid"},
 		Artifact:   bootstrapv1.ArtifactReference{Name: "one"},
 		InstallOptions: bootstrapv1.BootstrapInstallOptions{Annotations: map[string]string{
@@ -670,13 +674,13 @@ func TestProfileStatusDoesNotReusePreviousRevisionTerminalState(t *testing.T) {
 			},
 		},
 	}
-	installation := &bootstrapv1.ArtifactInstallation{
+	installation := &artifactv1.ArtifactInstallation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   artifactInstallationName(profile.Name, "one"),
 			Labels: map[string]string{bootstrapv1.LabelProfile: profile.Name, bootstrapv1.LabelArtifact: "one"},
 		},
 		Spec: effectiveArtifact(profile, profile.Spec.Artifacts[0]),
-		Status: bootstrapv1.ArtifactInstallationStatus{
+		Status: artifactv1.ArtifactInstallationStatus{
 			ObservedProfileRevision: "1.0.0-1",
 			Phase:                   bootstrapv1.BootstrapPhaseReady,
 		},
@@ -717,16 +721,16 @@ func TestDependenciesReadyHonorsFailurePolicy(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			scheme := bootstrapTestScheme(t)
-			dependency := &bootstrapv1.ArtifactInstallation{
+			dependency := &artifactv1.ArtifactInstallation{
 				ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName("default-profile", "dependency")},
-				Spec: bootstrapv1.ArtifactInstallationSpec{
+				Spec: artifactv1.ArtifactInstallationSpec{
 					ProfileRevision: "1.0.0-1",
 					FailurePolicy:   test.failurePolicy,
 				},
-				Status: bootstrapv1.ArtifactInstallationStatus{Phase: test.phase},
+				Status: artifactv1.ArtifactInstallationStatus{Phase: test.phase},
 			}
-			installation := &bootstrapv1.ArtifactInstallation{
-				Spec: bootstrapv1.ArtifactInstallationSpec{
+			installation := &artifactv1.ArtifactInstallation{
+				Spec: artifactv1.ArtifactInstallationSpec{
 					ProfileRef:      bootstrapv1.BootstrapProfileReference{Name: "default-profile"},
 					ProfileRevision: "1.0.0-1",
 					DependsOn:       []string{"dependency"},
@@ -748,9 +752,9 @@ func TestDependenciesReadyHonorsFailurePolicy(t *testing.T) {
 
 func TestUpdateStatusRecordsObservedRevision(t *testing.T) {
 	scheme := bootstrapTestScheme(t)
-	installation := &bootstrapv1.ArtifactInstallation{
+	installation := &artifactv1.ArtifactInstallation{
 		ObjectMeta: metav1.ObjectMeta{Name: "default-profile-one"},
-		Spec:       bootstrapv1.ArtifactInstallationSpec{ProfileRevision: "2.0.0-1"},
+		Spec:       artifactv1.ArtifactInstallationSpec{ProfileRevision: "2.0.0-1"},
 	}
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).
 		WithStatusSubresource(installation).
@@ -761,7 +765,7 @@ func TestUpdateStatusRecordsObservedRevision(t *testing.T) {
 	if err := reconciler.updateStatus(context.Background(), installation, bootstrapv1.BootstrapPhaseBlocked, "waiting", nil, false); err != nil {
 		t.Fatal(err)
 	}
-	updated := &bootstrapv1.ArtifactInstallation{}
+	updated := &artifactv1.ArtifactInstallation{}
 	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: installation.Name}, updated); err != nil {
 		t.Fatal(err)
 	}

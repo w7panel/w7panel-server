@@ -5,10 +5,6 @@ echo "导入crd"
 kubectl apply -f $KO_DATA_PATH/crds --server-side
 sh $KO_DATA_PATH/shell/migrate-crd-groups.sh
 
-echo "同步内置 BootstrapProfile"
-kubectl wait --for=condition=Established crd/bootstrapprofiles.bootstrap.w7.cc --timeout=60s
-kubectl apply -f $KO_DATA_PATH/yaml/bootstrap-profile.yaml --server-side
-
 echo "导入webhook公共CA"
 if kubectl get namespace cert-manager >/dev/null 2>&1 && kubectl get crd certificates.cert-manager.io >/dev/null 2>&1 && kubectl get crd clusterissuers.cert-manager.io >/dev/null 2>&1; then
   kubectl apply -f $KO_DATA_PATH/yaml/webhook-ca.yaml
@@ -89,17 +85,13 @@ echo "higress config"
 # higress 可能未启动成功 导致crd未创建 job设置重试3次
 kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
 
-echo "迁移域名和限流插件历史配置"
-DOMAIN_TARGET_GROUP=w7panel-pluginwhitedomain \
-RATE_LIMIT_TARGET_GROUP=w7panel-pluginratelimit \
-TARGET_WAIT_SECONDS=600 \
-DELETE_LEGACY=true \
-sh $KO_DATA_PATH/shell/upgrade-wasm-plugins.sh all
-
-
 # kubectl create secret generic k3k.addon --from-file=manifests.yaml=$KO_DATA_PATH/yaml/k3k/k3k.addon.yaml --dry-run=client -o yaml | kubectl apply -f - || echo "已存在k3k.addon"
 
 # kubectl apply -f $KO_DATA_PATH/yaml/k3k/virtualclusterpolicy.yaml
+
+echo "同步内置 BootstrapProfile"
+kubectl apply -f $KO_DATA_PATH/yaml/bootstrap-profile.yaml --server-side
+
 
 # echo "卸载异常面板"
 # w7panel uninstall-store-panel

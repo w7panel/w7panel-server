@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: bootstrapprofiles.bootstrap.w7.cc
+  name: bootstrapprofiles.w7panel.w7.com
 spec:
-  group: bootstrap.w7.cc
+  group: w7panel.w7.com
   names:
     kind: BootstrapProfile
     listKind: BootstrapProfileList

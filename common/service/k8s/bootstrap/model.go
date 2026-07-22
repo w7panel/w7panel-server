@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	artifactv1 "github.com/w7panel/w7panel/k8s/pkg/apis/artifactinstallation/v1alpha1"
 	bootstrapv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrap/v1alpha1"
 	"golang.org/x/mod/semver"
 	"helm.sh/helm/v3/pkg/strvals"
@@ -50,7 +51,7 @@ func profileSettings(profile *bootstrapv1.BootstrapProfile) effectiveProfile {
 	return settings
 }
 
-func effectiveArtifact(profile *bootstrapv1.BootstrapProfile, artifact bootstrapv1.BootstrapArtifact) bootstrapv1.ArtifactInstallationSpec {
+func effectiveArtifact(profile *bootstrapv1.BootstrapProfile, artifact bootstrapv1.BootstrapArtifact) artifactv1.ArtifactInstallationSpec {
 	failurePolicy := artifact.FailurePolicy
 	if failurePolicy == "" {
 		failurePolicy = profile.Spec.Defaults.FailurePolicy
@@ -58,7 +59,7 @@ func effectiveArtifact(profile *bootstrapv1.BootstrapProfile, artifact bootstrap
 	if failurePolicy == "" {
 		failurePolicy = bootstrapv1.FailurePolicyContinue
 	}
-	return bootstrapv1.ArtifactInstallationSpec{
+	return artifactv1.ArtifactInstallationSpec{
 		ProfileRef: bootstrapv1.BootstrapProfileReference{
 			Name: profile.Name,
 			UID:  string(profile.UID),
@@ -100,7 +101,7 @@ func artifactInstallationName(profileName, artifactName string) string {
 	return strings.TrimRight(name[:236], "-.") + "-" + hex.EncodeToString(sum[:8])
 }
 
-func operationID(installation *bootstrapv1.ArtifactInstallation) string {
+func operationID(installation *artifactv1.ArtifactInstallation) string {
 	input := fmt.Sprintf("%s\x00%s\x00%s\x00%s",
 		installation.Spec.ProfileRef.UID,
 		installation.Spec.ProfileRevision,
