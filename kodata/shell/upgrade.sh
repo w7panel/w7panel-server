@@ -89,6 +89,16 @@ kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
 
 # kubectl apply -f $KO_DATA_PATH/yaml/k3k/virtualclusterpolicy.yaml
 
+
+# BootstrapProfile
+
+# 同一份 Profile revision 再次随集群升级应用时，Spec 不会变化，已达到最大
+# 重试次数的 Installation 也就不会自行开启新一轮。非阻塞删除失败项，待
+# Controller 处理 finalizer、清理自有 AppGroup 后由 Profile 自动重建。
+kubectl get bootstrapinstallation -l w7.cc/bootstrap-profile=w7panel-default -o json \
+  | jq -r '.items[] | select(.status.phase == "Failed") | .metadata.name' \
+  | xargs -r kubectl delete bootstrapinstallation --wait=false
+
 echo "同步内置 BootstrapProfile"
 kubectl apply -f $KO_DATA_PATH/yaml/bootstrap-profile.yaml --server-side
 

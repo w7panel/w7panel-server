@@ -156,6 +156,8 @@ sh "$KO_DATA_PATH/shell/upgrade-wasm-plugins.sh" all
 
 基础 Higress 由集群安装流程预先提供，不属于该 Profile。修改内置应用清单时必须同步递增 BootstrapProfile 的 `spec.revision`。迁移脚本会备份旧资源、迁移全局及域名规则配置、切换插件并校验结果，失败时自动恢复旧插件。面板自动升级在校验成功后会删除旧资源；新集群没有旧资源时，只为制品插件补充稳定的逻辑标签。手工执行脚本未设置 `DELETE_LEGACY=true` 时，仍会保留已停用的旧资源，便于调试。
 
+集群升级会对已达到最大重试次数并进入 `Failed` 的内置 BootstrapInstallation 发起非阻塞重建，使相同 Profile revision 在下一次集群升级时也能重新尝试安装。Profile revision 发生变化时，Controller 会先清理上一轮由 Bootstrap 拥有的失败 AppGroup，再开始新一轮安装。
+
 ## API 接口
 
 详见 [API 文档](../docs/api/README.md)
