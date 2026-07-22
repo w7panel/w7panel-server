@@ -167,11 +167,13 @@ func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *instal
 	}
 	packages.Root.ServiceAccountName = i.sdk.GetServiceAccountName()
 	packages.Root.RealToken = i.panelToken
-	packages.Root.K8sToken = k8s.NewK8sToken(i.panelToken)
+	// Bootstrap 使用 Kubernetes ServiceAccount Token 执行安装，它不包含面板用户身份。
+	// K8sToken 会被 ZPK 解析为创建用户名和角色并写入 Label，因此必须保持为空。
+	packages.Root.K8sToken = nil
 	for _, child := range packages.Children {
 		child.ServiceAccountName = packages.Root.ServiceAccountName
 		child.RealToken = i.panelToken
-		child.K8sToken = packages.Root.K8sToken
+		child.K8sToken = nil
 	}
 	scopedSDK := *i.sdk
 	scopedSDK.Ctx = ctx
