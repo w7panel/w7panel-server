@@ -59,10 +59,6 @@ spec:
                       type: string
                     installOptions:
                       properties:
-                        annotations:
-                          additionalProperties:
-                            type: string
-                          type: object
                         helmValues:
                           additionalProperties:
                             type: string

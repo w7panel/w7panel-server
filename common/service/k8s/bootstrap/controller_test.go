@@ -642,17 +642,12 @@ func TestArtifactOwnership(t *testing.T) {
 	installation := &installationv1.BootstrapInstallation{Spec: installationv1.BootstrapInstallationSpec{
 		ProfileRef: bootstrapv1.BootstrapProfileReference{UID: "profile-uid"},
 		Artifact:   bootstrapv1.ArtifactReference{Name: "one"},
-		InstallOptions: bootstrapv1.BootstrapInstallOptions{Annotations: map[string]string{
-			"w7.cc/deny-delete":                     "true",
-			bootstrapv1.AnnotationInstallationOwner: "untrusted-value",
-		}},
 	}}
-	annotations := artifactInstallAnnotations(installation)
-	if annotations["w7.cc/deny-delete"] != "true" {
-		t.Fatalf("custom annotation was not preserved: %v", annotations)
+	annotations := map[string]string{
+		bootstrapv1.AnnotationInstallationOwner: artifactOwner(installation),
 	}
 	if annotations[bootstrapv1.AnnotationInstallationOwner] != "profile-uid/one" {
-		t.Fatalf("owner annotation was not enforced: %v", annotations)
+		t.Fatalf("owner annotation was not generated: %v", annotations)
 	}
 	if !isArtifactOwner(annotations, installation) {
 		t.Fatal("expected matching owner annotation")

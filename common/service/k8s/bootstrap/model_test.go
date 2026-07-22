@@ -52,12 +52,6 @@ func TestValidateProfile(t *testing.T) {
 		{name: "invalid helm value rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
 			profile.Spec.Installations[0].InstallOptions.HelmValues = map[string]string{"service.type": "value,with,commas"}
 		}, wantErr: "helmValues"},
-		{name: "invalid annotation name rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Installations[0].InstallOptions.Annotations = map[string]string{"invalid key": "true"}
-		}, wantErr: "annotations"},
-		{name: "internal owner annotation rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Installations[0].InstallOptions.Annotations = map[string]string{bootstrapv1.AnnotationInstallationOwner: "other"}
-		}, wantErr: "内部维护"},
 	}
 
 	for _, test := range tests {
@@ -111,8 +105,7 @@ func TestEffectiveArtifactDefaultsTypeAndCopiesHelmValues(t *testing.T) {
 		Name: "domain", Identifie: "domain", Source: "https://zpk.w7.cc/domain",
 		ReleaseName: "domain", Namespace: "default",
 		InstallOptions: bootstrapv1.BootstrapInstallOptions{
-			HelmValues:  map[string]string{"service.type": "ClusterIP"},
-			Annotations: map[string]string{"w7.cc/deny-delete": "true"},
+			HelmValues: map[string]string{"service.type": "ClusterIP"},
 		},
 	}
 
@@ -123,9 +116,5 @@ func TestEffectiveArtifactDefaultsTypeAndCopiesHelmValues(t *testing.T) {
 	spec.InstallOptions.HelmValues["service.type"] = "LoadBalancer"
 	if artifact.InstallOptions.HelmValues["service.type"] != "ClusterIP" {
 		t.Fatal("effectiveArtifact must deep-copy helmValues")
-	}
-	spec.InstallOptions.Annotations["w7.cc/deny-delete"] = "false"
-	if artifact.InstallOptions.Annotations["w7.cc/deny-delete"] != "true" {
-		t.Fatal("effectiveArtifact must deep-copy annotations")
 	}
 }

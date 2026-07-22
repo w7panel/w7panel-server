@@ -4,7 +4,7 @@ metadata:
   name: w7panel-default
 spec:
   # 修改预装应用清单时必须同步递增 revision。
-  revision: "1.1.76-2"
+  revision: "1.1.76-3"
   strategy:
     maxConcurrent: 2
     maxRetries: 3
@@ -18,10 +18,6 @@ spec:
       source: https://zpk.fan.b2.sz.w7.com/zpk/respo/info/w7panel-pluginwhitedomain
       releaseName: w7panel-pluginwhitedomain
       namespace: default
-      installOptions:
-        annotations:
-          w7.cc/official-app: "true"
-          w7.cc/deny-delete: "true"
 
     - name: pluginratelimit
       type: ZPK
@@ -29,10 +25,6 @@ spec:
       source: https://zpk.fan.b2.sz.w7.com/zpk/respo/info/w7panel-pluginratelimit
       releaseName: w7panel-pluginratelimit
       namespace: default
-      installOptions:
-        annotations:
-          w7.cc/official-app: "true"
-          w7.cc/deny-delete: "true"
 
     - name: cloudnoauth
       type: ZPK
@@ -40,7 +32,3 @@ spec:
       source: https://zpk.w7.cc/zpk/respo/info/w7panel_cloudnoauth
       releaseName: w7panel-cloudnoauth
       namespace: default
-      installOptions:
-        annotations:
-          w7.cc/official-app: "true"
-          w7.cc/deny-delete: "true"

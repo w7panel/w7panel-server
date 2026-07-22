@@ -143,10 +143,12 @@ func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *instal
 		return errArtifactAlreadyExists
 	}
 	options = append(options, zpktypes.InstallOption{
-		Identifie:   pack.Manifest.Application.Identifie,
-		Replicas:    1,
-		HelmValues:  cloneStringMap(installation.Spec.InstallOptions.HelmValues),
-		Annotations: artifactInstallAnnotations(installation),
+		Identifie:  pack.Manifest.Application.Identifie,
+		Replicas:   1,
+		HelmValues: cloneStringMap(installation.Spec.InstallOptions.HelmValues),
+		Annotations: map[string]string{
+			bootstrapv1.AnnotationInstallationOwner: artifactOwner(installation),
+		},
 	})
 	for name, child := range pack.Children {
 		replicas := int32(0)
@@ -221,15 +223,6 @@ func (i *zpkArtifactInstaller) Uninstall(ctx context.Context, installation *inst
 
 func artifactOwner(installation *installationv1.BootstrapInstallation) string {
 	return installation.Spec.ProfileRef.UID + "/" + installation.Spec.Artifact.Name
-}
-
-func artifactInstallAnnotations(installation *installationv1.BootstrapInstallation) map[string]string {
-	annotations := cloneStringMap(installation.Spec.InstallOptions.Annotations)
-	if annotations == nil {
-		annotations = make(map[string]string, 1)
-	}
-	annotations[bootstrapv1.AnnotationInstallationOwner] = artifactOwner(installation)
-	return annotations
 }
 
 func isArtifactOwner(annotations map[string]string, installation *installationv1.BootstrapInstallation) bool {

@@ -52,8 +52,7 @@ type BootstrapDefaults struct {
 }
 
 type BootstrapInstallOptions struct {
-	HelmValues  map[string]string `json:"helmValues,omitempty"`
-	Annotations map[string]string `json:"annotations,omitempty"`
+	HelmValues map[string]string `json:"helmValues,omitempty"`
 }
 
 type BootstrapInstallationTemplate struct {

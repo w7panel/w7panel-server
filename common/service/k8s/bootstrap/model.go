@@ -79,8 +79,7 @@ func effectiveArtifact(profile *bootstrapv1.BootstrapProfile, artifact bootstrap
 		FailurePolicy: failurePolicy,
 		DependsOn:     append([]string(nil), artifact.DependsOn...),
 		InstallOptions: bootstrapv1.BootstrapInstallOptions{
-			HelmValues:  cloneStringMap(artifact.InstallOptions.HelmValues),
-			Annotations: cloneStringMap(artifact.InstallOptions.Annotations),
+			HelmValues: cloneStringMap(artifact.InstallOptions.HelmValues),
 		},
 	}
 }
@@ -171,9 +170,6 @@ func validateProfile(profile *bootstrapv1.BootstrapProfile) error {
 		if err := validateHelmValues(artifact.InstallOptions.HelmValues); err != nil {
 			return fmt.Errorf("%s.installOptions.helmValues: %w", path, err)
 		}
-		if err := validateAnnotations(artifact.InstallOptions.Annotations); err != nil {
-			return fmt.Errorf("%s.installOptions.annotations: %w", path, err)
-		}
 		if err := validateFailurePolicy(artifact.FailurePolicy); err != nil {
 			return fmt.Errorf("%s: %w", path, err)
 		}
@@ -208,24 +204,6 @@ func validateHelmValues(values map[string]string) error {
 		}
 		if err := strvals.ParseInto(key+"="+value, map[string]interface{}{}); err != nil {
 			return fmt.Errorf("参数 %q 无效: %w", key, err)
-		}
-	}
-	return nil
-}
-
-func validateAnnotations(annotations map[string]string) error {
-	if len(annotations) > 100 {
-		return errors.New("最多允许 100 个注解")
-	}
-	for key, value := range annotations {
-		if errs := validation.IsQualifiedName(key); len(errs) > 0 {
-			return fmt.Errorf("注解名 %q 无效: %s", key, strings.Join(errs, ", "))
-		}
-		if key == bootstrapv1.AnnotationInstallationOwner {
-			return fmt.Errorf("注解 %q 由 Bootstrap 内部维护，不能自定义", key)
-		}
-		if len(value) > 16*1024 {
-			return fmt.Errorf("注解 %q 的值不能超过 16 KiB", key)
 		}
 	}
 	return nil
