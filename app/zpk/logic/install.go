@@ -3,7 +3,6 @@ package logic
 import (
 	"log/slog"
 
-	"github.com/samber/lo"
 	"github.com/w7panel/w7panel/app/zpk/logic/types"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
@@ -258,21 +257,7 @@ func (z *Install) persistGroup(group *v1alpha1.AppGroup) error {
 	}
 	oldVersion := fetchGroup.Spec.Version
 	fetchGroup.Spec = group.Spec
-	keepAnnoKey := []string{"w7.cc/domains", "w7.cc/ports", "w7.cc/default-domain", "w7.cc/create-svc"}
-	if fetchGroup.Annotations == nil {
-		fetchGroup.Annotations = map[string]string{}
-	}
-	keepAv := map[string]string{}
-	for k, v := range fetchGroup.Annotations {
-		if lo.Contains(keepAnnoKey, k) {
-			keepAv[k] = v
-		}
-	}
-	//更新中的版本
-	fetchGroup.Annotations = group.Annotations
-	for k, v := range keepAv {
-		fetchGroup.Annotations[k] = v
-	}
+	fetchGroup.Annotations = replaceAppGroupAnnotations(fetchGroup.Annotations, group.Annotations)
 	fetchGroup.Labels = group.Labels
 
 	fetchGroup.Spec.Version = oldVersion
@@ -306,22 +291,7 @@ func (z *Install) CreateOrUpdateGroup(namespace, name string, items []v1alpha1.D
 	}
 	if group != nil {
 		group3 := helm.ToAppGroup(z.pk.Root, items)
-		keepAnnoKey := []string{"w7.cc/domains", "w7.cc/ports", "w7.cc/default-domain", "w7.cc/create-svc"}
-		// for k, v := range group3.Annotations {
-		// 	if !lo.Contains(keepAnnoKey, k) {
-		// 		group.Annotations[k] = v
-		// 	}
-		// }
-		keepAv := map[string]string{}
-		for k, v := range group.Annotations {
-			if lo.Contains(keepAnnoKey, k) {
-				keepAv[k] = v
-			}
-		}
-		group.Annotations = group3.Annotations
-		for k, v := range keepAv {
-			group.Annotations[k] = v
-		}
+		group.Annotations = replaceAppGroupAnnotations(group.Annotations, group3.Annotations)
 		oldVersion := group.Spec.Version
 		group.Spec = group3.Spec
 		group.Spec.Version = oldVersion
@@ -379,4 +349,28 @@ func (z *Install) GetLabels() map[string]string {
 		zpktypes.HELM_INDENTIFIE:     z.pk.Root.GetIdentifie(),
 	}
 	return label
+}
+
+func replaceAppGroupAnnotations(current, desired map[string]string) map[string]string {
+	var preservedAppGroupAnnotationKeys = []string{
+		"w7.cc/bootstrap-owner",
+		"w7.cc/domains",
+		"w7.cc/ports",
+		"w7.cc/default-domain",
+		"w7.cc/create-svc",
+	}
+
+	result := make(map[string]string, len(desired)+len(preservedAppGroupAnnotationKeys))
+	for key, value := range desired {
+		result[key] = value
+	}
+	for _, key := range preservedAppGroupAnnotationKeys {
+		if value, ok := current[key]; ok {
+			result[key] = value
+		}
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }
