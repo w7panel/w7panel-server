@@ -46,7 +46,7 @@ spec:
             type: object
           spec:
             properties:
-              artifacts:
+              installations:
                 items:
                   properties:
                     dependsOn:

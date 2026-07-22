@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	artifactv1 "github.com/w7panel/w7panel/k8s/pkg/apis/artifactinstallation/v1alpha1"
 	bootstrapv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrap/v1alpha1"
+	installationv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrapinstallation/v1alpha1"
 	"golang.org/x/mod/semver"
 	"helm.sh/helm/v3/pkg/strvals"
 	apiMeta "k8s.io/apimachinery/pkg/api/meta"
@@ -51,7 +51,7 @@ func profileSettings(profile *bootstrapv1.BootstrapProfile) effectiveProfile {
 	return settings
 }
 
-func effectiveArtifact(profile *bootstrapv1.BootstrapProfile, artifact bootstrapv1.BootstrapArtifact) artifactv1.ArtifactInstallationSpec {
+func effectiveArtifact(profile *bootstrapv1.BootstrapProfile, artifact bootstrapv1.BootstrapInstallationTemplate) installationv1.BootstrapInstallationSpec {
 	failurePolicy := artifact.FailurePolicy
 	if failurePolicy == "" {
 		failurePolicy = profile.Spec.Defaults.FailurePolicy
@@ -59,7 +59,7 @@ func effectiveArtifact(profile *bootstrapv1.BootstrapProfile, artifact bootstrap
 	if failurePolicy == "" {
 		failurePolicy = bootstrapv1.FailurePolicyContinue
 	}
-	return artifactv1.ArtifactInstallationSpec{
+	return installationv1.BootstrapInstallationSpec{
 		ProfileRef: bootstrapv1.BootstrapProfileReference{
 			Name: profile.Name,
 			UID:  string(profile.UID),
@@ -92,7 +92,7 @@ func effectiveArtifactType(value bootstrapv1.ArtifactType) bootstrapv1.ArtifactT
 	return value
 }
 
-func artifactInstallationName(profileName, artifactName string) string {
+func bootstrapInstallationName(profileName, artifactName string) string {
 	name := profileName + "-" + artifactName
 	if len(name) <= 253 {
 		return name
@@ -101,7 +101,7 @@ func artifactInstallationName(profileName, artifactName string) string {
 	return strings.TrimRight(name[:236], "-.") + "-" + hex.EncodeToString(sum[:8])
 }
 
-func operationID(installation *artifactv1.ArtifactInstallation) string {
+func operationID(installation *installationv1.BootstrapInstallation) string {
 	input := fmt.Sprintf("%s\x00%s\x00%s\x00%s",
 		installation.Spec.ProfileRef.UID,
 		installation.Spec.ProfileRevision,
@@ -133,10 +133,10 @@ func validateProfile(profile *bootstrapv1.BootstrapProfile) error {
 		return fmt.Errorf("spec.defaults: %w", err)
 	}
 
-	byName := make(map[string]bootstrapv1.BootstrapArtifact, len(profile.Spec.Artifacts))
-	targets := make(map[string]string, len(profile.Spec.Artifacts))
-	for i, artifact := range profile.Spec.Artifacts {
-		path := fmt.Sprintf("spec.artifacts[%d]", i)
+	byName := make(map[string]bootstrapv1.BootstrapInstallationTemplate, len(profile.Spec.Installations))
+	targets := make(map[string]string, len(profile.Spec.Installations))
+	for i, artifact := range profile.Spec.Installations {
+		path := fmt.Sprintf("spec.installations[%d]", i)
 		if artifact.Name == "" || artifact.Identifie == "" || artifact.Source == "" || artifact.ReleaseName == "" || artifact.Namespace == "" {
 			return fmt.Errorf("%s 的 name、identifie、source、releaseName 和 namespace 均为必填项", path)
 		}
@@ -179,7 +179,7 @@ func validateProfile(profile *bootstrapv1.BootstrapProfile) error {
 		}
 	}
 
-	for _, artifact := range profile.Spec.Artifacts {
+	for _, artifact := range profile.Spec.Installations {
 		for _, dependency := range artifact.DependsOn {
 			if dependency == artifact.Name {
 				return fmt.Errorf("制品 %q 不能依赖自身", artifact.Name)
@@ -221,7 +221,7 @@ func validateAnnotations(annotations map[string]string) error {
 		if errs := validation.IsQualifiedName(key); len(errs) > 0 {
 			return fmt.Errorf("注解名 %q 无效: %s", key, strings.Join(errs, ", "))
 		}
-		if key == bootstrapv1.AnnotationArtifactOwner {
+		if key == bootstrapv1.AnnotationInstallationOwner {
 			return fmt.Errorf("注解 %q 由 Bootstrap 内部维护，不能自定义", key)
 		}
 		if len(value) > 16*1024 {
@@ -274,7 +274,7 @@ func validateSource(raw string) error {
 	return nil
 }
 
-func dependencyCycle(artifacts map[string]bootstrapv1.BootstrapArtifact) []string {
+func dependencyCycle(artifacts map[string]bootstrapv1.BootstrapInstallationTemplate) []string {
 	state := make(map[string]uint8, len(artifacts))
 	stack := make([]string, 0, len(artifacts))
 	var visit func(string) []string

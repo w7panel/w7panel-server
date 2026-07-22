@@ -10,8 +10,8 @@ import (
 	zpktypes "github.com/w7panel/w7panel/app/zpk/logic/types"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	appgroupv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
-	artifactv1 "github.com/w7panel/w7panel/k8s/pkg/apis/artifactinstallation/v1alpha1"
 	bootstrapv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrap/v1alpha1"
+	installationv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrapinstallation/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,9 +19,9 @@ import (
 )
 
 type artifactInstaller interface {
-	Lookup(context.Context, *artifactv1.ArtifactInstallation) (*installedArtifact, error)
-	Install(context.Context, *artifactv1.ArtifactInstallation) error
-	Uninstall(context.Context, *artifactv1.ArtifactInstallation) error
+	Lookup(context.Context, *installationv1.BootstrapInstallation) (*installedArtifact, error)
+	Install(context.Context, *installationv1.BootstrapInstallation) error
+	Uninstall(context.Context, *installationv1.BootstrapInstallation) error
 }
 
 type installedArtifactState string
@@ -83,7 +83,7 @@ func (i *zpkArtifactInstaller) load(ctx context.Context, reference bootstrapv1.A
 	return pack, nil
 }
 
-func (i *zpkArtifactInstaller) Lookup(ctx context.Context, installation *artifactv1.ArtifactInstallation) (*installedArtifact, error) {
+func (i *zpkArtifactInstaller) Lookup(ctx context.Context, installation *installationv1.BootstrapInstallation) (*installedArtifact, error) {
 	sigClient, err := i.sdk.ToSigClient()
 	if err != nil {
 		return nil, fmt.Errorf("创建 AppGroup 客户端: %w", err)
@@ -118,7 +118,7 @@ func appGroupArtifactState(group *appgroupv1.AppGroup) installedArtifactState {
 	}
 }
 
-func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *artifactv1.ArtifactInstallation) error {
+func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *installationv1.BootstrapInstallation) error {
 	if effectiveArtifactType(installation.Spec.Artifact.Type) != bootstrapv1.ArtifactTypeZPK {
 		return fmt.Errorf("制品类型 %q 当前不支持", installation.Spec.Artifact.Type)
 	}
@@ -196,7 +196,7 @@ func cloneStringMap(source map[string]string) map[string]string {
 	return result
 }
 
-func (i *zpkArtifactInstaller) Uninstall(ctx context.Context, installation *artifactv1.ArtifactInstallation) error {
+func (i *zpkArtifactInstaller) Uninstall(ctx context.Context, installation *installationv1.BootstrapInstallation) error {
 	current, err := i.Lookup(ctx, installation)
 	if err != nil {
 		return err
@@ -217,21 +217,21 @@ func (i *zpkArtifactInstaller) Uninstall(ctx context.Context, installation *arti
 	return nil
 }
 
-func artifactOwner(installation *artifactv1.ArtifactInstallation) string {
+func artifactOwner(installation *installationv1.BootstrapInstallation) string {
 	return installation.Spec.ProfileRef.UID + "/" + installation.Spec.Artifact.Name
 }
 
-func artifactInstallAnnotations(installation *artifactv1.ArtifactInstallation) map[string]string {
+func artifactInstallAnnotations(installation *installationv1.BootstrapInstallation) map[string]string {
 	annotations := cloneStringMap(installation.Spec.InstallOptions.Annotations)
 	if annotations == nil {
 		annotations = make(map[string]string, 1)
 	}
-	annotations[bootstrapv1.AnnotationArtifactOwner] = artifactOwner(installation)
+	annotations[bootstrapv1.AnnotationInstallationOwner] = artifactOwner(installation)
 	return annotations
 }
 
-func isArtifactOwner(annotations map[string]string, installation *artifactv1.ArtifactInstallation) bool {
-	return annotations[bootstrapv1.AnnotationArtifactOwner] == artifactOwner(installation)
+func isArtifactOwner(annotations map[string]string, installation *installationv1.BootstrapInstallation) bool {
+	return annotations[bootstrapv1.AnnotationInstallationOwner] == artifactOwner(installation)
 }
 
 func normalizeIdentifie(value string) string {

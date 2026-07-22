@@ -15,7 +15,7 @@ func TestValidateProfile(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "default-profile"},
 		Spec: bootstrapv1.BootstrapProfileSpec{
 			Revision: "1.0.0-1",
-			Artifacts: []bootstrapv1.BootstrapArtifact{
+			Installations: []bootstrapv1.BootstrapInstallationTemplate{
 				{Name: "domain", Identifie: "domain", Source: "https://packages.example.com/info/domain", ReleaseName: "domain", Namespace: "default"},
 				{Name: "rate", Identifie: "rate", Source: "https://packages.example.com/info/rate", ReleaseName: "rate", Namespace: "default", DependsOn: []string{"domain"}},
 			},
@@ -29,34 +29,34 @@ func TestValidateProfile(t *testing.T) {
 	}{
 		{name: "valid"},
 		{name: "duplicate target", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Artifacts[1].ReleaseName = "domain"
+			profile.Spec.Installations[1].ReleaseName = "domain"
 		}, wantErr: "相同安装目标"},
 		{name: "missing dependency", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Artifacts[1].DependsOn = []string{"missing"}
+			profile.Spec.Installations[1].DependsOn = []string{"missing"}
 		}, wantErr: "不存在的依赖"},
 		{name: "dependency cycle", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Artifacts[0].DependsOn = []string{"rate"}
+			profile.Spec.Installations[0].DependsOn = []string{"rate"}
 		}, wantErr: "依赖存在环"},
 		{name: "http rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Artifacts[0].Source = "http://packages.example.com/info/domain"
+			profile.Spec.Installations[0].Source = "http://packages.example.com/info/domain"
 		}, wantErr: "仅允许 HTTPS"},
 		{name: "oci rejected until executor is available", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Artifacts[0].Source = "oci://packages.example.com/domain"
+			profile.Spec.Installations[0].Source = "oci://packages.example.com/domain"
 		}, wantErr: "仅允许 HTTPS"},
 		{name: "credentials in source rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Artifacts[0].Source = "https://user:password@packages.example.com/info/domain"
+			profile.Spec.Installations[0].Source = "https://user:password@packages.example.com/info/domain"
 		}, wantErr: "不能包含用户名或密码"},
 		{name: "reserved helm type rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Artifacts[0].Type = "Helm"
+			profile.Spec.Installations[0].Type = "Helm"
 		}, wantErr: "仅 ZPK 执行器已启用"},
 		{name: "invalid helm value rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Artifacts[0].InstallOptions.HelmValues = map[string]string{"service.type": "value,with,commas"}
+			profile.Spec.Installations[0].InstallOptions.HelmValues = map[string]string{"service.type": "value,with,commas"}
 		}, wantErr: "helmValues"},
 		{name: "invalid annotation name rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Artifacts[0].InstallOptions.Annotations = map[string]string{"invalid key": "true"}
+			profile.Spec.Installations[0].InstallOptions.Annotations = map[string]string{"invalid key": "true"}
 		}, wantErr: "annotations"},
 		{name: "internal owner annotation rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Artifacts[0].InstallOptions.Annotations = map[string]string{bootstrapv1.AnnotationArtifactOwner: "other"}
+			profile.Spec.Installations[0].InstallOptions.Annotations = map[string]string{bootstrapv1.AnnotationInstallationOwner: "other"}
 		}, wantErr: "内部维护"},
 	}
 
@@ -107,7 +107,7 @@ func TestEffectiveArtifactDefaultsTypeAndCopiesHelmValues(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "default-profile"},
 		Spec:       bootstrapv1.BootstrapProfileSpec{Revision: "1.0.0-1"},
 	}
-	artifact := bootstrapv1.BootstrapArtifact{
+	artifact := bootstrapv1.BootstrapInstallationTemplate{
 		Name: "domain", Identifie: "domain", Source: "https://zpk.w7.cc/domain",
 		ReleaseName: "domain", Namespace: "default",
 		InstallOptions: bootstrapv1.BootstrapInstallOptions{

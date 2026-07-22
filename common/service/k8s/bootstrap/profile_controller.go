@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"time"
 
-	artifactv1 "github.com/w7panel/w7panel/k8s/pkg/apis/artifactinstallation/v1alpha1"
 	bootstrapv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrap/v1alpha1"
+	installationv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrapinstallation/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,7 +26,7 @@ func setupProfileController(mgr ctrl.Manager) error {
 	reconciler := &ProfileReconciler{Client: mgr.GetClient(), Scheme: mgr.GetScheme()}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&bootstrapv1.BootstrapProfile{}).
-		Owns(&artifactv1.ArtifactInstallation{}).
+		Owns(&installationv1.BootstrapInstallation{}).
 		Complete(reconciler)
 }
 
@@ -43,16 +43,16 @@ func (r *ProfileReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, r.updateInvalidProfileStatus(ctx, profile, err)
 	}
 
-	installations := &artifactv1.ArtifactInstallationList{}
+	installations := &installationv1.BootstrapInstallationList{}
 	if err := r.List(ctx, installations, client.MatchingLabels{bootstrapv1.LabelProfile: profile.Name}); err != nil {
-		return ctrl.Result{}, fmt.Errorf("查询 ArtifactInstallation: %w", err)
+		return ctrl.Result{}, fmt.Errorf("查询 BootstrapInstallation: %w", err)
 	}
 	mutations := 0
-	desiredNames := make(map[string]struct{}, len(profile.Spec.Artifacts))
-	for _, artifact := range profile.Spec.Artifacts {
+	desiredNames := make(map[string]struct{}, len(profile.Spec.Installations))
+	for _, artifact := range profile.Spec.Installations {
 		desiredNames[artifact.Name] = struct{}{}
 	}
-	for _, artifact := range profile.Spec.Artifacts {
+	for _, artifact := range profile.Spec.Installations {
 		changed, err := r.syncInstallation(ctx, profile, artifact)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -79,21 +79,21 @@ func (r *ProfileReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	return ctrl.Result{}, r.updateProfileStatus(ctx, profile)
 }
 
-func (r *ProfileReconciler) syncInstallation(ctx context.Context, profile *bootstrapv1.BootstrapProfile, artifact bootstrapv1.BootstrapArtifact) (bool, error) {
+func (r *ProfileReconciler) syncInstallation(ctx context.Context, profile *bootstrapv1.BootstrapProfile, artifact bootstrapv1.BootstrapInstallationTemplate) (bool, error) {
 	desiredSpec := effectiveArtifact(profile, artifact)
-	installation := &artifactv1.ArtifactInstallation{ObjectMeta: metav1.ObjectMeta{Name: artifactInstallationName(profile.Name, artifact.Name)}}
+	installation := &installationv1.BootstrapInstallation{ObjectMeta: metav1.ObjectMeta{Name: bootstrapInstallationName(profile.Name, artifact.Name)}}
 	result, err := controllerutil.CreateOrUpdate(ctx, r.Client, installation, func() error {
 		installation.Spec = desiredSpec
 		if installation.Labels == nil {
 			installation.Labels = map[string]string{}
 		}
 		installation.Labels[bootstrapv1.LabelProfile] = profile.Name
-		installation.Labels[bootstrapv1.LabelArtifact] = artifact.Name
-		controllerutil.AddFinalizer(installation, bootstrapv1.ArtifactFinalizer)
+		installation.Labels[bootstrapv1.LabelInstallation] = artifact.Name
+		controllerutil.AddFinalizer(installation, bootstrapv1.InstallationFinalizer)
 		return controllerutil.SetControllerReference(profile, installation, r.Scheme)
 	})
 	if err != nil {
-		return false, fmt.Errorf("同步 ArtifactInstallation %q: %w", installation.Name, err)
+		return false, fmt.Errorf("同步 BootstrapInstallation %q: %w", installation.Name, err)
 	}
 	return result != controllerutil.OperationResultNone, nil
 }
@@ -102,7 +102,7 @@ func (r *ProfileReconciler) updateInvalidProfileStatus(ctx context.Context, prof
 	base := profile.DeepCopy()
 	profile.Status.Phase = bootstrapv1.ProfilePhaseInvalid
 	profile.Status.ObservedRevision = profile.Spec.Revision
-	profile.Status.Expansion = bootstrapv1.BootstrapExpansionStatus{Total: int32(len(profile.Spec.Artifacts))}
+	profile.Status.Expansion = bootstrapv1.BootstrapExpansionStatus{Total: int32(len(profile.Spec.Installations))}
 	setCondition(&profile.Status.Conditions, metav1.Condition{
 		Type:               "Valid",
 		Status:             metav1.ConditionFalse,
@@ -118,16 +118,16 @@ func (r *ProfileReconciler) updateInvalidProfileStatus(ctx context.Context, prof
 }
 
 func (r *ProfileReconciler) updateProfileStatus(ctx context.Context, profile *bootstrapv1.BootstrapProfile) error {
-	installations := &artifactv1.ArtifactInstallationList{}
+	installations := &installationv1.BootstrapInstallationList{}
 	if err := r.List(ctx, installations, client.MatchingLabels{bootstrapv1.LabelProfile: profile.Name}); err != nil {
 		return err
 	}
 	base := profile.DeepCopy()
-	desired := make(map[string]struct{}, len(profile.Spec.Artifacts))
-	for _, artifact := range profile.Spec.Artifacts {
+	desired := make(map[string]struct{}, len(profile.Spec.Installations))
+	for _, artifact := range profile.Spec.Installations {
 		desired[artifact.Name] = struct{}{}
 	}
-	summary := bootstrapv1.BootstrapSummary{Total: int32(len(profile.Spec.Artifacts))}
+	summary := bootstrapv1.BootstrapSummary{Total: int32(len(profile.Spec.Installations))}
 	processed := int32(0)
 	for _, installation := range installations.Items {
 		if _, ok := desired[installation.Spec.Artifact.Name]; !ok {
@@ -157,7 +157,7 @@ func (r *ProfileReconciler) updateProfileStatus(ctx context.Context, profile *bo
 	}
 	profile.Status.ObservedRevision = profile.Spec.Revision
 	profile.Status.Expansion = bootstrapv1.BootstrapExpansionStatus{
-		Total: int32(len(profile.Spec.Artifacts)), Processed: processed, Complete: processed == int32(len(profile.Spec.Artifacts)),
+		Total: int32(len(profile.Spec.Installations)), Processed: processed, Complete: processed == int32(len(profile.Spec.Installations)),
 	}
 	profile.Status.Summary = summary
 	switch {

@@ -9,19 +9,19 @@ import (
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Cluster,shortName=ainstall
+// +kubebuilder:resource:scope=Cluster,shortName=binstall
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Profile",type=string,JSONPath=`.spec.profileRef.name`
 // +kubebuilder:printcolumn:name="Revision",type=string,JSONPath=`.spec.profileRevision`
 // +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
-type ArtifactInstallation struct {
+type BootstrapInstallation struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              ArtifactInstallationSpec   `json:"spec"`
-	Status            ArtifactInstallationStatus `json:"status,omitempty"`
+	Spec              BootstrapInstallationSpec   `json:"spec"`
+	Status            BootstrapInstallationStatus `json:"status,omitempty"`
 }
 
-type ArtifactInstallationSpec struct {
+type BootstrapInstallationSpec struct {
 	ProfileRef      bootstrapv1.BootstrapProfileReference `json:"profileRef"`
 	ProfileRevision string                                `json:"profileRevision"`
 	Artifact        bootstrapv1.ArtifactReference         `json:"artifact"`
@@ -36,7 +36,7 @@ type ArtifactAppGroupStatus struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 
-type ArtifactInstallationStatus struct {
+type BootstrapInstallationStatus struct {
 	ObservedProfileRevision string                     `json:"observedProfileRevision,omitempty"`
 	Phase                   bootstrapv1.BootstrapPhase `json:"phase,omitempty"`
 	InstalledVersion        string                     `json:"installedVersion,omitempty"`
@@ -50,8 +50,8 @@ type ArtifactInstallationStatus struct {
 
 // +kubebuilder:object:root=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type ArtifactInstallationList struct {
+type BootstrapInstallationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ArtifactInstallation `json:"items"`
+	Items           []BootstrapInstallation `json:"items"`
 }

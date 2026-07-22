@@ -3,10 +3,10 @@ package v1alpha1
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 const (
-	LabelProfile            = "w7.cc/bootstrap-profile"
-	LabelArtifact           = "w7.cc/bootstrap-artifact"
-	AnnotationArtifactOwner = "w7.cc/bootstrap-owner"
-	ArtifactFinalizer       = "w7.cc/artifact-uninstall"
+	LabelProfile                = "w7.cc/bootstrap-profile"
+	LabelInstallation           = "w7.cc/bootstrap-installation"
+	AnnotationInstallationOwner = "w7.cc/bootstrap-owner"
+	InstallationFinalizer       = "w7.cc/installation-uninstall"
 )
 
 type ArtifactType string
@@ -56,7 +56,7 @@ type BootstrapInstallOptions struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
-type BootstrapArtifact struct {
+type BootstrapInstallationTemplate struct {
 	Name           string                  `json:"name"`
 	Type           ArtifactType            `json:"type,omitempty"`
 	Identifie      string                  `json:"identifie"`
@@ -90,7 +90,7 @@ type BootstrapProfileSpec struct {
 	Defaults BootstrapDefaults `json:"defaults,omitempty"`
 	// +listType=map
 	// +listMapKey=name
-	Artifacts []BootstrapArtifact `json:"artifacts,omitempty"`
+	Installations []BootstrapInstallationTemplate `json:"installations,omitempty"`
 }
 
 type BootstrapExpansionStatus struct {

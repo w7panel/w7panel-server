@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
-	artifactv1 "github.com/w7panel/w7panel/k8s/pkg/apis/artifactinstallation/v1alpha1"
 	bootstrapv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrap/v1alpha1"
+	installationv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrapinstallation/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -20,30 +20,30 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-type ArtifactReconciler struct {
+type InstallationReconciler struct {
 	client.Client
 	Scheme    *runtime.Scheme
 	installer artifactInstaller
 	slots     *leaseSlots
 }
 
-func setupArtifactController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
+func setupInstallationController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
 	installer, err := newZPKArtifactInstaller(sdk)
 	if err != nil {
 		return err
 	}
-	reconciler := &ArtifactReconciler{
+	reconciler := &InstallationReconciler{
 		Client: mgr.GetClient(), Scheme: mgr.GetScheme(), installer: installer,
 		slots: newLeaseSlotsWithReader(mgr.GetAPIReader(), mgr.GetClient(), sdk.GetNamespace()),
 	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&artifactv1.ArtifactInstallation{}).
+		For(&installationv1.BootstrapInstallation{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 5}).
 		Complete(reconciler)
 }
 
-func (r *ArtifactReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	installation := &artifactv1.ArtifactInstallation{}
+func (r *InstallationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	installation := &installationv1.BootstrapInstallation{}
 	if err := r.Get(ctx, req.NamespacedName, installation); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -51,9 +51,9 @@ func (r *ArtifactReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if !installation.DeletionTimestamp.IsZero() {
 		return r.reconcileDeletion(ctx, installation)
 	}
-	if !controllerutil.ContainsFinalizer(installation, bootstrapv1.ArtifactFinalizer) {
+	if !controllerutil.ContainsFinalizer(installation, bootstrapv1.InstallationFinalizer) {
 		base := installation.DeepCopy()
-		controllerutil.AddFinalizer(installation, bootstrapv1.ArtifactFinalizer)
+		controllerutil.AddFinalizer(installation, bootstrapv1.InstallationFinalizer)
 		return ctrl.Result{}, r.Patch(ctx, installation, client.MergeFrom(base))
 	}
 	profile := &bootstrapv1.BootstrapProfile{}
@@ -73,13 +73,13 @@ func (r *ArtifactReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.requeueWithStatus(ctx, installation, bootstrapv1.BootstrapPhaseBlocked, "等待 Profile Controller 同步当前 revision", 5*time.Second)
 	}
 	declared := false
-	for _, artifact := range profile.Spec.Artifacts {
+	for _, artifact := range profile.Spec.Installations {
 		if artifact.Name != installation.Spec.Artifact.Name {
 			continue
 		}
 		declared = true
 		if !reflect.DeepEqual(effectiveArtifact(profile, artifact), installation.Spec) {
-			return r.requeueWithStatus(ctx, installation, bootstrapv1.BootstrapPhaseBlocked, "等待 Profile Controller 修正被修改的 ArtifactInstallation", 5*time.Second)
+			return r.requeueWithStatus(ctx, installation, bootstrapv1.BootstrapPhaseBlocked, "等待 Profile Controller 修正被修改的 BootstrapInstallation", 5*time.Second)
 		}
 		break
 	}
@@ -196,8 +196,8 @@ func (r *ArtifactReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 }
 
-func (r *ArtifactReconciler) reconcileDeletion(ctx context.Context, installation *artifactv1.ArtifactInstallation) (ctrl.Result, error) {
-	if !controllerutil.ContainsFinalizer(installation, bootstrapv1.ArtifactFinalizer) {
+func (r *InstallationReconciler) reconcileDeletion(ctx context.Context, installation *installationv1.BootstrapInstallation) (ctrl.Result, error) {
+	if !controllerutil.ContainsFinalizer(installation, bootstrapv1.InstallationFinalizer) {
 		return ctrl.Result{}, nil
 	}
 	if err := r.installer.Uninstall(ctx, installation); err != nil {
@@ -209,14 +209,14 @@ func (r *ArtifactReconciler) reconcileDeletion(ctx context.Context, installation
 		}
 	}
 	base := installation.DeepCopy()
-	controllerutil.RemoveFinalizer(installation, bootstrapv1.ArtifactFinalizer)
+	controllerutil.RemoveFinalizer(installation, bootstrapv1.InstallationFinalizer)
 	return ctrl.Result{}, r.Patch(ctx, installation, client.MergeFrom(base))
 }
 
-func (r *ArtifactReconciler) dependenciesReady(ctx context.Context, installation *artifactv1.ArtifactInstallation) (bool, string, error) {
+func (r *InstallationReconciler) dependenciesReady(ctx context.Context, installation *installationv1.BootstrapInstallation) (bool, string, error) {
 	for _, dependency := range installation.Spec.DependsOn {
-		item := &artifactv1.ArtifactInstallation{}
-		name := artifactInstallationName(installation.Spec.ProfileRef.Name, dependency)
+		item := &installationv1.BootstrapInstallation{}
+		name := bootstrapInstallationName(installation.Spec.ProfileRef.Name, dependency)
 		if err := r.Get(ctx, client.ObjectKey{Name: name}, item); err != nil {
 			if apierrors.IsNotFound(err) {
 				return false, fmt.Sprintf("等待依赖 %q 展开", dependency), nil
@@ -241,7 +241,7 @@ func (r *ArtifactReconciler) dependenciesReady(ctx context.Context, installation
 	return true, "", nil
 }
 
-func (r *ArtifactReconciler) waitForAppGroup(ctx context.Context, installation *artifactv1.ArtifactInstallation, settings effectiveProfile) (ctrl.Result, error) {
+func (r *InstallationReconciler) waitForAppGroup(ctx context.Context, installation *installationv1.BootstrapInstallation, settings effectiveProfile) (ctrl.Result, error) {
 	if installation.Status.StartedAt != nil && time.Since(installation.Status.StartedAt.Time) > settings.TimeoutPerArtifact {
 		_ = r.slots.release(ctx, installation.Status.OperationID)
 		return r.retry(ctx, installation, settings, fmt.Errorf("等待 AppGroup 就绪超过 %s", settings.TimeoutPerArtifact))
@@ -250,7 +250,7 @@ func (r *ArtifactReconciler) waitForAppGroup(ctx context.Context, installation *
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, err
 }
 
-func (r *ArtifactReconciler) waitForExistingAppGroup(ctx context.Context, installation *artifactv1.ArtifactInstallation, settings effectiveProfile) (ctrl.Result, error) {
+func (r *InstallationReconciler) waitForExistingAppGroup(ctx context.Context, installation *installationv1.BootstrapInstallation, settings effectiveProfile) (ctrl.Result, error) {
 	if installation.Status.StartedAt != nil && time.Since(installation.Status.StartedAt.Time) > settings.TimeoutPerArtifact {
 		return r.retry(ctx, installation, settings, fmt.Errorf("等待已有 AppGroup 就绪超过 %s", settings.TimeoutPerArtifact))
 	}
@@ -268,7 +268,7 @@ func (r *ArtifactReconciler) waitForExistingAppGroup(ctx context.Context, instal
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 }
 
-func (r *ArtifactReconciler) retry(ctx context.Context, installation *artifactv1.ArtifactInstallation, settings effectiveProfile, cause error) (ctrl.Result, error) {
+func (r *InstallationReconciler) retry(ctx context.Context, installation *installationv1.BootstrapInstallation, settings effectiveProfile, cause error) (ctrl.Result, error) {
 	base := installation.DeepCopy()
 	if installation.Status.RetryCount < settings.MaxRetries {
 		installation.Status.RetryCount++
@@ -296,21 +296,21 @@ func (r *ArtifactReconciler) retry(ctx context.Context, installation *artifactv1
 	return ctrl.Result{RequeueAfter: delay}, nil
 }
 
-func (r *ArtifactReconciler) resetForRevision(ctx context.Context, installation *artifactv1.ArtifactInstallation) error {
+func (r *InstallationReconciler) resetForRevision(ctx context.Context, installation *installationv1.BootstrapInstallation) error {
 	base := installation.DeepCopy()
 	appGroup := installation.Status.AppGroup
-	installation.Status = artifactv1.ArtifactInstallationStatus{Phase: bootstrapv1.BootstrapPhasePending, AppGroup: appGroup}
+	installation.Status = installationv1.BootstrapInstallationStatus{Phase: bootstrapv1.BootstrapPhasePending, AppGroup: appGroup}
 	return r.Status().Patch(ctx, installation, client.MergeFrom(base))
 }
 
-func (r *ArtifactReconciler) updateStatus(ctx context.Context, installation *artifactv1.ArtifactInstallation, phase bootstrapv1.BootstrapPhase, message string, installed *installedArtifact, complete bool) error {
+func (r *InstallationReconciler) updateStatus(ctx context.Context, installation *installationv1.BootstrapInstallation, phase bootstrapv1.BootstrapPhase, message string, installed *installedArtifact, complete bool) error {
 	base := installation.DeepCopy()
 	installation.Status.Phase = phase
 	installation.Status.Message = message
 	installation.Status.ObservedProfileRevision = installation.Spec.ProfileRevision
 	if installed != nil {
 		installation.Status.InstalledVersion = installed.Version
-		installation.Status.AppGroup = artifactv1.ArtifactAppGroupStatus{Name: installed.Name, Namespace: installed.Namespace}
+		installation.Status.AppGroup = installationv1.ArtifactAppGroupStatus{Name: installed.Name, Namespace: installed.Namespace}
 	}
 	if complete {
 		now := metav1.Now()
@@ -322,7 +322,7 @@ func (r *ArtifactReconciler) updateStatus(ctx context.Context, installation *art
 	return r.Status().Patch(ctx, installation, client.MergeFrom(base))
 }
 
-func (r *ArtifactReconciler) requeueWithStatus(ctx context.Context, installation *artifactv1.ArtifactInstallation, phase bootstrapv1.BootstrapPhase, message string, after time.Duration) (ctrl.Result, error) {
+func (r *InstallationReconciler) requeueWithStatus(ctx context.Context, installation *installationv1.BootstrapInstallation, phase bootstrapv1.BootstrapPhase, message string, after time.Duration) (ctrl.Result, error) {
 	if err := r.updateStatus(ctx, installation, phase, message, nil, false); err != nil {
 		return ctrl.Result{}, err
 	}

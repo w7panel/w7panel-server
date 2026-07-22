@@ -11,7 +11,7 @@ spec:
     timeoutPerArtifact: 10m
   defaults:
     failurePolicy: Continue
-  artifacts:
+  installations:
     - name: pluginwhitedomain
       type: ZPK
       identifie: w7panel-pluginwhitedomain

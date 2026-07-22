@@ -2,8 +2,8 @@ package bootstrap
 
 import (
 	"github.com/w7panel/w7panel/common/service/k8s"
-	artifactv1 "github.com/w7panel/w7panel/k8s/pkg/apis/artifactinstallation/v1alpha1"
 	bootstrapv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrap/v1alpha1"
+	installationv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrapinstallation/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -12,11 +12,11 @@ func SetupControllers(mgr ctrl.Manager, sdk *k8s.Sdk) error {
 	if err := bootstrapv1.AddToScheme(mgr.GetScheme()); err != nil {
 		return err
 	}
-	if err := artifactv1.AddToScheme(mgr.GetScheme()); err != nil {
+	if err := installationv1.AddToScheme(mgr.GetScheme()); err != nil {
 		return err
 	}
 	if err := setupProfileController(mgr); err != nil {
 		return err
 	}
-	return setupArtifactController(mgr, sdk)
+	return setupInstallationController(mgr, sdk)
 }

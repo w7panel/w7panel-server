@@ -4,16 +4,16 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: artifactinstallations.w7panel.w7.com
+  name: bootstrapinstallations.w7panel.w7.com
 spec:
   group: w7panel.w7.com
   names:
-    kind: ArtifactInstallation
-    listKind: ArtifactInstallationList
-    plural: artifactinstallations
+    kind: BootstrapInstallation
+    listKind: BootstrapInstallationList
+    plural: bootstrapinstallations
     shortNames:
-    - ainstall
-    singular: artifactinstallation
+    - binstall
+    singular: bootstrapinstallation
   scope: Cluster
   versions:
   - additionalPrinterColumns:

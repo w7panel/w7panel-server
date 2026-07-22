@@ -101,17 +101,17 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 - **压缩/解压** - 支持 zip, tar, tar.gz, tar.xz
 - **权限管理** - chmod, chown 操作
 - **应用部署** - Helm, Docker Compose, YAML
-- **预装制品协调** - 通过 BootstrapProfile 同步 ArtifactInstallation，按依赖、版本与并发策略复用 ZPK/AppGroup 安装
+- **预装制品协调** - 通过 BootstrapProfile 同步 BootstrapInstallation，按依赖、版本与并发策略复用 ZPK/AppGroup 安装
 - **集群管理** - 节点、资源对象管理
 - **网关插件权限** - 为创始人默认权限注册网关插件查看、新建、编辑和删除菜单权限
 
 ### BootstrapProfile 预装制品
 
-控制器在 `k8s.watch=true` 时随共享 Controller Manager 启动。BootstrapProfile 和 ArtifactInstallation 统一使用 `w7panel.w7.com/v1alpha1` API Group。ArtifactInstallation 只有在对应 AppGroup 同时满足 `status.ready=true` 和 `status.deployStatus=deployed` 时才进入 Ready；安装 Lease 会持有到真实部署完成、失败或超时。Lease 抢占、续租、释放和并发槽已统一复用 `common/service/k8s/coordination/`，详细设计见 [Kubernetes Lease 协调组件](../docs/src/development/k8s-coordination.md)。CRD 清单位于 `kodata/crds/w7panel.w7.com_bootstrapprofiles.yaml` 和 `kodata/crds/w7panel.w7.com_artifactinstallations.yaml`，字段、状态机和示例见 [BootstrapProfile 预装制品方案](../docs/src/development/bootstrap-profile-artifact-installation.md)。
+控制器在 `k8s.watch=true` 时随共享 Controller Manager 启动。BootstrapProfile 和 BootstrapInstallation 统一使用 `w7panel.w7.com/v1alpha1` API Group。BootstrapInstallation 只有在对应 AppGroup 同时满足 `status.ready=true` 和 `status.deployStatus=deployed` 时才进入 Ready；安装 Lease 会持有到真实部署完成、失败或超时。Lease 抢占、续租、释放和并发槽已统一复用 `common/service/k8s/coordination/`，详细设计见 [Kubernetes Lease 协调组件](../docs/src/development/k8s-coordination.md)。CRD 清单位于 `kodata/crds/w7panel.w7.com_bootstrapprofiles.yaml` 和 `kodata/crds/w7panel.w7.com_bootstrapinstallations.yaml`，字段、状态机和示例见 [BootstrapProfile 预装制品方案](../docs/src/development/bootstrap-installation.md)。
 
 `spec.strategy.maxRetries` 未填写时默认重试 3 次；显式设置为 `0` 时不重试。
 
-当前自动安装执行器仅支持 HTTPS ZPK 源。`type` 作为执行器扩展点，未填写时兼容默认为 `ZPK`，当前其他类型会在 Profile 校验阶段被拒绝。Profile 里声明的每个 artifact 都会安装，不再使用 `enabled`/`required`。ZPK 可通过 `installOptions.helmValues` 提供内部 Helm 首次安装参数，并通过 `installOptions.annotations` 透传 AppGroup 和工作负载注解；内置官方应用同时写入 `w7.cc/official-app: "true"` 和 `w7.cc/deny-delete: "true"`，分别表达官方身份和删除保护。已存在对应 AppGroup 时 Bootstrap 直接跳过，不执行自动升级。用户主动删除 AppGroup 后不会自动重装，直到 Profile revision 再次更新。OCI 地址仍未开放执行。内置允许 `zpk.w7.cc` 和 `zpk.fan.b2.sz.w7.com`，其他 HTTPS 主机需显式配置：
+当前自动安装执行器仅支持 HTTPS ZPK 源。`type` 作为执行器扩展点，未填写时兼容默认为 `ZPK`，当前其他类型会在 Profile 校验阶段被拒绝。Profile 里声明的每个 installation 都会安装，不再使用 `enabled`/`required`。ZPK 可通过 `installOptions.helmValues` 提供内部 Helm 首次安装参数，并通过 `installOptions.annotations` 透传 AppGroup 和工作负载注解；内置官方应用同时写入 `w7.cc/official-app: "true"` 和 `w7.cc/deny-delete: "true"`，分别表达官方身份和删除保护。已存在对应 AppGroup 时 Bootstrap 直接跳过，不执行自动升级。用户主动删除 AppGroup 后不会自动重装，直到 Profile revision 再次更新。OCI 地址仍未开放执行。内置允许 `zpk.w7.cc` 和 `zpk.fan.b2.sz.w7.com`，其他 HTTPS 主机需显式配置：
 
 ```bash
 export BOOTSTRAP_ALLOWED_SOURCE_HOSTS=zpk.example.com,registry.example.com
@@ -143,7 +143,7 @@ kubectl apply -f "$KO_DATA_PATH/yaml/bootstrap-profile.yaml" --server-side
 
 # 查看安装状态
 kubectl get bootstrapprofile w7panel-default
-kubectl get artifactinstallation -l w7.cc/bootstrap-profile=w7panel-default
+kubectl get bootstrapinstallation -l w7.cc/bootstrap-profile=w7panel-default
 
 # 等待制品资源就绪并迁移旧配置
 DOMAIN_TARGET_GROUP=w7panel-pluginwhitedomain \
