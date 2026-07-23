@@ -568,6 +568,17 @@ func SyncSite(params *K3kSync) error {
 		return err
 	}
 
+	if siteIdentifierChanged(site) {
+		slog.Info("SiteIdentifier changed, resetting registration", "name", params.VirtualName, "oldSiteIdentifier", site.Status.ObservedSiteIdentifier, "newSiteIdentifier", site.Spec.SiteIdentifier)
+		resetSiteRegistration(site)
+		if err := clientSigClient.Status().Update(root.Ctx, site); err != nil {
+			return err
+		}
+	}
+	if site.Status.ObservedSiteIdentifier == "" {
+		site.Status.ObservedSiteIdentifier = site.Spec.SiteIdentifier
+	}
+
 	switch site.Status.Phase {
 	case "Completed", "Failed":
 		slog.Info("Site in terminal phase, skipping", "name", params.VirtualName, "phase", site.Status.Phase)
@@ -604,6 +615,7 @@ func SyncSite(params *K3kSync) error {
 	now := metav1.Now()
 	site.Status.AppId = secret.AppId
 	site.Status.AppSecret = secret.AppSecret
+	site.Status.ObservedSiteIdentifier = site.Spec.SiteIdentifier
 	site.Status.LastRegisteredAt = &now
 	site.Status.Phase = "AppIdReady"
 	site.Status.Message = "AppId/AppSecret obtained from ZPK registration"
@@ -623,6 +635,32 @@ func SyncSite(params *K3kSync) error {
 
 	slog.Info("Site sync completed", "name", params.VirtualName)
 	return nil
+}
+
+func siteIdentifierChanged(site *sitev1alpha1.Site) bool {
+	if site.Status.ObservedSiteIdentifier != "" {
+		return site.Status.ObservedSiteIdentifier != site.Spec.SiteIdentifier
+	}
+	return site.Status.Phase != "" || site.Status.AppId != "" || site.Status.AppSecret != ""
+}
+
+func resetSiteRegistration(site *sitev1alpha1.Site) {
+	site.Status.AppId = ""
+	site.Status.AppSecret = ""
+	site.Status.LastRegisteredAt = nil
+	site.Status.RegisterRetryCount = 0
+	site.Status.PatchRetryCount = 0
+	site.Status.ObservedSiteIdentifier = site.Spec.SiteIdentifier
+	site.Status.Phase = "Pending"
+	site.Status.Message = "siteIdentifier changed; registration will be retried"
+	now := metav1.Now()
+	site.Status.Conditions = append(site.Status.Conditions, metav1.Condition{
+		Type:               "Ready",
+		Status:             metav1.ConditionUnknown,
+		Reason:             "SiteIdentifierChanged",
+		Message:            site.Status.Message,
+		LastTransitionTime: now,
+	})
 }
 
 // patchTargetResource injects APP_ID and APP_SECRET env vars into the target workload

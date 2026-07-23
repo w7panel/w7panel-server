@@ -92,6 +92,16 @@ func (r *SiteController) reconcile0(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil
 	}
 
+	if siteIdentifierChanged(site) {
+		slog.Info("SiteIdentifier changed, resetting registration", "name", site.GetName(), "oldSiteIdentifier", site.Status.ObservedSiteIdentifier, "newSiteIdentifier", site.Spec.SiteIdentifier)
+		resetRegistrationForSiteIdentifier(site)
+		if err := r.Status().Update(ctx, site); err != nil {
+			logger.Error(err, "Failed to reset site registration after SiteIdentifier change")
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+
 	// ── State machine ──────────────────────────────────────────
 	switch site.Status.Phase {
 	case "", "Pending":
@@ -114,6 +124,12 @@ func (r *SiteController) reconcile0(ctx context.Context, req ctrl.Request) (ctrl
 
 // handlePending registers the site via ZPK and transitions to AppIdReady or Failed.
 func (r *SiteController) handlePending(ctx context.Context, site *sitev1alpha1.Site) (ctrl.Result, error) {
+	// Persist the identifier being attempted so failed registrations retain a
+	// baseline for detecting a later SiteIdentifier change.
+	if site.Status.ObservedSiteIdentifier == "" {
+		site.Status.ObservedSiteIdentifier = site.Spec.SiteIdentifier
+	}
+
 	// Child agent: sync to root panel instead of processing locally
 	if helper.IsChildAgent() {
 		slog.Info("Child agent mode, syncing site to root panel", "name", site.GetName())
@@ -168,6 +184,28 @@ func (r *SiteController) handlePending(ctx context.Context, site *sitev1alpha1.S
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 	return ctrl.Result{RequeueAfter: time.Second * 5}, nil
+}
+
+// siteIdentifierChanged reports whether the current registration state belongs
+// to a different SiteIdentifier. Legacy terminal objects without an observed
+// identifier are re-registered once to establish that baseline.
+func siteIdentifierChanged(site *sitev1alpha1.Site) bool {
+	if site.Status.ObservedSiteIdentifier != "" {
+		return site.Status.ObservedSiteIdentifier != site.Spec.SiteIdentifier
+	}
+	return site.Status.Phase != "" || site.Status.AppId != "" || site.Status.AppSecret != ""
+}
+
+// resetRegistrationForSiteIdentifier discards credentials and retry state that
+// belong to the previous SiteIdentifier, then starts a fresh registration.
+func resetRegistrationForSiteIdentifier(site *sitev1alpha1.Site) {
+	site.Status.AppId = ""
+	site.Status.AppSecret = ""
+	site.Status.LastRegisteredAt = nil
+	site.Status.RegisterRetryCount = 0
+	site.Status.PatchRetryCount = 0
+	site.Status.ObservedSiteIdentifier = site.Spec.SiteIdentifier
+	setSitePhase(site, "Pending", "SiteIdentifierChanged", metav1.ConditionUnknown, "siteIdentifier changed; registration will be retried")
 }
 
 // handleAppIdReady patches the target resource and transitions to Completed or Failed.
@@ -366,6 +404,10 @@ func (r *SiteController) createOrUpdateConfigMap(target *sitev1alpha1.TargetRef,
 
 // setPhase updates the Site status with the given phase, condition and message.
 func (r *SiteController) setPhase(site *sitev1alpha1.Site, phase, reason string, conditionStatus metav1.ConditionStatus, message string) {
+	setSitePhase(site, phase, reason, conditionStatus, message)
+}
+
+func setSitePhase(site *sitev1alpha1.Site, phase, reason string, conditionStatus metav1.ConditionStatus, message string) {
 	now := metav1.Now()
 	site.Status.Phase = phase
 	site.Status.Message = message
