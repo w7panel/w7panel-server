@@ -55,3 +55,69 @@ func TestPatchTargetResourceAppGroupStoresAppCredentialsInSpec(t *testing.T) {
 		t.Fatalf("spec.appCredentials.appSecret = %q, want %q", got.Spec.AppCredentials.AppSecret, "app-secret")
 	}
 }
+
+func TestSiteIdentifierChangeResetsRegistration(t *testing.T) {
+	registeredAt := metav1.Now()
+	site := &sitev1alpha1.Site{
+		Spec: sitev1alpha1.SiteSpec{SiteIdentifier: "new-identifier"},
+		Status: sitev1alpha1.SiteStatus{
+			Phase:                  "Completed",
+			AppId:                  "old-app-id",
+			AppSecret:              "old-app-secret",
+			ObservedSiteIdentifier: "old-identifier",
+			LastRegisteredAt:       &registeredAt,
+			RegisterRetryCount:     2,
+			PatchRetryCount:        1,
+		},
+	}
+
+	if !siteIdentifierChanged(site) {
+		t.Fatal("siteIdentifierChanged() = false, want true")
+	}
+
+	resetRegistrationForSiteIdentifier(site)
+
+	if site.Status.Phase != "Pending" {
+		t.Fatalf("phase = %q, want Pending", site.Status.Phase)
+	}
+	if site.Status.ObservedSiteIdentifier != "new-identifier" {
+		t.Fatalf("observedSiteIdentifier = %q, want new-identifier", site.Status.ObservedSiteIdentifier)
+	}
+	if site.Status.AppId != "" || site.Status.AppSecret != "" {
+		t.Fatalf("credentials = (%q, %q), want empty", site.Status.AppId, site.Status.AppSecret)
+	}
+	if site.Status.LastRegisteredAt != nil {
+		t.Fatal("lastRegisteredAt should be cleared")
+	}
+	if site.Status.RegisterRetryCount != 0 || site.Status.PatchRetryCount != 0 {
+		t.Fatalf("retry counts = (%d, %d), want (0, 0)", site.Status.RegisterRetryCount, site.Status.PatchRetryCount)
+	}
+}
+
+func TestLegacyTerminalSiteWithoutObservedIdentifierReregisters(t *testing.T) {
+	site := &sitev1alpha1.Site{
+		Spec:   sitev1alpha1.SiteSpec{SiteIdentifier: "identifier"},
+		Status: sitev1alpha1.SiteStatus{Phase: "Failed"},
+	}
+
+	if !siteIdentifierChanged(site) {
+		t.Fatal("legacy terminal Site should be re-registered")
+	}
+}
+
+func TestUnchangedSiteIdentifierDoesNotReregister(t *testing.T) {
+	site := &sitev1alpha1.Site{
+		Spec: sitev1alpha1.SiteSpec{
+			Host:           "updated.example.com",
+			SiteIdentifier: "identifier",
+		},
+		Status: sitev1alpha1.SiteStatus{
+			Phase:                  "Completed",
+			ObservedSiteIdentifier: "identifier",
+		},
+	}
+
+	if siteIdentifierChanged(site) {
+		t.Fatal("unchanged SiteIdentifier should not trigger registration")
+	}
+}
