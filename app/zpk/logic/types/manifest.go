@@ -469,6 +469,7 @@ type Version struct {
 type Data struct {
 	Manifest        string            `json:"manifest"`
 	Version         Version           `json:"version"`
+	InfoURL         string            `json:"info_url"`
 	ZipURL          string            `json:"zip_url"`
 	HelmUrl         string            `json:"helm_url"`
 	OciURL          string            `json:"oci_url"`
