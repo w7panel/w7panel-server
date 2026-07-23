@@ -986,8 +986,17 @@ func ToAppGroup(p K8sResourceInterface, installResult []v1alpha1.DeployItem) *v1
 		// 	Resource: p.GetResourceName(),
 		// },
 	}
+	syncAppGroupZpkURL(obj, p.GetZpkUrl())
 	return obj
 
+}
+
+func syncAppGroupZpkURL(group *v1alpha1.AppGroup, zpkURL string) {
+	group.Spec.ZpkUrl = zpkURL
+	if group.Annotations == nil {
+		group.Annotations = map[string]string{}
+	}
+	group.Annotations[types.HELM_ZPK_URL] = zpkURL
 }
 
 func ToMicroApp(p K8sResourceInterface) *microapp.MicroApp {
