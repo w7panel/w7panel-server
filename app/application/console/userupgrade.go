@@ -3,6 +3,7 @@ package console
 import (
 	"context"
 	"log/slog"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -28,11 +29,11 @@ func (c UserUpgrade) Handle(cmd *cobra.Command, args []string) {
 	sdk := k8s.NewK8sClient().Sdk
 	if err := userservice.MigrateServiceAccounts(context.Background(), sdk); err != nil {
 		slog.Error("升级用户失败", "error", err)
-		return
+		os.Exit(1)
 	}
 	if err := userservice.MigrateLegacyConsoleFields(context.Background(), sdk); err != nil {
 		slog.Error("迁移用户cloud字段失败", "error", err)
-		return
+		os.Exit(1)
 	}
 	slog.Info("升级用户完成")
 }

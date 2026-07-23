@@ -3,6 +3,7 @@ package console
 import (
 	"context"
 	"log/slog"
+	"os"
 
 	"github.com/spf13/cobra"
 	configservice "github.com/w7panel/w7panel/common/service/config"
@@ -29,7 +30,7 @@ func (c W7ConfigUpgrade) Handle(cmd *cobra.Command, args []string) {
 	repo := configservice.NewW7ConfigRepository(sdk)
 	if err := repo.MigrateSecretsToUsers(context.Background()); err != nil {
 		slog.Error("升级 w7-config 失败", "error", err)
-		return
+		os.Exit(1)
 	}
 	slog.Info("升级 w7-config 完成")
 }

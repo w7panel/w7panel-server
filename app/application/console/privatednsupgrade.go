@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"regexp"
 	"strings"
 
@@ -49,7 +50,7 @@ func (c PrivateDNSUpgrade) Handle(cmd *cobra.Command, args []string) {
 	count, err := MigrateCoreDNSCustomToPrivateDNS(ctx, sdk, privateDNSUpgradeOp.overwrite)
 	if err != nil {
 		slog.Error("升级 PrivateDNS 失败", "error", err)
-		return
+		os.Exit(1)
 	}
 	slog.Info("升级 PrivateDNS 完成", "count", count, "overwrite", privateDNSUpgradeOp.overwrite)
 }

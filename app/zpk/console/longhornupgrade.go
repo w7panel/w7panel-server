@@ -1,6 +1,7 @@
 package console
 
 import (
+	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
@@ -32,22 +34,29 @@ func (c LonghornUpgrade) Handle(cmd *cobra.Command, args []string) {
 	sdk := k8s.NewK8sClient().Sdk
 	helmApi := k8s.NewHelm(sdk)
 
-	release, err := helmApi.Info("longhorn", longhornNamespace)
+	release, err := helmApi.Info(longhornReleaseName, longhornNamespace)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		release, err = helmApi.Info("longhorn", longhornNamespace)
+	}
 	if err != nil {
-		slog.Error("longhorn helm not found", "namespace", longhornNamespace, "releaseName", longhornReleaseName, "err", err)
-		return
+		if errors.Is(err, driver.ErrReleaseNotFound) {
+			slog.Info("longhorn helm 未安装，跳过迁移", "namespace", longhornNamespace)
+			return
+		}
+		slog.Error("查询 longhorn helm 失败", "namespace", longhornNamespace, "err", err)
+		os.Exit(1)
 	}
 
 	version := longhornVersion(release)
 	if version == "" {
 		slog.Error("longhorn version not found", "namespace", longhornNamespace, "releaseName", longhornReleaseName)
-		return
+		os.Exit(1)
 	}
 
 	shouldRun, err := shouldRunLonghornUpgradeShell(sdk)
 	if err != nil {
 		slog.Error("check longhorn appgroup error", "err", err)
-		return
+		os.Exit(1)
 	}
 	if !shouldRun {
 		slog.Info("longhorn appgroup already exists, skip upgrade shell")
@@ -69,7 +78,7 @@ func (c LonghornUpgrade) Handle(cmd *cobra.Command, args []string) {
 	}
 	if err != nil {
 		slog.Error("run longhorn upgrade shell error", "script", scriptPath, "version", version, "err", err)
-		return
+		os.Exit(1)
 	}
 
 	slog.Info("longhorn upgrade shell success", "script", scriptPath, "version", version)
@@ -82,7 +91,7 @@ func shouldRunLonghornUpgradeShell(sdk *k8s.Sdk) (bool, error) {
 	}
 
 	for _, name := range []string{longhornReleaseName} {
-		_, err := groupApi.GetAppGroup("default", name)
+		_, err := groupApi.GetAppGroup(sdk.GetNamespace(), name)
 		if err == nil {
 			return false, nil
 		}

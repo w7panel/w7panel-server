@@ -103,10 +103,14 @@ func (r *PermissionController) ensureMetricsReaderAccess(ctx context.Context, us
 		},
 	}
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, clusterRoleBinding, func() error {
+		namespace := "default"
+		if r.Sdk != nil && r.Sdk.GetNamespace() != "" {
+			namespace = r.Sdk.GetNamespace()
+		}
 		clusterRoleBinding.Subjects = []rbacv1.Subject{{
 			Kind:      "ServiceAccount",
 			Name:      username,
-			Namespace: "default",
+			Namespace: namespace,
 		}}
 		clusterRoleBinding.RoleRef = rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",

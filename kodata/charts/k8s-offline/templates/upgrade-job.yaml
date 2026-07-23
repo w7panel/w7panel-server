@@ -9,7 +9,9 @@ metadata:
   labels:
     {{- include "helm.labels" . | nindent 4 }}
 spec:
-  activeDeadlineSeconds: 300
+  # The upgrade includes Helm/plugin operations that each allow up to 600s.
+  # Keep the Job deadline above the combined migration window.
+  activeDeadlineSeconds: 1800
   ttlSecondsAfterFinished: 300
   template:
     spec:
@@ -30,4 +32,5 @@ spec:
             - name: SERVICE_ACCOUNT_NAME
               value: {{ .Release.Name }}     
       restartPolicy: Never
-  backoffLimit: 4
+  # Do not automatically replay a partially completed destructive migration.
+  backoffLimit: 1

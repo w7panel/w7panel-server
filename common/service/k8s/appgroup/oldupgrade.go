@@ -25,7 +25,8 @@ func NewOldUpgrade(sdk *k8s.Sdk) (*OldUpgrade, error) {
 }
 
 func (o *OldUpgrade) Upgrade() error {
-	ingresses, err := o.sdk.ClientSet.NetworkingV1().Ingresses("default").List(o.sdk.Ctx, metav1.ListOptions{})
+	namespace := o.sdk.GetNamespace()
+	ingresses, err := o.sdk.ClientSet.NetworkingV1().Ingresses(namespace).List(o.sdk.Ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -41,7 +42,7 @@ func (o *OldUpgrade) Upgrade() error {
 			slog.Info("ingress has group label", "appName", appName)
 			continue
 		}
-		deployment, err := o.sdk.ClientSet.AppsV1().Deployments("default").Get(o.sdk.Ctx, appName, metav1.GetOptions{})
+		deployment, err := o.sdk.ClientSet.AppsV1().Deployments(namespace).Get(o.sdk.Ctx, appName, metav1.GetOptions{})
 		if err != nil {
 			slog.Error("get deployment error", "error", err, "deployment", appName)
 			continue
@@ -61,7 +62,7 @@ func (o *OldUpgrade) Upgrade() error {
 		// }
 		// _, err = o.sdk.ClientSet.NetworkingV1().Ingresses("default").Patch(o.sdk.Ctx, ingress.Name, metav1.ApplyPatchType, patch)
 
-		_, err = o.sdk.ClientSet.NetworkingV1().Ingresses("default").Update(o.sdk.Ctx, &ingress, metav1.UpdateOptions{})
+		_, err = o.sdk.ClientSet.NetworkingV1().Ingresses(namespace).Update(o.sdk.Ctx, &ingress, metav1.UpdateOptions{})
 		if err != nil {
 			slog.Error("update ingress error", "error", err, "appName", appName)
 			continue

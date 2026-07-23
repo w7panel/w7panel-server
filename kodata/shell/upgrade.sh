@@ -16,7 +16,16 @@ echo "升级私有DNS"
 w7panel privatedns-upgrade
 
 echo "升级用户"
-w7panel user-upgrade 
+w7panel user-upgrade
+
+echo "升级用户配置"
+w7panel w7config-upgrade
+
+echo "升级站点设置"
+w7panel site-setting-upgrade
+
+echo "补齐 Ingress 应用分组"
+w7panel ingress-add-group
 
 echo "导入yaml"
 kubectl apply -f $KO_DATA_PATH/yaml/nvidia.yaml
@@ -61,9 +70,9 @@ echo "create权限 不使用apply"
 # kubectl get permission founder >/dev/null 2>&1 || kubectl apply -f $KO_DATA_PATH/yaml/permission/founder.yaml --server-side
 kubectl annotate serviceaccount "${SERVICE_ACCOUNT_NAME:-w7panel-offline}" -n "${NAMESPACE:-default}" w7.cc/menu-name- --overwrite || true
 kubectl delete permission tech --ignore-not-found
-kubectl delete configmap tech -n default --ignore-not-found
-kubectl delete configmap k3k.permission.tech -n default --ignore-not-found
-kubectl delete configmap permission.tech -n default --ignore-not-found
+kubectl delete configmap tech -n "${NAMESPACE:-default}" --ignore-not-found
+kubectl delete configmap k3k.permission.tech -n "${NAMESPACE:-default}" --ignore-not-found
+kubectl delete configmap permission.tech -n "${NAMESPACE:-default}" --ignore-not-found
 kubectl create -f $KO_DATA_PATH/yaml/permission || echo "已存在"
 
 # 系统内置权限直接替换，自定义权限不在该目录中
@@ -86,8 +95,8 @@ echo "higress config"
 kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
 
 echo "安装/升级制品版域名和限流插件"
-helm upgrade --namespace default w7panel-pluginwhitedomain $KO_DATA_PATH/charts/w7panel-pluginwhitedomain --install --timeout 600s
-helm upgrade --namespace default w7panel-pluginratelimit $KO_DATA_PATH/charts/w7panel-pluginratelimit --install --timeout 600s
+helm upgrade --namespace "${NAMESPACE:-default}" w7panel-pluginwhitedomain $KO_DATA_PATH/charts/w7panel-pluginwhitedomain --install --timeout 600s
+helm upgrade --namespace "${NAMESPACE:-default}" w7panel-pluginratelimit $KO_DATA_PATH/charts/w7panel-pluginratelimit --install --timeout 600s
 DOMAIN_TARGET_GROUP=w7panel-pluginwhitedomain \
 RATE_LIMIT_TARGET_GROUP=w7panel-pluginratelimit \
 TARGET_WAIT_SECONDS=600 \
@@ -117,23 +126,4 @@ echo "longhorn 升级到面板中"
 w7panel longhornupgrade
 
 echo "安装/升级cloudnoauth"
-helm upgrade --namespace default w7panel-cloudnoauth $KO_DATA_PATH/charts/w7panel-cloudnoauth --install --timeout 600s
-
-
-echo "clear completed jobs and pod..."
-
-kubectl get jobs -n default -o json \
-  | jq -r '.items[]
-    | select(
-        any(.status.conditions[]?; (.type == "Complete" or .type == "Failed") and .status == "True")
-      )
-    | .metadata.name' \
-  | xargs -r kubectl delete job -n default
-
-echo "Deleting completed pods..."
-
-kubectl get pods -n default -o json \
-  | jq -r '.items[]
-    | select(.status.phase == "Succeeded" or .status.phase == "Failed")
-    | .metadata.name' \
-  | xargs -r kubectl delete pod -n default
+helm upgrade --namespace "${NAMESPACE:-default}" w7panel-cloudnoauth $KO_DATA_PATH/charts/w7panel-cloudnoauth --install --timeout 600s

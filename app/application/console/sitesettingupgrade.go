@@ -3,6 +3,7 @@ package console
 import (
 	"context"
 	"log/slog"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -59,11 +60,11 @@ func (c SiteSettingUpgrade) Handle(cmd *cobra.Command, args []string) {
 	legacy := c.loadLegacyConfig(ctx, sdk)
 	if err := c.upsertSettingConfigMap(ctx, sdk, namespace, siteSettingUpgradeOp.configMap); err != nil {
 		slog.Error("升级站点设置 ConfigMap 失败", "error", err)
-		return
+		os.Exit(1)
 	}
 	if err := c.upsertMicroAppSetting(ctx, sdk, namespace, siteSettingUpgradeOp.name, siteSettingUpgradeOp.configMap, legacy); err != nil {
 		slog.Error("升级站点设置失败", "error", err)
-		return
+		os.Exit(1)
 	}
 	slog.Info("升级站点设置完成", "namespace", namespace, "name", siteSettingUpgradeOp.name, "configmap", siteSettingUpgradeOp.configMap)
 }
