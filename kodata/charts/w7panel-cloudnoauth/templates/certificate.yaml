@@ -1,0 +1,39 @@
+{{- if and .Values.ingress.enabled .Values.ingress.tls.enabled .Values.ingress.certManager.enabled }}
+{{- $issuerName := default (printf "%s-selfsigned" (include "w7panel-cloudnoauth.fullname" .)) .Values.ingress.certManager.issuer.name }}
+{{- if .Values.ingress.certManager.issuer.create }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ $issuerName | quote }}
+  labels:
+    {{- include "w7panel-cloudnoauth.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.ingress.certManager.issuer.selfSigned }}
+  selfSigned: {}
+  {{- else }}
+  {{- fail "ingress.certManager.issuer.create=true requires ingress.certManager.issuer.selfSigned=true or an existing external issuerRef" }}
+  {{- end }}
+---
+{{- end }}
+{{- if .Values.ingress.certManager.certificate.create }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ default (include "w7panel-cloudnoauth.fullname" .) .Values.ingress.certManager.certificate.name | quote }}
+  labels:
+    {{- include "w7panel-cloudnoauth.labels" . | nindent 4 }}
+spec:
+  secretName: {{ .Values.ingress.tls.secretName | quote }}
+  duration: {{ .Values.ingress.certManager.certificate.duration | quote }}
+  renewBefore: {{ .Values.ingress.certManager.certificate.renewBefore | quote }}
+  dnsNames:
+    - {{ .Values.ingress.host | quote }}
+  issuerRef:
+    name: {{ $issuerName | quote }}
+    kind: {{ .Values.ingress.certManager.issuer.kind | quote }}
+    group: {{ .Values.ingress.certManager.issuer.group | quote }}
+  privateKey:
+    algorithm: {{ .Values.ingress.certManager.certificate.privateKey.algorithm | quote }}
+    size: {{ .Values.ingress.certManager.certificate.privateKey.size }}
+{{- end }}
+{{- end }}

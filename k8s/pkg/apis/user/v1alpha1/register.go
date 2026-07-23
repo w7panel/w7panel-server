@@ -6,40 +6,33 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-var SchemeGroupVersion = schema.GroupVersion{Group: "user.w7.cc", Version: "v1alpha1"}
+const (
+	Kind       = "User"
+	APIVersion = "w7panel.w7.com/v1alpha1"
+)
+
+var SchemeGroupVersion = schema.GroupVersion{Group: "w7panel.w7.com", Version: "v1alpha1"}
 
 var (
-	// TODO: move SchemeBuilder with zz_generated.deepcopy.go to k8s.io/api.
-	// localSchemeBuilder and AddToScheme will stay in k8s.io/kubernetes.
 	SchemeBuilder      runtime.SchemeBuilder
 	localSchemeBuilder = &SchemeBuilder
 	AddToScheme        = localSchemeBuilder.AddToScheme
 )
 
 func init() {
-	// We only register manually written functions here. The registration of the
-	// generated functions takes place in the generated files. The separation
-	// makes the code compile even when the generated files are missing.
 	localSchemeBuilder.Register(addKnownTypes)
 }
 
-// Resource takes an unqualified resource and returns a Group qualified GroupResource
 func Resource(resource string) schema.GroupResource {
 	return SchemeGroupVersion.WithResource(resource).GroupResource()
 }
 
-// Adds the list of known types to the given scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&User{},
 		&UserList{},
-		&UserGroup{},
-		&UserGroupList{},
 	)
 
-	scheme.AddKnownTypes(SchemeGroupVersion,
-		&metav1.Status{},
-	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
 }

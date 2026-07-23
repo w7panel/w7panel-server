@@ -2,17 +2,14 @@ package appgroup
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	v1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
-	controllerutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // cert-manager cert
@@ -33,51 +30,6 @@ var schemeGroupVersion = schema.GroupVersion{Group: "cert-manager.io", Version: 
 func init() {
 	k8s.GetScheme().AddKnownTypes(schemeGroupVersion, &Certificate{})
 	// metav1.Reg
-}
-
-func getappgroup(client sigclient.Client, ingress *networkingv1.Ingress) (*v1alpha1.AppGroup, error) {
-	if ingress.Labels != nil && ingress.Labels["group"] != "" {
-		groupName := ingress.Labels["group"]
-		appgroup, err := GetAppgroup(groupName, ingress.Namespace, client)
-		if err != nil {
-			return nil, err
-		}
-		return appgroup, err
-	}
-	return nil, errors.New("no group")
-}
-
-func getUrl(ingress *networkingv1.Ingress) string {
-	scheme := "http://"
-	if ingress.Annotations != nil && ingress.Annotations["cert-manager.io/cluster-issuer"] == "w7-letsencrypt-prod" {
-		scheme = "https://"
-	}
-	// if ingress.Spec.TLS != nil && len(ingress.Spec.TLS) > 0 {
-	// 	scheme = "https://"
-	// }
-	if ingress.Spec.Rules[0].HTTP.Paths[0].Path != "/" {
-		return scheme + ingress.Spec.Rules[0].Host + "/" + ingress.Spec.Rules[0].HTTP.Paths[0].Path
-	}
-	return scheme + ingress.Spec.Rules[0].Host
-}
-
-//	func patchAppgroup(client sigclient.Client, group *v1alpha1.AppGroup, applyFunc func() error) {
-//		controllerutil.CreateOrPatch(client, group, func() error {
-//			return applyFunc()
-//		})
-//	}
-func OnAddIngress(client sigclient.Client, ingress *networkingv1.Ingress) {
-	group, err := getappgroup(client, ingress)
-	if err != nil {
-		slog.Error("get appgroup error", "error", err)
-		return
-	}
-
-	controllerutil.CreateOrPatch(context.Background(), client, group, func() error {
-		group.AppendDomain(getUrl(ingress))
-		return nil
-	})
-
 }
 
 func delCert(client sigclient.Client, namespace, certName string) {
@@ -132,27 +84,8 @@ func checkAutosslDel(client sigclient.Client, old *networkingv1.Ingress) {
 
 func OnUpdateIngress(client sigclient.Client, old *networkingv1.Ingress, new *networkingv1.Ingress) {
 	checkAutossl(client, old, new)
-	group, err := getappgroup(client, new)
-	if err != nil {
-		slog.Error("get appgroup error", "error", err)
-		return
-	}
-	controllerutil.CreateOrPatch(context.Background(), client, group, func() error {
-		group.DeleteDomain(getUrl(old))
-		group.AppendDomain(getUrl(new))
-		return nil
-	})
 }
 
 func OnDeleteIngress(client sigclient.Client, ingress *networkingv1.Ingress) {
 	checkAutosslDel(client, ingress) //检查
-	group, err := getappgroup(client, ingress)
-	if err != nil {
-		slog.Error("get appgroup error", "error", err)
-		return
-	}
-	controllerutil.CreateOrPatch(context.Background(), client, group, func() error {
-		group.DeleteDomain(getUrl(ingress))
-		return nil
-	})
 }

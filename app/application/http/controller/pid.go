@@ -1,0 +1,133 @@
+package controller
+
+import (
+	// "github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
+
+	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/service/k8s/pid"
+	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
+)
+
+type Pid struct {
+	controller.Abstract
+}
+
+func (self Pid) GetPid(http *gin.Context) {
+	params := pid.PidParam{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	token := http.MustGet("k8s_token").(string)
+	pidObj, err := pid.NewPid(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	pidResult, err := pidObj.Handle(params)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	result := pidResult.ToArray()
+	result["webdavToken"] = token
+
+	self.JsonResponseWithoutError(http, result)
+}
+
+func (self Pid) GetMountFiles(http *gin.Context) {
+	params := pid.MountFilesParam{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	token := http.MustGet("k8s_token").(string)
+	mountFiles, err := pid.NewMountFilesByToken(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	result, err := mountFiles.Handle(params)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponseWithoutError(http, result)
+}
+
+func (self Pid) UpdateMountFile(http *gin.Context) {
+	params := pid.UpdateMountFileParam{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	token := http.MustGet("k8s_token").(string)
+	mountFiles, err := pid.NewMountFilesByToken(token)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	err = mountFiles.UpdateFileContent(params)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonSuccessResponse(http)
+}
+
+func (self Pid) CreateMountFile(http *gin.Context) {
+	params := pid.UpdateMountFileParam{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	params.Action = "create"
+	token := http.MustGet("k8s_token").(string)
+	mountFiles, err := pid.NewMountFilesByToken(token)
+	if err != nil {
+		self.JsonResponseWithoutError(http, err)
+		return
+	}
+	err = mountFiles.UpdateFileContent(params)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonSuccessResponse(http)
+}
+
+func (self Pid) DeleteMountFile(http *gin.Context) {
+	params := pid.UpdateMountFileParam{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	params.Action = "delete"
+	token := http.MustGet("k8s_token").(string)
+	mountFiles, err := pid.NewMountFilesByToken(token)
+	if err != nil {
+		self.JsonResponseWithoutError(http, err)
+		return
+	}
+	err = mountFiles.UpdateFileContent(params)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonSuccessResponse(http)
+}
+
+func (self Pid) ChmodMountFile(http *gin.Context) {
+	params := pid.UpdateMountFileParam{}
+	if !self.Validate(http, &params) {
+		return
+	}
+	params.Action = "chmod"
+	token := http.MustGet("k8s_token").(string)
+	mountFiles, err := pid.NewMountFilesByToken(token)
+	if err != nil {
+		self.JsonResponseWithoutError(http, err)
+		return
+	}
+	err = mountFiles.UpdateFileContent(params)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonSuccessResponse(http)
+}

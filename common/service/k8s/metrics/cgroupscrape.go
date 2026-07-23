@@ -1,26 +1,22 @@
+//go:build linux
+
 package metrics
 
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/cgroups"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	"github.com/containerd/cgroups/v3/cgroup2/stats"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/cgroups"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
-
-var lastMetrics *stats.Metrics
-var lastTime time.Time
-
-var cpuCount int
 
 var storage *cgroupStorage
 
@@ -37,7 +33,7 @@ func StartCroupMetrics() {
 		}
 		collectReport(metricsClient) // 首次执行
 		// 启动定时任务
-		ticker := time.NewTicker(10 * time.Second)
+		ticker := time.NewTicker(30 * time.Second)
 		for {
 			if err := collectReport(metricsClient); err != nil {
 				// 记录错误但继续运行
@@ -48,7 +44,7 @@ func StartCroupMetrics() {
 	}
 }
 func collectReport(client sigclient.Client) error {
-	slog.Error("collectReport start")
+	// slog.Error("collectReport start")
 	rs, stat, err := collectMetrics()
 	if err != nil {
 		return err
@@ -68,9 +64,10 @@ func collectReport(client sigclient.Client) error {
 		"memory.file.mb":         strconv.FormatUint(stat.Memory.File/1048576, 10),
 		"memory.kernel.mb":       strconv.FormatUint(stat.Memory.GetKernelStack()/1048576, 10),
 	}
+	metricsName := "metrics" //子集群metricsName
 	configmap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "metrics",
+			Name:      metricsName,
 			Namespace: "default",
 		},
 	}
@@ -115,8 +112,4 @@ func collectMetrics() (corev1.ResourceList, *stats.Metrics, error) {
 	}
 	storage.prev = storage.last
 	return rs, stat, err
-}
-
-func collectCgroupMetrics(client sigclient.Client) error {
-	return nil
 }

@@ -2,21 +2,23 @@ package logic
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"log/slog"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/app/zpk/logic/types"
-	zpktypes "gitee.com/we7coreteam/k8s-offline/app/zpk/logic/types"
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/higress"
-	convert "gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk"
-	helm "gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk"
-	v1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
 	"github.com/samber/lo"
+	"github.com/w7panel/w7panel/app/zpk/logic/types"
+	zpktypes "github.com/w7panel/w7panel/app/zpk/logic/types"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/higress"
+	"github.com/w7panel/w7panel/common/service/k8s/microapp"
+	convert "github.com/w7panel/w7panel/common/service/k8s/zpk"
+	helm "github.com/w7panel/w7panel/common/service/k8s/zpk"
+	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
@@ -103,28 +105,38 @@ func fillHelmSet(packageApp *types.PackageApp, childName string, ignore []string
 		if lo.Contains(ignore, params.Name) {
 			continue
 		}
-		set += " --set " + childName + params.Name + "='" + params.ValuesText + "'"
+		set += " --set '" + childName + params.Name + "=" + params.ValuesText + "'"
 	}
 	for _, env := range packageApp.Manifest.Platform.Container.Env {
-		set += " --set " + childName + env.Name + "='" + env.Value + "'"
+		set += " --set '" + childName + env.Name + "=" + env.Value + "'"
 	}
+
+	if packageApp.PvcName != "" {
+		// set += " --set PVC_NAME=" + (packageApp.PvcName)
+		set += " --set " + childName + "PVC_NAME=" + (packageApp.PvcName)
+	}
+
 	set += " --set " + "replicas=" + strconv.Itoa(int(packageApp.Replicas))
-	if packageApp.GetVolumeMounts() != nil && len(packageApp.GetVolumeMounts()) > 0 {
-		jsonstr, err := helper.ToJson(packageApp.GetVolumeMounts())
-		if err != nil {
-			slog.Error("helm install job", "error", err)
-		} else {
-			set += " --set-json '" + childName + "volumeMounts=" + jsonstr + "'"
-		}
-	}
-	if packageApp.GetVolumes() != nil && len(packageApp.GetVolumes()) > 0 {
-		jsonstr, err := helper.ToJson(packageApp.GetVolumes())
-		if err != nil {
-			slog.Error("helm install job", "error", err)
-		} else {
-			set += " --set-json '" + childName + "volumes=" + jsonstr + "'"
-		}
-	}
+	// 正常应该 完全交给helm 外部不干预 只提供PVC_NAME
+	// 目前因为subPath问题，需要直接传volumes volumeMounts
+	// 子应用无法获取原始volume volumes 配置
+	//
+	// if packageApp.GetVolumeMounts() != nil && len(packageApp.GetVolumeMounts()) > 0 {
+	// 	jsonstr, err := helper.ToJson(packageApp.GetVolumeMounts())
+	// 	if err != nil {
+	// 		slog.Error("helm install job", "error", err)
+	// 	} else {
+	// 		set += " --set-json '" + childName + "volumeMounts=" + jsonstr + "'"
+	// 	}
+	// }
+	// if packageApp.GetVolumes() != nil && len(packageApp.GetVolumes()) > 0 {
+	// 	jsonstr, err := helper.ToJson(packageApp.GetVolumes())
+	// 	if err != nil {
+	// 		slog.Error("helm install job", "error", err)
+	// 	} else {
+	// 		set += " --set-json '" + childName + "volumes=" + jsonstr + "'"
+	// 	}
+	// }
 	if fillfullName {
 		set += " --set " + childName + "fullnameOverride=" + packageApp.GetName()
 	}
@@ -133,13 +145,40 @@ func fillHelmSet(packageApp *types.PackageApp, childName string, ignore []string
 func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp) *batchv1.Job {
 	// releaseName := packageApp.GetReleaseName()
 	releaseName := packageApp.GetReleaseName()
-	if !packageApp.IsHelm() {
-		packageApp.Manifest.Platform.Helm.ChartName = packageApp.HelmUrl
+	// if !packageApp.IsHelm() {
+	// packageApp.Manifest.Platform.Helm.ChartName = packageApp.HelmUrl
+	// }
+	if packageApp.HelmUrl != "" {
+		packageApp.Manifest.Platform.Helm.ChartName = packageApp.HelmUrl //统一使用新的helmUrl
+		packageApp.Manifest.Platform.Helm.Repository = ""                //
+		packageApp.Manifest.Platform.Helm.Version = ""                   //
+
 	}
 	helmConfig := packageApp.Manifest.Platform.Helm
 	labels := packageApp.GetLabels()
-	anno := packageApp.GetAnnotations()
-	shellCmd := "/ko-app/k8s-offline helmgo --chartName=" + helmConfig.ChartName + " --namespace=" + packageApp.Namespace + " --repository=" + helmConfig.Repository + " --zipUrl=" + packageApp.ZipUrl + " --releaseName=" + releaseName + ""
+	repo, version := helper.SelfImageInfo()
+	// anno := packageApp.GetAnnotations()
+	panelAccessToken := ""
+	replace, err := microapp.NewMicroAppReplace(packageApp.K8sToken.GetToken())
+	if err == nil {
+		accessToken, err := replace.GetAccessToken(context.Background())
+		if err == nil {
+			panelAccessToken = accessToken
+		}
+	}
+	shellCmd := "/ko-app/w7panel helmgo --chartName=" + helmConfig.ChartName + " --namespace=" + packageApp.Namespace + " --repository=" + helmConfig.Repository + " --zipUrl=" + packageApp.ZipUrl + " --releaseName=" + releaseName + ""
+	shellCmd += " --set " + "global.panel.image=" + helper.SelfImage()
+	shellCmd += " --set " + "global.panel.thirdPartyCDToken=" + packageApp.ThirdpartyCDToken
+	shellCmd += " --set " + "global.panel.installId=" + packageApp.InstallId
+	shellCmd += " --set " + "global.panel.panelAccessToken=" + panelAccessToken
+	shellCmd += " --set " + "global.panel.innerUrl=" + helper.PanelInnerUrl()
+	shellCmd += " --set " + "global.panel.panelToken=" + packageApp.K8sToken.GetToken()
+	shellCmd += " --set " + "global.panel.panelRealToken=" + packageApp.RealToken              //子集群内网访问 需要
+	shellCmd += " --set " + "global.panel.serviceAccountName=" + packageApp.ServiceAccountName //用户名
+	shellCmd += " --set " + "global.panel.imageRepo=" + repo                                   //镜像仓库地址
+	shellCmd += " --set " + "global.panel.version=" + version                                  //版本号
+	shellCmd += " --set " + "global.panel.panelUrl=" + packageApp.PanelUrl                     //面板地址
+	shellCmd += " --set " + "DOMAIN_URL=" + packageApp.IngressHost                             //添加DOMAIN_URL
 	atomic := false
 	set := fillHelmSet(packageApp, "", []string{"HELM_ATOMIC", "DOMAIN_URL"}, false) //pvc 站点管理 会新建一个名字出来
 
@@ -155,7 +194,6 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 
 		if packageApp.IngressHost != "" {
 			shellCmd += " --set ingressHost=" + packageApp.IngressHost
-			shellCmd += " --set DOMAIN_URL=" + (packageApp.IngressHost)
 			// shellCmd += " --set DOMAIN_URL=" + (packageApp.IngressHost)
 		}
 		if packageApp.IngressClassName != "" {
@@ -168,22 +206,22 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 		if packageApp.IngressSeletorName != "" {
 			shellCmd += " --set ingressSelectorName=" + (packageApp.IngressSeletorName)
 		}
-		if packageApp.GetVolumeMounts() != nil && len(packageApp.GetVolumeMounts()) > 0 {
-			jsonstr, err := helper.ToJson(packageApp.GetVolumeMounts())
-			if err != nil {
-				slog.Error("helm install job", "error", err)
-			} else {
-				shellCmd += " --set-json 'volumeMounts=" + jsonstr + "'"
-			}
-		}
-		if packageApp.GetVolumes() != nil && len(packageApp.GetVolumes()) > 0 {
-			jsonstr, err := helper.ToJson(packageApp.GetVolumes())
-			if err != nil {
-				slog.Error("helm install job", "error", err)
-			} else {
-				shellCmd += " --set-json 'volumes=" + jsonstr + "'"
-			}
-		}
+		// if packageApp.GetVolumeMounts() != nil && len(packageApp.GetVolumeMounts()) > 0 {
+		// 	jsonstr, err := helper.ToJson(packageApp.GetVolumeMounts())
+		// 	if err != nil {
+		// 		slog.Error("helm install job", "error", err)
+		// 	} else {
+		// 		shellCmd += " --set-json 'volumeMounts=" + jsonstr + "'"
+		// 	}
+		// }
+		// if packageApp.GetVolumes() != nil && len(packageApp.GetVolumes()) > 0 {
+		// 	jsonstr, err := helper.ToJson(packageApp.GetVolumes())
+		// 	if err != nil {
+		// 		slog.Error("helm install job", "error", err)
+		// 	} else {
+		// 		shellCmd += " --set-json 'volumes=" + jsonstr + "'"
+		// 	}
+		// }
 		shellCmd += " --set 'backend_identifier=" + packageApp.GetName() + "'"
 		shellCmd += " --set 'backend_identifie=" + packageApp.GetName() + "'"
 	}
@@ -202,16 +240,16 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 		labelstr += " --labels " + k + "='" + v + "'"
 	}
 	annostr := ""
-	for k, v := range anno {
-		// 注解字段异常导致安装失败
-		// if v == "" || k == "" {
-		// 	continue
-		// }
-		if k == "w7.cc/shells" { //临时处理
-			continue
-		}
-		annostr += " --anno " + k + "=\"" + v + "\""
-	}
+	// for k, v := range anno {
+	// 	// 注解字段异常导致安装失败
+	// 	// if v == "" || k == "" {
+	// 	// 	continue
+	// 	// }
+	// 	if k == "w7.cc/shells" { //临时处理
+	// 		continue
+	// 	}
+	// 	// annostr += " --anno " + k + "=\"" + v + "\"" //helm 安装anno
+	// }
 	if len(set) > 0 {
 		shellCmd += set
 	}
@@ -435,6 +473,9 @@ func (h2 *HelmChart) toBufferFiles(packageApp *zpktypes.PackageApp, root *zpktyp
 
 	if packageApp.RequireBuildImage() {
 		buildJob := helm.ToBuildJob(packageApp, packageApp, string(h2.ShellType))
+		if buildJob == nil {
+			return nil, errors.New("agent 未启动成功，稍后重试")
+		}
 		file, err := h2.convertToYaml(buildJob, packageApp.Identifie+"-buildjob.yaml")
 		if err != nil {
 			return nil, err

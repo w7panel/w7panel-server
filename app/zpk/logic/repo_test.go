@@ -4,9 +4,9 @@ import (
 	"net/url"
 	"testing"
 
-	"gitee.com/we7coreteam/k8s-offline/app/zpk/logic/types"
-	zpktypes "gitee.com/we7coreteam/k8s-offline/app/zpk/logic/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/w7panel/w7panel/app/zpk/logic/types"
+	zpktypes "github.com/w7panel/w7panel/app/zpk/logic/types"
 )
 
 func TestLoadPackage(t *testing.T) {
@@ -19,7 +19,6 @@ func TestLoadPackage(t *testing.T) {
 		want    *zpktypes.ManifestPackage
 		wantErr bool
 	}{
-		// TODO: Add test cases.
 		{
 			name: "test",
 			args: args{
@@ -126,4 +125,14 @@ func TestUrl(t *testing.T) {
 		t.Error(err)
 	}
 	assert.Equal(t, "ai_ollamaui", u.Path)
+}
+
+// deploy://console/7201/17995
+func TestLoadRepo(t *testing.T) {
+	repo := NewRepo("deploy://console/7201/17995", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2NvbnNvbGUudzcuY2MvYXBpL3RoaXJkcGFydHktY2QvazhzLW9mZmxpbmUvb3BlbmlkLXRvLWNkLXRva2VuIiwiaWF0IjoxNzgzNjY4NjM0LCJleHAiOjE3ODM2NzQwMzQsIm5iZiI6MTc4MzY2ODYzNCwianRpIjoiN3FrMzlNTm1HWlV5N3V0SiIsInN1YiI6Ijc2MDUyIiwicHJ2IjoiZjBkMTkwZjdhZjJlODdjZTZmMDE2YWE4MjA1MGZjNzBmMjNmNTk1YyIsIm9wZW5faWQiOiJDSmd0X2hSMlZzRDdoX1Ftc0FBZ3pBIiwiZm91bmRlcl9vcGVuaWQiOiJDSmd0X2hSMlZzRDdoX1Ftc0FBZ3pBIiwicm9sZV9pZGVudGlmeSI6ImZvdW5kZXIiLCJvcmlnaW5fYXBwaWQiOiIzMTQ4OTkiLCJuaWNrbmFtZSI6InRtcCIsInVzZXJfaWQiOjc2MDUyLCJpc192YWxpZCI6dHJ1ZX0.KUdZ_J0X2_zrUili5gCYFm1toKFuCu2a9Rly91yO5Wk", "")
+	manifest, err := repo.Load()
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(manifest.Manifest.Application.Identifie) /// w7_pros_28694
 }

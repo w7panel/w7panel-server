@@ -20,8 +20,8 @@ package v1alpha1
 import (
 	http "net/http"
 
-	gpuclassv1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/gpuclass/v1alpha1"
-	scheme "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/gpuclass/clientset/versioned/scheme"
+	gpuclassv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/gpuclass/v1alpha1"
+	scheme "github.com/w7panel/w7panel/k8s/pkg/client/gpuclass/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
@@ -30,7 +30,7 @@ type GpuclassV1alpha1Interface interface {
 	GpuClassesGetter
 }
 
-// GpuclassV1alpha1Client is used to interact with features provided by the gpuclass.k8s.io group.
+// GpuclassV1alpha1Client is used to interact with features provided by the w7panel.w7.com group.
 type GpuclassV1alpha1Client struct {
 	restClient rest.Interface
 }
@@ -44,9 +44,7 @@ func (c *GpuclassV1alpha1Client) GpuClasses(namespace string) GpuClassInterface 
 // where httpClient was generated with rest.HTTPClientFor(c).
 func NewForConfig(c *rest.Config) (*GpuclassV1alpha1Client, error) {
 	config := *c
-	if err := setConfigDefaults(&config); err != nil {
-		return nil, err
-	}
+	setConfigDefaults(&config)
 	httpClient, err := rest.HTTPClientFor(&config)
 	if err != nil {
 		return nil, err
@@ -58,9 +56,7 @@ func NewForConfig(c *rest.Config) (*GpuclassV1alpha1Client, error) {
 // Note the http client provided takes precedence over the configured transport values.
 func NewForConfigAndClient(c *rest.Config, h *http.Client) (*GpuclassV1alpha1Client, error) {
 	config := *c
-	if err := setConfigDefaults(&config); err != nil {
-		return nil, err
-	}
+	setConfigDefaults(&config)
 	client, err := rest.RESTClientForConfigAndClient(&config, h)
 	if err != nil {
 		return nil, err
@@ -83,7 +79,7 @@ func New(c rest.Interface) *GpuclassV1alpha1Client {
 	return &GpuclassV1alpha1Client{c}
 }
 
-func setConfigDefaults(config *rest.Config) error {
+func setConfigDefaults(config *rest.Config) {
 	gv := gpuclassv1alpha1.SchemeGroupVersion
 	config.GroupVersion = &gv
 	config.APIPath = "/apis"
@@ -92,8 +88,6 @@ func setConfigDefaults(config *rest.Config) error {
 	if config.UserAgent == "" {
 		config.UserAgent = rest.DefaultKubernetesUserAgent()
 	}
-
-	return nil
 }
 
 // RESTClient returns a RESTClient that is used to communicate

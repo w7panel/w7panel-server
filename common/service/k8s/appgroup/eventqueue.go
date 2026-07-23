@@ -5,10 +5,11 @@ import (
 	"log/slog"
 	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
+	"github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -158,10 +159,16 @@ func (c *EventQueue) OnEvent(obj interface{}, eventType string, isInit bool) {
 			APIVersion: "v1",
 		}
 		c.queue.Add(NewK8sResourceEvent(typeMeta, v.ObjectMeta, eventType, isInit).ToString())
+	case *networkingv1.Ingress:
+		typeMeta = metav1.TypeMeta{
+			Kind:       "Ingress",
+			APIVersion: "networking.k8s.io/v1",
+		}
+		c.queue.Add(NewK8sResourceEvent(typeMeta, v.ObjectMeta, eventType, isInit).ToString())
 	case *v1alpha1.AppGroup:
 		typeMeta = metav1.TypeMeta{
 			Kind:       "AppGroup",
-			APIVersion: "appgroup.w7.cc/v1alpha1",
+			APIVersion: "w7panel.w7.com/v1alpha1",
 		}
 		c.queue.Add(NewK8sResourceEvent(typeMeta, v.ObjectMeta, eventType, isInit).ToString())
 	case *corev1.Event:
@@ -180,6 +187,22 @@ func (c *EventQueue) AddEvent(event *K8sResourceEvent) {
 }
 func (c *EventQueue) AddAfter(event *K8sResourceEvent, duration time.Duration) {
 	c.queue.AddAfter(event.ToString(), duration)
+}
+
+func sameStringSet(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	values := map[string]struct{}{}
+	for _, item := range a {
+		values[item] = struct{}{}
+	}
+	for _, item := range b {
+		if _, ok := values[item]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func ParseEvent(obj interface{}) (*K8sResourceEvent, error) {

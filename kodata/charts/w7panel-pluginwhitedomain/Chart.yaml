@@ -1,0 +1,20 @@
+apiVersion: v2
+appVersion: 1.16.0
+deprecated: false
+description: ' higress域名白名单'
+home: ""
+icon: ""
+kubeVersion: ""
+name: w7panel-pluginwhitedomain
+type: application
+version: 0.1.0
+
+annotations:
+  w7.cc/title: "higress域名白名单"
+  w7.cc/description: "higress域名白名单"
+  title: "higress域名白名单"
+  w7.cc/deny-delete: "true"
+  w7.cc/official-app: "true"
+  w7.cc/icon: "https://zpk.fan.b2.sz.w7.com/zpk/zip/icon/w7panel-pluginwhitedomain"
+  w7.cc/zpk-url: "https://zpk.fan.b2.sz.w7.com/zpk/respo/info/w7panel-pluginwhitedomain"
+  w7.cc/identifie: "w7panel-pluginwhitedomain"

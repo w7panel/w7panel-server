@@ -38,6 +38,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
 	"github.com/google/go-containerregistry/pkg/crane"
+
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 
 	// "golang.org/x/mod/zip"
@@ -59,54 +60,9 @@ var clusterD = "cluster.local"
 
 const K3K_AGENT_PREFIX = "w7panel-k3k-agent"
 
-func ChangeClusterDns(domain string) {
-	clusterD = domain
-}
-
 func ClusterDomain(name, namespace string) string {
 	return fmt.Sprintf("%s.%s.svc.%s", name, namespace, clusterD)
 }
-
-func CreateDirIfNotExist(dirName string, perm os.FileMode) {
-	if _, err := os.Stat(dirName); os.IsNotExist(err) {
-		err := os.MkdirAll(dirName, perm)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
-func GetCurUsrHomeDir() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-	return homeDir
-}
-
-func GetAppHomeDir() string {
-	homeDir := GetCurUsrHomeDir()
-
-	appDir := homeDir + "/w7_k8s"
-	CreateDirIfNotExist(appDir, os.ModePerm)
-
-	return appDir + "/"
-}
-
-// func CreateZipFromDir(source, target string) error {
-// 	version := module.Version{
-// 		Path:    "gitee.com/we7coreteam/k8s-offline",
-// 		Version: "v0.1.2",
-// 	}
-// 	//判断target 是否存在
-
-// 	file, err := os.OpenFile(target, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return zip.CreateFromDir(file, version, source)
-// }
 
 // RandomString generates a random string of the specified length
 func RandomString(length int) string {
@@ -190,20 +146,6 @@ func YamlParse(data []byte) (map[string]interface{}, error) {
 	return yamlData, nil
 }
 
-func RunCmdBinsh(args ...string) (string, error) {
-	// Bug 修复：将 args 作为切片传递给 exec.Command
-	cmd := exec.Command("/bin/sh", args...)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err != nil {
-		return stderr.String(), err
-	}
-
-	return stdout.String(), nil
-}
-
 // nsenter -t 1 --mount --uts --ipc --net --pid -- /bin/bash
 func RunNcenterBinsh(shell string) (string, error) {
 	// Bug 修复：将 args 作为切片传递给 exec.Command
@@ -257,10 +199,6 @@ func WriteK3sConfig(config []byte) error {
 	return WriteFileAtomic(filePath, config)
 }
 
-func ReadK3sEnvFile(filePath string) ([]byte, error) {
-	return os.ReadFile(filePath)
-}
-
 func NvidiaReadyFileExites() bool {
 	string, ok := os.LookupEnv("GPU_MOCK")
 	if ok && string == "true" {
@@ -309,59 +247,6 @@ func WriteFileAtomic(filePath string, data []byte) error {
 	return nil
 }
 
-func ValidateCertificate(certData []byte, host string) (bool, error) {
-	// 解码 PEM 格式的证书
-	block, _ := pem.Decode(certData)
-	if block == nil || block.Type != "CERTIFICATE" {
-		return false, fmt.Errorf("无效的 PEM 格式证书")
-	}
-
-	// 解析证书
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return false, fmt.Errorf("解析证书失败: %v", err)
-	}
-
-	// 检查证书是否过期
-	now := time.Now()
-	if now.Before(cert.NotBefore) {
-		return false, fmt.Errorf("证书尚未生效")
-	}
-	if now.After(cert.NotAfter) {
-		return false, fmt.Errorf("证书已过期")
-	}
-
-	// 验证证书链（可选）
-	// 如果需要验证证书链，可以使用 x509.VerifyOptions
-	// opts := x509.VerifyOptions{
-	// 	CurrentTime: now,
-	// }
-	// if _, err := cert.Verify(opts); err != nil {
-	// 	return false, fmt.Errorf("证书链验证失败: %v", err)
-	// }
-	if !IsDomainInCertificate(cert, host) {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func IsDomainInCertificate(cert *x509.Certificate, domain string) bool {
-	// 检查 Subject Alternative Name (SAN)
-	for _, san := range cert.DNSNames {
-		if strings.EqualFold(san, domain) {
-			return true
-		}
-	}
-
-	// 检查 Common Name (CN)
-	if strings.EqualFold(cert.Subject.CommonName, domain) {
-		return true
-	}
-
-	return false
-}
-
 func CreateDatabase(host, port, username, password, dbName string) error {
 	// 构建连接字符串
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/", username, password, host, port)
@@ -404,8 +289,6 @@ func Unzip(src, dest string, decodeGBk bool) error {
 		if IsGBKCoding([]byte(fname)) {
 			fname2, err := DecodeGBK((f.Name))
 			if err == nil {
-				// fmt.Println(err)
-				// return err
 				fname = fname2
 			}
 
@@ -431,8 +314,6 @@ func Unzip(src, dest string, decodeGBk bool) error {
 		}
 		defer rc.Close()
 
-		// print(string(cccc([]byte("你好世界"))))
-		// print(fpath + "\n")
 		// 创建目标文件
 		out, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 		if err != nil {
@@ -558,15 +439,20 @@ func WaitForNamedCacheSync(controllerName string, stopCh <-chan struct{}, cacheS
 
 // 镜像地址
 func SelfImage() string {
+	baseImage, version := SelfImageInfo()
+	return baseImage + ":" + version
+}
+
+func SelfImageInfo() (string, string) {
 	version, ok := os.LookupEnv("HELM_VERSION")
 	if !ok {
-		version = "1.0.107"
+		version = "1.0.123"
 	}
-	baseImage, ok1 := os.LookupEnv("IMAGE_REPO")
-	if !ok1 {
-		baseImage = "ccr.ccs.tencentyun.com/afan-public/w7panel"
+	baseImage, ok := os.LookupEnv("IMAGE_REPO")
+	if !ok {
+		baseImage = "ccr.ccs.tencentyun.com/afan-public/w7panel1"
 	}
-	return baseImage + ":" + version
+	return baseImage, version
 }
 
 func ExtractSingleFileFromTgz(url, fileName string) ([]byte, error) {
@@ -621,18 +507,6 @@ func IsValidEnvVarName(name string) bool {
 	return envVarNameRegex.MatchString(name)
 }
 
-func GetNodeInnertIp(node *v1.Node) (string, error) {
-	// if true {
-	// 	return "218.23.2.55", nil
-	// }
-	for _, addr := range node.Status.Addresses {
-		if addr.Type == v1.NodeInternalIP {
-			return addr.Address, nil
-		}
-	}
-	return "", nil
-}
-
 func Runsh(name string, arg ...string) (string, string, error) {
 	cmd := exec.Command(name, arg...)
 
@@ -647,16 +521,8 @@ func Runsh(name string, arg ...string) (string, string, error) {
 	// 执行命令
 	err := cmd.Run()
 	if err != nil {
-		// slog.Info("Command failed with error: %s\n", err)
-		// print(errOut.String())
-		// fmt.Print(errOut.String())
-		// fmt.Printf("Command failed with error: %s\n", err)
-		// fmt.Printf("Error output:\n%s\n", errOut.String())
 		return "", errOut.String(), err
 	}
-	// fmt.Print(out.String())
-	// slog.Info("Command failed with error: %s\n", out.String())
-	// print(out.String())
 	return out.String(), errOut.String(), nil
 }
 
@@ -742,6 +608,9 @@ func GetK3kServer0Name(name string) string {
 func GetK3kServer0ContainerName(name string) string {
 	return "k3k-" + name + "-server"
 }
+func GetVirtualIngressServiceName(ns, name string) string {
+	return ns + "-" + name + "-service-w7"
+}
 
 func GetApiServerHost(k3kNamespce string) string {
 	if IsLocalMock() {
@@ -750,8 +619,14 @@ func GetApiServerHost(k3kNamespce string) string {
 	return k3kNamespce + "-service" + "." + k3kNamespce
 }
 
+// 子用户Agent
 func IsChildAgent() bool {
 	return os.Getenv("IS_CHILD") == "true"
+}
+
+// 是否daemonset Agent
+func IsAgent() bool {
+	return os.Getenv("IS_AGENT") == "true"
 }
 
 func SelfReqUrl() string {
@@ -764,7 +639,7 @@ func SelfReqUrl() string {
 func ServiceAccountName() string {
 	sa, ok := os.LookupEnv("SERVICE_ACCOUNT_NAME")
 	if !ok {
-		sa = "w7panel"
+		sa = "w7panel-offline"
 	}
 	return sa
 }
@@ -796,10 +671,8 @@ func ProxyUrl(proxyUrl string, path string, host string, headers map[string]stri
 		req.URL.Scheme = remote.Scheme
 		req.URL.Host = remote.Host //
 		req.Host = remote.Host     //2个host有区别
-		if headers != nil {
-			for k, v := range headers {
-				req.Header.Add(k, v)
-			}
+		for k, v := range headers {
+			req.Header.Add(k, v)
 		}
 		if host != "" {
 			// req.URL.Host = host
@@ -906,26 +779,6 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	return resp, err
 }
 
-// 计算两个字符串切片的交集
-func Intersection(a, b []string) []string {
-	// 创建一个 map 来存储第一个切片的元素
-	set := make(map[string]bool)
-	for _, item := range a {
-		set[item] = true
-	}
-
-	var result []string
-	// 检查第二个切片的元素是否存在于 map 中
-	for _, item := range b {
-		if set[item] {
-			result = append(result, item)
-			// 避免重复，如果切片中有重复元素
-			set[item] = false
-		}
-	}
-	return result
-}
-
 // 计算两个字符串切片的差集
 func Difference(a, b []string) []string {
 	set := make(map[string]bool)
@@ -979,22 +832,6 @@ func ParseFloat64(str string) float64 {
 	return val
 }
 
-func StringToInt64(str string) int64 {
-	val, err := strconv.ParseInt(str, 10, 64)
-	if err != nil {
-		return 0
-	}
-	return val
-}
-
-func StringToFloat64(str string) float64 {
-	val, err := strconv.ParseFloat(str, 10)
-	if err != nil {
-		return 0
-	}
-	return val
-}
-
 func FloatStringToInt64(str string) int64 {
 	val, err := strconv.ParseFloat(str, 64)
 	if err != nil {
@@ -1014,8 +851,6 @@ func IpCity(ipaddr string) (string, error) {
 
 	searcher, err := xdb.NewWithFileOnly(version, dbPath)
 	if err != nil {
-		slog.Error("Failed to create searcher", "error", err)
-		// fmt.Printf("failed to create searcher: %s\n", err.Error())
 		return "", err
 	}
 
@@ -1024,7 +859,6 @@ func IpCity(ipaddr string) (string, error) {
 	region, err := searcher.SearchByStr(ipaddr)
 	if err != nil {
 		slog.Error("Failed to search IP address", "error", err)
-		// fmt.Printf("failed to search ip: %s\n", err.Error())
 		return "", err
 	}
 	if region != "" {
@@ -1079,16 +913,6 @@ func After2SecondRun(f func()) {
 	time.AfterFunc(time.Second*2, f)
 }
 
-// func CheckLogo() error {
-// 	sdk := k8s.NewK8sClient()
-// 	configMap, err := sdk.ClientSet.CoreV1().ConfigMaps("kube-system").Get(context.TODO(), "logo.config", metav1.GetOptions{})
-// 	if err != nil {
-// 		slog.Error("Failed to get logo config", "error", err)
-// 		return err
-// 	}
-// 	return WriteLogo(configMap)
-// }
-
 func WriteLogo(configMap *v1.ConfigMap) error {
 	if configMap.Namespace == "kube-system" && configMap.Name == "k3k.logo.config" {
 		kodata, ok := os.LookupEnv("KO_DATA_PATH")
@@ -1112,6 +936,10 @@ func GetToken(ctx *gin.Context) string {
 	if apiToken != "" {
 		return apiToken
 	}
+	xtoken := ctx.Request.Header.Get("x-w7panel-token")
+	if xtoken != "" {
+		return xtoken
+	}
 	auth := ctx.Request.Header.Get("AuthorizationX")
 	if auth == "" || !strings.Contains(auth, " ") {
 		auth = ctx.Request.Header.Get("Authorization")
@@ -1129,18 +957,96 @@ func BoolToString(b bool) string {
 	return "false"
 }
 
-func ToJsonNoErr(b interface{}) string {
-	json, err := localJson.Marshal(b)
-	if err != nil {
-		return ""
-	}
-	return string(json)
-}
-
 func ToJson(b interface{}) (string, error) {
 	json, err := localJson.Marshal(b)
 	if err != nil {
 		return "", err
 	}
 	return string(json), nil
+}
+
+func HelmValflattenMap(config map[string]interface{}) map[string]string {
+	result := map[string]string{}
+	var flattenMap func(prefix string, value interface{})
+	flattenMap = func(prefix string, value interface{}) {
+		switch v := value.(type) {
+		case map[string]interface{}:
+			for k, val := range v {
+				newKey := k
+				if prefix != "" {
+					newKey = prefix + "." + k
+				}
+				flattenMap(newKey, val)
+			}
+		case []interface{}:
+			for i, val := range v {
+				newKey := prefix + "." + strconv.Itoa(i)
+				flattenMap(newKey, val)
+			}
+		case string:
+			result[prefix] = v
+		case int:
+			result[prefix] = strconv.Itoa(v)
+		case float64:
+			result[prefix] = strconv.FormatFloat(v, 'f', -1, 64)
+		case bool:
+			result[prefix] = strconv.FormatBool(v)
+		case nil:
+			result[prefix] = ""
+		default:
+			result[prefix] = ""
+		}
+	}
+
+	for key, value := range config {
+		flattenMap(key, value)
+	}
+	return result
+}
+
+func PanelInnerUrl() string {
+	if IsChildAgent() {
+		svcName := os.Getenv("SVC_NAME")
+		return "http://" + svcName + ".default.svc:8000"
+
+	}
+	ns := os.Getenv("HELM_NAMESPACE")
+	if ns == "" {
+		ns = "default"
+	}
+	return "http://" + ServiceAccountName() + "." + ns + ".svc:8000"
+}
+
+// 主集群svcname
+func PanelRootSvcName() string {
+	return "w7panel-root-svc"
+}
+
+func Retry(fn func() error, retry int, sleep time.Duration) error {
+	lasterr := errors.New("retry err")
+	for i := 0; i < retry; i++ {
+		lasterr = fn()
+		if lasterr == nil {
+			return nil
+		}
+		time.Sleep(sleep)
+	}
+	return lasterr
+}
+
+// 重试n次都成功
+func RetryFullSuccess(fn func() error, retry int, sleep time.Duration) error {
+	lasterr := errors.New("retry err")
+	for i := 0; i < retry; i++ {
+		lasterr = fn()
+		if lasterr != nil {
+			return lasterr
+		}
+		time.Sleep(sleep)
+	}
+	return lasterr
+}
+
+func IsMockPay() bool {
+	return os.Getenv("MOCK_PAY") == "true"
 }

@@ -1,6 +1,8 @@
 package types
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	corev1 "k8s.io/api/core/v1"
+)
 
 type BuildImageParams struct {
 	DockerRegistry           DockerRegistry     `json:"dockerRegistry" `
@@ -18,6 +20,7 @@ type BuildImageParams struct {
 	BuildJobName             string             `json:"buildJobName"`
 	Schedule                 string             `json:"schedule"`
 	DockerRegistrySecretName string             `json:"dockerRegistrySecretName"`
+	PanelRegistryHost        string             `json:"panelRegistryHost"`
 	// PushImage                string             `json:"pushImage"`
 }
 
@@ -93,4 +96,7 @@ func (b *BuildImageParams) GetLabels() map[string]string {
 }
 func (b *BuildImageParams) GetBuildJobName() string {
 	return b.BuildJobName
+}
+func (b *BuildImageParams) GetPanelRegistryServerHost() string {
+	return b.PanelRegistryHost
 }

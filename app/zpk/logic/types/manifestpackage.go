@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	zpktypes "gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk/types"
 	"github.com/samber/lo"
+	"github.com/w7panel/w7panel/common/helper"
+	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/types"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -24,12 +24,14 @@ type DeployItem struct {
 	IsServiceExpire bool   `json:"isServiceExpire"`
 	IsDemoExpire    bool   `json:"isDemoExpire"`
 }
+
 type ManifestPackage struct {
 	Manifest                 Manifest                    `json:"manifest"`
 	ZpkUrl                   string                      `json:"zpkUrl"`
 	HelmUrl                  string                      `json:"helmUrl"`
 	ZipUrl                   string                      `json:"zipUrl"`
 	OciUrl                   string                      `json:"ociUrl"`
+	PanelUrl                 string                      `json:"panelUrl"`
 	WebZipUrl                map[string]string           `json:"webZipUrl"`
 	Version                  Version                     `json:"version"`
 	Children                 map[string]*ManifestPackage `json:"children"`
@@ -40,6 +42,7 @@ type ManifestPackage struct {
 	DeployItems              []DeployItem                `json:"deployItems"`
 	IconUrl                  string                      `json:"iconUrl"`
 	Ticket                   string                      `json:"ticket"`
+	InstallFormulas          []InstallFormula            `json:"install_formulas"`
 }
 
 func (p *ManifestPackage) GetChartAnnotations(releaseName string) map[string]string {
@@ -160,6 +163,7 @@ type PackageAddConfig struct {
 	VolumeMounts             []corev1.VolumeMount `json:"volumesMounts"`
 	Volumes                  []corev1.Volume      `json:"volumes"`
 	IsUpgrade                bool                 `json:"isUpgrade"`
+	InstallFormulas          []InstallFormula     `json:"installFormulas"`
 }
 
 func (p *ManifestPackage) ToPackageAddConfig(releaseName string, requireLimit bool) PackageAddConfig {
@@ -196,6 +200,7 @@ func (p *ManifestPackage) ToPackageAddConfig(releaseName string, requireLimit bo
 		RequireLimit:             requireLimit,
 		VolumeMounts:             p.GetVolumeMounts("%PVCNAME%", releaseName, nil),
 		Volumes:                  p.GetVolumes("%PVCNAME%"),
+		// InstallFormulas:          p.InstallFormulas,
 		// IsUpgrade: p,
 
 		// DependsOns:         p.Manifest.DependsOnes,
@@ -211,7 +216,14 @@ func (p *ManifestPackage) ToPackageAddConfig(releaseName string, requireLimit bo
 			//根据DeployName 获取上次的安装参数
 			suffix := getSuffix(releaseName)
 			result.DeployName = GetDeployName(p.Manifest.Application.Identifie, suffix)
+			if p.Manifest.IsOnce() { // fix 获取上次安装参数的问题
+				result.DeployName = GetIdentifieName(p.Manifest.Application.Identifie)
+			}
 		}
+	}
+	if p.HelmUrl != "" || p.Manifest.IsHelm() { //helm应用volume是个黑盒
+		result.VolumeMounts = []corev1.VolumeMount{}
+		result.Volumes = []corev1.Volume{}
 	}
 	if p.Manifest.IsHelm() {
 		result.RequireLimit = false
@@ -220,11 +232,7 @@ func (p *ManifestPackage) ToPackageAddConfig(releaseName string, requireLimit bo
 	return result
 }
 
-/*
-*
-
-	外部模块名称，不包括自己和子应用
-*/
+// GetOutModuleNames returns external module names, excluding self and child apps.
 func (p *ManifestPackage) GetOutModuleNames() []string {
 	result := p.Manifest.GetStartParamsModuleNames()
 	ignoreModule := []string{p.Manifest.Application.Identifie}
@@ -242,6 +250,11 @@ func (p *ManifestPackage) GetChildren(moduleName string) (child *ManifestPackage
 	if moduleName == p.Manifest.Application.Identifie {
 		return p
 	}
+	//fix 微擎商业 授权 免费
+	if moduleName == "w7_pros_28692" || moduleName == "w7_pros_28693" || moduleName == "w7_pros_28694" {
+		return p
+	}
+
 	child, ok := p.Children[(moduleName)]
 	if !ok {
 		return nil
@@ -255,7 +268,6 @@ func (p *ManifestPackage) PutKv(kv EnvKv) {
 			p.Manifest.Platform.Container.StartParams[i].ValuesText = kv.Value
 		}
 	}
-	// print(p.Manifest.Platform.Container.StartParams)
 }
 
 func (p *ManifestPackage) PutEnvs(kv []EnvKv) {
@@ -303,10 +315,11 @@ func (p *ManifestPackage) ReplaceStartParams(suffix string, root *ManifestPackag
 	}
 	return ""
 }
-func (p *ManifestPackage) ReplaceDefault() {
+func (p *ManifestPackage) ReplaceDefault(saName string) {
 	params := p.Manifest.Platform.Container.StartParams
 	for i, param := range params {
 		valuesTxt := param.ValuesText
+		valuesTxt = strings.ReplaceAll(valuesTxt, "%USERNAME%", saName)
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%RANDOM%", helper.RandomString(10))
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%LARAVEL_APP_KEY%", helper.LaravelAppKey(32))
 		p.Manifest.Platform.Container.StartParams[i].ValuesText = valuesTxt
@@ -314,6 +327,7 @@ func (p *ManifestPackage) ReplaceDefault() {
 	envs := p.Manifest.Platform.Container.Env
 	for k, env := range envs {
 		valuesTxt := env.Value
+		valuesTxt = strings.ReplaceAll(valuesTxt, "%USERNAME%", saName)
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%RANDOM%", helper.RandomString(10))
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%LARAVEL_APP_KEY%", helper.LaravelAppKey(32))
 		p.Manifest.Platform.Container.Env[k].Value = valuesTxt

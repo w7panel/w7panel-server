@@ -6,12 +6,12 @@ import (
 	"log/slog"
 	"strconv"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	v1alpha1Types "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
-	gpuclassv1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/gpuclass/v1alpha1"
-	appgroup "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/appgroup/clientset/versioned"
-	gpuclassclientset "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/gpuclass/clientset/versioned"
 	helmclientSet "github.com/k3s-io/helm-controller/pkg/generated/clientset/versioned"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	v1alpha1Types "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
+	gpuclassv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/gpuclass/v1alpha1"
+	appgroup "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/clientset/versioned"
+	gpuclassclientset "github.com/w7panel/w7panel/k8s/pkg/client/gpuclass/clientset/versioned"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types2 "k8s.io/apimachinery/pkg/types"
@@ -318,7 +318,6 @@ spec:
     toolkit.env[1].value: /run/k3s/containerd/containerd.sock
     toolkit.env[2].name: CONTAINERD_RUNTIME_CLASS
     toolkit.env[2].value: nvidia`
-	print(yaml)
 	if driverVerison != "" {
 		yaml = yaml + `    driver.version: "` + driverVerison + `"`
 	}
@@ -350,7 +349,6 @@ spec:
     devicePlugin.runtimeClassName: "` + runtimeClassName + `"
     devicePlugin.passDeviceSpecsEnabled: "false"`
 
-	print(yaml)
 	err := g.sdk.ApplyBytes([]byte(yaml), *k8s.NewApplyOptions("kube-system"))
 	if err != nil {
 		slog.Error("gpu operator error", "err", err)

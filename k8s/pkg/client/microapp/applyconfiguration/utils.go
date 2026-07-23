@@ -18,19 +18,19 @@ limitations under the License.
 package applyconfiguration
 
 import (
-	v1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/microapp/v1alpha1"
-	internal "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/microapp/applyconfiguration/internal"
-	microappv1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/microapp/applyconfiguration/microapp/v1alpha1"
+	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
+	internal "github.com/w7panel/w7panel/k8s/pkg/client/microapp/applyconfiguration/internal"
+	microappv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/client/microapp/applyconfiguration/microapp/v1alpha1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
-	testing "k8s.io/client-go/testing"
+	managedfields "k8s.io/apimachinery/pkg/util/managedfields"
 )
 
 // ForKind returns an apply configuration type for the given GroupVersionKind, or nil if no
 // apply configuration type exists for the given GroupVersionKind.
 func ForKind(kind schema.GroupVersionKind) interface{} {
 	switch kind {
-	// Group=microapp.w7.cc, Version=v1alpha1
+	// Group=w7panel.w7.com, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithKind("Bindings"):
 		return &microappv1alpha1.BindingsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Menu"):
@@ -39,13 +39,21 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &microappv1alpha1.MicroAppApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("MicroAppConfig"):
 		return &microappv1alpha1.MicroAppConfigApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("MicroAppConfig2"):
+		return &microappv1alpha1.MicroAppConfig2ApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("MicroAppSpec"):
 		return &microappv1alpha1.MicroAppSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Props"):
+		return &microappv1alpha1.PropsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ProxyRequest"):
+		return &microappv1alpha1.ProxyRequestApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Role"):
+		return &microappv1alpha1.RoleApplyConfiguration{}
 
 	}
 	return nil
 }
 
-func NewTypeConverter(scheme *runtime.Scheme) *testing.TypeConverter {
-	return &testing.TypeConverter{Scheme: scheme, TypeResolver: internal.Parser()}
+func NewTypeConverter(scheme *runtime.Scheme) managedfields.TypeConverter {
+	return managedfields.NewSchemeTypeConverter(scheme, internal.Parser())
 }

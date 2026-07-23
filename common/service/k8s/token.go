@@ -4,9 +4,9 @@ import (
 	"sync"
 	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
+	"github.com/w7panel/w7panel/common/helper"
 )
 
 var tokenCache = make(map[string]int64)
@@ -24,13 +24,15 @@ type K3kConfig struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
 	ApiServer string `json:"apiServer"`
+	CvmName   string `json:"cvmName"`
 }
 
-func NewK3kConfig(name, namespace, apiServer string) *K3kConfig {
+func NewK3kConfig(name, namespace, apiServer, cvmName string) *K3kConfig {
 	return &K3kConfig{
 		Name:      name,
 		Namespace: namespace,
 		ApiServer: apiServer,
+		CvmName:   cvmName,
 	}
 }
 
@@ -38,21 +40,16 @@ func (t *K3kConfig) GetK3kAgentName() string {
 	return helper.GetK3kAgentName(t.Name)
 }
 
-// 内部ingress name
-func (t *K3kConfig) GetK3kAgentInnerIngressHost() string {
-	return helper.GetK3kAgentName(t.Name) + ".w7panel.xyz"
-}
-
 func (t *K3kConfig) GetK3kAgentLbHost() string {
 	return t.GetVirtualIngressServiceName() + "." + t.Namespace + ".svc:8000"
 }
 
 func (t *K3kConfig) GetK3kServer0Name() string {
-	return helper.GetK3kServer0Name(t.Name)
+	return helper.GetK3kServer0Name(t.CvmName)
 }
 
 func (t *K3kConfig) GetK3kServer0ContainerName() string {
-	return helper.GetK3kServer0ContainerName(t.Name)
+	return helper.GetK3kServer0ContainerName(t.CvmName)
 }
 
 func (t *K3kConfig) GetCacheKey() string {
@@ -67,7 +64,7 @@ func (t *K3kConfig) ToAgentSvc() string {
 }
 
 func (u *K3kConfig) GetVirtualIngressServiceName() string {
-	return u.Namespace + "-service-w7"
+	return helper.GetVirtualIngressServiceName(u.Namespace, u.CvmName)
 }
 
 func NewK8sToken(token string) *K8sToken {
@@ -134,12 +131,23 @@ func (t *K8sToken) IsCacheToken() bool {
 	return ok
 }
 
-func (t *K8sToken) GetSaName() (string, error) {
+func (t *K8sToken) GetSaNameOld() (string, error) {
 	sa, _ := getTokenSaName(t.token)
 	if sa == "" {
 		return "", errors.New("token中没有找到serviceaccount")
 	}
 	return sa, nil
+}
+
+func (t *K8sToken) GetUserName() (string, error) {
+	s, err := t.GetAudience()
+	if err != nil {
+		return "", err
+	}
+	if len(s) == 0 {
+		return "", errors.New("用户名为空")
+	}
+	return s[0], nil
 }
 
 func (t *K8sToken) GetAudience() (jwtv5.ClaimStrings, error) {
@@ -182,37 +190,35 @@ func (t *K8sToken) GetExpireTime() (*jwtv5.NumericDate, error) {
 }
 
 // u.Name,
-//
-//	u.GetRole(),
-//	u.Annotations[W7_CONSOLE_ID],
-//	u.GetK3kName(),
-//	u.GetK3kNamespace(),
-//	u.GetApiServerHost(),
-//	u.GetClusterMode(),
-//	u.GetClusterPolicy(),
-//	u.GetLockVersion(),
-//	u.GetClusterPolicyVersion(),
-//	"https://kubernetes.default.svc.cluster.local",
-//	"k3s",
-//
+/*
+func (u *k3kUser) GetTokenAud(cvmName string) []string {
+	return []string{
+		u.Name,
+		u.GetRole(),
+		u.Labels[W7_CONSOLE_ID],
+		cvmName,
+		u.GetK3kNamespace(),
+		"https://kubernetes.default.svc.cluster.local",
+		"k3s",
+	}
+}
+*/
 // 判断是不是虚拟集群
 func (t *K8sToken) IsK3kCluster() bool {
 	s, err := t.GetAudience()
 	if err != nil {
 		return false
 	}
-	return len(s) >= 6
-}
-func (t *K8sToken) IsVirtual() bool {
-	return t.K3kMode() == "virtual"
+	return len(s) == 7 && s[3] != ""
 }
 
-func (t *K8sToken) K3kMode() string {
-	if t.IsK3kCluster() {
-		v, err := t.GetAudience()
-		if err == nil {
-			return v[6]
-		}
+func (t *K8sToken) GetCvmName() string {
+	s, err := t.GetAudience()
+	if err != nil {
+		return ""
+	}
+	if len(s) == 7 {
+		return s[3]
 	}
 	return ""
 }
@@ -221,7 +227,7 @@ func (t *K8sToken) K3kMode() string {
 // k8stoken.go 如果是集群用户返回普通用户角色，因为auth.go要根据role限制请求
 func (t *K8sToken) Role() string {
 	if t.IsK3kCluster() {
-		return "normal"
+		return "normal" //为了兼容站点管理 临时改为founder
 	}
 	s, err := t.GetAudience()
 	if err != nil {
@@ -230,23 +236,6 @@ func (t *K8sToken) Role() string {
 	return s[1]
 }
 
-func (t *K8sToken) IsShared() bool {
-	return t.K3kMode() == "shared"
-}
-
-// u.Name,  0
-//
-//	u.GetRole(), 1
-//	u.Annotations[W7_CONSOLE_ID], 2
-//	u.GetK3kName(), 3
-//	u.GetK3kNamespace(), 4
-//	u.GetApiServerHost(), 5
-//	u.GetClusterMode(), 6
-//	u.GetClusterPolicy(), 7
-//	u.GetLockVersion(), 8
-//	u.GetClusterPolicyVersion(), 9
-//	"https://kubernetes.default.svc.cluster.local",
-//	"k3s",
 func (t *K8sToken) GetPolicyName() string {
 	if t.IsK3kCluster() {
 		v, err := t.GetAudience()
@@ -288,9 +277,10 @@ func (t *K8sToken) GetK3kConfig() (*K3kConfig, error) {
 	}
 
 	return &K3kConfig{
-		Name:      aud[3],
+		Name:      aud[0],
 		Namespace: aud[4],
 		ApiServer: aud[5],
+		CvmName:   aud[3],
 	}, nil
 }
 func (t *K8sToken) GetRole() string {
@@ -347,4 +337,8 @@ func getTokenSaName(token string) (string, *jwtv5.NumericDate) {
 		return "", expireData
 	}
 	return serviceaccountName, expireData
+}
+
+func (t *K8sToken) GetToken() string {
+	return t.token
 }

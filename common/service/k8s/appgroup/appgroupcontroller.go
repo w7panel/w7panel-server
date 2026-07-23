@@ -2,15 +2,14 @@ package appgroup
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/k3k"
-	applicationversiond "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/appgroup/clientset/versioned"
-	appInformer "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/appgroup/informers/externalversions"
-	v1alpha1Lister "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
+	applicationversiond "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/clientset/versioned"
+	appInformer "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/informers/externalversions"
+	v1alpha1Lister "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,6 +18,7 @@ import (
 	appsv1lister "k8s.io/client-go/listers/apps/v1"
 	batchv1lister "k8s.io/client-go/listers/batch/v1"
 	corev1lister "k8s.io/client-go/listers/core/v1"
+	networkingv1lister "k8s.io/client-go/listers/networking/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -37,12 +37,14 @@ type AppController struct {
 	StatefulSetInformer        cache.SharedIndexInformer
 	JobInformer                cache.SharedIndexInformer
 	SecretInformer             cache.SharedIndexInformer
+	IngressInformer            cache.SharedIndexInformer
 	EventInformer              cache.SharedIndexInformer
 	DeploymentLister           appsv1lister.DeploymentLister
 	DaemonSetLister            appsv1lister.DaemonSetLister
 	StatefulSetLister          appsv1lister.StatefulSetLister
 	JobLister                  batchv1lister.JobLister
 	SecretLister               corev1lister.SecretLister
+	IngressLister              networkingv1lister.IngressLister
 	queue                      *EventQueue
 	helmworkload               *HelmWorkload
 }
@@ -95,6 +97,7 @@ func NewAppController(sdk *k8s.Sdk) (*AppController, error) {
 	gctrl.WatchStatefulSets()
 	gctrl.WatchJob()
 	gctrl.WatchSecret()
+	gctrl.WatchIngress()
 	gctrl.WatchAppGroup()
 	// gctrl.WatchEvent()
 
@@ -104,6 +107,9 @@ func NewAppController(sdk *k8s.Sdk) (*AppController, error) {
 	manager.DaemonSetLister = gctrl.DaemonSetLister
 	manager.StatefulSetLister = gctrl.StatefulSetLister
 	manager.JobLister = gctrl.JobLister
+	manager.IngressLister = gctrl.IngressLister
+	manager.AppGroupItemResourceTracked.RegisterWorkloads(gctrl.DeploymentLister, gctrl.StatefulSetLister, gctrl.DaemonSetLister)
+	manager.AppGroupItemResourceTracked.RegisterIngress(gctrl.IngressLister)
 	groupApi.SetLister(gctrl.AppGroupLister)
 	gctrl.WorkloadManager = manager
 	manager.SetGroupLister(gctrl.AppGroupLister)
@@ -121,6 +127,7 @@ func NewAppController(sdk *k8s.Sdk) (*AppController, error) {
 	gctrl.StatefulSetInformer.AddEventHandler(gctrl.queue)
 	gctrl.JobInformer.AddEventHandler(gctrl.queue)
 	gctrl.SecretInformer.AddEventHandler(gctrl.queue)
+	gctrl.IngressInformer.AddEventHandler(gctrl.queue)
 	gctrl.AppGroupInformer.AddEventHandler(gctrl.queue)
 	// gctrl.EventInformer.AddEventHandler(gctrl.queue)
 
@@ -151,6 +158,7 @@ func (s *AppController) Start() error {
 		s.StatefulSetInformer.HasSynced,
 		s.JobInformer.HasSynced,
 		s.SecretInformer.HasSynced,
+		s.IngressInformer.HasSynced,
 		// s.EventInformer.HasSynced,
 		// ingressInformer.HasSynced,
 		// configMapInformer.HasSynced,
@@ -204,6 +212,12 @@ func (s *AppController) WatchSecret() {
 	s.SecretInformer = informer.Informer()
 	s.SecretLister = corev1lister.NewSecretLister(s.SecretInformer.GetIndexer())
 
+}
+
+func (s *AppController) WatchIngress() {
+	informer := s.KubeInformerFactory.Networking().V1().Ingresses()
+	s.IngressInformer = informer.Informer()
+	s.IngressLister = networkingv1lister.NewIngressLister(s.IngressInformer.GetIndexer())
 }
 
 func (s *AppController) WatchAppGroup() {
@@ -309,13 +323,13 @@ func (w *AppController) WatchIngressEvents() cache.SharedIndexInformer {
 				if secretName != "" {
 					// 检查是否有其他 Ingress 引用了该 Secret
 					if isSecretReferencedByOtherIngress(clientset, ingress, secretName) {
-						fmt.Printf("Secret %s/%s is still referenced by other Ingresses, skipping deletion\n", ingress.Namespace, secretName)
+						slog.Info("secret is still referenced by other ingresses, skipping deletion", "namespace", ingress.Namespace, "secret", secretName)
 						continue
 					}
 					// 删除 Secret
 					err := clientset.CoreV1().Secrets(ingress.Namespace).Delete(context.TODO(), secretName, metav1.DeleteOptions{})
 					if err != nil {
-						fmt.Printf("Failed to delete Secret %s/%s: %v\n", ingress.Namespace, secretName, err)
+						slog.Warn("failed to delete secret", "namespace", ingress.Namespace, "secret", secretName, "err", err)
 					}
 				}
 			}
@@ -331,7 +345,7 @@ func (w *AppController) WatchIngressEvents() cache.SharedIndexInformer {
 func isSecretReferencedByOtherIngress(clientset *kubernetes.Clientset, deletedIngress *networkingv1.Ingress, secretName string) bool {
 	ingresses, err := clientset.NetworkingV1().Ingresses(deletedIngress.Namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		fmt.Printf("Failed to list Ingresses: %v\n", err)
+		slog.Warn("failed to list ingresses", "namespace", deletedIngress.Namespace, "err", err)
 		return false
 	}
 

@@ -3,6 +3,7 @@ package v1alpha1
 import (
 	"github.com/samber/lo"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // +genclient
@@ -39,25 +40,6 @@ type Role struct {
 
 type RoleConfig map[string]Role
 
-// type RoleConfig struct {
-// 	// +k8s:optional
-// 	// +optional
-// 	// +nullable
-// 	Founder *Role `json:"founder,omitempty"`
-// 	// +k8s:optional
-// 	// +optional
-// 	// +nullable
-// 	Super *Role `json:"super,omitempty"`
-// 	// +k8s:optional
-// 	// +optional
-// 	// +nullable
-// 	Normal *Role `json:"normal,omitempty"`
-// 	// +k8s:optional
-// 	// +optional
-// 	// +nullable
-// 	Tech *Role `json:"tech,omitempty"`
-// }
-
 type Props struct {
 	// +k8s:optional
 	// +optional
@@ -69,6 +51,7 @@ type MicroAppConfig2 struct {
 	// +k8s:optional
 	// +optional
 	// +nullable
+	// +structType=atomic
 	Props Props `json:"props,omitempty"`
 }
 
@@ -80,24 +63,34 @@ type MicroAppSpec struct {
 	Title       string         `json:"title"`
 	Logo        string         `json:"logo,omitempty"`
 	Config      MicroAppConfig `json:"config,omitempty"`
+	Version     string         `json:"version,omitempty"`
 	// +k8s:optional
 	// +optional
 	// +nullable
+	// +structType=atomic
 	ConfigV2    MicroAppConfig2 `json:"config-v2,omitempty"`
 	Description string          `json:"description,omitempty"`
 	// +k8s:optional
 	// +optional
 	// +nullable
-	Bindings []Bindings `json:"bindings,omitempty"`
+	// +patchStrategy=merge
+	Bindings []Bindings `json:"bindings,omitempty" patchStrategy:"merge" protobuf:"bytes,6,rep,name=bindings"`
 }
 
 type Menu struct {
 	Displayorder int    `json:"displayorder,omitempty"`
 	Do           string `json:"do"`
 	Icon         string `json:"icon,omitempty"`
-	IsDefault    int    `json:"is_default,omitempty"`
-	Location     string `json:"location,omitempty"`
-	Title        string `json:"title"`
+	// +k8s:optional
+	// +optional
+	// +nullable
+	// +listType=atomic
+	// +kubebuilder:pruning:PreserveUnknownFields
+	IconSvg   []runtime.RawExtension `json:"icon_svg,omitempty"`
+	IsDefault int                    `json:"is_default,omitempty"`
+	Location  string                 `json:"location,omitempty"`
+	Title     string                 `json:"title"`
+	Parent    string                 `json:"parent,omitempty"`
 }
 
 type Bindings struct {
@@ -105,10 +98,12 @@ type Bindings struct {
 	IsDefaultRegister int    `json:"is_default_register,omitempty"`
 	Location          string `json:"location,omitempty"`
 	Support           string `json:"support,omitempty"`
-	Menu              []Menu `json:"menu,omitempty"`
-	Name              string `json:"name"`
-	Status            int    `json:"status,omitempty"`
-	Title             string `json:"title"`
+	// +listType=atomic
+	// +patchStrategy=merge
+	Menu   []Menu `json:"menu,omitempty" patchStrategy:"merge" protobuf:"bytes,6,rep,name=menu"`
+	Name   string `json:"name"`
+	Status int    `json:"status,omitempty"`
+	Title  string `json:"title"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -131,4 +126,12 @@ func (c *MicroApp) RoleCount() int {
 	return lo.CountBy(c.Spec.Bindings, func(item Bindings) bool {
 		return item.Support == "thirdparty_cd"
 	})
+}
+
+func (c *MicroApp) RoleServerUrl(role string) string {
+	roleConfig, ok := c.Spec.ConfigV2.Props.RoleConfig[role]
+	if ok {
+		return roleConfig.ServerUrl
+	}
+	return ""
 }

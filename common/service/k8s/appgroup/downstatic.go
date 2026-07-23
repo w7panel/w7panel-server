@@ -4,17 +4,18 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/k3k"
-	"gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -48,36 +49,76 @@ type Data struct {
 	ZipURL      string            `json:"zip_url"`
 	HelmUrl     string            `json:"helm_url"`
 	WebZipURL   map[string]string `json:"webzip_url"`
-	ReleaseName string            `json:"app_name"` //控制台接口用这个字段
+
+	ReleaseName string `json:"app_name"` //控制台接口用这个字段
 }
 
-func downStatic(appgroup *v1alpha1.AppGroup) {
+const (
+	staticDownloadCacheKey = "static-download-"
+	DOWNLOADING            = "downloading"      //下载中
+	DOWNLOAD_SUCCESS       = "download_success" //下载成功
+	NO_DOWN                = "no_download"      //未下载
+)
+
+// 并发控制锁，防止同一应用重复下载解压
+var (
+	downloadMutex sync.Map // key: releaseName+version, value: *sync.Mutex
+)
+
+// getDownloadMutex 获取指定应用的下载锁
+func getDownloadMutex(key string) *sync.Mutex {
+	actual, _ := downloadMutex.LoadOrStore(key, &sync.Mutex{})
+	return actual.(*sync.Mutex)
+}
+
+// releaseDownloadMutex 释放下载锁并清理
+func releaseDownloadMutex(key string) {
+	downloadMutex.Delete(key)
+}
+
+func DownStaticStatus(identifie, version, releaseName string) string {
+	identifie = strings.ReplaceAll(identifie, "_", "-")
+	cacheKey := staticDownloadCacheKey + identifie + version
+	if version == "" {
+		cacheKey = staticDownloadCacheKey + releaseName
+	}
+	val, ok := helper.Get(cacheKey)
+	if !ok {
+		return NO_DOWN
+	}
+	return val.(string)
+}
+func DownStatic(appgroup *v1alpha1.AppGroup) {
 	downEnv := os.Getenv("STATIC_DOWN_ENABLED")
 	if downEnv != "true" {
 		slog.Info("静态资源下载未开启")
 		return
 	}
-	frontTypeStr, ok := appgroup.Annotations["w7.cc/front-type"]
-	if !ok {
-		return
-	}
-	if strings.Contains(frontTypeStr, "thirdparty_cd") {
-		go k3k.SyncDownStatic(appgroup.Name, appgroup.Spec.ZpkUrl)
-		go fetchWebZipAndDownload(appgroup.Spec.ZpkUrl, appgroup.Name)
-	}
-}
-func DownStatic(zpkurl, name string) error {
-	return fetchWebZipAndDownload(zpkurl, name)
+	// frontTypeStr, ok := appgroup.Annotations["w7.cc/front-type"]
+	// if !ok {
+	// 	return
+	// }
+	// if strings.Contains(frontTypeStr, "thirdparty_cd") {
+	// go k3k.SyncDownStatic(appgroup.Name, appgroup.Spec.ZpkUrl)
+	// 去掉front-type 判断
+	fetchWebZipAndDownload(appgroup.Spec.ZpkUrl, appgroup.Name, appgroup.Spec.Version)
+	// }
 }
 
-func DownStaticGo(zpkurl, name string) {
-	go fetchWebZipAndDownload(zpkurl, name)
+func DownStaticGo(zpkurl, name, version string) {
+	go fetchWebZipAndDownload(zpkurl, name, version)
 }
-func fetchWebZipAndDownload(zpkUrl string, releaseName string) error {
-	resp, err := helper.RetryHttpClient().R().Get(zpkUrl)
+func fetchWebZipAndDownload(zpkUrl string, releaseName, version string) error {
+	req := helper.RetryHttpClient().R()
+	if version != "" {
+		req.SetQueryParam("cur_version", version)
+		slog.Error("下载静态资源地址", "url", zpkUrl, "version", version)
+	}
+	resp, err := req.Get(zpkUrl)
 	if err != nil {
 		return err
 	}
+
 	defer resp.RawBody().Close()
 	if resp.StatusCode() != http.StatusOK {
 		return errors.New(resp.String())
@@ -100,7 +141,7 @@ func fetchWebZipAndDownload(zpkUrl string, releaseName string) error {
 	webzipUrl := zpkInfo.Data.WebZipURL
 	microappPath := os.Getenv("MICROAPP_PATH") //facade.Config.GetString("static.microapp_path")
 	if len(webzipUrl) > 0 {
-		DownStaticMap(webzipUrl, releaseName, microappPath)
+		downStaticMap(webzipUrl, releaseName, microappPath, version)
 	}
 	return nil
 	// if zpkInfo.Data.Manifest.V <= 1 {
@@ -221,95 +262,121 @@ func extractZipToDir(zipPath, destDir string) error {
 	return nil
 }
 
-func DownStaticMap(webzipUrl map[string]string, releaseName, microappPath string) error {
+func downStaticMap(webzipUrl map[string]string, releaseName, microappPath, version string) error {
 	if len(webzipUrl) > 0 {
 		// 下载静态资源包
 		for k, url := range webzipUrl {
 			// os.Stat(microappPath + "/" + k)
-			err := os.Mkdir(microappPath, os.ModePerm)
-			if err != nil {
-				slog.Error("创建目录失败", "error", err)
-				// continue
-			}
-			err = os.Mkdir(microappPath+"/"+releaseName, os.ModePerm) // 创建目录，如果不存在则创建 ingore err
-			if err != nil {
-				slog.Error("创建目录失败", "error", err)
-				// continue
-			}
-			err = downStaticFile(url, microappPath+"/"+releaseName+"/"+k+".zip")
-			if err != nil {
-				slog.Error("下载静态资源包失败", "error", err)
-				continue
-			}
+			downAndUnzip(k, version, microappPath, releaseName, url)
 		}
 	}
 	return nil
 }
 
-// 下载文件到指定目录
-func downStaticFile(url string, zipfile string) error {
-	// Download the file
+func downAndUnzip(k string, version string, microappPath string, releaseName string, url string) int {
+	kName := strings.ReplaceAll(k, "_", "-")
+
+	// 生成锁 key，使用 releaseName+version+k 作为唯一标识
+	lockKey := fmt.Sprintf("%s-%s", version, kName)
+
+	// 如果正在下载中，跳过
+	cacheKey := staticDownloadCacheKey + kName + "" + version
+	cacheKeyOld := staticDownloadCacheKey + releaseName
+	// if val, ok := helper.Get(cacheKey); ok && val.(string) == DOWNLOADING {
+	// 	slog.Debug("资源正在下载中，跳过", "releaseName", releaseName, "version", version, "k", k)
+	// 	return 0
+	// }
+
+	helper.Set(cacheKey, DOWNLOADING, time.Hour*24)
+	helper.Set(cacheKeyOld, DOWNLOADING, time.Hour*24)
+
+	// 获取并发锁
+	mu := getDownloadMutex(lockKey)
+	mu.Lock()
+	defer mu.Unlock()
+	defer releaseDownloadMutex(lockKey)
+
+	err := os.Mkdir(microappPath, os.ModePerm)
+	if err != nil {
+		slog.Error("创建目录失败", "error", err)
+		// continue
+	}
+	err = os.Mkdir(microappPath+"/"+releaseName, os.ModePerm) // 创建目录，如果不存在则创建 ingore err
+	if err != nil {
+		slog.Error("创建目录失败", "error", err)
+		// continue
+	}
+	if version != "" {
+		err = os.Mkdir(microappPath+"/"+kName+"/"+version, os.ModePerm) // 创建版本目录，如果不存在则创建 ingore err
+		if err != nil {
+			slog.Error("创建目录失败", "error", err)
+			// continue
+		}
+	}
+
+	// 下载 zip 到临时文件（使用唯一文件名）
+	tempZipFile := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%s-%s-%s.zip", releaseName, k, version, helper.RandomString(12)))
+	err = downloadZipFile(url, tempZipFile)
+	if err != nil {
+		slog.Error("下载静态资源包失败", "error", err, "url", url, "tempFile", tempZipFile)
+		helper.Set(cacheKey, NO_DOWN, time.Hour*24)
+		return 1
+	}
+
+	// 验证 zip 文件有效性
+	zipReader, err := zip.OpenReader(tempZipFile)
+	if err != nil {
+		slog.Error("zip 文件验证失败", "error", err, "tempFile", tempZipFile)
+		os.Remove(tempZipFile)
+		helper.Set(cacheKey, NO_DOWN, time.Hour*24)
+		return 2
+	}
+	zipReader.Close()
+
+	// 解压到 releaseName 目录
+	err = extractZipToDir(tempZipFile, microappPath+"/"+releaseName)
+	if err != nil {
+		slog.Error("解压静态资源包失败", "error", err, "tempFile", tempZipFile)
+		os.Remove(tempZipFile)
+		helper.Set(cacheKey, NO_DOWN, time.Hour*24)
+		return 3
+	}
+	if version != "" {
+		err = extractZipToDir(tempZipFile, microappPath+"/"+kName+"/"+version)
+		if err != nil {
+			slog.Error("解压静态资源包失败", "error", err, "tempFile", tempZipFile)
+			os.Remove(tempZipFile)
+			helper.Set(cacheKey, NO_DOWN, time.Hour*24)
+			return 4
+		}
+	}
+
+	// 清理临时 zip 文件
+	os.Remove(tempZipFile)
+	helper.Set(cacheKey, DOWNLOAD_SUCCESS, time.Hour*24)
+	helper.Set(cacheKeyOld, DOWNLOAD_SUCCESS, time.Hour*24)
+	return 0
+}
+
+// downloadZipFile 下载 zip 文件到指定路径（不解压）
+func downloadZipFile(url string, zipfile string) error {
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	defer os.Remove(zipfile)
-
-	// Create the zip file
 	zipFile, err := os.Create(zipfile)
 	if err != nil {
 		return err
 	}
 	defer zipFile.Close()
 
-	// Save the downloaded content to zip file
 	_, err = io.Copy(zipFile, resp.Body)
 	if err != nil {
 		return err
 	}
 
-	// Open the zip file for reading
-	zipReader, err := zip.OpenReader(zipfile)
-	if err != nil {
-		return err
-	}
-	defer zipReader.Close()
-
-	// Extract each file from the zip archive
-	for _, file := range zipReader.File {
-		filePath := filepath.Join(filepath.Dir(zipfile), file.Name)
-
-		if file.FileInfo().IsDir() {
-			os.MkdirAll(filePath, os.ModePerm)
-			continue
-		}
-
-		if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
-			return err
-		}
-
-		dstFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
-		if err != nil {
-			return err
-		}
-
-		fileInArchive, err := file.Open()
-		if err != nil {
-			dstFile.Close()
-			return err
-		}
-
-		if _, err := io.Copy(dstFile, fileInArchive); err != nil {
-			fileInArchive.Close()
-			dstFile.Close()
-			return err
-		}
-
-		fileInArchive.Close()
-		dstFile.Close()
-	}
-
-	return nil
+	// 确保文件内容完全写入磁盘
+	return zipFile.Sync()
 }

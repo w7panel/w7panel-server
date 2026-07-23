@@ -5,10 +5,11 @@ import (
 	"path/filepath"
 	"sync"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/k3k"
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
+	userservice "github.com/w7panel/w7panel/common/service/user"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
 	"gopkg.in/yaml.v3"
 )
@@ -21,12 +22,6 @@ var (
 
 type Auth struct {
 	middleware.Abstract
-	role string
-}
-
-func NewAuth(role string) Auth {
-	auth := Auth{role: role}
-	return auth
 }
 
 func (self Auth) Process(ctx *gin.Context) {
@@ -40,14 +35,6 @@ func (self Auth) Process(ctx *gin.Context) {
 		return
 	}
 
-	// 判断是否accept application/json
-	// if !strings.Contains(ctx.Request.Header.Get("Accept"), "application/json") && ctx.Request.Method == "GET" && ctx.Request.URL.Path != "/" {
-	// 	indexHtml, _ := Asset.ReadFile("asset/index.html")
-	// 	ctx.Data(http2.StatusOK, "text/html; charset=UTF-8", indexHtml)
-	// 	return
-	// }
-	// slog.Info("auth middleware request url: ", ctx.Request.URL)
-
 	bearertoken := self.getToken(ctx)
 	if bearertoken == "" {
 		ctx.AbortWithStatusJSON(401, gin.H{
@@ -57,15 +44,16 @@ func (self Auth) Process(ctx *gin.Context) {
 		return
 	}
 	k8sToken := k8s.NewK8sToken(bearertoken)
-	if self.role != "" {
-		// if k8sToken.Role() != self.role {
-		// 	//没有权限请求
-		// 	ctx.AbortWithStatus(403)
-		// 	return
-		// }
-	}
 	if k8sToken.IsCacheToken() {
+		if saName, err := k8sToken.GetUserName(); err == nil {
+			ctx.Set("username", saName)
+			// TODO 兼容非 k3k 集群，非k3k 集群不校验权限
+			if !k8sToken.IsK3kCluster() && !helper.IsChildAgent() && !self.authorizeUserOrServiceAccount(ctx, saName) {
+				return
+			}
+		}
 		ctx.Set("k8s_token", bearertoken)
+		ctx.Next()
 		return
 	}
 
@@ -78,8 +66,14 @@ func (self Auth) Process(ctx *gin.Context) {
 		return
 	}
 	k8sToken.Cache()
-	if k3k.NeedRelogin(k8sToken) {
 
+	userName, err := k8sToken.GetUserName()
+	if err == nil {
+		ctx.Set("username", userName)
+		// TODO 兼容非 k3k 集群，非k3k 集群不校验权限 //TODO 安全隐患
+		if !k8sToken.IsK3kCluster() && !helper.IsChildAgent() && !self.authorizeUserOrServiceAccount(ctx, userName) {
+			return
+		}
 	}
 	ctx.Set("k8s_token", bearertoken)
 	// if facade.Config.GetBool("app.refresh_token_enable") {
@@ -99,6 +93,54 @@ func (self Auth) Process(ctx *gin.Context) {
 	ctx.Next()
 
 	// ctx.Writer.Header().Set("Content-Type", "application/json; charset=UTF-8")
+}
+
+func (self Auth) authorizeUserOrServiceAccount(ctx *gin.Context, name string) bool {
+	sdk := k8s.NewK8sClient().Sdk
+	u, err := userservice.Get(ctx.Request.Context(), sdk, name)
+	if err != nil {
+		return self.authorizePanelAPI(ctx, name)
+	}
+	p, err := userservice.ResolvePermission(ctx.Request.Context(), sdk, u)
+	if err != nil {
+		ctx.AbortWithStatusJSON(403, gin.H{"code": 403, "msg": "没有权限: " + err.Error()})
+		return false
+	}
+	allowed, err := permissionservice.AuthorizePanelAPIWithPermission(ctx.Request.Context(), sdk, p, ctx.Request.Method, ctx.Request.URL.Path)
+	if err != nil {
+		ctx.AbortWithStatusJSON(403, gin.H{"code": 403, "msg": "没有权限: " + err.Error()})
+		return false
+	}
+	if !allowed {
+		ctx.AbortWithStatusJSON(403, gin.H{"code": 403, "msg": "没有权限"})
+		return false
+	}
+	role := u.Spec.Role
+	if role == "" {
+		role = u.Spec.UserMode
+	}
+	ctx.Set("user_mode", role)
+	ctx.Set("permission_name", u.Spec.PermissionName)
+	return true
+}
+
+func (self Auth) authorizePanelAPI(ctx *gin.Context, saName string) bool {
+	allowed, err := permissionservice.AuthorizePanelAPI(ctx.Request.Context(), k8s.NewK8sClient().Sdk, saName, ctx.Request.Method, ctx.Request.URL.Path)
+	if err != nil {
+		ctx.AbortWithStatusJSON(403, gin.H{
+			"code": 403,
+			"msg":  "没有权限: " + err.Error(),
+		})
+		return false
+	}
+	if !allowed {
+		ctx.AbortWithStatusJSON(403, gin.H{
+			"code": 403,
+			"msg":  "没有权限",
+		})
+		return false
+	}
+	return true
 }
 
 func (self Auth) getToken(ctx *gin.Context) string {

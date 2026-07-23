@@ -8,13 +8,12 @@ import (
 	"os"
 	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/console"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	"github.com/spf13/cobra"
+	"github.com/w7panel/w7panel/common/service/console"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 )
 
-// username password register
 type Site struct {
 	console2.Abstract
 }
@@ -27,9 +26,7 @@ type siteOption struct {
 	Namespace         string
 }
 
-// ./runtime/main site:register --thirdPartyCDToken=qEINzTKqtPUYKi7f --host=w7job.test.w7.com --releaseName=app-nfohievs0w --deploymentName=w7-pros-28692-app-nfohievs0w --namespace=default
 var sitero = siteOption{}
-var stopCh = make(chan struct{})
 
 func (c Site) GetName() string {
 	return "site:register"
@@ -119,7 +116,7 @@ func (c Site) registerSite() {
 
 	slog.Info("注册站点成功", "secret", secret)
 	sdk := k8s.NewK8sClientInner()
-	err = console.PatchAppId(sdk, secret, sitero.DeploymentName, sitero.Namespace)
+	err = console.PatchAppId(sdk, secret, sitero.DeploymentName, sitero.Namespace, sitero.DeploymentName) //云应用containerName 和 deploymentName 一致
 	if err != nil {
 		slog.Error("更新appid失败", "err", err)
 		os.Exit(1)

@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/appgroup"
-	appv1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
+	appv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v2"
@@ -43,6 +43,7 @@ type UpgradeCheck struct {
 	groupApi          *appgroup.AppGroupApi
 	helmApi           *k8s.Helm
 	thirdPartyCDToken string
+	panelToken        string
 }
 
 func NewUpgradeCheck(sdk *k8s.Sdk) *UpgradeCheck {
@@ -62,10 +63,18 @@ func (u *UpgradeCheck) WithCDToken(cdToken string) {
 	u.thirdPartyCDToken = cdToken
 }
 
+func (u *UpgradeCheck) WithPanelToken(panelToken string) {
+	u.panelToken = panelToken
+}
+
 func (u *UpgradeCheck) Check(namespace string, groupname string) *UpgradeInfo {
 	group, err := u.groupApi.GetAppGroup(namespace, groupname)
 	if err != nil {
 		return NotUpgrade
+	}
+	// 修复crd 变更后 helmcmd.go annotations 字段丢失问题
+	if group.Spec.ZpkUrl == "" && (group.Spec.Identifie == "w7panel-offline" || group.Spec.Identifie == "w7panel_offline") {
+		group.Spec.ZpkUrl = "https://zpk.w7.cc/zpk/respo/info/w7panel_offline"
 	}
 	if group.Spec.ZpkUrl != "" {
 		result, err := u.CheckZpk(group)
@@ -123,7 +132,8 @@ func (u *UpgradeCheck) CheckHelmRepo(group *appv1.AppGroup) (*UpgradeInfo, error
 }
 
 func (u *UpgradeCheck) CheckZpk(group *appv1.AppGroup) (*UpgradeInfo, error) {
-	pk, err := LoadPackage2(group.Spec.ZpkUrl, u.thirdPartyCDToken, true)
+	// repo := logic.NewRepo(group.Spec.ZpkUrl, u.thirdPartyCDToken)
+	pk, err := LoadPackageWithPanelToken(group.Spec.ZpkUrl, u.thirdPartyCDToken, true, u.panelToken, group.Spec.Version)
 	if err != nil {
 		return nil, err
 	}

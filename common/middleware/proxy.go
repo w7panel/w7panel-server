@@ -1,11 +1,12 @@
 package middleware
 
 import (
+	"log/slog"
 	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
 )
 
@@ -28,8 +29,9 @@ func (self Proxy) Process(gin *gin.Context) {
 			return
 		}
 		path := gin.Request.URL.String()
-		agentHost := config.GetK3kAgentInnerIngressHost()
-		proxyUrl := "http://" + config.GetVirtualIngressServiceName()
+		agentHost := config.GetK3kAgentName()
+		// proxyUrl := "http://" + config.GetVirtualIngressServiceName()
+		proxyUrl := "http://" + config.GetK3kAgentLbHost()
 		auth := gin.Request.Header.Get("Authorization")
 		if strings.HasPrefix(auth, "Bearer ") {
 			client, err := k8s.NewK8sClient().Channel(token)
@@ -50,6 +52,12 @@ func (self Proxy) Process(gin *gin.Context) {
 			self.JsonResponseWithServerError(gin, err)
 			return
 		}
+		defer func() {
+			//golang issue 23643
+			if r := recover(); r != nil {
+				slog.Error("客户端已断开连接", "error", r)
+			}
+		}()
 		proxy.ServeHTTP(gin.Writer, gin.Request)
 		gin.Abort()
 		return

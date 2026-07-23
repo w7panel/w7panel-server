@@ -1,14 +1,11 @@
 package zpk
 
 import (
-	consolezpk "gitee.com/we7coreteam/k8s-offline/app/zpk/console"
-	controller "gitee.com/we7coreteam/k8s-offline/app/zpk/http"
-	"gitee.com/we7coreteam/k8s-offline/common/middleware"
 	"github.com/gin-gonic/gin"
-	ut "github.com/go-playground/universal-translator"
-	"github.com/go-playground/validator/v10"
+	consolezpk "github.com/w7panel/w7panel/app/zpk/console"
+	controller "github.com/w7panel/w7panel/app/zpk/http"
+	"github.com/w7panel/w7panel/common/middleware"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
-	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
 )
 
@@ -16,43 +13,15 @@ type Provider struct {
 }
 
 func (p Provider) Register(httpServer *httpserver.Server, console console.Console) {
-
-	p.RegisterValidateRule()
 	p.RegisterHttpRoutes(httpServer)
 
 	console.RegisterCommand(new(consolezpk.HelmCmd))
+	console.RegisterCommand(new(consolezpk.HelmCheckCmd))
+	console.RegisterCommand(new(consolezpk.SiteManagerCmd))
 	console.RegisterCommand(new(consolezpk.MetricsUpgrade))
+	console.RegisterCommand(new(consolezpk.LonghornUpgrade))
+	console.RegisterCommand(new(consolezpk.HigressUpgrade))
 
-}
-
-func (p Provider) RegisterValidateRule() {
-	if v, ok := facade.GetValidator().Engine().(*validator.Validate); ok {
-		v.RegisterValidation("id", func(fl validator.FieldLevel) bool {
-			if id, ok := fl.Field().Interface().(uint); ok {
-				if id > 0 {
-					return true
-				}
-			}
-
-			return false
-		})
-
-		v.RegisterValidation("page", func(fl validator.FieldLevel) bool {
-			if page, ok := fl.Field().Interface().(uint); ok {
-				if page > 0 {
-					return true
-				}
-			}
-
-			return false
-		})
-		v.RegisterTranslation("page", facade.GetTranslator(), func(ut ut.Translator) error {
-			return ut.Add("page", "{0} 格式错误", true) // see universal-translator for details
-		}, func(ut ut.Translator, fe validator.FieldError) string {
-			t, _ := ut.T("page", fe.Field())
-			return t
-		})
-	}
 }
 
 func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {

@@ -1,0 +1,14 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VLSingle
+metadata:
+  name: w7panel-logs
+  namespace: default
+spec:
+  retentionPeriod: "30d"
+  removePvcAfterDelete: false
+  storage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 10Gi

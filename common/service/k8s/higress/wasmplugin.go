@@ -5,41 +5,59 @@ import (
 	"log/slog"
 	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/higress/client/pkg/apis/extensions/v1alpha1"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/higress/client/pkg/apis/extensions/v1alpha1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 var bfck = false
 
-// func init() {
-// 	go LoadBkConfig()
-// }
+const (
+	whiteDomainPluginName       = "w7panel-pluginwhitedomain"
+	legacyWhiteDomainPluginName = "w7-white-domain"
+	higressSystemNamespace      = "higress-system"
+)
 
 // 是否需要备案检测
 func NeedCheckBeian() bool {
-	return bfck
+	return false //子集群pod 获取不到备案信息
+	// return bfck
 }
 
 func LoadBkConfig() (*v1alpha1.WasmPlugin, error) {
 	sdk := k8s.NewK8sClient()
-	client, err := sdk.ToSigClient()
+	k8sClient, err := sdk.ToSigClient()
 	if err != nil {
 		return nil, err
 	}
+
 	result := &v1alpha1.WasmPlugin{}
-	err = client.Get(sdk.Ctx, types.NamespacedName{Name: "w7-white-domain", Namespace: "higress-system"}, result)
+	err = k8sClient.Get(sdk.Ctx, types.NamespacedName{Name: whiteDomainPluginName, Namespace: higressSystemNamespace}, result)
 	if err != nil {
-		return nil, err
+		if !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+		result = &v1alpha1.WasmPlugin{}
+		err = k8sClient.Get(sdk.Ctx, types.NamespacedName{Name: legacyWhiteDomainPluginName, Namespace: higressSystemNamespace}, result)
+		if err != nil {
+			return nil, err
+		}
 	}
 	WebhookWasmPlugin(result)
 	return result, nil
+}
+
+func isWhiteDomainPlugin(wasmPlugin *v1alpha1.WasmPlugin) bool {
+	return wasmPlugin != nil && wasmPlugin.Namespace == higressSystemNamespace &&
+		(wasmPlugin.Name == whiteDomainPluginName || wasmPlugin.Name == legacyWhiteDomainPluginName)
 }
 
 func CheckHost(host string) error {
 	plugin, err := LoadBkConfig()
 	if err != nil {
 		slog.Error("load bk config error", "error", err)
+		return err
 	}
 	config := plugin.Spec.DefaultConfig
 	val, ok := config.Fields["white_domains"]
@@ -67,7 +85,7 @@ func CheckHost(host string) error {
 
 func WebhookWasmPlugin(wasmPlugin *v1alpha1.WasmPlugin) error {
 	// wasmPlugin.Spec.DefaultConfig
-	if wasmPlugin.Name == "w7-white-domain" && wasmPlugin.Namespace == "higress-system" {
+	if isWhiteDomainPlugin(wasmPlugin) {
 		bfck = !wasmPlugin.Spec.DefaultConfigDisable
 	}
 	return nil

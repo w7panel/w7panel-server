@@ -3,14 +3,16 @@ package controller
 import (
 	// "archive/zip"
 
+	"errors"
 	"fmt"
 	"log/slog"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/config"
-	"gitee.com/we7coreteam/k8s-offline/common/service/console"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/config"
+	"github.com/w7panel/w7panel/common/service/console"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 
@@ -57,7 +59,7 @@ func (self Console) BindConsole(gin *gin.Context) {
 	}
 	tokenstr := gin.MustGet("k8s_token").(string)
 	k8sToken := k8s.NewK8sToken(tokenstr)
-	saName, err := k8sToken.GetSaName()
+	saName, err := k8sToken.GetUserName()
 	if err != nil {
 		self.JsonResponseWithError(gin, err, 500)
 		return
@@ -86,7 +88,7 @@ func (self Console) Info(gin *gin.Context) {
 
 	tokenstr := gin.MustGet("k8s_token").(string)
 	k8sToken := k8s.NewK8sToken(tokenstr)
-	saName, err := k8sToken.GetSaName()
+	saName, err := k8sToken.GetUserName()
 	if err != nil {
 		self.JsonResponseWithError(gin, err, 500)
 		return
@@ -115,6 +117,36 @@ func (self Console) Info(gin *gin.Context) {
 	self.JsonResponseWithoutError(gin, w7config.ToArray())
 }
 
+func (self Console) JsCloudCode(gin *gin.Context) {
+	componentAppId := gin.Query("componentAppId")
+	if componentAppId == "" {
+		componentAppId = gin.PostForm("componentAppId")
+	}
+	if componentAppId == "" {
+		self.JsonResponseWithError(gin, errors.New("componentAppId is required"), 400)
+		return
+	}
+
+	token := gin.MustGet("k8s_token").(string)
+	user, err := k3k.TokenToK3kUser(token)
+	if err != nil {
+		self.JsonResponseWithServerError(gin, err)
+		return
+	}
+	openId := user.GetConsoleOpenId()
+	if openId == "" {
+		self.JsonResponseWithError(gin, errors.New("openid is empty"), 400)
+		return
+	}
+
+	code, err := console.OpenIdToCloudCode(openId, componentAppId)
+	if err != nil {
+		self.JsonResponseWithServerError(gin, err)
+		return
+	}
+	self.JsonResponseWithoutError(gin, code)
+}
+
 // 绑定集群到控制台交付系统集群
 func (self Console) RegisterToConsole(gin *gin.Context) {
 
@@ -127,7 +159,7 @@ func (self Console) RegisterToConsole(gin *gin.Context) {
 		return
 	}
 	if helper.IsLocalMock() {
-		params.OfflineUrl = "http://218.23.2.55:9090/"
+		params.OfflineUrl = "http://218.23.2.48:9090/"
 	}
 
 	token := gin.MustGet("k8s_token").(string)
@@ -139,7 +171,7 @@ func (self Console) RegisterToConsole(gin *gin.Context) {
 	// 	return
 	// }
 	sdk := k8s.NewK8sClient().Sdk
-	saName, err := k8sToken.GetSaName()
+	saName, err := k8sToken.GetUserName()
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
@@ -182,39 +214,6 @@ func (self Console) RegisterToConsole(gin *gin.Context) {
 
 }
 
-func (self Console) ThirdPartyCDToken(gin *gin.Context) {
-
-	// sdk, err := k8s.NewK8sClient().Channel(gin.MustGet("k8s_token").(string))
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(gin, err)
-	// 	return
-	// }
-	// respo := config.NewW7ConfigRepository(sdk)
-	// consoleClient := console.NewClusterClient(respo, sdk, nil)
-	// err = consoleClient.UnRegister()
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(gin, err)
-	// 	return
-	// }
-	// self.JsonSuccessResponse(gin)
-}
-
-func (self Console) Kubeconfig(gin *gin.Context) {
-
-	sdk, err := k8s.NewK8sClient().Channel(gin.MustGet("k8s_token").(string))
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-	kubeconfig, err := sdk.ToKubeconfig("")
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-	self.JsonResponseWithoutError(gin, kubeconfig)
-
-}
-
 func (self Console) ImportCert(gin *gin.Context) {
 	type ParamsValidate struct {
 		Cert string `form:"cert" binding:"required"`
@@ -231,7 +230,7 @@ func (self Console) ImportCert(gin *gin.Context) {
 	// 	return
 	// }
 	// sdk := k8s.NewK8sClient().Sdk
-	saName, err := k8sToken.GetSaName()
+	saName, err := k8sToken.GetUserName()
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
@@ -266,7 +265,7 @@ func (self Console) ImportCertConsole(gin *gin.Context) {
 	// 	return
 	// }
 	// sdk := k8s.NewK8sClient().Sdk
-	saName, err := k8sToken.GetSaName()
+	saName, err := k8sToken.GetUserName()
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
@@ -302,29 +301,11 @@ func (self Console) Proxy(gin *gin.Context) {
 		self.JsonResponseWithServerError(gin, err)
 		return
 	}
-	proxy.ServeHTTP(gin.Writer, gin.Request)
-}
-
-func (self Console) ProxyCouponCode(gin *gin.Context) {
-
-	sdkclient, err := console.NewDefaultSdkClient()
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-	var code = gin.Param("code")
-	if code == "" {
-		gin.AbortWithStatus(403)
-	}
-	token := gin.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
-	policyName := k8sToken.GetPolicyName()
-
-	path := fmt.Sprintf("/api/thirdparty-cd/k8s-offline/sdk/coupon/%s", code)
-	proxy, err := sdkclient.Proxy(path, "?groupname="+policyName)
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
+	defer func() {
+		//golang issue 23643
+		if r := recover(); r != nil {
+			slog.Error("客户端已断开连接", "error", r)
+		}
+	}()
 	proxy.ServeHTTP(gin.Writer, gin.Request)
 }

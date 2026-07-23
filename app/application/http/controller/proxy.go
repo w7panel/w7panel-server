@@ -9,16 +9,16 @@ import (
 	"net/url"
 	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/k3k"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/microapp"
-	microappType "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/microapp/v1alpha1"
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/microapp"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
+	"github.com/w7panel/w7panel/common/service/oidc"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
+	"github.com/zitadel/oidc/v3/pkg/op"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 type Proxy struct {
@@ -52,19 +52,11 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 	if local == "true" || local == "1" {
 		forceLocal = true
 	}
-	useRootSdk := false
-	if strings.HasPrefix(http.Request.URL.Path, "/api/v1/namespaces/default/configmaps/domain-parse") && http.Request.Method == "GET" {
-		// forceLocal = true
-		useRootSdk = true
-	}
 	// 创建 K8s 客户端
 	client, err := k8s.NewK8sClient().ChannelLocal(token, forceLocal)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
-	}
-	if useRootSdk {
-		client = k8s.NewK8sClient().Sdk
 	}
 
 	// 检查并修改 http.Request 中的 Authorization 头部
@@ -87,7 +79,6 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 		http.Request.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	// 处理请求 - K8sResponseFilter middleware handles filtering
 	err = client.Proxy(http.Request, http.Writer)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
@@ -95,38 +86,6 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 	}
 }
 
-func (self Proxy) ProxyDebug(gin *gin.Context) {
-	result := make(map[string]interface{})
-	result["fullPath"] = gin.FullPath()
-	result["path"] = gin.Request.URL.Path
-	result["query"] = gin.Request.URL.Query()
-	result["header"] = gin.Request.Header
-	result["host"] = gin.Request.Host
-	result["joinPath"] = gin.Request.URL.JoinPath("/").RequestURI()
-	gin.JSON(http.StatusOK, result)
-}
-
-/*
-*
-
-	@Description: 转发请求
-	proxyUrl: 代理地址
-*/
-func (self Proxy) Proxy(gin *gin.Context) {
-	proxyUrl := gin.GetHeader("proxy-url")
-	if proxyUrl == "" {
-		proxyUrl = "https://zpk.w7.cc"
-		// self.JsonResponseWithServerError(gin, errors.New("proxy-url is required"))
-		// return
-	}
-
-	var path = gin.Param("path")
-	if path == "" {
-		path = "/"
-	}
-
-	self.proxyUrl(gin, proxyUrl, path)
-}
 func (self Proxy) ProxyNoAuthService(gin *gin.Context) {
 	self.ProxyService(gin)
 }
@@ -241,7 +200,7 @@ func (self Proxy) proxyUrl(gin *gin.Context, proxyUrl string, path string) {
 		if dest := req.Header.Get("Destination"); dest != "" {
 			if destURL, err := url.Parse(dest); err == nil {
 				destPath := destURL.Path
-				if idx := strings.Index(destPath, "/k8s/webdav"); idx >= 0 {
+				if idx := strings.Index(destPath, "/panel-api/v1/files/webdav"); idx >= 0 {
 					destPath = destPath[idx:]
 				} else if idx := strings.Index(destPath, "/webdav"); idx >= 0 {
 					destPath = destPath[idx:]
@@ -299,13 +258,8 @@ func (self Proxy) ProxyAddr(http *gin.Context) {
 }
 
 func (self Proxy) Kubeconfig(gin *gin.Context) {
-	client, err := k8s.NewK8sClient().Channel(gin.MustGet("k8s_token").(string))
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
 	apiServerUrl := gin.Query("apiServerUrl")
-	config, err := client.ToKubeconfig(apiServerUrl)
+	config, err := k8s.NewK8sClient().ToKubeconfigForServiceAccount(apiServerUrl, permissionservice.APIPermissionName)
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
@@ -340,8 +294,10 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 	path := gin.Param("path")
 
 	token := gin.MustGet("k8s_token").(string)
+	k8sToken := k8s.NewK8sToken(token)
 
-	k3kuser, err := k3k.TokenToK3kUser(token)
+	role := k8sToken.GetRole()
+	microAppObj, err := microapp.ListInfo(token, name)
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
@@ -351,28 +307,25 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 		self.JsonResponseWithServerError(gin, err)
 		return
 	}
-	microAppObj := &microappType.MicroApp{}
-	sigclient, err := client.ToSigClient()
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-	err = sigclient.Get(client.Ctx, types.NamespacedName{Name: name, Namespace: k3kuser.GetNamespace()}, microAppObj)
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-	role := k3kuser.GetRole()
-	// if role != "founder" && role != "admin" {
-	// 	self.JsonResponseWithServerError(gin, errors.New("无权限访问"))
-	// 	return
-	// }
-	if microAppObj.IsFromRoot() || !k3kuser.IsClusterUser() {
-		if helper.IsK3kVirtual() {
+
+	if microAppObj.IsFromRoot() || !k8sToken.IsK3kCluster() {
+		if helper.IsK3kVirtual() { //转发到子集群pod后 强制设置成founder
 			role = "founder"
 		}
-		proxy := microapp.NewMicroAppProxy(microAppObj, k3kuser.IsClusterUser(), role)
-		revert, err := proxy.Proxy(path)
+		proxy := microapp.NewMicroAppProxy(microAppObj, k8sToken.IsK3kCluster(), role)
+		replace, err := microapp.NewMicroAppReplace(token)
+		if err == nil && replace != nil {
+			proxy.WithReplace(replace) //替换掉原有请求
+		}
+		proxyCtx := gin.Request.Context()
+		if server, err := oidc.GetServer(); err == nil && server != nil {
+			proxyCtx = server.ContextWithIssuer(proxyCtx, gin.Request)
+
+			isser := op.IssuerFromContext(proxyCtx)
+			slog.Info("Issuer", "issuer", isser)
+
+		}
+		revert, err := proxy.Proxy(proxyCtx, path)
 		if err != nil {
 			self.JsonResponseWithServerError(gin, err)
 			return
@@ -380,7 +333,8 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 		revert.ServeHTTP(gin.Writer, gin.Request)
 		return
 	}
-	if k3kuser.IsClusterUser() {
+	// --->panel--->sub-cluster--->microapp--->回到ZZZ 处
+	if k8sToken.IsK3kCluster() { //转发到子集群pod后 强制设置成founder
 
 		k8stoken := k8s.NewK8sToken(token)
 		config, err := k8stoken.GetK3kConfig()

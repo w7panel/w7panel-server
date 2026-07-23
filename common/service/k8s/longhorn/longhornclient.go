@@ -1,18 +1,21 @@
 package longhorn
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
+	"strconv"
+	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	"github.com/go-resty/resty/v2"
 	longhornV1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	v1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	longhornClient "github.com/longhorn/longhorn-manager/k8s/pkg/client/clientset/versioned"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -59,12 +62,117 @@ func (c *longhornclient) GetVolumeList() (*longhornV1beta2.VolumeList, error) {
 	return c.client.LonghornV1beta2().Volumes(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
 }
 
+// # https://oneuptime.com/blog/post/2026-01-30-longhorn-volume-snapshots/view
+func (c *longhornclient) GetSnapshotList() (*longhornV1beta2.SnapshotList, error) {
+	return c.client.LonghornV1beta2().Snapshots(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
+}
+func (c *longhornclient) GetVolumeAttachment(name string) (*longhornV1beta2.VolumeAttachment, error) {
+	return c.client.LonghornV1beta2().VolumeAttachments(c.namespace).Get(c.sdk.Ctx, name, v1.GetOptions{})
+}
+
+func (c *longhornclient) GetVolumeAttachmentList() (*longhornV1beta2.VolumeAttachmentList, error) {
+	return c.client.LonghornV1beta2().VolumeAttachments(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
+}
+func (c *longhornclient) UpdateVolumeAttachment(vt *longhornV1beta2.VolumeAttachment) (*longhornV1beta2.VolumeAttachment, error) {
+	return c.client.LonghornV1beta2().VolumeAttachments(c.namespace).Update(c.sdk.Ctx, vt, v1.UpdateOptions{})
+}
+func (c *longhornclient) ClearVolumeAttachmentTicket(vt *longhornV1beta2.VolumeAttachment) (*longhornV1beta2.VolumeAttachment, error) {
+	vt.Spec.AttachmentTickets = make(map[string]*longhornV1beta2.AttachmentTicket)
+	return c.client.LonghornV1beta2().VolumeAttachments(c.namespace).Update(c.sdk.Ctx, vt, v1.UpdateOptions{})
+}
+func (c *longhornclient) GetEngineList() (*longhornV1beta2.EngineList, error) {
+	return c.client.LonghornV1beta2().Engines(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
+}
+
 func (c *longhornclient) GetNodeList() (*longhornV1beta2.NodeList, error) {
 	return c.client.LonghornV1beta2().Nodes(c.namespace).List(c.sdk.Ctx, v1.ListOptions{})
 }
 
+func (c *longhornclient) GetNode(name string) (*longhornV1beta2.Node, error) {
+	return c.client.LonghornV1beta2().Nodes(c.namespace).Get(c.sdk.Ctx, name, v1.GetOptions{})
+}
+
 func (c *longhornclient) DeleteNode(name string) error {
 	return c.client.LonghornV1beta2().Nodes(c.namespace).Delete(c.sdk.Ctx, name, v1.DeleteOptions{})
+}
+
+// DeleteNodeWhenReady waits until Longhorn has observed that the Kubernetes
+// node is gone and all replicas and engines have left the node. These are the
+// same conditions enforced by Longhorn's validating webhook.
+func (c *longhornclient) DeleteNodeWhenReady(ctx context.Context, name string, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	lastState := "Longhorn 节点状态尚未同步"
+
+	for {
+		node, err := c.GetNode(name)
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		if node.Spec.AllowScheduling {
+			node.Spec.AllowScheduling = false
+			if _, err = c.UpdateNode(node); err != nil {
+				return err
+			}
+		}
+
+		replicas, err := c.GetReplicaList()
+		if err != nil {
+			return err
+		}
+		replicaCount := 0
+		for _, replica := range replicas.Items {
+			if replica.Spec.NodeID == name {
+				replicaCount++
+			}
+		}
+
+		engines, err := c.GetEngineList()
+		if err != nil {
+			return err
+		}
+		engineCount := 0
+		for _, engine := range engines.Items {
+			if engine.Spec.NodeID == name {
+				engineCount++
+			}
+		}
+
+		readyStatus := longhornV1beta2.ConditionStatusUnknown
+		readyReason := ""
+		for _, condition := range node.Status.Conditions {
+			if condition.Type == string(longhornV1beta2.NodeConditionTypeReady) {
+				readyStatus = condition.Status
+				readyReason = condition.Reason
+				break
+			}
+		}
+		statusReadyForDeletion := readyStatus != longhornV1beta2.ConditionStatusTrue &&
+			(readyReason == string(longhornV1beta2.NodeConditionReasonKubernetesNodeGone) ||
+				readyReason == string(longhornV1beta2.NodeConditionReasonManagerPodMissing))
+		lastState = fmt.Sprintf("Ready=%s, Reason=%s, Replica=%d, Engine=%d", readyStatus, readyReason, replicaCount, engineCount)
+
+		if statusReadyForDeletion && !node.Spec.AllowScheduling && replicaCount == 0 && engineCount == 0 {
+			err = c.DeleteNode(name)
+			if err == nil || apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("等待 Longhorn 节点 %s 清理超时（%s）: %w", name, lastState, ctx.Err())
+		case <-ticker.C:
+		}
+	}
 }
 
 func (c *longhornclient) GetK8sNodeList() (*corev1.NodeList, error) {
@@ -203,22 +311,6 @@ func (l *volumeReplicaCompose) GetVolumeReplicas() volumeReplicaList {
 	return result
 }
 
-func createPv(volumeName string, pvName string, scName string) error {
-	if scName == "" {
-		scName = "longhorn"
-	}
-	json := fmt.Sprintf(`{"fsType": "ext4", "pvName": "%s", "storageClassName": "`+scName+`"}`, pvName)
-	return longhornVolumeApiAction(volumeName, "pvCreate", json)
-}
-
-func createPvc(volumeName string, pvcName string, namespace string) error {
-	if namespace == "" {
-		namespace = "default"
-	}
-	json := fmt.Sprintf(`{"pvcName": "%s", "namespace": "%s"}`, pvcName, namespace)
-	return longhornVolumeApiAction(volumeName, "pvcCreate", json)
-}
-
 // containsAll checks if slice a contains all elements of slice b
 
 func updateVolumeReplicaCountApi(name string, count int) error {
@@ -228,18 +320,54 @@ func updateVolumeReplicaCountApi(name string, count int) error {
 }
 
 func longhornVolumeApiAction(volumeName string, action string, json string) error {
-	slog.Info("longhornclient longhornVolumeApiAction: ", "volumeName", volumeName, "action", action)
+
 	postUrl := baseUrl + "/v1/volumes/" + volumeName + "?action=" + action
 	response, err := resty.New().R().SetBody(json).SetHeader("content-type", "application/json").SetHeader("Accept", "application/json").Post(postUrl)
 	if err != nil {
-		slog.Error("longhornclient longhornVolumeApiAction error: ", "err", err)
+		// slog.Error("longhornclient longhornVolumeApiAction error: ", "err", err)
+		return err
 	}
-
 	if response.StatusCode() != http.StatusOK {
-		slog.Error("longhornclient longhornVolumeApiAction error response: %s", "err", response.String())
-		return errors.New("longhornclient UpdateVolumeReplicaCount error: " + response.Status() + ": content: " + response.String())
+		// slog.Error("longhornclient longhornVolumeApiAction error response: %s", "err", response.String())
+		return errors.New(response.String())
 	}
 	return nil
+}
+
+// RemoveReplica removes a replica through the Longhorn API. Deleting the CR
+// directly bypasses Longhorn's volume-controller cleanup path.
+func RemoveReplica(volumeName string, replicaName string) error {
+	return longhornVolumeApiAction(volumeName, "replicaRemove", `{"name":"`+replicaName+`"}`)
+}
+
+/**
+{"hostId":"server1","disableFrontend":true,"AttachedBy":"","attacherType":"","AttachmentID":"longhorn-ui"}
+*/
+
+func LonghornVolumeAttach(volumeName string, nodeName string, attachmentID string, attachBy string, attacherType string, disableFrontend string) error {
+	return longhornVolumeApiAction(volumeName, "attach", `{"hostId":"`+nodeName+`","disableFrontend":`+disableFrontend+`,"AttachedBy":"`+attachBy+`","attacherType":"`+attacherType+`","AttachmentID":"`+attachmentID+`"}`)
+}
+
+/*
+{"forceDetach":true,"attachmentID":"longhorn-ui","hostId":""}
+*/
+func LonghornVolumeDetach(volumeName, attachmentID string, forceDetach bool) error {
+	return longhornVolumeApiAction(volumeName, "detach", `{"forceDetach":`+strconv.FormatBool(forceDetach)+`,"attachmentID":"`+attachmentID+`","hostId":""}`)
+}
+
+// {"name":"cloned-pvc-249bbeea-bb94-489a-9-4eae22bc"}
+func LonghornVolumeCancelExpansion(volumeName string) error {
+	return longhornVolumeApiAction(volumeName, "cancelExpansion", `{"name":"`+volumeName+`"}`)
+}
+func LonghornVolumeTrimFilesystem(volumeName string) error {
+	return longhornVolumeApiAction(volumeName, "trimFilesystem", `{"name":"`+volumeName+`"}`)
+}
+func LonghornVolumeSnapshotDelete(volumeName string, name string) error {
+	return longhornVolumeApiAction(volumeName, "snapshotDelete", `{"name":"`+name+`"}`)
+}
+
+func LonghornVolumeSnapshotPurge(volumeName string) error {
+	return longhornVolumeApiAction(volumeName, "snapshotPurge", `{"name":"`+volumeName+`"}`)
 }
 
 func LonghorStoragePercentage(value string) error {
@@ -248,12 +376,13 @@ func LonghorStoragePercentage(value string) error {
 	json = fmt.Sprintf(json, value)
 	response, err := resty.New().R().SetBody(json).SetHeader("content-type", "application/json").SetHeader("Accept", "application/json").Put(postUrl)
 	if err != nil {
-		slog.Error("longhornclient longhornVolumeApiAction error: ", "err", err)
+		// slog.Error("longhornclient longhornVolumeApiAction error: ", "err", err)
+		return err
 	}
 
 	if response.StatusCode() != http.StatusOK {
-		slog.Error("longhornclient LonghorStoragePercentage error response: %s", "err", response.String())
-		return errors.New("longhornclient LonghorStoragePercentage error: " + response.Status() + ": content: " + response.String())
+		// slog.Error("longhornclient LonghorStoragePercentage error response: %s", "err", response.String())
+		return errors.New(response.String())
 	}
 	return nil
 }

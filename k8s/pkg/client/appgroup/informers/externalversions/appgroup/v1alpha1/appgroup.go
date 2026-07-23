@@ -21,10 +21,10 @@ import (
 	context "context"
 	time "time"
 
-	apisappgroupv1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
-	versioned "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/appgroup/clientset/versioned"
-	internalinterfaces "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/appgroup/informers/externalversions/internalinterfaces"
-	appgroupv1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"
+	apisappgroupv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
+	versioned "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/clientset/versioned"
+	internalinterfaces "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/informers/externalversions/internalinterfaces"
+	appgroupv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -56,20 +56,32 @@ func NewAppGroupInformer(client versioned.Interface, namespace string, resyncPer
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredAppGroupInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AppgroupV1alpha1().AppGroups(namespace).List(context.TODO(), options)
+				return client.AppgroupV1alpha1().AppGroups(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AppgroupV1alpha1().AppGroups(namespace).Watch(context.TODO(), options)
+				return client.AppgroupV1alpha1().AppGroups(namespace).Watch(context.Background(), options)
 			},
-		},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.AppgroupV1alpha1().AppGroups(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.AppgroupV1alpha1().AppGroups(namespace).Watch(ctx, options)
+			},
+		}, client),
 		&apisappgroupv1alpha1.AppGroup{},
 		resyncPeriod,
 		indexers,

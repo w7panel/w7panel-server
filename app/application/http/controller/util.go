@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
 	"github.com/gin-gonic/gin"
 	pinyin "github.com/mozillazg/go-pinyin"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 
 	// "github.com/we7coreteam/w7-rangine-go/v2/src/core/helper"
@@ -177,11 +177,7 @@ func (self Util) Captcha(http *gin.Context) {
 
 }
 
-/*
-*
-
-	验证是否可以连接数据库
-*/
+// DbConnTest validates database connectivity.
 func (self Util) DbConnTest(http *gin.Context) {
 	type ParamsValidate struct {
 		Dsn string `form:"dsn" binding:"required"`

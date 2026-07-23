@@ -3,10 +3,13 @@ package microapp
 import (
 	"errors"
 	"log/slog"
+	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	microapp "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/microapp/v1alpha1"
 	"github.com/samber/lo"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	sig "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -18,29 +21,113 @@ func ListTop(t string) (*microapp.MicroAppList, error) {
 	if role == "" {
 		return nil, errors.New("role is empty")
 	}
+	rootSdk := k8s.NewK8sClient().Sdk
 
-	clientSdk, err := k8s.NewK8sClient().Channel(t)
-	if err != nil {
-		return nil, err
-	}
 	newList := &microapp.MicroAppList{}
-	currentList, err := loadMicroAppList(clientSdk)
+
+	rootList, err := loadMicroAppList(rootSdk)
 	if err != nil {
 		return nil, err
 	}
+	rootList.Items = lo.Filter(rootList.Items, func(item microapp.MicroApp, index int) bool {
+		_, hasRole := item.Spec.ConfigV2.Props.RoleConfig[role]
+		return item.RoleCount() > 1 && hasRole
+	})
 
-	lo.ForEach(currentList.Items, func(item microapp.MicroApp, index int) {
+	rootList.Items = lo.Map(rootList.Items, func(item microapp.MicroApp, index int) microapp.MicroApp {
+		filterMicroapp(&item, role)
+		return item
+	})
+
+	lo.ForEach(rootList.Items, func(item microapp.MicroApp, index int) {
 		if item.Labels != nil {
 			if item.RoleCount() > 1 || item.Labels["microapp.w7.cc/from"] == "root" {
 				newList.Items = append(newList.Items, item)
 			}
-
 		}
 	})
 
 	return newList, nil
 }
 
+func ListInfo(t string, name string) (*microapp.MicroApp, error) {
+	token := k8s.NewK8sToken(t)
+	role := token.GetRole()
+	if role == "" {
+		return nil, errors.New("role is empty")
+	}
+	rootSdk := k8s.NewK8sClient().Sdk
+	currentRole := token.GetRole()
+	clientSdk, err := k8s.NewK8sClient().Channel(t)
+	if err != nil {
+		return nil, err
+	}
+	useRoot := false
+	if strings.HasSuffix(name, "-root") {
+		name = strings.ReplaceAll(name, "-root", "")
+		useRoot = true
+	}
+	if useRoot {
+
+		rootMicroapp, err := loadMicroApp(rootSdk, name)
+		if err != nil {
+			return nil, err
+		}
+		filterMicroapp(rootMicroapp, currentRole)
+		return rootMicroapp, nil
+	}
+	microapp, err := loadMicroApp(clientSdk, name)
+	if err != nil {
+
+		//找不到 获取没有权限读取
+		if k8serrors.IsNotFound(err) || k8serrors.IsForbidden(err) {
+			rootMicroapp, err := loadMicroApp(rootSdk, name)
+			if err != nil {
+				return nil, err
+			}
+			filterMicroapp(rootMicroapp, currentRole)
+			return rootMicroapp, nil
+		} else {
+			return nil, err
+		}
+	}
+	return microapp, nil
+}
+func filterMicroapp(item *microapp.MicroApp, role string) {
+	if item.Labels == nil {
+		item.Labels = map[string]string{}
+	}
+	item.Labels["microapp.w7.cc/from"] = "root"
+	item.Name = item.Name + "-root"
+	if role == "founder" {
+		return
+	}
+	// item.Labels["microapp.w7.cc/from"] = "root"
+	// item.Name = item.Name + "-root"
+	item.Spec.Bindings = lo.Filter(item.Spec.Bindings, func(bindings microapp.Bindings, index int) bool {
+		if role == "super" { //super 管理员可以看到所有角色
+			return bindings.Name != "founder"
+		}
+		return bindings.Name == role
+	})
+	newRole := item.Spec.ConfigV2.Props.RoleConfig[role]
+	item.Spec.ConfigV2.Props.RoleConfig = map[string]microapp.Role{}
+	item.Spec.ConfigV2.Props.RoleConfig[role] = newRole
+}
+func loadMicroApp(sdk *k8s.Sdk, name string) (*microapp.MicroApp, error) {
+	microapp := &microapp.MicroApp{}
+	sigClient, err := sdk.ToSigClient()
+	if err != nil {
+
+		return nil, err
+	}
+	err = sigClient.Get(sdk.Ctx, types.NamespacedName{Name: name, Namespace: "default"}, microapp)
+	if err != nil {
+		slog.Error("loadMicroApp", "err", err)
+		return nil, err
+	}
+	return microapp, nil
+}
 func loadMicroAppList(sdk *k8s.Sdk) (*microapp.MicroAppList, error) {
 	list := &microapp.MicroAppList{}
 	sigClient, err := sdk.ToSigClient()
@@ -63,12 +150,14 @@ func patchRootMicroApp(sdk *k8s.Sdk, origin *microapp.MicroApp, role string) err
 		return err
 	}
 	item := origin.DeepCopy()
+	item.Name = item.Name + "-root" //防止同名
 	// itemCopy := item.DeepCopy()
-	_, err = controllerutil.CreateOrUpdate(sdk.Ctx, sigclient, item, func() error {
+	_, err = controllerutil.CreateOrPatch(sdk.Ctx, sigclient, item, func() error {
 		item.Labels["microapp.w7.cc/from"] = "root"
 		item.SetResourceVersion("")
 		item.SetUID("")
 		// 移除不属于当前角色的权限配置信息
+		item.Spec.Bindings = origin.Spec.Bindings
 		item.Spec.Bindings = lo.Filter(item.Spec.Bindings, func(bindings microapp.Bindings, index int) bool {
 			return bindings.Name == role
 		})

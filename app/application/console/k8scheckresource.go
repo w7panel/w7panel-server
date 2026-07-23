@@ -9,8 +9,8 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	"github.com/spf13/cobra"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 )
 
@@ -35,7 +35,6 @@ func (c K8sCheckResource) GetName() string {
 }
 
 func (c K8sCheckResource) Configure(cmd *cobra.Command) {
-	// username password register
 	cmd.Flags().StringArrayVar(&resourceOp.resources, "resources", []string{}, "resources")
 	cmd.Flags().IntVar(&resourceOp.timeout, "timeout", 300, "默认300秒")
 }

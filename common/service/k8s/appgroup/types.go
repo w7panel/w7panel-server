@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
-	appv1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
+	"github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
+	appv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	"golang.org/x/time/rate"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -23,20 +23,6 @@ type K8sResourceEvent struct {
 	IsInit            bool   `json:"isInit"`
 }
 
-//	func NewK8sResourceEvent(apiVerion, kind string, name, namespace, eventType string, isInit bool) *K8sResourceEvent {
-//		return &K8sResourceEvent{
-//			TypeMeta: metav1.TypeMeta{
-//				Kind:       kind,
-//				APIVersion: apiVerion,
-//			},
-//			ObjectMeta: metav1.ObjectMeta{
-//				Name:      name,
-//				Namespace: namespace,
-//			},
-//			EventType: eventType,
-//			IsInit:    isInit,
-//		}
-//	}
 func NewK8sResourceEvent(typemeta metav1.TypeMeta, objMeta metav1.ObjectMeta, eventType string, isInit bool) *K8sResourceEvent {
 	return &K8sResourceEvent{
 		TypeMeta:   typemeta,
@@ -167,7 +153,17 @@ func (d *WorkloadWrapper) ToItemStatus() appv1.AppGroupItemStatus {
 		IsHelmWorkLoad:    d.IsHelm(),
 		DeployStatus:      d.DeployStatus(),
 		IsZeroReplicas:    d.IsZeroReplicas(),
+		DenyDelete:        d.DenyDelete(),
 	}
+}
+
+func (w *WorkloadWrapper) DenyDelete() bool {
+	anno := w.Annotations()
+	if anno != nil {
+		val, ok := anno["w7.cc/deny-delete"]
+		return ok && val == "true"
+	}
+	return false
 }
 func (w *WorkloadWrapper) ResourceVersion() string {
 	return w.WorkloadInterface.Metadata().ResourceVersion

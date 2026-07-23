@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
+	"github.com/w7panel/w7panel/common/helper"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -12,7 +12,7 @@ import (
 func (s *k3sConfigController) loadPublicIp(node *v1.Node) error {
 	loadIp, ok := node.Labels["w7.cc/load-public-ip"]
 	if !ok || loadIp != "true" {
-		slog.Debug("not need load public ip")
+		slog.Error("not need load public ip")
 		return nil
 	}
 	if isCurrentDaemonsetNode(node) {

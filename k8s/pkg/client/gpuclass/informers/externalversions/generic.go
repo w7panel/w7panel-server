@@ -20,7 +20,7 @@ package externalversions
 import (
 	fmt "fmt"
 
-	v1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/gpuclass/v1alpha1"
+	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/gpuclass/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -51,7 +51,7 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=gpuclass.k8s.io, Version=v1alpha1
+	// Group=w7panel.w7.com, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("gpuclasses"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Gpuclass().V1alpha1().GpuClasses().Informer()}, nil
 

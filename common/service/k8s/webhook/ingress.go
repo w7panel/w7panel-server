@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/k3k"
-	ingApi "gitee.com/we7coreteam/k8s-offline/common/service/k8s/webhook/ingress"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
+	ingApi "github.com/w7panel/w7panel/common/service/k8s/webhook/ingress"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,9 +21,8 @@ import (
 
 // 处理 Ingress 资源
 func (m *ResourceMutator) handleIngress(ctx context.Context, req admission.Request) admission.Response {
-	slog.Info("处理 Ingress admission 请求")
+	// slog.Info("处理 Ingress admission 请求")
 
-	defer handlerIngressSync(req, m.decoder, m.client)
 	ingress := &networkingv1.Ingress{}
 	// 判断是否Delete 请求
 	delete := false
@@ -40,13 +38,27 @@ func (m *ResourceMutator) handleIngress(ctx context.Context, req admission.Reque
 	}
 	// 解码请求中的 Ingress 资源
 
-	if helper.IsChildAgent() {
-		defer k3k.SyncHttpAfter(ingress, "sync-ingress")
-	}
 	if delete {
+		if helper.IsChildAgent() {
+			defer k3k.SyncHttpAfter(ingress, "sync-ingress")
+		}
+		defer handlerIngressSync(req, m.decoder, m.client)
 		defer m.handleIngressDelete(m.client, ingress.DeepCopy())
 		return admission.Allowed("删除请求")
 	}
+
+	conflict, err := findIngressHostConflict(ctx, m.client, ingress)
+	if err != nil {
+		slog.Error("ingress webhook list ingress error", "error", err)
+		return admission.Errored(http.StatusInternalServerError, err)
+	}
+	if conflict != "" {
+		return admission.Denied(conflict)
+	}
+	if helper.IsChildAgent() {
+		defer k3k.SyncHttpAfter(ingress, "sync-ingress")
+	}
+	defer handlerIngressSync(req, m.decoder, m.client)
 
 	ann := ingress.Annotations
 	if ann == nil {
@@ -73,6 +85,45 @@ func (m *ResourceMutator) handleIngress(ctx context.Context, req admission.Reque
 	return admission.Allowed("所有域名都在白名单中")
 }
 
+func findIngressHostConflict(ctx context.Context, c client.Client, current *networkingv1.Ingress) (string, error) {
+	hosts := ingressRuleHosts(current)
+	if len(hosts) == 0 {
+		return "", nil
+	}
+
+	ingresses := &networkingv1.IngressList{}
+	if err := c.List(ctx, ingresses); err != nil {
+		return "", err
+	}
+
+	for _, ingress := range ingresses.Items {
+		if ingress.Namespace == current.Namespace {
+			continue
+		}
+		for _, rule := range ingress.Spec.Rules {
+			if rule.Host == "" {
+				continue
+			}
+			if _, ok := hosts[rule.Host]; ok {
+				return fmt.Sprintf("host %s 已被命名空间 %s 下的 Ingress %s 使用", rule.Host, ingress.Namespace, ingress.Name), nil
+			}
+		}
+	}
+
+	return "", nil
+}
+
+func ingressRuleHosts(ingress *networkingv1.Ingress) map[string]struct{} {
+	hosts := map[string]struct{}{}
+	for _, rule := range ingress.Spec.Rules {
+		if rule.Host == "" {
+			continue
+		}
+		hosts[rule.Host] = struct{}{}
+	}
+	return hosts
+}
+
 func (m *ResourceMutator) handleIngressDelete(client client.Client, ingress *networkingv1.Ingress) {
 
 	for _, tls := range ingress.Spec.TLS {
@@ -80,7 +131,7 @@ func (m *ResourceMutator) handleIngressDelete(client client.Client, ingress *net
 		if secretName != "" {
 			// 检查是否有其他 Ingress 引用了该 Secret
 			if isSecretReferencedByOtherIngress(client, ingress, secretName) {
-				fmt.Printf("Secret %s/%s is still referenced by other Ingresses, skipping deletion\n", ingress.Namespace, secretName)
+				slog.Info("secret is still referenced by other ingresses, skipping deletion", "namespace", ingress.Namespace, "secret", secretName)
 				continue
 			}
 			delSecret := &corev1.Secret{
@@ -105,7 +156,7 @@ func (m *ResourceMutator) handleIngressDelete(client client.Client, ingress *net
 }
 
 func handlerIngressSync(req admission.Request, decoder admission.Decoder, client client.Client) {
-	slog.Info("处理 Ingress admission 请求")
+	// slog.Info("处理 Ingress admission 请求")
 
 	switch req.Operation {
 	case "CREATE":
@@ -161,33 +212,4 @@ func isSecretReferencedByOtherIngress(clientset client.Client, deletedIngress *n
 	}
 
 	return false
-}
-
-// 解析白名单数据
-
-// 检查域名是否在白名单中
-func isDomainInWhiteList(host string, whiteList []DomainWhiteListItem) bool {
-	whiteListCount := len(whiteList)
-	disableCount := 0
-	for _, item := range whiteList {
-		// 跳过禁用的项
-		if item.Disabled {
-			disableCount++
-			continue
-		}
-
-		// 检查域名是否匹配
-		if item.Prefix == "*." {
-			// 检查域名是否是白名单域名的子域名
-			if strings.HasSuffix(host, "."+item.Domain) || host == item.Domain {
-				return true
-			}
-		} else {
-			// 精确匹配
-			if host == item.Domain {
-				return true
-			}
-		}
-	}
-	return disableCount == whiteListCount
 }

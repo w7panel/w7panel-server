@@ -15,17 +15,24 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	higressextv1 "gitee.com/we7coreteam/k8s-offline/common/service/k8s/higress/client/pkg/apis/extensions/v1alpha1"
-	higressnetworkingv1 "gitee.com/we7coreteam/k8s-offline/common/service/k8s/higress/client/pkg/apis/networking/v1"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/terminal"
-	appgroupv1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
-	microapp "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/microapp/v1alpha1"
 	"github.com/gin-gonic/gin"
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	openapi_v2 "github.com/google/gnostic-models/openapiv2"
-	"github.com/google/uuid"
-	k3kv1alpha "github.com/rancher/k3k/pkg/apis/k3k.io/v1alpha1"
+	"github.com/w7panel/w7panel/common/helper"
+	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
+	higressextv1 "github.com/w7panel/w7panel/common/service/k8s/higress/client/pkg/apis/extensions/v1alpha1"
+	higressnetworkingv1 "github.com/w7panel/w7panel/common/service/k8s/higress/client/pkg/apis/networking/v1"
+	"github.com/w7panel/w7panel/common/service/k8s/terminal"
+	apiclientv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/apiclient/v1alpha1"
+	appgroupv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
+	buildimagev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/buildimage/v1alpha1"
+	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
+	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
+	microappsettingv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/microappsetting/v1alpha1"
+	oidcv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/oidc/v1alpha1"
+	privatednsv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/privatedns/v1alpha1"
+	sitev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/site/v1alpha1"
+	userv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/user/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"golang.org/x/crypto/bcrypt"
 	"helm.sh/helm/v3/pkg/kube"
@@ -62,9 +69,8 @@ import (
 )
 
 const namespaceFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
-const tokenFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 const K3K_MENU_FOUNDER = `
-["cluster","cluster-panel","cluster-resource","app","app-apps","app-apps-add","app-apps-edit","app-apps-delete","app-cronjob","app-cronjob-add","app-cronjob-edit","app-cronjob-delete","app-rvproxy","app-rvproxy-add","app-rvproxy-edit","app-rvproxy-delete","app-dblist","app-dblist-add","app-dblist-delete","app-gpustack","storage","storage-node","storage-node-add","storage-node-edit","storage-node-delete","storage-zone","zpk","system","system-cloud","system-order-center","system-cost-center","cluster-nodes","cluster-nodes-add","cluster-nodes-registries","cluster-nodes-gpu","cluster-nodes-memory","system-whitelist","system-manage","system-user","system-usergroup","system-permission","system-quota"]
+["cluster","cluster/panel","cluster/resource","app","app/apps","app/apps/add","app/apps/edit","app/apps/delete","app/cronjob","app/cronjob/add","app/cronjob/edit","app/cronjob/delete","app/rvproxy","app/rvproxy/add","app/rvproxy/edit","app/rvproxy/delete","gateway","gateway/rvproxy","gateway/rvproxy/add","gateway/rvproxy/edit","gateway/rvproxy/delete","gateway/aiproxy","gateway/aiproxy/add","gateway/aiproxy/edit","gateway/aiproxy/delete","gateway/plugins","gateway/plugins/add","gateway/plugins/edit","gateway/plugins/delete","app/database","app/database/add","app/database/delete","app/gpustack","storage","storage/disk","storage/disk/add","storage/disk/edit","storage/disk/delete","storage/zone","zpk","system","system/cloud","person/order-center","person/cost-center","cluster/nodes","cluster/nodes/add","cluster/nodes/registries","cluster/nodes/gpu","cluster/nodes/memory","usermanage/usermanage-whitedomain","usermanage","usermanage/users","usermanage/usergroup","usermanage/permission","usermanage/quota"]
 `
 
 var (
@@ -75,34 +81,40 @@ var (
 
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
-	_ = k3kv1alpha.AddToScheme(scheme)
+	// _ = k3kv1alpha.AddToScheme(scheme)
 	// _ = higressscheme.AddToScheme(scheme)
 	_ = higressnetworkingv1.AddToScheme(scheme)
 	_ = higressextv1.AddToScheme(scheme)
 	_ = apirbacv1.AddToScheme(scheme)
+	_ = apiclientv1alpha1.AddToScheme(scheme)
 	_ = appgroupv1.AddToScheme(scheme)
+	_ = configv1alpha1.AddToScheme(scheme)
 	_ = microapp.AddToScheme(scheme)
+	_ = microappsettingv1alpha1.AddToScheme(scheme)
+	_ = buildimagev1alpha1.AddToScheme(scheme)
+	_ = cvmv1alpha1.AddToScheme(scheme)
+	_ = oidcv1alpha1.AddToScheme(scheme)
+	_ = privatednsv1alpha1.AddToScheme(scheme)
+	_ = sitev1alpha1.AddToScheme(scheme)
+	_ = userv1alpha1.AddToScheme(scheme)
 }
 
 func GetScheme() *runtime.Scheme {
 	return scheme
 }
 
-// LoggingRoundTripper 是一个自定义的 http.RoundTripper，用于打印请求和响应的详细信息。
+// LoggingRoundTripper 是一个自定义的 http.RoundTripper，用于记录请求和响应的详细信息。
 type LoggingRoundTripper struct {
 	Proxied http.RoundTripper
 }
 
 // RoundTrip 实现 http.RoundTripper 接口。
 func (lrt LoggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	// 打印请求信息
-	fmt.Printf("Request URL: %s %s\n", req.Method, req.URL)
-	fmt.Println("Request Headers:")
+	requestHeaders := make(map[string][]string, len(req.Header))
 	for key, values := range req.Header {
-		for _, value := range values {
-			fmt.Printf("  %s: %s\n", key, value)
-		}
+		requestHeaders[key] = append([]string(nil), values...)
 	}
+	attrs := []any{"method", req.Method, "url", req.URL.String(), "headers", requestHeaders}
 
 	if req.Body != nil {
 		bodyBytes, err := io.ReadAll(req.Body)
@@ -110,24 +122,20 @@ func (lrt LoggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, err
 			return nil, err
 		}
 		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-		fmt.Println("Request Body:")
-		fmt.Println(string(bodyBytes))
+		attrs = append(attrs, "body", string(bodyBytes))
 	}
+	slog.Debug("k8s request", attrs...)
 
-	// 发送请求
 	resp, err := lrt.Proxied.RoundTrip(req)
 	if err != nil {
 		return nil, err
 	}
 
-	// 打印响应信息
-	fmt.Printf("Response Status: %s\n", resp.Status)
-	fmt.Println("Response Headers:")
+	responseHeaders := make(map[string][]string, len(resp.Header))
 	for key, values := range resp.Header {
-		for _, value := range values {
-			fmt.Printf("  %s: %s\n", key, value)
-		}
+		responseHeaders[key] = append([]string(nil), values...)
 	}
+	slog.Debug("k8s response", "status", resp.Status, "headers", responseHeaders)
 
 	return resp, nil
 }
@@ -207,6 +215,10 @@ type Sdk struct {
 	restMapper         meta.RESTMapper
 }
 
+func (self *Sdk) DynamicClient() dynamic.Interface {
+	return self.dynamicClient
+}
+
 type PtyHandler interface {
 	io.Reader
 	io.Writer
@@ -229,7 +241,7 @@ func newForClientConfig(clientConfig clientcmd.ClientConfig, namespace string) (
 }
 
 func NewForRestConfig(config *rest.Config, namespace string) (*Sdk, error) {
-	startTime := time.Now()
+
 	debug, ok := os.LookupEnv("SDK_DEBUG")
 	if ok && debug == "true" {
 		config.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
@@ -237,24 +249,20 @@ func NewForRestConfig(config *rest.Config, namespace string) (*Sdk, error) {
 		}
 	}
 
-	newClientSetStart := time.Now()
 	clientSet, err := kubernetes.NewForConfig(config)
-	slog.Info("[PERF] NewForRestConfig - NewForConfig(clientSet) took %v", "duration", time.Since(newClientSetStart))
+
 	if err != nil {
 		return nil, err
 	}
 
-	newDynamicStart := time.Now()
 	dynamicClient, err := dynamic.NewForConfig(config)
-	slog.Info("[PERF] NewForRestConfig - NewForConfig(dynamic) took %v", "duration", time.Since(newDynamicStart))
+
 	if err != nil {
 		return nil, err
 	}
 
-	restmapCacheStart := time.Now()
 	restmapCache := memory.NewMemCacheClient(clientSet.Discovery())
 	restmap := restmapper.NewDeferredDiscoveryRESTMapper(restmapCache)
-	slog.Info("[PERF] NewForRestConfig - REST mapper setup took %v", "duration", time.Since(restmapCacheStart))
 
 	ctx := context.Background()
 	sdk := &Sdk{
@@ -265,7 +273,7 @@ func NewForRestConfig(config *rest.Config, namespace string) (*Sdk, error) {
 		dynamicClient: dynamicClient,
 		restMapper:    restmap,
 	}
-	slog.Info("[PERF] NewForRestConfig total time %v", "duration", time.Since(startTime))
+
 	return sdk, nil
 }
 
@@ -304,8 +312,7 @@ func NewK8sClientInner() *Sdk {
 	}
 	sdk, err := newForClientConfig(clientConfig, kubeConfigNamespace)
 	if err != nil {
-		fmt.Println("kubeconfig" + kubePath)
-		// slog.Warn("new k8s client error", "err", err)
+		slog.Error("new k8s client error", "kubeconfig", kubePath, "err", err)
 		panic(err)
 	}
 	sdk.clientConfig = clientConfig
@@ -414,19 +421,19 @@ func (self *Sdk) ToMetricsClient() (*metricsclient.Clientset, error) {
 }
 
 func (self *Sdk) ToSigClient() (sigclient.Client, error) {
-	startTime := time.Now()
+	// startTime := time.Now()
 
-	toRestStart := time.Now()
+	// toRestStart := time.Now()
 	config, err := self.ToRESTConfig()
-	slog.Info("[PERF] Sdk.ToSigClient - ToRESTConfig took %v", "duration", time.Since(toRestStart))
+	// slog.Info("[PERF] Sdk.ToSigClient - ToRESTConfig took %v", "duration", time.Since(toRestStart))
 	if err != nil {
 		return nil, err
 	}
 
-	newClientStart := time.Now()
+	// newClientStart := time.Now()
 	result, err := sigclient.New(config, sigclient.Options{Scheme: scheme})
-	slog.Info("[PERF] Sdk.ToSigClient - sigclient.New took %v", "duration", time.Since(newClientStart))
-	slog.Info("[PERF] Sdk.ToSigClient total time %v", "duration", time.Since(startTime))
+	// slog.Info("[PERF] Sdk.ToSigClient - sigclient.New took %v", "duration", time.Since(newClientStart))
+	// slog.Info("[PERF] Sdk.ToSigClient total time %v", "duration", time.Since(startTime))
 	return result, err
 }
 
@@ -480,6 +487,12 @@ func (self *Sdk) Proxy(request *http.Request, response gin.ResponseWriter) (err 
 
 	// 3. 设置HTTP代理
 	proxy := httputil.NewSingleHostReverseProxy(result)
+	defer func() {
+		//golang issue 23643
+		if r := recover(); r != nil {
+			slog.Error("客户端已断开连接", "error", r)
+		}
+	}()
 	tr, err := rest.TransportFor(self.restConfig)
 	if err != nil {
 		slog.Error("Error building transport: %v", "err", err)
@@ -504,13 +517,10 @@ func (self *Sdk) RunExec(ptyHandler PtyHandler, namespace string, podName string
 		Param("container", containerName).
 		Param("stdin", "true").
 		Param("stdout", "true").
-		// Param("stderr", "true"). //k3k 无法进入pod里
+		Param("stderr", "true").
 		Param("tty", ttystr)
 	for _, c := range cmd {
 		request = request.Param("command", c)
-	}
-	if !tty {
-		request = request.Param("stderr", "true")
 	}
 	exec, err := remotecommand.NewSPDYExecutor(self.restConfig, "POST", request.URL())
 	if err != nil {
@@ -526,12 +536,12 @@ func (self *Sdk) RunExec(ptyHandler PtyHandler, namespace string, podName string
 			TerminalSizeQueue: ptyHandler,
 		})
 
-	slog.Info("k8s exec done", "err", err)
+	slog.Info("k8s exec done", "namespace", namespace, "podName", podName, "containerName", containerName, "cmd", cmd, "err", err)
 	return err
 }
 
 func (self *Sdk) CreateTokenRequest(serviceAccount string, expireSeconds int64, audiences []string) (string, error) {
-	startTime := time.Now()
+	// startTime := time.Now()
 	tokenReq := v1.TokenRequest{
 		Spec: v1.TokenRequestSpec{
 			ExpirationSeconds: &expireSeconds,
@@ -544,12 +554,7 @@ func (self *Sdk) CreateTokenRequest(serviceAccount string, expireSeconds int64, 
 		},
 	}
 
-	createTokenStart := time.Now()
 	result, err := self.ClientSet.CoreV1().ServiceAccounts(self.namespace).CreateToken(self.Ctx, serviceAccount, &tokenReq, metav1.CreateOptions{})
-	createTokenTime := time.Since(createTokenStart)
-
-	slog.Info("[PERF] Sdk.CreateTokenRequest - CreateToken took %v", "duration", createTokenTime)
-	slog.Info("[PERF] Sdk.CreateTokenRequest total time %v", "duration", time.Since(startTime))
 
 	if err != nil {
 		return "", err
@@ -817,6 +822,13 @@ func (self Sdk) Login2(username string, password string, checkPassword bool) (*c
 	if !ok {
 		return nil, fmt.Errorf("用户名密码错误")
 	}
+	// pwd, err := base64.URLEncoding.DecodeString(passwd)
+	// if err == nil {
+	// 	passwd = string(pwd)
+	// }
+	// if err != nil {
+	// 	slog.Warn("not base64 password", "username", username)
+	// }
 	if ok {
 		err = bcrypt.CompareHashAndPassword([]byte(passwd), []byte(password))
 		if err != nil {
@@ -830,7 +842,7 @@ func (self Sdk) Login2(username string, password string, checkPassword bool) (*c
 	_, hasMode := sa.Labels["w7.cc/user-mode"]
 	if !hasMode {
 		sa.Labels["w7.cc/user-mode"] = "founder"
-		sa.Annotations["w7.cc/menu-name"] = "k3k.permission.founder"
+		sa.Annotations["w7.cc/menu-name"] = "founder"
 		sa.Annotations["w7.cc/menu"] = K3K_MENU_FOUNDER
 		sa.Annotations["w7.cc/debug"] = "true"
 		sa.Annotations["w7.cc/file-editor"] = "true"
@@ -843,23 +855,11 @@ func (self Sdk) Login2(username string, password string, checkPassword bool) (*c
 
 	return sa, nil
 }
-func (self Sdk) Login(username string, password string, createToken bool, seconds int64) (string, error) {
+func (self Sdk) LoginCreateToken(username string, password string, createToken bool, seconds int64) (string, error) {
 
-	sa, err := self.ClientSet.CoreV1().ServiceAccounts(self.namespace).Get(self.Ctx, username, metav1.GetOptions{})
+	_, err := self.Login2(username, password, true)
 	if err != nil {
 		return "", err
-	}
-
-	annotations := sa.GetAnnotations()
-	passwd, ok := annotations["password"]
-	if !ok {
-		return "", fmt.Errorf("用户名密码错误")
-	}
-	if ok {
-		err = bcrypt.CompareHashAndPassword([]byte(passwd), []byte(password))
-		if err != nil {
-			return "", err
-		}
 	}
 	if !createToken {
 		return "", nil
@@ -900,13 +900,14 @@ func (self Sdk) ResetPassword(username string, password string, usermode string)
 		if sa.Annotations == nil {
 			sa.Annotations = make(map[string]string)
 		}
+		// base64passwd := base64.URLEncoding.EncodeToString(bpassword)
 		sa.Annotations["password"] = string(bpassword)
 		if sa.Labels == nil {
 			sa.Labels = make(map[string]string)
 		}
 		sa.Labels["w7.cc/user-mode"] = usermode
 		if usermode == "founder" {
-			sa.Annotations["w7.cc/menu-name"] = "k3k.permission.founder"
+			sa.Annotations["w7.cc/menu-name"] = "founder"
 			sa.Annotations["w7.cc/menu"] = K3K_MENU_FOUNDER
 			sa.Annotations["w7.cc/debug"] = "true"
 			sa.Annotations["w7.cc/file-editor"] = "true"
@@ -1077,10 +1078,36 @@ func (self *Sdk) CreateServiceAccountSecret(serviceAccount string) (*corev1.Secr
 }
 
 func (self Sdk) ToKubeconfig(apiServerUrl string) (*clientcmdv1.Config, error) {
+	saName := self.GetServiceAccountName()
+	if helper.IsLocalMock() {
+		saName = helper.ServiceAccountName()
+	}
+	if saName == "" {
+		slog.Warn("saName is empty")
+		saName = facade.GetConfig().GetString("app.helm_release_name")
+	}
+	return self.toKubeconfig(apiServerUrl, saName, true)
+}
+
+// ToKubeconfigForServiceAccount generates a kubeconfig that authenticates only
+// as the explicitly selected ServiceAccount. Caller credentials are never
+// copied into the returned kubeconfig.
+func (self Sdk) ToKubeconfigForServiceAccount(apiServerUrl, serviceAccountName string) (*clientcmdv1.Config, error) {
+	serviceAccountName = strings.TrimSpace(serviceAccountName)
+	if serviceAccountName == "" {
+		return nil, fmt.Errorf("service account name is required")
+	}
+	if _, err := self.GetServiceAccount(self.namespace, serviceAccountName); err != nil {
+		return nil, fmt.Errorf("get service account %s: %w", serviceAccountName, err)
+	}
+	return self.toKubeconfig(apiServerUrl, serviceAccountName, false)
+}
+
+func (self Sdk) toKubeconfig(apiServerUrl, serviceAccountName string, includeCallerCredentials bool) (*clientcmdv1.Config, error) {
 
 	restConfig := self.restConfig
 	kubeConfig := &clientcmdv1.Config{}
-	name := uuid.New().String()
+	name := "default"
 
 	// 设置集群信息
 	// cluster := clientcmdapi.NewCluster()
@@ -1100,24 +1127,18 @@ func (self Sdk) ToKubeconfig(apiServerUrl string) (*clientcmdv1.Config, error) {
 		}
 		cluster.CertificateAuthorityData = data
 	}
-	saName := self.GetServiceAccountName()
-	// saName := "w7panel"
-	if helper.IsLocalMock() {
-		saName = helper.ServiceAccountName()
-	}
-	if saName == "" {
-		slog.Warn("saName is empty")
-		saName = facade.GetConfig().GetString("app.helm_release_name")
-	}
-	slog.Info("to kubectl sa name", "saName", saName)
-	secret, err := self.CreateServiceAccountSecret(saName)
+	slog.Info("to kubectl sa name", "saName", serviceAccountName)
+	secret, err := self.CreateServiceAccountSecret(serviceAccountName)
 	if err != nil {
 		return nil, err
 	}
 	token := secret.Data["token"] //secret是admin
 	if len(token) == 0 {
-		secret, err = self.CreateServiceAccountSecret(saName)
-		token := secret.Data["token"]
+		secret, err = self.CreateServiceAccountSecret(serviceAccountName)
+		if err != nil {
+			return nil, err
+		}
+		token = secret.Data["token"]
 		if len(token) == 0 {
 			slog.Warn("token is empty", "secretName", secret.Name)
 			return nil, fmt.Errorf("token is empty 请重试")
@@ -1125,12 +1146,13 @@ func (self Sdk) ToKubeconfig(apiServerUrl string) (*clientcmdv1.Config, error) {
 	}
 	namedcluster := clientcmdv1.NamedCluster{Name: name, Cluster: cluster}
 	// 设置用户信息
-	authInfo := clientcmdv1.AuthInfo{}
-	authInfo.ClientCertificateData = restConfig.CertData
-	authInfo.ClientKeyData = restConfig.KeyData
-	authInfo.Token = string(token) //restConfig.BearerToken
-	authInfo.Username = restConfig.Username
-	authInfo.Password = restConfig.Password
+	authInfo := clientcmdv1.AuthInfo{Token: string(token)}
+	if includeCallerCredentials {
+		authInfo.ClientCertificateData = restConfig.CertData
+		authInfo.ClientKeyData = restConfig.KeyData
+		authInfo.Username = restConfig.Username
+		authInfo.Password = restConfig.Password
+	}
 
 	namedauth := clientcmdv1.NamedAuthInfo{Name: name, AuthInfo: authInfo}
 
@@ -1321,4 +1343,13 @@ func (self Sdk) GetClusterId() (string, error) {
 		return "", nil
 	}
 	return helper.StringToMD5(string(secret.Data["hash"])), nil
+}
+
+func (self Sdk) Create(ctx context.Context, obj sigclient.Object, opts ...sigclient.CreateOption) error {
+	sigclient, err := self.ToSigClient()
+	if err != nil {
+		slog.Error("创建对象失败", "error", err)
+		return err
+	}
+	return sigclient.Create(ctx, obj, opts...)
 }

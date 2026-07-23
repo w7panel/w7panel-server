@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/kubectl/pkg/cmd/cp"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
@@ -55,11 +55,8 @@ func TestPodExec_KubectlCp(t *testing.T) {
 			// err := copyOptions.Run()
 
 			if err != nil {
-				// print(err.Error() + "--------s")
-				panic(err)
-				t.Error(err)
+				t.Fatal(err)
 			}
-			// print(out.String() + "\n")
 		})
 	}
 }

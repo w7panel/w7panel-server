@@ -5,36 +5,47 @@ import (
 	"fmt"
 	"log/slog"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	// "gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk"
-	"gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
-	appv1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
-	microapp "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/microapp/v1alpha1"
-	v1alpha1Lister "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"
+	// "github.com/w7panel/w7panel/common/service/k8s/zpk"
+	"github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
+	appv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
+	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
+	v1alpha1Lister "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/selection"
 	appsv1lister "k8s.io/client-go/listers/apps/v1"
 	batchv1lister "k8s.io/client-go/listers/batch/v1"
 	corev1lister "k8s.io/client-go/listers/core/v1"
+	networkingv1lister "k8s.io/client-go/listers/networking/v1"
 )
 
+var oldAppGroupGVR = schema.GroupVersionResource{
+	Group:    "appgroup.w7.cc",
+	Version:  "v1alpha1",
+	Resource: "appgroups",
+}
+
 type WorkloadManager struct {
-	groupApi          *AppGroupApi
-	helm              *k8s.Helm
-	sdk               *k8s.Sdk
-	AppGroupLister    v1alpha1Lister.AppGroupLister
-	DeploymentLister  appsv1lister.DeploymentLister
-	DaemonSetLister   appsv1lister.DaemonSetLister
-	StatefulSetLister appsv1lister.StatefulSetLister
-	JobLister         batchv1lister.JobLister
-	SecretLister      corev1lister.SecretLister
-	helmworkload      *HelmWorkload
+	groupApi                    *AppGroupApi
+	helm                        *k8s.Helm
+	sdk                         *k8s.Sdk
+	AppGroupLister              v1alpha1Lister.AppGroupLister
+	DeploymentLister            appsv1lister.DeploymentLister
+	DaemonSetLister             appsv1lister.DaemonSetLister
+	StatefulSetLister           appsv1lister.StatefulSetLister
+	JobLister                   batchv1lister.JobLister
+	SecretLister                corev1lister.SecretLister
+	IngressLister               networkingv1lister.IngressLister
+	helmworkload                *HelmWorkload
+	AppGroupItemResourceTracked *AppGroupItemResourceTracked
 }
 
 func NewWorkLoadTestManager() *WorkloadManager {
@@ -51,9 +62,10 @@ func NewWorkLoadTestManager() *WorkloadManager {
 
 func NewWorkloadManager(groupApi *AppGroupApi, helm *k8s.Helm) *WorkloadManager {
 	return &WorkloadManager{
-		groupApi: groupApi,
-		helm:     helm,
-		sdk:      groupApi.sdk,
+		groupApi:                    groupApi,
+		helm:                        helm,
+		sdk:                         groupApi.sdk,
+		AppGroupItemResourceTracked: NewAppGroupItemResourceTracked(),
 	}
 }
 
@@ -70,17 +82,20 @@ func NewWorkloadManagerWithLister(groupApi *AppGroupApi, helm *k8s.Helm,
 	job batchv1lister.JobLister,
 	secret corev1lister.SecretLister,
 ) *WorkloadManager {
-	return &WorkloadManager{
-		groupApi:          groupApi,
-		helm:              helm,
-		sdk:               groupApi.sdk,
-		AppGroupLister:    groupLister,
-		DeploymentLister:  deployment,
-		StatefulSetLister: statefulset,
-		DaemonSetLister:   daemonset,
-		JobLister:         job,
-		SecretLister:      secret,
+	manager := &WorkloadManager{
+		groupApi:                    groupApi,
+		helm:                        helm,
+		sdk:                         groupApi.sdk,
+		AppGroupLister:              groupLister,
+		DeploymentLister:            deployment,
+		StatefulSetLister:           statefulset,
+		DaemonSetLister:             daemonset,
+		JobLister:                   job,
+		SecretLister:                secret,
+		AppGroupItemResourceTracked: NewAppGroupItemResourceTracked(),
 	}
+	manager.AppGroupItemResourceTracked.RegisterWorkloads(deployment, statefulset, daemonset)
+	return manager
 }
 
 func (d *WorkloadManager) GetGroupName(ds WorkloadWrapperInterface) string {
@@ -186,12 +201,16 @@ func (d *WorkloadManager) HandleQueue(key interface{}) error {
 		secret, err := d.GetSecretFromRO(evt.Kind, evt.Namespace, evt.Name)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				slog.Error("get from ro error", "error", err)
-				// return d.HandleSecret(secret, true)
+				return nil
 			}
 			// slog.Error("get from ro error", "error", err)
 			return nil
 		}
+		go func() {
+			if helper.IsK3kVirtual() {
+				k3k.SyncSecretHttp(secret) // virtual agent 可能在启动中导致secret 没有接收到webhook事件
+			}
+		}()
 		return d.HandleSecret(secret, false)
 	}
 	if evt.Kind == "AppGroup" {
@@ -203,73 +222,107 @@ func (d *WorkloadManager) HandleQueue(key interface{}) error {
 		return d.HandleAppGroup(group, false, evt.IsInit)
 	}
 
-	ds, err := d.GetFromRO(evt.Kind, evt.Namespace, evt.Name)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			workload := NewWorkloadFromEvent(evt)
-			return d.HandleWorkload(NewWorkloadWrapper(workload), true)
-		}
-		slog.Error("get from ro error", "error", err)
-		return nil
+	if d.AppGroupItemResourceTracked.isAppGroupResourceTrackedKind(evt.Kind) {
+		err = d.handleAppGroupResourceTrackedEvent(evt, d.GetAppGroupResourceTrackedGroupWrappers(evt))
+		slog.Info("handleAppGroupResourceTrackedEvent complete", "error", err, "event", evt)
 	}
-	return d.HandleWorkload(ds, evt.EventType == "delete")
+
+	if isWorkloadKind(evt.Kind) {
+		ds, err := d.GetFromRO(evt.Kind, evt.Namespace, evt.Name)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				workload := NewWorkloadFromEvent(evt)
+				return d.HandleWorkload(NewWorkloadWrapper(workload), true)
+			}
+			slog.Error("get from ro error", "error", err)
+			return nil
+		}
+		return d.HandleWorkload(ds, evt.EventType == "delete")
+	}
+
+	return nil
 }
 
 func (d *WorkloadManager) HandleWorkload(ds WorkloadWrapperInterface, delete bool) error {
 	slog.Debug("handle workload", "workload", ds.Name())
-	group := d.GetAppGroupWrapper(ds)
-	// if !group.exists && ds.IsHelm() {
-	// 	return nil
-	// }
-	itemStatus := ds.ToItemStatus()
-	if delete {
-		if group.IsExists() {
-			group.RemoveStatusItem(itemStatus)
-			_, err := d.groupApi.Persist(group)
-			if err != nil {
-				slog.Error("delete group error", "error", err)
-				return err
-			}
-			return nil
-		}
-		return nil
-	}
-	if itemStatus.Kind == "Job" {
-		if !group.exists {
-			return nil
-		}
-		group.FixDeployItem(itemStatus)
-		if group.changed {
-			_, err := d.groupApi.Persist(group)
-			if err != nil {
-				slog.Error("update group error", "error", err)
-				return err
-			}
-		}
-	} else {
-		// 如果是helm应用 helmworkload 需要预先新建应用组appgroup
-		if ds.IsHelm() && !group.exists {
-			return nil
-		}
-		lb := ds.Labels()
-		//兼容 operator 管理的应用 同步到appgroup
-		managerBy, ok := lb["app.kubernetes.io/managed-by"]
-		if ok && managerBy != "Helm" && !group.exists {
-			return nil
-		}
 
-		group.AddStatusItem(itemStatus)
-		_, err := d.groupApi.Persist(group)
-		if err != nil {
-			slog.Error("update group error", "error", err)
-			return err
-		}
-	}
+	itemStatus := ds.ToItemStatus()
 	if itemStatus.Kind != "Job" {
 		d.fixSvc(ds, delete)
 	}
+	if delete {
+		return nil
+	}
+
+	group := d.GetAppGroupWrapper(ds)
+	//job 如果 获取到的 group不存在， 跳过
+	if itemStatus.Kind == "Job" {
+		if group == nil || !group.exists {
+			return nil
+		}
+	}
+
+	//兼容 operator 管理的应用 同步到appgroup
+	//非 helm 安装的单应用 这里会跳过，d.groupApi.Persist(group) 会新建 appgroup出来
+	managerBy, ok := ds.Labels()["app.kubernetes.io/managed-by"]
+	if group == nil || (ds.IsHelm() && !group.exists) || (ok && managerBy != "Helm" && !group.exists) {
+		return nil
+	}
+
+	group.FixDeployItem(itemStatus)
+	_, err := d.groupApi.Persist(group)
+	if err != nil {
+		slog.Error("update group error", "error", err)
+		return err
+	}
+
+	if itemStatus.Kind != "Job" {
+		notifyInstalledForReadyGroups(group)
+	}
+
 	return nil
 
+}
+
+func (d *WorkloadManager) handleAppGroupResourceTrackedEvent(evt *K8sResourceEvent, groups []*appgroupWrapper) error {
+	for _, group := range groups {
+		if err := d.AppGroupItemResourceTracked.handleAppGroupResourceTrackedEvent(evt, group); err != nil {
+			return err
+		}
+		if err := d.AppGroupItemResourceTracked.syncAppGroupResourceTrackedDerivedState(evt, group); err != nil {
+			return err
+		}
+		if group != nil && group.IsChange() {
+			if _, err := d.groupApi.Persist(group); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (d *WorkloadManager) GetAppGroupResourceTrackedGroupWrappers(resource interface{}) []*appgroupWrapper {
+	obj, ok := resource.(metav1.Object)
+	if !ok {
+		return nil
+	}
+	groupNames := getResourceGroupNames(obj)
+	groups := make([]*appgroupWrapper, 0, len(groupNames))
+	for _, groupName := range groupNames {
+		groups = append(groups, d.groupApi.GetAppGroupWrapper(obj.GetNamespace(), groupName, v1alpha1.AppGroupSpec{}))
+	}
+	return groups
+}
+
+func notifyInstalledForReadyGroups(group *appgroupWrapper) {
+	for current := group; current != nil; current = current.parent {
+		if !current.Status.Ready {
+			continue
+		}
+		if err := NotifyInstalled(current.AppGroup); err != nil {
+			slog.Error("notify installed error", "error", err)
+		}
+	}
 }
 
 // secret 只修改spec 中logo isHelm 字段
@@ -335,6 +388,7 @@ func (d *WorkloadManager) cleanGroupChildren(group *v1alpha1.AppGroup) error {
 
 func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, isInit bool) error {
 	if group.DeletionTimestamp != nil {
+		// d.deleteOldAppGroup(group)
 		d.cleanAppGroup(group)
 		parentName, isChild := group.Labels["w7.cc/parent"]
 		if isChild {
@@ -357,7 +411,7 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 	}
 	// 如果没有删除 且 没有finalizer 则添加finalizer
 	// if group.DeletionTimestamp == nil && (group.Finalizers == nil || len(group.Finalizers) == 0) {
-	// 	group.Finalizers = []string{"appgroup.w7.cc/finalizer"}
+	// 	group.Finalizers = []string{"w7panel.w7.com/finalizer"}
 	// 	_, err := d.groupApi.UpdateAppGroup(group.Namespace, group)
 	// 	if err != nil {
 	// 		slog.Error("update group error", "error", err)
@@ -385,6 +439,17 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 		}
 
 	}
+	wrapper := NewAppGroupWrapper(group, true)
+	if scanChanged, err := d.AppGroupItemResourceTracked.scanAppGroupResourceTracked(wrapper); err != nil {
+		slog.Error("scan appgroup resource tracked error", "error", err)
+	} else if scanChanged {
+		changed = true
+	}
+	if err := d.AppGroupItemResourceTracked.syncAllAppGroupResourceTrackedDerivedState(wrapper); err != nil {
+		slog.Error("sync appgroup resource tracked derived state error", "error", err)
+	} else if wrapper.IsChange() {
+		changed = true
+	}
 	if changed {
 		_, err := d.groupApi.UpdateAppGroup(group.Namespace, group)
 		if err != nil {
@@ -394,13 +459,39 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 	}
 
 	if isInit {
-		downStatic(group)
+		// DownStatic(group)
 	}
 
 	return nil
 }
 
+func (d *WorkloadManager) deleteOldAppGroup(group *v1alpha1.AppGroup) {
+	oldAppGroup, err := d.sdk.DynamicClient().Resource(oldAppGroupGVR).Namespace(group.Namespace).Get(d.sdk.Ctx, group.Name, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			slog.Error("failed to get old appgroup", slog.String("name", group.Name), slog.String("namespace", group.Namespace), slog.String("error", err.Error()))
+		}
+		return
+	}
+
+	if len(oldAppGroup.GetFinalizers()) > 0 {
+		oldAppGroup.SetFinalizers(nil)
+		if _, err := d.sdk.DynamicClient().Resource(oldAppGroupGVR).Namespace(group.Namespace).Update(d.sdk.Ctx, oldAppGroup, metav1.UpdateOptions{}); err != nil && !errors.IsNotFound(err) {
+			slog.Error("failed to clear old appgroup finalizers", slog.String("name", group.Name), slog.String("namespace", group.Namespace), slog.String("error", err.Error()))
+			return
+		}
+	}
+
+	err = d.sdk.DynamicClient().Resource(oldAppGroupGVR).Namespace(group.Namespace).Delete(d.sdk.Ctx, group.Name, metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		slog.Error("failed to delete old appgroup", slog.String("name", group.Name), slog.String("namespace", group.Namespace), slog.String("error", err.Error()))
+	}
+}
+
 func (d *WorkloadManager) cleanHelm(group *v1alpha1.AppGroup, createJob bool) error {
+	if group.Name == "longhorn" || group.Name == "w7panel-offline" { //LonghornUpgrade 之前版本有bug 暂时不清理
+		return nil
+	}
 	_, err := d.helm.UnInstall(group.Name, group.Namespace)
 	if err != nil {
 		slog.Error("failed helm uninstall to uninstall app", slog.String("error", err.Error()))
@@ -435,34 +526,13 @@ func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) {
 
 	slog.Info("start delete workload")
 	for _, workload := range group.Status.Items {
-		item := workload.Kind
-
-		switch item {
-		case "Deployment":
-			err := d.sdk.ClientSet.AppsV1().Deployments(group.Namespace).Delete(context.TODO(), workload.Name, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("failed to delete deployment", slog.String("error", err.Error()))
-			}
-		case "DaemonSet":
-			err := d.sdk.ClientSet.AppsV1().DaemonSets(group.Namespace).Delete(context.TODO(), workload.Name, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("failed to delete daemonset", slog.String("error", err.Error()))
-			}
-		case "StatefulSet":
-			err := d.sdk.ClientSet.AppsV1().StatefulSets(group.Namespace).Delete(context.TODO(), workload.Name, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("failed to delete statefulset", slog.String("error", err.Error()))
-			}
-		case "CronJob":
-			err := d.sdk.ClientSet.BatchV1beta1().CronJobs(group.Namespace).Delete(context.TODO(), workload.Name, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("failed to delete cronjob", slog.String("error", err.Error()))
-			}
-		case "Job":
-			err := d.sdk.ClientSet.BatchV1().Jobs(group.Namespace).Delete(context.TODO(), workload.Name, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("failed to delete job", slog.String("error", err.Error()))
-			}
+		if err := d.deleteAppGroupStatusItemResource(group.Namespace, workload); err != nil {
+			slog.Error("failed to delete appgroup status item",
+				slog.String("apiVersion", workload.ApiVersion),
+				slog.String("kind", workload.Kind),
+				slog.String("name", workload.Name),
+				slog.String("error", err.Error()),
+			)
 		}
 		//清理service
 		err := d.sdk.ClientSet.CoreV1().Services(group.Namespace).Delete(context.TODO(), workload.Name, metav1.DeleteOptions{})
@@ -521,11 +591,67 @@ func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) {
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "MicroApp",
-			APIVersion: "microapp.w7.cc/v1alpha1",
+			APIVersion: "w7panel.w7.com/v1alpha1",
 		},
 	}
 	err = sigClient.Delete(d.sdk.Ctx, mc, &sigclient.DeleteOptions{})
 	if err != nil {
 		slog.Error("failed to delete microapp", slog.String("error", err.Error()))
+	}
+}
+
+func (d *WorkloadManager) deleteAppGroupStatusItemResource(namespace string, item appv1.AppGroupItemStatus) error {
+	if item.Name == "" || item.Kind == "" {
+		return nil
+	}
+
+	switch item.Kind {
+	case "Deployment":
+		return d.sdk.ClientSet.AppsV1().Deployments(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "DaemonSet":
+		return d.sdk.ClientSet.AppsV1().DaemonSets(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "StatefulSet":
+		return d.sdk.ClientSet.AppsV1().StatefulSets(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "CronJob":
+		if item.ApiVersion == "batch/v1" {
+			return d.sdk.ClientSet.BatchV1().CronJobs(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+		}
+		return d.sdk.ClientSet.BatchV1beta1().CronJobs(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "Job":
+		return d.sdk.ClientSet.BatchV1().Jobs(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "Ingress":
+		return d.sdk.ClientSet.NetworkingV1().Ingresses(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "Service":
+		return d.sdk.ClientSet.CoreV1().Services(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "Secret":
+		return d.sdk.ClientSet.CoreV1().Secrets(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "ConfigMap":
+		return d.sdk.ClientSet.CoreV1().ConfigMaps(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "PersistentVolumeClaim":
+		return d.sdk.ClientSet.CoreV1().PersistentVolumeClaims(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	case "ServiceAccount":
+		return d.sdk.ClientSet.CoreV1().ServiceAccounts(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+	default:
+		return d.deleteAppGroupStatusItemWithDynamicClient(namespace, item)
+	}
+}
+
+func (d *WorkloadManager) deleteAppGroupStatusItemWithDynamicClient(namespace string, item appv1.AppGroupItemStatus) error {
+	if item.ApiVersion == "" || d.sdk == nil || d.sdk.DynamicClient() == nil {
+		return nil
+	}
+	mapping, err := d.sdk.GetRestMapping(item.ApiVersion, item.Kind)
+	if err != nil {
+		return err
+	}
+	return d.sdk.DynamicClient().Resource(mapping.Resource).Namespace(namespace).Delete(context.TODO(), item.Name, metav1.DeleteOptions{})
+}
+
+func isWorkloadKind(kind string) bool {
+	switch kind {
+	case "Deployment", "StatefulSet", "DaemonSet", "Job":
+		return true
+	default:
+		return false
 	}
 }

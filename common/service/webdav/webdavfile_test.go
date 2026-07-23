@@ -1,0 +1,158 @@
+package webdav2
+
+import (
+	"errors"
+	"os"
+	"path/filepath"
+	"strconv"
+	"syscall"
+	"testing"
+)
+
+type offsetIDMapper struct{}
+
+func (offsetIDMapper) HostToContainerUID(uid uint32) uint32 {
+	return uid + 1000
+}
+
+func (offsetIDMapper) HostToContainerGID(gid uint32) uint32 {
+	return gid + 2000
+}
+
+func TestGetFileTypeAndEditable(t *testing.T) {
+	tests := []struct {
+		name     string
+		mode     os.FileMode
+		wantType string
+		wantEdit bool
+	}{
+		{name: "regular file", mode: 0, wantType: "file", wantEdit: true},
+		{name: "directory", mode: os.ModeDir, wantType: "directory", wantEdit: false},
+		{name: "symlink", mode: os.ModeSymlink, wantType: "symlink", wantEdit: true},
+		{name: "char device", mode: os.ModeDevice | os.ModeCharDevice, wantType: "device", wantEdit: false},
+		{name: "fifo", mode: os.ModeNamedPipe, wantType: "fifo", wantEdit: false},
+		{name: "socket", mode: os.ModeSocket, wantType: "socket", wantEdit: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotType, gotEdit := getFileTypeAndEditable(tt.mode)
+			if gotType != tt.wantType || gotEdit != tt.wantEdit {
+				t.Fatalf("type/editable mismatch: got=(%s,%v), want=(%s,%v)", gotType, gotEdit, tt.wantType, tt.wantEdit)
+			}
+		})
+	}
+}
+
+func TestWebDAVFileEnsureStat_UsesReqPathForLstat(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "webdav-file-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
+
+	targetPath := filepath.Join(tmpDir, "dir", "child.txt")
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(targetPath, []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := os.Open(targetPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = f.Close() })
+
+	wf := NewWebDAVFile(f, tmpDir, "/dir/child.txt")
+	if err := wf.ensureStat(); err != nil {
+		t.Fatal(err)
+	}
+	if wf.fileInfo == nil {
+		t.Fatal("fileInfo should not be nil")
+	}
+	if wf.fileInfo.fileType != "file" || !wf.fileInfo.editable {
+		t.Fatalf("unexpected file type/editable: got=(%s,%v)", wf.fileInfo.fileType, wf.fileInfo.editable)
+	}
+}
+
+func TestWebDAVFileReadSeek_ReturnErrorWhenNotEditable(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "webdav-file-readseek")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
+
+	targetPath := filepath.Join(tmpDir, "special")
+	if err := os.WriteFile(targetPath, []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := os.Open(targetPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = f.Close() })
+
+	wf := NewWebDAVFile(f, tmpDir, "/special")
+	wf.fileInfo = &WebDAVFileInfo{FileInfo: mustStat(t, targetPath), editable: false, fileType: "device"}
+	wf.statOnce.Do(func() {})
+
+	buf := make([]byte, 16)
+	if _, err := wf.Read(buf); err == nil {
+		t.Fatal("expected read error for non-editable file")
+	}
+	if _, err := wf.Seek(0, 0); err == nil {
+		t.Fatal("expected seek error for non-editable file")
+	}
+	if !errors.Is(errSpecialFileNotReadable, errSpecialFileNotReadable) {
+		t.Fatal("sentinel error should be comparable")
+	}
+}
+
+func TestWebDAVFileEnsureStat_MapsUIDAndGID(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "webdav-file-idmap")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
+
+	targetPath := filepath.Join(tmpDir, "child.txt")
+	if err := os.WriteFile(targetPath, []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := os.Open(targetPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = f.Close() })
+
+	wf := NewWebDAVFileWithIDMapper(f, tmpDir, "/child.txt", offsetIDMapper{})
+	if err := wf.ensureStat(); err != nil {
+		t.Fatal(err)
+	}
+
+	sysstat, ok := wf.fileInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		t.Fatal("expected syscall.Stat_t")
+	}
+	wantUID := strconv.FormatUint(uint64(sysstat.Uid+1000), 10)
+	wantGID := strconv.FormatUint(uint64(sysstat.Gid+2000), 10)
+	if wf.fileInfo.uid != wantUID {
+		t.Fatalf("uid mismatch: got=%s want=%s", wf.fileInfo.uid, wantUID)
+	}
+	if wf.fileInfo.gid != wantGID {
+		t.Fatalf("gid mismatch: got=%s want=%s", wf.fileInfo.gid, wantGID)
+	}
+}
+
+func mustStat(t *testing.T, path string) os.FileInfo {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return info
+}

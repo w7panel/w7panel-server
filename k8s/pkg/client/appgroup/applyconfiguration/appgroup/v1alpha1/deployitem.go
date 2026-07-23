@@ -20,10 +20,13 @@ package v1alpha1
 // DeployItemApplyConfiguration represents a declarative configuration of the DeployItem type for use
 // with apply.
 type DeployItemApplyConfiguration struct {
-	Identifie    *string                          `json:"identifie,omitempty"`
-	Title        *string                          `json:"title,omitempty"`
+	Identifie *string `json:"identifie,omitempty"`
+	// 应用标识
+	Title *string `json:"title,omitempty"`
+	// 应用标题
 	ResourceList []ResourceInfoApplyConfiguration `json:"resourcesList,omitempty"`
-	DeployStatus *string                          `json:"deployStatus,omitempty"`
+	// 资源列表
+	DeployStatus *string `json:"deployStatus,omitempty"`
 }
 
 // DeployItemApplyConfiguration constructs a declarative configuration of the DeployItem type for use with

@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -19,7 +19,6 @@ func TestClusterSummary_Summary(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	print(summary)
 	assert.NoError(t, err)
 	assert.Equal(t, int32(5), summary.GPUDeviceSharedNum)
 	assert.Equal(t, int32(1024), summary.GPUDeviceMemoryAllocated)

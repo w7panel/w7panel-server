@@ -1,17 +1,19 @@
 package microapp
 
 import (
+	"context"
 	"errors"
 	"net/http/httputil"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	microapp "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/microapp/v1alpha1"
+	"github.com/w7panel/w7panel/common/helper"
+	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 )
 
 type MicroAppProxy struct {
 	*microapp.MicroApp
 	isClusterUser bool
 	role          string
+	replace       *MicroAppReplace
 }
 
 func NewMicroAppProxy(microapp *microapp.MicroApp, isClusterUser bool, role string) *MicroAppProxy {
@@ -21,16 +23,30 @@ func NewMicroAppProxy(microapp *microapp.MicroApp, isClusterUser bool, role stri
 		role:          role,
 	}
 }
-func (m *MicroAppProxy) Proxy(path string) (*httputil.ReverseProxy, error) {
+func (m *MicroAppProxy) Proxy(ctx context.Context, path string) (*httputil.ReverseProxy, error) {
 	// Check if RoleConfig pointer is nil
 
 	roleConfig, ok := m.Spec.ConfigV2.Props.RoleConfig[m.role]
 	if !ok {
-		return nil, errors.New("not found proxy role config")
+		if m.isClusterUser && !m.MicroApp.IsFromRoot() {
+			m.role = "founder" // 创始人角色有歧义 站点管理是创始人角色 集群用户是普通用户
+		}
+		roleConfig, ok = m.Spec.ConfigV2.Props.RoleConfig[m.role]
+		if !ok {
+			return nil, errors.New("not found proxy role config")
+		}
 	}
 	proxyServer := roleConfig.ServerUrl
 	headers := roleConfig.ProxyRequest.Headers
 	query := roleConfig.ProxyRequest.Query
+	if m.replace != nil { // 替换变量
+		headers = m.replace.Replace(ctx, headers, m.role, m.MicroApp)
+		query = m.replace.Replace(ctx, query, m.role, m.MicroApp)
+
+	}
 	return helper.ProxyUrl(proxyServer, path, "", headers, query)
 
+}
+func (m *MicroAppProxy) WithReplace(replace *MicroAppReplace) {
+	m.replace = replace
 }

@@ -3,25 +3,15 @@ package console
 import (
 	"log/slog"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	"github.com/spf13/cobra"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/console"
 )
 
-// username password register
 type ResetPassword struct {
 	console.Abstract
 }
 
-type resetOption struct {
-	Username      string
-	Password      string
-	RoleName      string
-	Namespace     string
-	IsClusterRole bool
-}
-
-// ./runtime/main auth:register --username=hello --password=world
 var ro3 = registerOption{}
 
 func (c ResetPassword) GetName() string {
@@ -29,8 +19,6 @@ func (c ResetPassword) GetName() string {
 }
 
 func (c ResetPassword) Configure(cmd *cobra.Command) {
-	// username password register
-	//
 	cmd.Flags().StringVar(&ro3.Username, "username", "", "username")
 	cmd.Flags().StringVar(&ro3.Password, "password", "", "password")
 }

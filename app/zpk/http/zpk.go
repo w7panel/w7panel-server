@@ -9,16 +9,18 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/app/zpk/logic"
-	"gitee.com/we7coreteam/k8s-offline/app/zpk/logic/types"
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/console"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/appgroup"
-	zpkk8s "gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk"
-	zpkk8stypes "gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk/types"
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/app/zpk/logic"
+	"github.com/w7panel/w7panel/app/zpk/logic/types"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/console"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
+	bi "github.com/w7panel/w7panel/common/service/k8s/buildimage"
+	zpkk8s "github.com/w7panel/w7panel/common/service/k8s/zpk"
+	zpkk8stypes "github.com/w7panel/w7panel/common/service/k8s/zpk/types"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 	"gopkg.in/yaml.v3"
@@ -48,10 +50,10 @@ func (self Zpk) GetConfig(http *gin.Context) {
 		return
 	}
 
-	if params.ThirdpartyCDToken == "" {
-		self.JsonResponseWithServerError(http, errors.New("thirdpartyCDToken is required, please login first or refresh the page"))
-		return
-	}
+	// if params.ThirdpartyCDToken == "" {
+	// 	self.JsonResponseWithServerError(http, errors.New("thirdpartyCDToken is required, please login first or refresh the page"))
+	// 	return
+	// }
 
 	var config []types.PackageAddConfig
 
@@ -66,6 +68,10 @@ func (self Zpk) GetConfig(http *gin.Context) {
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
+	}
+	saName, err := k8sToken.GetUserName()
+	if err != nil {
+		slog.Error("zpk config get saName err", "err", err)
 	}
 	params.ReleaseName = strings.ToLower(params.ReleaseName)
 	appgroupObj, err := appgroup.GetAppgroupUseSdk(params.ReleaseName, client.GetNamespace(), client)
@@ -84,16 +90,16 @@ func (self Zpk) GetConfig(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	mPackage.ReplaceDefault()
-	rootConfig := mPackage.ToPackageAddConfig(params.ReleaseName, k8sToken.IsShared())
+	mPackage.ReplaceDefault(saName)
+	rootConfig := mPackage.ToPackageAddConfig(params.ReleaseName, false)
 	rootConfig.IsUpgrade = upgrade
 	if dependsEnv != nil {
 		rootConfig = dependsEnv.ReplacePackageAddConfig(mPackage, rootConfig)
 	}
 	config = append(config, rootConfig)
 	for _, p := range mPackage.Children {
-		p.ReplaceDefault()
-		childConfig := p.ToPackageAddConfig(params.ReleaseName, k8sToken.IsShared())
+		p.ReplaceDefault(saName)
+		childConfig := p.ToPackageAddConfig(params.ReleaseName, false)
 		childConfig.IsUpgrade = upgrade
 		if dependsEnv != nil {
 			childConfig = dependsEnv.ReplacePackageAddConfig(p, childConfig)
@@ -141,6 +147,7 @@ func (self Zpk) Install(http *gin.Context) {
 		ClusterId          string                `json:"clusterId"`          // 集群ID
 		IsTrandition       bool                  `json:"isTrandition"`       // 是否传统应用
 		ZipUrl             string                `json:"zipUrl"`             // 代码包地址
+		PanelUrl           string                `json:"panelUrl"`           // 安装时候的面板地址
 
 	}
 
@@ -149,6 +156,10 @@ func (self Zpk) Install(http *gin.Context) {
 		return
 	}
 	params.IngressHost = strings.ToLower(params.IngressHost)
+	params.IngressHost = strings.ReplaceAll(params.IngressHost, "https://", "")
+	params.IngressHost = strings.ReplaceAll(params.IngressHost, "http://", "")
+	params.IngressHost = strings.ReplaceAll(params.IngressHost, "/", "")
+
 	repoUrl := params.RepoUrl
 	if repoUrl == "" {
 		self.JsonResponseWithServerError(http, errors.New("repo url is empty"))
@@ -156,6 +167,11 @@ func (self Zpk) Install(http *gin.Context) {
 	}
 	token := http.MustGet("k8s_token").(string)
 	k8sToken := k8s.NewK8sToken(token)
+	// 普通用户curl 安装主集群问题
+	if !k8sToken.IsFounder() && !helper.IsChildAgent() {
+		self.JsonResponseWithServerError(http, errors.New("only founder can install"))
+		return
+	}
 	client, err := k8s.NewK8sClient().Channel(token)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
@@ -168,7 +184,9 @@ func (self Zpk) Install(http *gin.Context) {
 	repo := logic.NewRepo(repoUrl, params.ThirdpartyCDToken, "")
 	if err == nil {
 		repo.SetUpgrade(true)
-		repo.SetCurVersion(appgroupObj.Spec.Version)
+		if appgroupObj != nil {
+			repo.SetCurVersion(appgroupObj.Spec.Version)
+		}
 	}
 	repo.SetPanelToken(token)
 	// os.Setenv("KUBERNETES_SERVICE_HOST", "172.16.1.13")
@@ -216,21 +234,12 @@ func (self Zpk) Install(http *gin.Context) {
 		// 	slog.Warn("create site error may not need secret", "err", err)
 		// }
 	}
+	if params.PanelUrl != "" {
+		mPackage.PanelUrl = params.PanelUrl
+	}
 	if params.IsTrandition {
 		mPackage.ZipUrl = params.ZipUrl
-		// entry := ""
-		// if len(params.InstallOptions) > 0 {
-		// 	for _, v := range params.InstallOptions[0].EnvKv {
-		// 		if v.Name == "ENTRY" {
-		// 			entry = v.Value
-		// 		}
-		// 	}
-		// }
-		// mPackage.Manifest.Platform.Container.Shells = append(mPackage.Manifest.Platform.Container.Shells, types.Shell{
-		// 	Type:  "install",
-		// 	Title: "部署",
-		// 	Shell: "/home/createsite.sh %CODE_ZIP_URL% " + entry,
-		// })
+
 	}
 
 	//随机k8s deployment name
@@ -241,22 +250,38 @@ func (self Zpk) Install(http *gin.Context) {
 		params.IngressHost, params.IngressSeletorName, params.IngressClassName)
 	packageApps.ForceHttps(params.IngressForceHttps)
 	// packageApps.Root.K3kMode = k8sToken.K3kMode()
-	isVirtual := k8sToken.IsVirtual()
-	if isVirtual {
-		// 虚拟集群也使用traefik
-		// packageApps.Root.IngressClassName = "traefik"
+	isChild := k8sToken.IsK3kCluster()
+
+	realToken := ""
+	config, err := client.ToRESTConfig()
+	if err != nil {
+		slog.Warn("client config err", "err", err)
+	}
+	if config != nil {
+		realToken = config.BearerToken
+	}
+	if k8sToken.IsK3kCluster() {
+		registryHost, err := bi.PanelRegistryServerHostUseSdk(client)
+		if err != nil {
+			slog.Warn("get registry host err", "err", err)
+		} else {
+			packageApps.Root.PanelRegistryServerHost = registryHost
+		}
 	}
 
 	sa := client.GetServiceAccountName()
 	packageApps.Root.ServiceAccountName = sa
 	packageApps.Root.K8sToken = k8sToken
+	packageApps.Root.IsChild = isChild
+	packageApps.Root.RealToken = realToken
 	for _, child := range packageApps.Children {
 		child.ServiceAccountName = sa
-		if isVirtual {
+		if k8sToken.IsK3kCluster() {
 			child.IngressClassName = packageApps.Root.IngressClassName
 		}
 		child.K8sToken = k8sToken
-		// child.K3kMode = k8sToken.K3kMode()
+		child.IsChild = k8sToken.IsK3kCluster()
+		child.RealToken = realToken
 
 	}
 
@@ -275,7 +300,7 @@ func (self Zpk) Install(http *gin.Context) {
 		return
 	}
 
-	completeUrl := "http://" + http.Request.Host + "/api/v1/zpk/build-image-success?namespace=" + params.Namespace + "&releaseName=" + releaseName +
+	completeUrl := "http://" + http.Request.Host + "/panel-api/v1/zpk/build-image-success?namespace=" + params.Namespace + "&releaseName=" + releaseName +
 		"&domainHost=" + params.IngressHost + "&deploymentName=" + packageApps.Root.GetName() + "&thirdpartyCDToken=" + params.ThirdpartyCDToken + "&api-token=" + token
 
 	packageApps.Root.InstallOption.BuildImageSuccessUrl = completeUrl
@@ -291,7 +316,7 @@ func (self Zpk) Install(http *gin.Context) {
 		packageApps.Root.Parent = parent
 	}
 	install := logic.NewInstall(client, packageApps)
-
+	helper.Set(releaseName, installId, time.Minute*30) //site.go 注册站点 installId 要匹配
 	err = install.InstallOrUpgrade(releaseName, namespace)
 	if err != nil {
 		// panic(err)
@@ -307,10 +332,6 @@ func (self Zpk) Install(http *gin.Context) {
 	self.JsonResponse(http, result, nil, 200)
 
 }
-func (self Zpk) BuildJobFail(http *gin.Context) {
-
-}
-
 func (self Zpk) BuildImageSuccess(http *gin.Context) {
 
 	type ParamsValidate struct {
@@ -389,29 +410,6 @@ func (self Zpk) BuildImageSuccess(http *gin.Context) {
 	self.JsonSuccessResponse(http)
 }
 
-func (self Zpk) Test(http *gin.Context) {
-
-	type ParamsValidate struct {
-		Namespace string `form:"namespace" binding:"required"`
-	}
-	params := ParamsValidate{}
-	if !self.Validate(http, &params) {
-		return
-	}
-	client, err := k8s.NewK8sClient().Channel(http.MustGet("k8s_token").(string))
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	helmApi := k8s.NewHelm(client)
-	err = helmApi.IsReachable(params.Namespace)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonSuccessResponse(http)
-}
-
 func (self Zpk) UpgradeInfo(http *gin.Context) {
 	type ParamsValidate struct {
 		Namespace         string `form:"namespace" binding:"required"`
@@ -435,6 +433,7 @@ func (self Zpk) UpgradeInfo(http *gin.Context) {
 	}
 	upgradeCheck := logic.NewUpgradeCheck(client)
 	upgradeCheck.WithCDToken(params.ThirdpartyCDToken)
+	upgradeCheck.WithPanelToken(http.MustGet("k8s_token").(string))
 	result := upgradeCheck.Check(params.Namespace, params.ReleaseName)
 
 	self.JsonResponse(http, result, nil, 200)
@@ -779,9 +778,14 @@ func (self Zpk) BuildImageJob(http *gin.Context) {
 		params.DockerRegistry.Username = "admin"
 		params.DockerRegistry.Password = "w7-secret"
 	}
-	sdk := k8s.NewK8sClient().Sdk
+	sdk := k8s.NewK8sClient()
+	client, err := sdk.Channel(http.MustGet("k8s_token").(string))
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
 	if params.DockerRegistrySecretName != "" {
-		dockerSecret, err := sdk.ClientSet.CoreV1().Secrets("default").Get(sdk.Ctx, params.DockerRegistrySecretName, metav1.GetOptions{})
+		dockerSecret, err := client.ClientSet.CoreV1().Secrets("default").Get(sdk.Ctx, params.DockerRegistrySecretName, metav1.GetOptions{})
 		if err != nil {
 			slog.Error("获取docker registry secret失败", "error", err)
 		} else {
@@ -810,12 +814,23 @@ func (self Zpk) BuildImageJob(http *gin.Context) {
 			}
 		}
 	}
+
+	token := http.MustGet("k8s_token").(string)
+	k8sToken := k8s.NewK8sToken(token)
+	if k8sToken.IsK3kCluster() {
+		registryHost, err := bi.PanelRegistryServerHostUseSdk(client)
+		if err != nil {
+			slog.Warn("get registry host err", "err", err)
+		} else {
+			params.PanelRegistryHost = registryHost
+		}
+	}
 	job := zpkk8s.ToZpkBuildJob(&params)
-	client, err := sdk.Channel(http.MustGet("k8s_token").(string))
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
+	if job == nil {
+		self.JsonResponseWithServerError(http, errors.New("create job failed"))
 		return
 	}
+
 	job, err = client.ClientSet.BatchV1().Jobs("default").Create(client.Ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
@@ -846,9 +861,12 @@ func (self Zpk) BuildImageCronJob(http *gin.Context) {
 
 // 本地安装制品库的域名
 func (self Zpk) LocalZpkUrl(http *gin.Context) {
-
+	instance := http.Query("instance")
+	if instance == "" {
+		instance = "w7-zpkv2"
+	}
 	sdk := k8s.NewK8sClient().Sdk
-	ingressList, err := sdk.ClientSet.NetworkingV1().Ingresses("default").List(sdk.Ctx, metav1.ListOptions{LabelSelector: "app.kubernetes.io/instance=w7-zpkv2"})
+	ingressList, err := sdk.ClientSet.NetworkingV1().Ingresses("default").List(sdk.Ctx, metav1.ListOptions{LabelSelector: "app.kubernetes.io/instance=" + instance})
 	if err != nil || len(ingressList.Items) == 0 {
 		self.JsonResponseWithoutError(http, gin.H{
 			"host":       "",
@@ -858,7 +876,7 @@ func (self Zpk) LocalZpkUrl(http *gin.Context) {
 	}
 
 	ingress := ingressList.Items[0]
-	deployments, err := sdk.ClientSet.AppsV1().Deployments(ingress.GetNamespace()).List(sdk.Ctx, metav1.ListOptions{LabelSelector: "app.kubernetes.io/instance=w7-zpkv2"})
+	deployments, err := sdk.ClientSet.AppsV1().Deployments(ingress.GetNamespace()).List(sdk.Ctx, metav1.ListOptions{LabelSelector: "app.kubernetes.io/instance=" + instance})
 	if err != nil || len(deployments.Items) == 0 {
 		self.JsonResponseWithoutError(http, gin.H{
 			"host":       "",

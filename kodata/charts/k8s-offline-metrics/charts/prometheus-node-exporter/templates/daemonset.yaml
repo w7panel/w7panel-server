@@ -60,7 +60,7 @@ spec:
             - --path.udev.data=/host/root/run/udev/data
             {{- end }}
             {{- end }}
-            - --web.listen-address=[$(HOST_IP)]:{{ $servicePort }}
+            - --web.listen-address=127.0.0.1:{{ $servicePort }}
             {{- with .Values.extraArgs }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -68,22 +68,22 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          env:
-            - name: HOST_IP
-              {{- if .Values.kubeRBACProxy.enabled }}
-              value: 127.0.0.1
-              {{- else if .Values.service.listenOnAllInterfaces }}
-              value: 0.0.0.0
-              {{- else }}
-              valueFrom:
-                fieldRef:
-                  apiVersion: v1
-                  fieldPath: status.hostIP
-              {{- end }}
-            {{- range $key, $value := .Values.env }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
+          # env:
+          #   - name: HOST_IP
+          #     {{- if .Values.kubeRBACProxy.enabled }}
+          #     value: 127.0.0.1
+          #     {{- else if .Values.service.listenOnAllInterfaces }}
+          #     value: 0.0.0.0
+          #     {{- else }}
+          #     valueFrom:
+          #       fieldRef:
+          #         apiVersion: v1
+          #         fieldPath: status.hostIP
+          #     {{- end }}
+          #   {{- range $key, $value := .Values.env }}
+          #   - name: {{ $key }}
+          #     value: {{ $value | quote }}
+          #   {{- end }}
           {{- if eq .Values.kubeRBACProxy.enabled false }}
           ports:
             - name: {{ .Values.service.portName }}
@@ -192,10 +192,10 @@ spec:
             {{-  if .Values.kubeRBACProxy.extraArgs  }}
             {{- .Values.kubeRBACProxy.extraArgs | toYaml | nindent 12 }}
             {{-  end  }}
-            - --secure-listen-address=:{{ .Values.service.port}}
+            - --secure-listen-address=$(IP):{{ .Values.service.port}}
             - --upstream=http://127.0.0.1:{{ $servicePort }}/
-            - --proxy-endpoints-port={{ .Values.kubeRBACProxy.proxyEndpointsPort }}
-            - --config-file=/etc/kube-rbac-proxy-config/config-file.yaml
+            # - --proxy-endpoints-port={{ .Values.kubeRBACProxy.proxyEndpointsPort }}
+            # - --config-file=/etc/kube-rbac-proxy-config/config-file.yaml
             {{- if and .Values.kubeRBACProxy.tls.enabled .Values.tlsSecret.enabled }}
             - --tls-cert-file=/tls/private/{{ .Values.tlsSecret.certItem }}
             - --tls-private-key-file=/tls/private/{{ .Values.tlsSecret.keyItem }}
@@ -204,8 +204,8 @@ spec:
             {{- end }}
             {{- end }}
           volumeMounts:
-            - name: kube-rbac-proxy-config
-              mountPath: /etc/kube-rbac-proxy-config
+            # - name: kube-rbac-proxy-config
+            #   mountPath: /etc/kube-rbac-proxy-config
             {{- if and .Values.kubeRBACProxy.tls.enabled .Values.tlsSecret.enabled }}
             - name: {{ tpl .Values.tlsSecret.volumeName . | quote }}
               mountPath: /tls/private
@@ -226,18 +226,18 @@ spec:
               {{- if .Values.kubeRBACProxy.enableHostPort }}
               hostPort: {{ .Values.service.port }}
               {{- end }}
-            - containerPort: {{ .Values.kubeRBACProxy.proxyEndpointsPort }}
-              {{- if .Values.kubeRBACProxy.enableProxyEndpointsHostPort }}
-              hostPort: {{ .Values.kubeRBACProxy.proxyEndpointsPort }}
-              {{- end }}
-              name: "http-healthz"
-          readinessProbe:
-            httpGet:
-              scheme: HTTPS
-              port: {{ .Values.kubeRBACProxy.proxyEndpointsPort }}
-              path: healthz
-            initialDelaySeconds: 5
-            timeoutSeconds: 5
+            # - containerPort: {{ .Values.kubeRBACProxy.proxyEndpointsPort }}
+            #   {{- if .Values.kubeRBACProxy.enableProxyEndpointsHostPort }}
+            #   hostPort: {{ .Values.kubeRBACProxy.proxyEndpointsPort }}
+            #   {{- end }}
+            #   name: "http-healthz"
+          # readinessProbe:
+          #   httpGet:
+          #     scheme: HTTPS
+          #     port: {{ .Values.kubeRBACProxy.proxyEndpointsPort }}
+          #     path: healthz
+          #   initialDelaySeconds: 5
+          #   timeoutSeconds: 5
           {{- if .Values.kubeRBACProxy.resources }}
           resources:
           {{- toYaml .Values.kubeRBACProxy.resources | nindent 12 }}
@@ -248,13 +248,21 @@ spec:
           terminationMessagePolicy: {{ .terminationMessagePolicy }}
           {{- end }}
           {{- end }}
-          {{- with .Values.kubeRBACProxy.env }}
+          # {{- with .Values.kubeRBACProxy.env }}
+          # env:
+          #   {{- range $key, $value := $.Values.kubeRBACProxy.env }}
+          #   - name: {{ $key }}
+          #     value: {{ $value | quote }}
+          #   {{- end }}
+          # {{- end }}
           env:
-            {{- range $key, $value := $.Values.kubeRBACProxy.env }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
-          {{- end }}
+            - name: IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.hostIP
+             
+          
           {{- if .Values.kubeRBACProxy.containerSecurityContext }}
           securityContext:
           {{ toYaml .Values.kubeRBACProxy.containerSecurityContext | nindent 12 }}
@@ -266,7 +274,7 @@ spec:
       {{- end }}
       hostNetwork: {{ .Values.hostNetwork }}
       hostPID: {{ .Values.hostPID }}
-      hostIPC: {{ .Values.hostIPC }}
+      # hostIPC: {{ .Values.hostIPC }}
       affinity:
         {{- include "prometheus-node-exporter.mergedAffinities" . | nindent 8 }}
       {{- with .Values.dnsConfig }}
@@ -324,11 +332,11 @@ spec:
           secret:
             secretName: {{ $mount.name }}
         {{- end }}
-        {{- if .Values.kubeRBACProxy.enabled }}
-        - name: kube-rbac-proxy-config
-          configMap:
-            name: {{ template "prometheus-node-exporter.fullname" . }}-rbac-config
-        {{- end }}
+        # {{- if .Values.kubeRBACProxy.enabled }}
+        # - name: kube-rbac-proxy-config
+        #   configMap:
+        #     name: {{ template "prometheus-node-exporter.fullname" . }}-rbac-config
+        # {{- end }}
         {{- if .Values.tlsSecret.enabled }}
         - name: {{ tpl .Values.tlsSecret.volumeName . | quote }}
           secret:

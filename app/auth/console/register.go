@@ -3,12 +3,11 @@ package console
 import (
 	"log/slog"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	"github.com/spf13/cobra"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/console"
 )
 
-// username password register
 type Register struct {
 	console.Abstract
 }
@@ -22,7 +21,6 @@ type registerOption struct {
 	UserMode      string
 }
 
-// ./runtime/main auth:register --username=hello --password=world
 var ro = registerOption{}
 
 func (c Register) GetName() string {
@@ -30,8 +28,6 @@ func (c Register) GetName() string {
 }
 
 func (c Register) Configure(cmd *cobra.Command) {
-	// username password register
-	//
 	cmd.Flags().StringVar(&ro.Username, "username", "", "username")
 	cmd.Flags().StringVar(&ro.Password, "password", "", "password")
 	cmd.Flags().BoolVar(&ro.IsClusterRole, "is-cluster-role", true, "是否集群角色")

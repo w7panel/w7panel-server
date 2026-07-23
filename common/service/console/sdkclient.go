@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
 	resty "github.com/go-resty/resty/v2"
+	"github.com/w7panel/w7panel/common/helper"
 
 	w7 "github.com/w7corp/sdk-open-cloud-go"
 )
@@ -44,7 +44,7 @@ func NewDefaultSdkClient() (*SdkClient, error) {
 func NewSdkClient(license *License) (*SdkClient, error) {
 	apiUrl := "https://console.w7.cc"
 	if helper.IsLocalMock() {
-		apiUrl = "http://172.16.1.150:9004"
+		apiUrl = "http://172.16.1.18:9004"
 	}
 	client := w7.NewClient(
 		license.AppId,
@@ -452,8 +452,8 @@ func (c *SdkClient) Post(result interface{}, url string, params map[string]strin
 	}
 
 	if response.StatusCode() > 299 {
-		slog.Warn("sdk get error", "statusCode", response.StatusCode(), "response", response.String())
-		return nil, errors.New("sdk get error" + response.String())
+		slog.Warn("sdk get error2", "statusCode", response.StatusCode(), "response", response.String())
+		return nil, errResult
 	}
 	return result, err
 }
@@ -499,6 +499,17 @@ func (c *SdkClient) FindLastReturnOrder(clusterId string, k3kName string) (*Last
 	return order, err
 }
 
+func (c *SdkClient) FindLastReturnCvmOrder(clusterId string, k3kName string, cvmName string) (*LastReturnOrder, error) {
+	order := &LastReturnOrder{}
+	params := map[string]string{
+		"clusterId": clusterId,
+		"k3kName":   k3kName,
+		"cvmName":   cvmName,
+	}
+	_, err := c.Post(order, "api/thirdparty-cd/k8s-offline/sdk/panel/lastreturncvmorder", params)
+	return order, err
+}
+
 func (c *SdkClient) FindK3kOrder(k3kName string, orderSn string) (*K3kOrder, error) {
 	order := &K3kOrder{}
 	params := map[string]string{
@@ -521,6 +532,33 @@ func (c *SdkClient) ReturnOrderFinish(k3kName string, sn string) (*LastReturnOrd
 	return order, err
 }
 
+// 当前方法只支持创始人 创建站点 暂时不支持其他用户创建站点
+func (c *SdkClient) CreateSiteFromPanel(url, siteIdentifie string) (*License, error) {
+	order := &License{}
+	params := map[string]string{
+		// "clusterId": clusterId,
+		"url":            url,
+		"site_identifie": siteIdentifie,
+		// "orderSn": sn,
+	}
+	_, err := c.Post(order, "/api/thirdparty-cd/k8s-offline/sdk/license/register-from-w7panel", params)
+	return order, err
+}
+
+// 支持openid 创建站点 支持其他用户创建站点 比如子集群
+func (c *SdkClient) CreateSiteFromPanel2(url, siteIdentifie, openid string) (*License, error) {
+	order := &License{}
+	params := map[string]string{
+		// "clusterId": clusterId,
+		"url":            url,
+		"site_identifie": siteIdentifie,
+		"openid":         openid,
+		// "orderSn": sn,
+	}
+	_, err := c.Post(order, "/api/thirdparty-cd/k8s-offline/sdk/license/register-from-w7panel2", params)
+	return order, err
+}
+
 func (c *SdkClient) CreatePanelOrder(urlValues url.Values) (*PayResult, error) {
 	result := &PayResult{}
 	response, err := c.getReq().SetFormDataFromValues(urlValues).SetResult(result).Post("/api/thirdparty-cd/k8s-offline/sdk/panel/create-order")
@@ -530,6 +568,38 @@ func (c *SdkClient) CreatePanelOrder(urlValues url.Values) (*PayResult, error) {
 	if response.StatusCode() > 299 {
 		slog.Warn("sdk create panel order CreatePanelOrder error", "statusCode", response.StatusCode(), "response", response.String())
 		return nil, errors.New("CreatePanelOrder error" + response.String())
+	}
+	return result, err
+}
+func (c *SdkClient) OpenIdToCloudAccessToken(openId string) (*PassportToken, error) {
+	result := &PassportToken{}
+	urlvalues := url.Values{}
+	urlvalues.Add("openid", openId)
+	urlvalues.Add("useDefaultAppid", "1")
+	response, err := c.getReq().SetFormDataFromValues(urlvalues).SetResult(result).Post("/api/thirdparty-cd/k8s-offline/sdk/openid-to-cloud-access-token")
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode() > 299 {
+		slog.Warn("sdk create panel order OpenIdToCloudAccessToken error", "statusCode", response.StatusCode(), "response", response.String())
+		return nil, errors.New("OpenIdToCloudAccessToken error" + response.String())
+	}
+	return result, err
+}
+
+func (c *SdkClient) OpenIdToCloudCode(openId, componentAppid string) (*PassportCode, error) {
+	result := &PassportCode{}
+	urlvalues := url.Values{}
+	urlvalues.Add("openid", openId)
+	urlvalues.Add("component_appid", componentAppid)
+	urlvalues.Add("useDefaultAppid", "1")
+	response, err := c.getReq().SetFormDataFromValues(urlvalues).SetResult(result).Post("/api/thirdparty-cd/k8s-offline/sdk/openid-to-cloud-code")
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode() > 299 {
+		slog.Warn("sdk create panel order OpenIdToCloudCode error", "statusCode", response.StatusCode(), "response", response.String())
+		return nil, errors.New("OpenIdToCloudCode error" + response.String())
 	}
 	return result, err
 }

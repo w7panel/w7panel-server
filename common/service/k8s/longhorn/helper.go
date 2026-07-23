@@ -3,9 +3,11 @@ package longhorn
 import (
 	"fmt"
 	"log/slog"
+	"sort"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	longhornV1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
+	"github.com/samber/lo"
+	"github.com/w7panel/w7panel/common/service/k8s"
 )
 
 func updateAllReplicaCount() error {
@@ -170,4 +172,70 @@ func containsAll(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// 快照大小
+func GetSnapshopSize(volumeName string, snapList *longhornV1beta2.SnapshotList) int64 {
+	var size int64
+	for _, snap := range snapList.Items {
+		if snap.Spec.Volume == volumeName {
+			size += snap.Status.Size
+		}
+	}
+	return size
+}
+
+// 是否扩容中 longhorn ui的逻辑
+func IsVolumeExpanding(volume *longhornV1beta2.Volume, eList *longhornV1beta2.EngineList) (bool, string) {
+	filterList := lo.Filter(eList.Items, func(eg longhornV1beta2.Engine, index int) bool {
+		return eg.Labels["longhornvolume"] == volume.Name
+	})
+	egSort := lo.KeyBy(filterList, func(eg2 longhornV1beta2.Engine) string {
+		return eg2.Name
+	})
+	keys := lo.Keys(egSort)
+	sort.Strings(keys)
+	for _, v := range keys {
+		eg, ok := egSort[v]
+		if !ok {
+			slog.Error("volume %s is not expanding", "name", volume.Name)
+			continue
+		}
+		if ok && volume.Spec.Size != eg.Status.CurrentSize && volume.Status.State == "attached" {
+			slog.Error("volume %s is expanding", "name", volume.Name)
+			return true, eg.Status.LastExpansionError
+		}
+	}
+
+	return false, ""
+}
+
+func IsVolumeLock(volume *longhornV1beta2.Volume, eList *longhornV1beta2.VolumeAttachmentList) (bool, string) {
+	vtList := lo.Filter(eList.Items, func(eg longhornV1beta2.VolumeAttachment, index int) bool {
+		return eg.Spec.Volume == volume.Name
+	})
+	if len(vtList) > 0 {
+		first := vtList[0]
+		if len(first.Spec.AttachmentTickets) > 1 {
+			for _, ticket := range first.Spec.AttachmentTickets {
+				if ticket.ID == "longhorn-ui" {
+					continue
+				}
+				return true, ticket.NodeID
+			}
+		}
+	}
+	return false, ""
+}
+func VolumeAttachNodeId(volume *longhornV1beta2.Volume, eList *longhornV1beta2.VolumeAttachmentList) string {
+	vtList := lo.Filter(eList.Items, func(eg longhornV1beta2.VolumeAttachment, index int) bool {
+		return eg.Spec.Volume == volume.Name
+	})
+	if len(vtList) > 0 {
+		first := vtList[0]
+		for _, ticket := range first.Spec.AttachmentTickets {
+			return ticket.NodeID
+		}
+	}
+	return ""
 }

@@ -4,6 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     "helm.sh/resource-policy": keep
+    api-approved.kubernetes.io: "https://www.w7.cc"
   name: wasmplugins.extensions.higress.io
 spec:
   group: extensions.higress.io

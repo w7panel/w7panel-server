@@ -115,6 +115,11 @@ type HelmConfig struct {
 	Version    string `json:"version"`    //版本号
 }
 
+type AppCredentials struct {
+	AppId     string `json:"appId"`     //应用AppId
+	AppSecret string `json:"appSecret"` //应用AppSecret
+}
+
 type AppGroupSpec struct {
 	Identifie        string `json:"identifie"`        //应用标识
 	Type             string `json:"type"`             // "helm" or "zpk" or "custom"
@@ -126,8 +131,9 @@ type AppGroupSpec struct {
 	Suffix           string `json:"suffix"`           //应用名后缀
 	// Domains       []string   `json:"domains"`       //域名列表
 	// DefaultDomain string     `json:"defaultDomain"` //默认域名
-	ZpkUrl     string     `json:"zpkUrl"`     //制品库地址
-	HelmConfig HelmConfig `json:"helmConfig"` //helm配置
+	ZpkUrl         string          `json:"zpkUrl"`     //制品库地址
+	HelmConfig     HelmConfig      `json:"helmConfig"` //helm配置
+	AppCredentials *AppCredentials `json:"appCredentials,omitempty"`
 	// Annotations   map[string]string `json:"annotations"`   //annotations
 	IsHelm bool `json:"isHelm"` //是否为helm应用
 }
@@ -142,7 +148,8 @@ type AppGroupItemStatus struct {
 	IsHelmWorkLoad    bool        `json:"isHelmWorkLoad"` //是否为helm应用
 	CreationTimestamp metav1.Time `json:"creationTimestamp,omitempty" protobuf:"bytes,8,opt,name=creationTimestamp"`
 	DeployStatus      string      `json:"deployStatus"`
-	IsZeroReplicas    bool        `json:"isZeroReplicas"` //是否暂停部署 只有一个应用并且replicas为0
+	IsZeroReplicas    bool        `json:"isZeroReplicas"`       //是否暂停部署 只有一个应用并且replicas为0
+	DenyDelete        bool        `json:"denyDelete,omitempty"` //是否允许删除
 }
 
 type AppGroupStatus struct {
@@ -189,9 +196,9 @@ func (g *AppGroup) ComputeStatus() {
 		}
 	}
 	g.Status.IsZeroReplicas = false
-	if len(g.Status.Items) == 1 {
-		g.Status.IsZeroReplicas = g.Status.Items[0].IsZeroReplicas
-	}
+	// if len(g.Status.Items) == 1 {
+	// 	g.Status.IsZeroReplicas = g.Status.Items[0].IsZeroReplicas
+	// }
 
 	if len(g.Status.Items) > 0 {
 		ready := lo.EveryBy(g.Status.Items, func(v AppGroupItemStatus) bool {
@@ -202,6 +209,12 @@ func (g *AppGroup) ComputeStatus() {
 	if len(g.Status.Items) == 0 {
 		// g.Status.IsZeroReplicas = true
 		g.Status.Ready = true
+	}
+	if len(g.Status.Items) > 0 {
+		allZero := lo.EveryBy(g.Status.Items, func(v AppGroupItemStatus) bool {
+			return v.IsZeroReplicas
+		})
+		g.Status.IsZeroReplicas = allZero
 	}
 }
 

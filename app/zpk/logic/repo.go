@@ -6,11 +6,16 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/app/zpk/logic/types"
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/console"
+	"github.com/barkimedes/go-deepcopy"
+	"github.com/w7panel/w7panel/app/zpk/logic/types"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/console"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
+	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -50,13 +55,23 @@ func LoadPackage2(uri string, token string, checkUpgrade bool) (*types.ManifestP
 	repo := NewRepo(uri, token, "")
 	repo.SetCheckUpgrade(checkUpgrade)
 	return repo.Load()
-	// if (scheme == "http" || scheme == "https") && strings.HasPrefix(uri, "http") {
-	// 	return LoadPackageByHttp(uri)
-	// } else {
-	// 	return LoadPackageFromConsole(uri)
-	// }
 
-	// return nil, errors.New("scheme is not supported")
+}
+func LoadPackageWithPanelToken(uri string, token string, checkUpgrade bool, panelToken string, curVersion string) (*types.ManifestPackage, error) {
+	//获取source scheme
+	scheme := getSourceUri(uri)
+	if scheme == "" {
+		return nil, errors.New("uri is not valid")
+	}
+	repo := NewRepo(uri, token, "")
+	repo.SetCheckUpgrade(checkUpgrade)
+	repo.SetUpgrade(checkUpgrade)
+	repo.SetPanelToken(panelToken)
+	if curVersion != "" {
+		repo.SetCurVersion(curVersion)
+	}
+	return repo.Load()
+
 }
 
 func (self *repo) SetUpgrade(upgrade bool) string {
@@ -79,10 +94,6 @@ func (self *repo) SetCurVersion(version string) {
 
 func (self *repo) getConsoleUrl() string {
 	return self.baseConsoleUrl + "config?url=" + self.repoUrl
-}
-
-func (self *repo) getPreInstallUrl() string {
-	return self.baseConsoleUrl + "/pre-install" + "?url=" + self.repoUrl
 }
 
 func (self *repo) loadPackageFromConsole() (*types.ManifestPackage, error) {
@@ -147,9 +158,17 @@ func (self *repo) PreInstall(clusterId string) (*console.PreInstall, error) {
 
 func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*types.ManifestPackage, error) {
 	// 发送http请求 从uri获取json 数据
+	requestURI := helper.RemoveQueryParam(uri, "reinstall")
 	req := helper.RetryHttpClient().R().SetAuthToken(token)
 	if self.panelToken != "" {
 		req.SetHeader("X-W7Panel-Token", self.panelToken)
+		replace, err := microapp.NewMicroAppReplace(self.panelToken)
+		if err == nil && replace.GetConsoleOpenId() != "" {
+			cloudAccessToken, err := microapp.GetCloudAccessToken(replace.GetConsoleOpenId())
+			if err == nil {
+				req.SetHeader("X-Cloud-AccessToken", cloudAccessToken)
+			}
+		}
 	}
 	if self.upgrade {
 		req.SetQueryParam("is_upgrade", "1")
@@ -160,7 +179,10 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 	if self.curVersion != "" {
 		req.SetQueryParam("cur_version", self.curVersion)
 	}
-	resp, err := req.Get(uri)
+	if isParent {
+		req.SetQueryParam("reinstall", strconv.FormatBool(self.isFormulaMissingInCurrentPanel(uri)))
+	}
+	resp, err := req.Get(requestURI)
 	if err != nil {
 		return nil, err
 	}
@@ -187,6 +209,7 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 	var manifest types.Manifest
 	err = json.Unmarshal(manifestJson, &manifest)
 	if err != nil {
+		slog.Error("UnmarshalManifestErr", "err", err, "manifestStr", manifestStr)
 		return nil, err
 	}
 	manifest.GenVolumesName(make(map[string]string))
@@ -208,29 +231,8 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 		DeployItems:        zpkInfo.Data.DeployItems,
 		IconUrl:            zpkInfo.Data.IconUrl,
 		Ticket:             zpkInfo.Data.Ticket,
+		InstallFormulas:    zpkInfo.Data.InstallFormulas,
 	}
-
-	// if p.HelmUrl != "" {
-	// 	p.Manifest.Application.Type = "helm"
-	// 	p.Manifest.Platform.Helm.ChartName = p.HelmUrl
-	// 	p.Manifest.Platform.Helm.Version = p.Version.Name
-	// }
-
-	// if p.OciUrl != "" {
-	// 	ociUrl := p.OciUrl
-	// 	sdk := k8s.NewK8sClient().Sdk
-	// 	oci, err := NewOCI(sdk, ociUrl)
-	// 	if err != nil {
-	// 		slog.Warn("NewOCI", "err", err)
-	// 	}
-	// 	if oci != nil {
-	// 		p.ZipUrl = oci.GetCodeZipUrl()
-	// 		p.WebZipUrl = map[string]string{
-	// 			p.Manifest.Application.Identifie: oci.GetWebCodeZipUrl(),
-	// 		}
-	// 	}
-
-	// }
 
 	uri2, err := parseUri(self.repoUrl)
 	if err != nil {
@@ -273,10 +275,85 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 	}
 	if isParent {
 		p.RequireInstall = true
+	}
+	if isParent && p.HelmUrl == "" { //旧版才加载子应用
 		_ = self.LoadDependsByPackage(p)
+	}
+	p.Children = make(map[string]*types.ManifestPackage)
+	// LoadDependsByPackage 接口权限问题 改为使用InstallFormulas 全部返回 所以需要mock 子应用manifest
+	for _, formula := range p.InstallFormulas {
+		if formula.Name == p.Manifest.Application.Identifie {
+			p.Manifest.Application.Identifie = formula.Name
+			p.Manifest.Application.Name = formula.Title
+			p.RequireInstall = formula.Required
+			p.Manifest.Platform.Container.RequirePvc = formula.RequirePvc
+			p.Manifest.Platform.Container.StartParams = formula.StartParams
+			p.Manifest.Platform.Container.Volumes = formula.Volumes
+			continue
+		}
+		target, err := deepcopy.Anything(p)
+		if err != nil {
+			continue
+		}
+		copyPkg := target.(*types.ManifestPackage)
+		copyPkg.Manifest.Application.Identifie = formula.Name
+		copyPkg.Manifest.Application.Name = formula.Title
+		copyPkg.RequireInstall = formula.Required
+		copyPkg.Manifest.Platform.Container.RequirePvc = formula.RequirePvc
+		copyPkg.Manifest.Platform.Container.StartParams = formula.StartParams
+		copyPkg.Manifest.Platform.Container.Volumes = formula.Volumes
+
+		p.Children[formula.Name] = copyPkg
 	}
 
 	return p, nil
+}
+
+func (self *repo) isFormulaMissingInCurrentPanel(uri string) bool {
+	identifie := formulaIdentifieFromInfoURL(uri)
+	if identifie == "" {
+		return false
+	}
+	sdk := k8s.NewK8sClient().Sdk
+	api, err := appgroup.NewAppGroupApi(sdk)
+	if err != nil {
+		slog.Warn("init appgroup api failed", "identifie", identifie, "err", err)
+		return false
+	}
+	groups, err := api.GetAppGroupListByLabel(sdk.GetNamespace(), identifieLabelSelector(identifie))
+	if err != nil {
+		slog.Warn("query appgroup install status failed", "identifie", identifie, "err", err)
+		return false
+	}
+	for _, group := range groups.Items {
+		if !group.DeletionTimestamp.IsZero() {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func identifieLabelSelector(identifie string) string {
+	normalized := strings.ReplaceAll(identifie, "_", "-")
+	if normalized == identifie {
+		return "w7.cc/identifie=" + identifie
+	}
+	return "w7.cc/identifie in (" + identifie + "," + normalized + ")"
+}
+
+func formulaIdentifieFromInfoURL(rawURL string) string {
+	uri, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+	parts := strings.Split(strings.Trim(uri.Path, "/"), "/")
+	for i := 0; i < len(parts)-1; i++ {
+		if parts[i] == "info" {
+			return parts[i+1]
+		}
+	}
+	return ""
 }
 
 func (self repo) LoadDependsByPackage(p *types.ManifestPackage) error {

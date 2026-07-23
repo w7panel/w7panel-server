@@ -64,7 +64,7 @@ func (d *WorkloadManager) createOrUpdateSvc(svcName, svcNamespace string, svcPor
 func (d *WorkloadManager) delSvc(svcName, svcNamespace string) {
 	err := d.sdk.ClientSet.CoreV1().Services(svcNamespace).Delete(context.TODO(), svcName, metav1.DeleteOptions{})
 	if err != nil {
-		slog.Error("failed to delete service", slog.String("error", err.Error()))
+		// slog.Error("failed to delete service", slog.String("error", err.Error()))
 	}
 }
 

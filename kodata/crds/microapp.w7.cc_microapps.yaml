@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: microapps.microapp.w7.cc
 spec:
   group: microapp.w7.cc
@@ -57,9 +57,19 @@ spec:
                             type: string
                           icon:
                             type: string
+                          icon_svg:
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            nullable: true
+                            type: array
+                            x-kubernetes-list-type: atomic
+                            x-kubernetes-preserve-unknown-fields: true
                           is_default:
                             type: integer
                           location:
+                            type: string
+                          parent:
                             type: string
                           title:
                             type: string
@@ -68,6 +78,7 @@ spec:
                         - title
                         type: object
                       type: array
+                      x-kubernetes-list-type: atomic
                     name:
                       type: string
                     status:
@@ -122,7 +133,9 @@ spec:
                         nullable: true
                         type: object
                     type: object
+                    x-kubernetes-map-type: atomic
                 type: object
+                x-kubernetes-map-type: atomic
               description:
                 type: string
               framework:
@@ -134,6 +147,8 @@ spec:
               proxyUrl:
                 type: string
               title:
+                type: string
+              version:
                 type: string
             required:
             - frontendUrl

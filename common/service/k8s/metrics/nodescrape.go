@@ -2,15 +2,13 @@ package metrics
 
 import (
 	"fmt"
-	"log"
 	"log/slog"
-	"net/http"
 	"strings"
-	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
+	"github.com/w7panel/w7panel/common/helper"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -90,39 +88,6 @@ vGPU_device_memory_usage_in_bytes{ctrname="gpu-cxeyttpu",deviceuuid="GPU-59ab112
 	return str
 }
 
-func (n *NodeScrape) GetMetricsBytes() ([]byte, error) {
-	data := `
-# HELP Device_last_kernel_of_container Container device last kernel description
-# TYPE Device_last_kernel_of_container gauge
-Device_last_kernel_of_container{ctrname="gpu-cxeyttpu",deviceuuid="GPU-59ab1128-3130-b95a-9870-4bd748926e97",podname="gpu-cxeyttpu-5bc96fc469-8q2zb",podnamespace="default",vdeviceid="0",zone="vGPU"} 80450
-# HELP Device_memory_desc_of_container Container device meory description
-# TYPE Device_memory_desc_of_container counter
-Device_memory_desc_of_container{context="0",ctrname="gpu-cxeyttpu",data="0",deviceuuid="GPU-59ab1128-3130-b95a-9870-4bd748926e97",module="0",offset="0",podname="gpu-cxeyttpu-5bc96fc469-8q2zb",podnamespace="default",vdeviceid="0",zone="vGPU"} 0
-# HELP Device_utilization_desc_of_container Container device utilization description
-# TYPE Device_utilization_desc_of_container gauge
-Device_utilization_desc_of_container{ctrname="gpu-cxeyttpu",deviceuuid="GPU-59ab1128-3130-b95a-9870-4bd748926e97",podname="gpu-cxeyttpu-5bc96fc469-8q2zb",podnamespace="default",vdeviceid="0",zone="vGPU"} 0
-# HELP HostCoreUtilization GPU core utilization
-# TYPE HostCoreUtilization gauge
-HostCoreUtilization{deviceidx="0",deviceuuid="GPU-59ab1128-3130-b95a-9870-4bd748926e97",zone="vGPU"} 0
-# HELP HostGPUMemoryUsage GPU device memory usage
-# TYPE HostGPUMemoryUsage gauge
-HostGPUMemoryUsage{deviceidx="0",deviceuuid="GPU-59ab1128-3130-b95a-9870-4bd748926e97",zone="vGPU"} 2.87244288e+08
-# HELP vGPU_device_memory_limit_in_bytes vGPU device limit
-# TYPE vGPU_device_memory_limit_in_bytes gauge
-vGPU_device_memory_limit_in_bytes{ctrname="gpu-cxeyttpu",deviceuuid="GPU-59ab1128-3130-b95a-9870-4bd748926e97",podname="gpu-cxeyttpu-5bc96fc469-8q2zb",podnamespace="default",vdeviceid="0",zone="vGPU"} 3.145728e+08
-# HELP vGPU_device_memory_usage_in_bytes vGPU device usage
-# TYPE vGPU_device_memory_usage_in_bytes gauge
-vGPU_device_memory_usage_in_bytes{ctrname="gpu-cxeyttpu",deviceuuid="GPU-59ab1128-3130-b95a-9870-4bd748926e97",podname="gpu-cxeyttpu-5bc96fc469-8q2zb",podnamespace="default",vdeviceid="0",zone="vGPU"} 0	
-	`
-	return []byte(data), nil
-	// path, ok := os.LookupEnv("KO_DATA_PATH")
-	// if !ok {
-	// 	log.Fatalf("KO_DATA_PATH environment variable not set")
-	// 	return nil, fmt.Errorf("KO_DATA_PATH environment variable not set")
-	// }
-	// return os.ReadFile(path + "/test/31992.txt")
-}
-
 func (n *NodeScrape) Parse(metricsData string) (map[string]*dto.MetricFamily, error) {
 	// metricsData := `
 	// # HELP Device_last_kernel_of_container Container device last kernel description
@@ -147,29 +112,10 @@ func (n *NodeScrape) Parse(metricsData string) (map[string]*dto.MetricFamily, er
 	// # TYPE vGPU_device_memory_usage_in_bytes gauge
 	// vGPU_device_memory_usage_in_bytes{ctrname="gpu-cxeyttpu",deviceuuid="GPU-59ab1128-3130-b95a-9870-4bd748926e97",podname="gpu-cxeyttpu-5bc96fc469-8q2zb",podnamespace="default",vdeviceid="0",zone="vGPU"} 0
 	// `
-	parser := expfmt.TextParser{}
+	parser := expfmt.NewTextParser(model.LegacyValidation)
 	metrics, err := parser.TextToMetricFamilies(strings.NewReader(metricsData))
 	if err != nil {
 		slog.Error("Error parsing metrics: %v", "err", err)
-	}
-	return metrics, err
-}
-func parseMetrics(ip, port string) (map[string]*dto.MetricFamily, error) {
-	http.DefaultClient.Timeout = 10 * time.Second
-	response, err := http.Get(fmt.Sprintf("http://%s:%s/metrics", ip, port))
-	if err != nil {
-		log.Fatalf("Error fetching metrics: %v", err)
-		return nil, err
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		log.Fatalf("Error fetching metrics: %v", err)
-		return nil, err
-	}
-	parser := expfmt.TextParser{}
-	metrics, err := parser.TextToMetricFamilies(response.Body)
-	if err != nil {
-		log.Fatalf("Error parsing metrics: %v", err)
 	}
 	return metrics, err
 }

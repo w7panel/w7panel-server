@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"os"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/higress"
 	"github.com/spf13/cobra"
+	"github.com/w7panel/w7panel/common/service/k8s/higress"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 )
 
@@ -16,17 +16,13 @@ type hostOption struct {
 	host string
 }
 
-// ./runtime/main cluster:register --thirdPartyCDToken=ywA2N3ImkVo0tPOn --registerCluster=true --offlineUrl=http://118.25.145.25:9090 --apiServerUrl=https://118.25.145.25:6443
 var hostOp = hostOption{}
-
-// ./runtime/main cluster:register --thirdPartyCDToken=ywA2N3ImkVo0tPOn --registerCluster=true --offlineUrl=http://118.25.145.25:9090 --apiServerUrl=https://118.25.145.25:6443
 
 func (c BeianCheck) GetName() string {
 	return "beian-check"
 }
 
 func (c BeianCheck) Configure(cmd *cobra.Command) {
-	// username password register
 	cmd.Flags().StringVar(&hostOp.host, "host", "", "域名")
 
 }

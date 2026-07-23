@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	zpktype "gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk"
 	"github.com/samber/lo"
+	"github.com/w7panel/w7panel/common/helper"
+	zpktype "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -15,11 +15,48 @@ import (
 var Z = []string{"%STORAGE_RW_MODE%", "%STORAGE_SIZE%", "%STORAGE_CLASS_NAME%", "%DOMAIN_URL%", "%DOMAIN_SSL_URL%", "%DOMAIN_HOST%"}
 
 type Manifest struct {
-	Application Application        `json:"application"`
-	Platform    Platform           `json:"platform"`
-	V           intstr.IntOrString `json:"v"`
-	Bindings    []Bindings         `json:"bindings"`
-	WebApp      WebApp             `json:"webapp"`
+	Application Application     `json:"application"`
+	Platform    Platform        `json:"platform"`
+	Version     ManifestVersion `json:"version"`
+	Bindings    []Bindings      `json:"bindings"`
+	WebApp      WebApp          `json:"webapp"`
+	Type        string          `json:"type"` //tradition 列表不显示
+}
+
+type ManifestVersion struct {
+	intstr.IntOrString
+}
+
+func (v *ManifestVersion) UnmarshalJSON(data []byte) error {
+	var raw any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	switch value := raw.(type) {
+	case float64:
+		v.IntOrString = intstr.FromInt32(int32(value))
+	case string:
+		v.IntOrString = intstr.FromString(value)
+	case map[string]any:
+		for _, key := range []string{"name", "version", "value"} {
+			if str, ok := value[key].(string); ok {
+				v.IntOrString = intstr.FromString(str)
+				return nil
+			}
+		}
+		for _, key := range []string{"id", "formula_id"} {
+			if num, ok := value[key].(float64); ok {
+				v.IntOrString = intstr.FromInt32(int32(num))
+				return nil
+			}
+		}
+		v.IntOrString = intstr.FromString("")
+	case nil:
+		v.IntOrString = intstr.FromString("")
+	}
+
+	return nil
 }
 
 type Menu struct {
@@ -60,6 +97,10 @@ func (m *Manifest) MenuLabels() map[string]string {
 	return result
 }
 func (m *Manifest) requrirePvc() bool {
+
+	if m.Platform.Container.RequirePvc {
+		return true
+	}
 	volumes := m.Platform.Container.Volumes
 	for _, volume := range volumes {
 		if volume.Type == "diskStorage" {
@@ -308,6 +349,7 @@ type Container struct {
 	StartParams         []StartParams   `json:"startParams"`
 	Volumes             []Volumes       `json:"volumes"`
 	Shells              []Shell         `json:"shells"`
+	RequirePvc          bool            `json:"requirePvc"` // repo.go mockchild 应用 赋给值
 }
 
 // IsPrivileged 返回Container是否有特权
@@ -396,7 +438,7 @@ func (m *Depends) GetLoadUrl(p *ManifestPackage) string {
 	from := m.From
 	dependUrl := ""
 	if "" != from {
-		dependUrl = from + "/respo/info/" + m.Identifie
+		dependUrl = from + "/zpk/respo/info/" + m.Identifie
 	}
 	if dependUrl == "" {
 		dependUrl = p.ZpkUrl + "/" + m.Identifie
@@ -425,16 +467,26 @@ type Version struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 type Data struct {
-	Manifest    string            `json:"manifest"`
-	Version     Version           `json:"version"`
-	ZipURL      string            `json:"zip_url"`
-	HelmUrl     string            `json:"helm_url"`
-	OciURL      string            `json:"oci_url"`
-	WebZipURL   map[string]string `json:"webzip_url"`
-	ReleaseName string            `json:"app_name"` //控制台接口用这个字段
-	DeployItems []DeployItem      `json:"deploy_items"`
-	IconUrl     string            `json:"icon_url"`
-	Ticket      string            `json:"ticket"`
+	Manifest        string            `json:"manifest"`
+	Version         Version           `json:"version"`
+	ZipURL          string            `json:"zip_url"`
+	HelmUrl         string            `json:"helm_url"`
+	OciURL          string            `json:"oci_url"`
+	WebZipURL       map[string]string `json:"webzip_url"`
+	ReleaseName     string            `json:"app_name"` //控制台接口用这个字段
+	DeployItems     []DeployItem      `json:"deploy_items"`
+	IconUrl         string            `json:"icon_url"`
+	Ticket          string            `json:"ticket"`
+	InstallFormulas []InstallFormula  `json:"install_formulas"`
+}
+
+type InstallFormula struct {
+	Name        string        `json:"name"`
+	Title       string        `json:"title"`
+	Required    bool          `json:"required"`
+	RequirePvc  bool          `json:"requirepvc"`
+	StartParams []StartParams `json:"start_params"`
+	Volumes     []Volumes     `json:"volumes"`
 }
 
 // backend start

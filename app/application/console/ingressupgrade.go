@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/appgroup"
 	"github.com/spf13/cobra"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 	"golang.org/x/mod/semver"
 	appsv1 "k8s.io/api/apps/v1"
@@ -17,16 +17,6 @@ import (
 type IngressUpgrade struct {
 	console2.Abstract
 }
-
-type ingressupOption struct {
-	cmd     string
-	srcPath string
-	toPath  string
-	pid     string
-}
-
-// ./runtime/main cluster:register --thirdPartyCDToken=ywA2N3ImkVo0tPOn --registerCluster=true --offlineUrl=http://118.25.145.25:9090 --apiServerUrl=https://118.25.145.25:6443
-var ingressupOp = ingressupOption{}
 
 func (c IngressUpgrade) GetName() string {
 	return "ingress-add-group"
@@ -47,8 +37,12 @@ func (c IngressUpgrade) Handle(cmd *cobra.Command, args []string) {
 	}
 	slog.Info("开始升级ingress信息到新版")
 	sdk := k8s.NewK8sClient().Sdk
-	now := time.Now()
-	for true {
+	deadline := time.Now().Add(5 * time.Minute)
+	for {
+		if time.Now().After(deadline) {
+			slog.Error("等待面板就绪超时", "deployment", deploymentName)
+			os.Exit(1)
+		}
 		deployment, err := sdk.ClientSet.AppsV1().Deployments(sdk.GetNamespace()).Get(sdk.Ctx, deploymentName, metav1.GetOptions{})
 		if err != nil {
 			slog.Error("获取面板信息失败", slog.String("error", err.Error()))
@@ -57,11 +51,6 @@ func (c IngressUpgrade) Handle(cmd *cobra.Command, args []string) {
 		}
 		if c.IsReady(deployment) {
 			slog.Info("面板 已就绪")
-			if time.Now().Sub(now).Seconds() > 300 {
-				slog.Info("升级超时退出")
-				os.Exit(0)
-			}
-			time.Sleep(3 * time.Second)
 			break
 		}
 		time.Sleep(3 * time.Second)
@@ -69,12 +58,18 @@ func (c IngressUpgrade) Handle(cmd *cobra.Command, args []string) {
 	old, err := appgroup.NewOldUpgrade(sdk)
 	if err != nil {
 		slog.Error("新版升级失败", slog.String("error", err.Error()))
-		return
+		os.Exit(1)
 	}
-	old.Upgrade()
+	if err := old.Upgrade(); err != nil {
+		slog.Error("升级 Ingress 应用分组失败", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
 }
 
 func (c IngressUpgrade) IsReady(deployment *appsv1.Deployment) bool {
+	if deployment == nil || deployment.Spec.Replicas == nil || len(deployment.Spec.Template.Spec.Containers) == 0 {
+		return false
+	}
 	if deployment.Status.ReadyReplicas == *deployment.Spec.Replicas && deployment.Generation == deployment.Status.ObservedGeneration {
 		envs := deployment.Spec.Template.Spec.Containers[0].Env
 		for _, env := range envs {

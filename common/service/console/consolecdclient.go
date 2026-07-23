@@ -11,13 +11,11 @@ import (
 	"os"
 	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
 	"github.com/go-resty/resty/v2"
+	"github.com/w7panel/w7panel/common/helper"
 )
 
 var consoleApi = "https://console.w7.cc"
-
-// var consoleApi = "http://172.16.1.116:9004"
 
 type AppSecret struct {
 	AppId     string `json:"app_id"`
@@ -35,9 +33,11 @@ type CertVerify struct {
 }
 
 type PayResult struct {
-	NeedPay bool   `json:"needPay"`
-	Ticket  string `json:"ticket"`
-	OrderSn string `json:"ipOrderSn"`
+	NeedPay      bool   `json:"needPay"`
+	Ticket       string `json:"ticket"`
+	OrderSn      string `json:"ipOrderSn"`
+	CvmName      string `json:"cvmName"`
+	CvmNamespace string `json:"cvmNamespace"`
 }
 
 // declared 使用K3kOrder
@@ -50,6 +50,7 @@ type OrderInfo struct {
 	Memory      int64  `json:"memory"`          //
 	Storage     int64  `json:"storage"`         //
 	Bandwidth   int64  `json:"bandwidth"`       // 带宽
+	CvmName     string `json:"cvm_name"`        // cvm名称
 }
 
 func (c *OrderInfo) GetHour() int64 {
@@ -63,20 +64,22 @@ type GoodsProduct struct {
 
 var (
 	// ConsoleApi                     = "http://172.16.1.126:9004"
-	ConsoleCDBaseApi                = consoleApi + "/api/thirdparty-cd"
-	ConsoleCDK8sOfflineApi          = consoleApi + "/api/thirdparty-cd/k8s-offline"
-	ConsoleCDTokenConvert           = consoleApi + "/api/thirdparty-cd/token-convert"                // 转换token接口
-	ConsoleCDTokenRefresh           = consoleApi + "/api/thirdparty-cd/token/refresh"                // 刷新token接口
-	ConsoleCDPanelOrderApi          = consoleApi + "/api/thirdparty-cd/k8s-offline/order"            // 站点授权订单接口
-	ConsoleCDPanelPrepareProductApi = consoleApi + "/api/thirdparty-cd/k8s-offline/prepare"          // 站点授权准备产品接口
-	ConsoleCDPanelLicenseSiteApi    = consoleApi + "/api/thirdparty-cd/k8s-offline/license/register" // 站点授权创建站点接口
-	ConsoleCDPanelResourceApi       = consoleApi + "/api/thirdparty-cd/k8s-offline/panel/resource"
-	ConsoleCDPanelResourceApiSdk    = consoleApi + "/api/thirdparty-cd/sdk/k8s-offline/panel/resource"
-	ConsoleCDPanelOpenidConvertApi  = consoleApi + "/api/thirdparty-cd/k8s-offline/openid-to-cd-token"
-	ClusterApi                      = ConsoleCDBaseApi + "/cluster/"
-	ConsoleApiAccessTokenToCDToken  = consoleApi + "/register"
-	ConfigSercret                   = "w7-config"
-	AccessToken                     = "AccessToken" //oauth token
+	ConsoleCDBaseApi                   = consoleApi + "/api/thirdparty-cd"
+	ConsoleCDK8sOfflineApi             = consoleApi + "/api/thirdparty-cd/k8s-offline"
+	ConsoleCDTokenConvert              = consoleApi + "/api/thirdparty-cd/token-convert"                    // 转换token接口
+	ConsoleCDTokenRefresh              = consoleApi + "/api/thirdparty-cd/token/refresh"                    // 刷新token接口
+	ConsoleCDPanelOrderApi             = consoleApi + "/api/thirdparty-cd/k8s-offline/order"                // 站点授权订单接口
+	ConsoleCDPanelPrepareProductApi    = consoleApi + "/api/thirdparty-cd/k8s-offline/prepare"              // 站点授权准备产品接口
+	ConsoleCDPanelLicenseSiteApi       = consoleApi + "/api/thirdparty-cd/k8s-offline/license/register"     // 站点授权创建站点接口
+	ConsoleCDPanelLicenseSiteZpkApi    = consoleApi + "/api/thirdparty-cd/k8s-offline/license/register-zpk" // 制品库创建站点接口
+	ConsoleCDPanelResourceApi          = consoleApi + "/api/thirdparty-cd/k8s-offline/panel/resource"
+	ConsoleCDPanelResourceApiSdk       = consoleApi + "/api/thirdparty-cd/sdk/k8s-offline/panel/resource"
+	ConsoleCDPanelOpenidConvertApi     = consoleApi + "/api/thirdparty-cd/k8s-offline/openid-to-cd-token"
+	ConsoleCDPanelOpenidConvertPassApi = consoleApi + "/api/thirdparty-cd/k8s-offline/openid-to-pass-access-token" //passport token
+	ClusterApi                         = ConsoleCDBaseApi + "/cluster/"
+	ConsoleApiAccessTokenToCDToken     = consoleApi + "/register"
+	ConfigSercret                      = "w7-config"
+	AccessToken                        = "AccessToken" //oauth token
 )
 
 func SetConsoleApi(api string) {
@@ -87,10 +90,12 @@ func SetConsoleApi(api string) {
 	ConsoleCDK8sOfflineApi = consoleApi + "/api/thirdparty-cd/k8s-offline"
 	ConsoleCDPanelOrderApi = consoleApi + "/api/thirdparty-cd/k8s-offline/order"
 	ConsoleCDPanelPrepareProductApi = consoleApi + "/api/thirdparty-cd/k8s-offline/prepare"
-	ConsoleCDPanelLicenseSiteApi = consoleApi + "/api/thirdparty-cd/k8s-offline/license/register" // 站点授权创建站点接口
+	ConsoleCDPanelLicenseSiteApi = consoleApi + "/api/thirdparty-cd/k8s-offline/license/register"        // 站点授权创建站点接口
+	ConsoleCDPanelLicenseSiteZpkApi = consoleApi + "/api/thirdparty-cd/k8s-offline/license/register-zpk" // 制品库创建站点接口
 	ConsoleCDPanelResourceApi = consoleApi + "/api/thirdparty-cd/k8s-offline/panel/resource"
 	ConsoleCDPanelResourceApiSdk = consoleApi + "/api/thirdparty-cd/sdk/k8s-offline/panel/resource"
-	ConsoleCDPanelOpenidConvertApi = consoleApi + "/api/thirdparty-cd/k8s-offline/openid-to-cd-token" // 转换openid到cd token接口
+	ConsoleCDPanelOpenidConvertApi = consoleApi + "/api/thirdparty-cd/k8s-offline/openid-to-cd-token"              // 转换openid到cd token接口
+	ConsoleCDPanelOpenidConvertPassApi = consoleApi + "/api/thirdparty-cd/k8s-offline/openid-to-pass-access-token" //passport token
 	ClusterApi = ConsoleCDBaseApi + "/cluster/"
 	ConsoleApiAccessTokenToCDToken = consoleApi + "/register"
 	ConfigSercret = "w7-config"
@@ -235,13 +240,14 @@ func (c *ConsoleCdClient) PreInstall(consoleurl string, clusterId string) (*PreI
 
 func (c *ConsoleCdClient) CreatePanelOrder(urlValues url.Values) (*PayResult, error) {
 	result := &PayResult{}
-	response, err := c.client.R().SetAuthToken(c.token).SetFormDataFromValues(urlValues).SetResult(result).Post(ConsoleCDPanelOrderApi)
+	cerr := &ConsoleError{}
+	response, err := c.client.R().SetAuthToken(c.token).SetFormDataFromValues(urlValues).SetResult(result).SetError(cerr).Post(ConsoleCDPanelOrderApi)
 	if err != nil {
 		return nil, err
 	}
 	if response.StatusCode() > 299 {
 		slog.Warn("CreatePanelOrder error", "statusCode", response.StatusCode(), "response", response.String())
-		return nil, errors.New("CreatePanelOrder error" + response.String())
+		return nil, cerr
 	}
 	return result, err
 }
@@ -307,10 +313,22 @@ func (c *ConsoleCdClient) CreateLicenseSite(urlValues map[string]string) (*Licen
 	return result, nil
 }
 
-/*
-refreshToken 并且["refresh" => true] 是否是true
-*/
+// 制品库创建站点接口
+func (c *ConsoleCdClient) CreateLicenseSiteZpk(urlValues map[string]string) (*License, error) {
+	result := &License{}
+	err2 := &ConsoleError{}
+	response, err := c.client.R().SetAuthToken(c.token).SetFormData(urlValues).SetResult(result).SetError(err2).Post(ConsoleCDPanelLicenseSiteZpkApi)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode() > 399 {
+		slog.Warn("CreateLicenseSite error", "statusCode", response.StatusCode(), "response", response.String())
+		return nil, response.Error().(error)
+	}
+	return result, nil
+}
 
+// TokenRefreshResponse is returned by the console token refresh API.
 type TokenRefreshResponse struct {
 	Refresh bool   `json:"refresh"`
 	Message string `json:"message"`
@@ -387,6 +405,8 @@ func OpenIdToCdToken(openId string) (*ThirdPartyCDToken, error) {
 	}
 	return result, nil
 }
+
+
 
 func VerifyCert(cert *x509.Certificate) (*CertVerify, error) {
 

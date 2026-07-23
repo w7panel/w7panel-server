@@ -1,0 +1,88 @@
+apiVersion: w7panel.w7.com/v1alpha1
+kind: Permission
+metadata:
+  name: founder
+  labels:
+    typemode: in
+spec:
+  title: 创始人
+  type: builtin
+  role: founder
+  menuRules:
+  - cluster
+  - cluster/panel
+  - cluster/resource
+  - app
+  - app/apps
+  - app/apps/add
+  - app/apps/edit
+  - app/apps/delete
+  - app/cronjob
+  - app/cronjob/add
+  - app/cronjob/edit
+  - app/cronjob/delete
+  - app/rvproxy
+  - app/rvproxy/add
+  - app/rvproxy/edit
+  - app/rvproxy/delete
+  - gateway
+  - gateway/rvproxy
+  - gateway/rvproxy/add
+  - gateway/rvproxy/edit
+  - gateway/rvproxy/delete
+  - gateway/aiproxy
+  - gateway/aiproxy/add
+  - gateway/aiproxy/edit
+  - gateway/aiproxy/delete
+  - gateway/plugins
+  - gateway/plugins/add
+  - gateway/plugins/edit
+  - gateway/plugins/delete
+  - gateway/dns
+  - app/database
+  - app/database/add
+  - app/database/delete
+  - app/gpustack
+  - storage
+  - storage/disk
+  - storage/disk/add
+  - storage/disk/edit
+  - storage/disk/delete
+  - storage/zone
+  - zpk
+  - sitemanage
+  - system
+  - system/cloud
+  - system/license
+  - system/audit
+  - person/order-center
+  - person/cost-center
+  - cluster/nodes
+  - cluster/nodes/add
+  - cluster/nodes/registries
+  - cluster/nodes-image-list
+  - cluster/nodes/gpu
+  - cluster/nodes/memory
+  - usermanage/usermanage-whitedomain
+  - usermanage
+  - usermanage/users
+  - usermanage/usergroup
+  - usermanage/permission
+  - usermanage/quota
+  - usermanage/site-setting
+  - usermanage/usermanage-system
+  apiRules:
+  - path: '*'
+    method:
+    - '*'
+  features:
+    debug: true
+    fileeditor: true
+    webshell: true
+  rbacRules:
+  - apiGroups:
+    - '*'
+    resources:
+    - '*'
+    verbs:
+    - '*'

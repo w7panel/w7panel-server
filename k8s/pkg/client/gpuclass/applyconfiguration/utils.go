@@ -18,19 +18,19 @@ limitations under the License.
 package applyconfiguration
 
 import (
-	v1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/gpuclass/v1alpha1"
-	gpuclassv1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/gpuclass/applyconfiguration/gpuclass/v1alpha1"
-	internal "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/gpuclass/applyconfiguration/internal"
+	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/gpuclass/v1alpha1"
+	gpuclassv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/client/gpuclass/applyconfiguration/gpuclass/v1alpha1"
+	internal "github.com/w7panel/w7panel/k8s/pkg/client/gpuclass/applyconfiguration/internal"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
-	testing "k8s.io/client-go/testing"
+	managedfields "k8s.io/apimachinery/pkg/util/managedfields"
 )
 
 // ForKind returns an apply configuration type for the given GroupVersionKind, or nil if no
 // apply configuration type exists for the given GroupVersionKind.
 func ForKind(kind schema.GroupVersionKind) interface{} {
 	switch kind {
-	// Group=gpuclass.k8s.io, Version=v1alpha1
+	// Group=w7panel.w7.com, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithKind("GpuClass"):
 		return &gpuclassv1alpha1.GpuClassApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("GpuClasssSpec"):
@@ -40,6 +40,6 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 	return nil
 }
 
-func NewTypeConverter(scheme *runtime.Scheme) *testing.TypeConverter {
-	return &testing.TypeConverter{Scheme: scheme, TypeResolver: internal.Parser()}
+func NewTypeConverter(scheme *runtime.Scheme) managedfields.TypeConverter {
+	return managedfields.NewSchemeTypeConverter(scheme, internal.Parser())
 }

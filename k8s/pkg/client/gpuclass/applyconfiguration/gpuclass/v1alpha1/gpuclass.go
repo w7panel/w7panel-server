@@ -18,7 +18,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	gpuclassv1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/gpuclass/v1alpha1"
+	gpuclassv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/gpuclass/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -26,6 +26,8 @@ import (
 
 // GpuClassApplyConfiguration represents a declarative configuration of the GpuClass type for use
 // with apply.
+//
+// GpuClasss is the Schema for the gpuclassses API
 type GpuClassApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
@@ -40,9 +42,11 @@ func GpuClass(name, namespace string) *GpuClassApplyConfiguration {
 	b.WithName(name)
 	b.WithNamespace(namespace)
 	b.WithKind("GpuClass")
-	b.WithAPIVersion("gpuclass.k8s.io/v1alpha1")
+	b.WithAPIVersion("w7panel.w7.com/v1alpha1")
 	return b
 }
+
+func (b GpuClassApplyConfiguration) IsApplyConfiguration() {}
 
 // WithKind sets the Kind field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
@@ -218,8 +222,24 @@ func (b *GpuClassApplyConfiguration) WithStatus(value gpuclassv1alpha1.GpuClasss
 	return b
 }
 
+// GetKind retrieves the value of the Kind field in the declarative configuration.
+func (b *GpuClassApplyConfiguration) GetKind() *string {
+	return b.TypeMetaApplyConfiguration.Kind
+}
+
+// GetAPIVersion retrieves the value of the APIVersion field in the declarative configuration.
+func (b *GpuClassApplyConfiguration) GetAPIVersion() *string {
+	return b.TypeMetaApplyConfiguration.APIVersion
+}
+
 // GetName retrieves the value of the Name field in the declarative configuration.
 func (b *GpuClassApplyConfiguration) GetName() *string {
 	b.ensureObjectMetaApplyConfigurationExists()
 	return b.ObjectMetaApplyConfiguration.Name
+}
+
+// GetNamespace retrieves the value of the Namespace field in the declarative configuration.
+func (b *GpuClassApplyConfiguration) GetNamespace() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Namespace
 }

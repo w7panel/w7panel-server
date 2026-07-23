@@ -4,9 +4,9 @@ import (
 	"errors"
 	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/app/zpk/logic/types"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	helm "gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk"
+	"github.com/w7panel/w7panel/app/zpk/logic/types"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	helm "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	v1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -157,15 +157,6 @@ func RequireInstall(secretName string, namespace string, releaseName string, dbN
 	if job == nil {
 		return errors.New("job not found")
 	}
-	// data, err := yaml.Marshal(job)
-	// if err != nil {
-	// 	return errors.New("job marshal failed")
-	// }
-	// data2 := (string(data))
-	// os.WriteFile("job.yaml", []byte(data2), 0644)
-	// println(data2)
-
-	// return nil
 	job, err = sdk.ClientSet.BatchV1().Jobs(namespace).Create(sdk.Ctx, job, metav1.CreateOptions{})
 
 	if err != nil {

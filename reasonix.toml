@@ -1,0 +1,2 @@
+[permissions]
+allow = ["Bash(mkdir -p /home/afan/workspace/w7panel-server/kodata/yaml/site && mv /home/afan/workspace/w7panel-server/site-example.yaml /home/afan/workspace/w7panel-server/kodata/yaml/site/)"]

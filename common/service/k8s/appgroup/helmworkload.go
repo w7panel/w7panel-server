@@ -4,12 +4,12 @@ import (
 	"log/slog"
 	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	zpktypes "gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk/types"
-	appv1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
-	v1alpha1Types "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
-	"gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"
-	v1alpha1Lister "gitee.com/we7coreteam/k8s-offline/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/types"
+	appv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
+	v1alpha1Types "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
+	"github.com/w7panel/w7panel/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"
+	v1alpha1Lister "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"
 	"helm.sh/helm/v3/pkg/release"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -127,6 +127,7 @@ func (h *HelmWorkload) resourceToQueue(release *release.Release) (bool, error) {
 	return hasApp, nil
 }
 
+// 从 helm chart注解中复制到 appgroup 注解的机制下一版废弃
 func (h *HelmWorkload) releaseToAppGroup(release *release.Release) *v1alpha1Types.AppGroup {
 	annotations := release.Chart.Metadata.Annotations
 	source, ok := annotations[zpktypes.HELM_RELEASE_SOURCE]
@@ -182,6 +183,17 @@ func (h *HelmWorkload) releaseToAppGroup(release *release.Release) *v1alpha1Type
 	group.Status = v1alpha1Types.AppGroupStatus{
 		Items: []v1alpha1Types.AppGroupItemStatus{},
 		Ready: true,
+	}
+	if group.Annotations == nil {
+		group.Annotations = map[string]string{}
+	}
+	val5, ok5 := annotations[zpktypes.HELM_DENY_DELETE]
+	if ok5 {
+		group.Annotations[zpktypes.HELM_DENY_DELETE] = val5
+	}
+	val5, ok5 = annotations[zpktypes.HELM_OFFICAL_APP]
+	if ok5 {
+		group.Annotations[zpktypes.HELM_OFFICAL_APP] = val5
 	}
 	return group
 }

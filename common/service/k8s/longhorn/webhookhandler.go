@@ -1,13 +1,14 @@
 package longhorn
 
 import (
+	"context"
 	"log/slog"
 	"time"
 
 	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	longhornV1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,7 +17,7 @@ import (
 var lclient *longhornclient
 
 func init() {
-	lclient, _ = NewLonghornClient(k8s.NewK8sClient().Sdk)
+	lclient, _ = NewLonghornClient(k8s.NewK8sClientInner())
 }
 
 func OnStart() error {
@@ -106,7 +107,7 @@ func WebHookLonghornReplica() {
 
 func WebHookNode(node *v1.Node) bool {
 	labels := node.GetLabels()
-	isMasterRole, ok := labels["node-role.kubernetes.io/master"]
+	isMasterRole, ok := labels["node-role.kubernetes.io/control-plane"]
 	if !ok || isMasterRole != "true" {
 		return false
 	}
@@ -126,10 +127,38 @@ func WebHookNode(node *v1.Node) bool {
 
 func WebHookDeleteNode(node *v1.Node) {
 	time.AfterFunc(time.Second*1, func() {
-		lclient.DeleteNode(node.Name)
+		if lclient == nil {
+			slog.Error("longhorn delete node skipped: client is not initialized", "node", node.Name)
+			return
+		}
+		if err := lclient.DeleteNodeWhenReady(context.Background(), node.Name, 30*time.Second); err != nil {
+			slog.Error("longhorn delete node error", "node", node.Name, "error", err)
+		}
 	})
 }
 
 func GetLonghornNodeList() (*longhornV1beta2.NodeList, error) {
 	return lclient.GetNodeList()
+}
+
+func WebHookOnPvcSizeChange(pvc *v1.PersistentVolumeClaim) {
+	time.AfterFunc(time.Second*1, func() {
+
+		sdk := k8s.NewK8sClient().Sdk
+		vname := pvc.Spec.VolumeName
+		volume, err := lclient.GetVolume(vname)
+		if err != nil {
+			slog.Error("longhorn get volume error", "error", err)
+			return
+		}
+		workloads := volume.Status.KubernetesStatus.WorkloadsStatus
+		for _, workload := range workloads {
+			podName := workload.PodName
+			namespace := pvc.Namespace
+			err := sdk.ClientSet.CoreV1().Pods(namespace).Delete(context.TODO(), podName, metav1.DeleteOptions{})
+			if err != nil {
+				slog.Error("longhorn webhook handler delete pod error", "error", err)
+			}
+		}
+	})
 }

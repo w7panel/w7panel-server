@@ -3,4 +3,6 @@
 ./assets
 ./index.html
 ./assets/**
-
+/assets
+/index.html
+/kui.zip

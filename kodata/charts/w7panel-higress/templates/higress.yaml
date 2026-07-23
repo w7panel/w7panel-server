@@ -1,0 +1,35 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: higress
+  namespace: kube-system
+  labels:
+    {{- include "w7panel-higress.labels" . | nindent 4 }}
+spec:
+  chart: https://cdn.w7.cc/w7panel/charts/higress/higress-{{ .Chart.AppVersion }}.tgz
+  createNamespace: true
+  driver: secret
+  failurePolicy: reinstall
+  set:
+    higress-core.gateway.service.loadBalancerClass: "io.cilium/node"
+    global.ingressClass: "higress"
+    global.onlyPushRouteCluster: "false"
+    higress-core.gateway.replicas: 1
+    higress-core.gateway.resources.limits.cpu: 0
+    higress-core.gateway.resources.limits.memory: 0
+    higress-core.gateway.resources.requests.cpu: 0
+    higress-core.gateway.resources.requests.memory: 0
+    higress-core.controller.replicas: 1
+    higress-core.controller.resources.requests.cpu: 0
+    higress-core.controller.resources.requests.memory: 0
+    higress-core.controller.resources.limits.cpu: 0
+    higress-core.controller.resources.limits.memory: 0
+    higress-core.pilot.replicaCount: 1
+    higress-core.pilot.resources.requests.cpu: 0
+    higress-core.pilot.resources.requests.memory: 0
+    higress-core.downstream.connectionBufferLimits: 3276800
+    higress-console.replicaCount: 0
+    higress-console.resources.requests.cpu: 0
+    higress-console.resources.requests.memory: 0
+  targetNamespace: higress-system
+  version: v{{ .Chart.AppVersion }}

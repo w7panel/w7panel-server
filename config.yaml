@@ -13,7 +13,7 @@ app:
   deployment_name: ${DEPLOYMENT_NAME-w7panel}
   upgrade_enable: ${UPGRADE_ENABLE-true} # 是否开启自动升级功能
   refresh_token_enable: ${REFRESH_TOKEN_ENABLE-false} # 是否开启刷新token
-  login_seconds: ${LOGIN_SECONDS-3600} # 登陆有效时间 单位秒
+  login_seconds: ${LOGIN_SECONDS-36000} # 登陆有效时间 单位秒 改为10小时
   watch: ${APP_WATCH-false} # 是否开启监控功能
   local_mock: ${LOCAL_MOCK-false} # 开发模式：使用当前服务模拟agent（生产环境必须设为false）
   static_path: ${KO_DATA_PATH-./kodata} # 静态文件目录
@@ -31,16 +31,22 @@ clean:
   enabled: ${CLEAN_ENABLED-true} # 是否开启自动升级功能
   interval: ${CLEAN_CHECK_INTERVAL-66s} # 清理s3过期文件 单位分钟
 registry:
-  watch: ${REGISTRY_WATCH-false}
+  enabled: ${K3S_REGISTRY_ENABLED-false}
+k3sshell:
+  enabled: ${K3S_SHELL_ENABLED-false}
+buildimage:
+  enabled: ${BUILDIMGAGE_ENABLED-false}
 
 mcp:
   watch: ${MCP_WATCH-false}
 k3k:
   watch: ${K3K_WATCH-false}
+cvm:
+  enabled: ${CVM_ENABLED-false}   
 server:
   http:
     host: ${W7PANEL_HTTP_SERVER_HOST-0.0.0.0}
-    port: ${W7PANEL_HTTP_SERVER_PORT-8080}
+    port: ${W7PANEL_HTTP_SERVER_PORT-8000}
   prof:
     host: 0.0.0.0
     port: 6060
@@ -56,6 +62,32 @@ lxcfs:
 site:
   enabled: ${SITE_ENABLED-false}
   token_refresh_resolution: ${TOKEN_REFRESH_RESOLUTION-600s} # token刷新间隔
+privatedns:
+  enabled: ${PRIVATEDNS_ENABLED-false}
+oidc:
+  enabled: ${OIDC_ENABLED-true}
+  issuer: ${OIDC_ISSUER-http://w7panel-offline.default.svc.cluster.local:8000/panel-api/v1/oidc}
+  cookie_domain: ${OIDC_COOKIE_DOMAIN-}
+  cookie_secure: ${OIDC_COOKIE_SECURE-false}
+  signing_key_pem: ${OIDC_SIGNING_KEY_PEM-}
+  access_token_ttl: ${OIDC_ACCESS_TOKEN_TTL-3600s}
+  refresh_token_ttl: ${OIDC_REFRESH_TOKEN_TTL-720h}
+  code_ttl: ${OIDC_CODE_TTL-300s}
+  session_ttl: ${OIDC_SESSION_TTL-43200s}
+  registration_enabled: ${OIDC_REGISTRATION_ENABLED-false}
+  registration_access_token: ${OIDC_REGISTRATION_ACCESS_TOKEN-}
+  insecure_allow_any_redirect_uri: ${OIDC_INSECURE_ALLOW_ANY_REDIRECT_URI-true} # 是否允许重定向任意uri
+  clients:
+    - client_id: ${OIDC_CLIENT_ID-default} # 默认客户端ID
+      client_secret: ${OIDC_CLIENT_SECRET-}
+      token_endpoint_auth_method: ${OIDC_TOKEN_AUTH_METHOD-none}
+      allow_any_redirect_uri: true
+      # redirect_uris:
+      #   - ${OIDC_REDIRECT_URI-https://www.w7.com/w7panel/oatuh/callback}
+      scopes:
+        - openid
+        - profile
+        - offline_access
 log:
   default:
     driver: stack
@@ -64,18 +96,11 @@ log:
       - console
   file:
     driver: file
-    path: ${APP_DIR}runtime/logs/w7panel.log
+    path: w7panel.log
     level: ${LOG_LEVEL-info}
   console:
     driver: console
     level: ${LOG_LEVEL-info}
-database:
-  default:
-    driver: sqlite
-    db_name: ${APP_DIR}w7panel.db
-    charset: utf8mb4
-    show_sql: false
-    prefix: ims_
 k8s:
   config_path: ${KUBECONFIG-./kubeconfig.yaml}
   default_namespace: ${K8S_DEFAULT_NAMESPACE} # 需要同步的namespace
@@ -87,11 +112,24 @@ metrics:
   duration: ${METRIC_DURATION-7200s} # 指标采集清理间隔 分钟
   db_file: ${METRIC_DB_file-/tmp/metrics.db} # 指标采集清理间隔 分钟
   enabled: ${METRIC_ENABLED-false} # 是否开启指标采集
+logs:
+  enabled: ${LOGS_ENABLED-true}
+  base_url: ${LOGS_BASE_URL-http://vlsingle-w7panel-metrics.default.svc:9428}
+  timeout: ${LOGS_TIMEOUT-5s}
+  batch_size: ${LOGS_BATCH_SIZE-1}
 s3:
   base_dir: ${S3BASEDIR-/tmp/buckets} # 上传 下载文件 临时中转目录
 pyroscope:
   enabled: ${PYROSCOPE_ENABLED-false}
   server_address: ${PYROSCOPE_SERVER_ADDRESS-http://172.16.1.126:4040}
+k3s-registry:
+  enabled: ${K3S_REGISTRY_ENABLED-false} # 是否启用 K3s 本地镜像仓库功能
+  containerd_socket: ${K3S_CONTAINERD_SOCKET-/run/k3s/containerd/containerd.sock} # containerd socket 路径
+  data_dir: ${K3S_DATA_DIR-/var/lib/rancher/k3s/agent/containerd} # 数据目录
+  runtime_dir: ${K3S_RUNTIME_DIR-/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io} # Runtime 目录
+  agent_dir: ${K3S_AGENT_DIR-/var/lib/rancher/k3s/agent} # Agent 目录
 
 webhook:
   enabled: ${WEBHOOK_ENABLED-false}
+  certManager:
+    enabled: ${WEBHOOK_CERT_MANAGER_ENABLED-true}

@@ -1,17 +1,24 @@
 package controller
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/procpath"
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/procpath"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 
 type PermissionAgent struct {
 	controller.Abstract
+}
+
+type ownerIDMapper interface {
+	TryContainerToHostUID(uid uint32) (uint32, bool)
+	TryContainerToHostGID(gid uint32) (uint32, bool)
 }
 
 func (c PermissionAgent) Chmod(http *gin.Context) {
@@ -30,10 +37,10 @@ func (c PermissionAgent) Chmod(http *gin.Context) {
 		return
 	}
 
-	targetPid := pid
-	if subpid != "" {
-		targetPid = subpid
-	}
+	// targetPid := pid
+	// if subpid != "" {
+	// 	targetPid = subpid
+	// }
 
 	mode, err := strconv.ParseUint(params.Mode, 8, 32)
 	if err != nil {
@@ -41,7 +48,7 @@ func (c PermissionAgent) Chmod(http *gin.Context) {
 		return
 	}
 
-	fullPath := procpath.GetFilePath(targetPid, "", params.Path)
+	fullPath := procpath.GetFilePath(pid, subpid, params.Path)
 
 	if params.Recursive {
 		err := filepath.Walk(fullPath, func(path string, info os.FileInfo, err error) error {
@@ -80,12 +87,12 @@ func (c PermissionAgent) Chown(http *gin.Context) {
 		return
 	}
 
-	targetPid := pid
-	if subpid != "" {
-		targetPid = subpid
-	}
+	// targetPid := pid
+	// if subpid != "" {
+	// 	targetPid = subpid
+	// }
 
-	fullPath := procpath.GetFilePath(targetPid, "", params.Path)
+	fullPath := procpath.GetFilePath(pid, subpid, params.Path)
 
 	owner := params.Owner
 	var uid, gid int
@@ -98,12 +105,10 @@ func (c PermissionAgent) Chown(http *gin.Context) {
 			return
 		}
 
-		parsed := parseOwner(parts)
-		if parsed.uid != -1 {
-			uid = parsed.uid
-		}
-		if parsed.gid != -1 {
-			gid = parsed.gid
+		uid, gid, err = mapOwnerToHost(parseOwner(parts), newPermissionIDMapper(pid, subpid))
+		if err != nil {
+			c.JsonResponseWithError(http, err, 400)
+			return
 		}
 	}
 
@@ -128,6 +133,36 @@ func (c PermissionAgent) Chown(http *gin.Context) {
 	c.JsonSuccessResponse(http)
 }
 
+func newPermissionIDMapper(pid, subpid string) ownerIDMapper {
+	if helper.IsChildAgent() {
+		return nil
+	}
+	return procpath.NewIDMapper(pid, subpid)
+}
+
+func mapOwnerToHost(owner ownerInfo, mapper ownerIDMapper) (int, int, error) {
+	uid := owner.uid
+	gid := owner.gid
+	if mapper == nil {
+		return uid, gid, nil
+	}
+	if uid != -1 {
+		mapped, ok := mapper.TryContainerToHostUID(uint32(uid))
+		if !ok {
+			return 0, 0, fmt.Errorf("uid %d is outside user namespace mapping", uid)
+		}
+		uid = int(mapped)
+	}
+	if gid != -1 {
+		mapped, ok := mapper.TryContainerToHostGID(uint32(gid))
+		if !ok {
+			return 0, 0, fmt.Errorf("gid %d is outside user namespace mapping", gid)
+		}
+		gid = int(mapped)
+	}
+	return uid, gid, nil
+}
+
 type ownerInfo struct {
 	uid int
 	gid int
@@ -135,7 +170,7 @@ type ownerInfo struct {
 
 func parseOwner(owner string) ownerInfo {
 	info := ownerInfo{-1, -1}
-	
+
 	if owner == "" {
 		return info
 	}

@@ -3,8 +3,8 @@ package controller
 import (
 	"log/slog"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/compress"
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/service/compress"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 
@@ -31,10 +31,10 @@ func (c CompressAgent) Compress(http *gin.Context) {
 
 	targetPid := pid
 	if subpid != "" {
-		targetPid = subpid
+		// targetPid = subpid
 	}
 
-	compressor := compress.NewCompressor(targetPid)
+	compressor := compress.NewCompressor(targetPid, subpid)
 	if err := compressor.Compress(params.Sources, params.Output); err != nil {
 		slog.Error("compress failed", "error", err, "pid", targetPid)
 		c.JsonResponseWithError(http, err, 500)
@@ -63,10 +63,10 @@ func (c CompressAgent) Extract(http *gin.Context) {
 
 	targetPid := pid
 	if subpid != "" {
-		targetPid = subpid
+		// targetPid = subpid
 	}
 
-	compressor := compress.NewCompressor(targetPid)
+	compressor := compress.NewCompressor(targetPid, subpid)
 	if err := compressor.Extract(params.Source, params.Target); err != nil {
 		slog.Error("extract failed", "error", err, "pid", targetPid)
 		c.JsonResponseWithError(http, err, 500)

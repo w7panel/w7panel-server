@@ -23,16 +23,22 @@ import (
 
 // AppGroupItemStatusApplyConfiguration represents a declarative configuration of the AppGroupItemStatus type for use
 // with apply.
+//
+// ApplicationItemStatus 用于记录单个应用的部署状态信息
 type AppGroupItemStatusApplyConfiguration struct {
-	Kind              *string  `json:"kind,omitempty"`
-	ApiVersion        *string  `json:"apiVersion,omitempty"`
-	Name              *string  `json:"name,omitempty"`
-	Title             *string  `json:"title,omitempty"`
-	Ready             *bool    `json:"ready,omitempty"`
-	IsHelmWorkLoad    *bool    `json:"isHelmWorkLoad,omitempty"`
+	Kind *string `json:"kind,omitempty"`
+	// "helm" or "deployment" or "statefulset" or "daemonset" or "job"
+	ApiVersion     *string `json:"apiVersion,omitempty"`
+	Name           *string `json:"name,omitempty"`
+	Title          *string `json:"title,omitempty"`
+	Ready          *bool   `json:"ready,omitempty"`
+	IsHelmWorkLoad *bool   `json:"isHelmWorkLoad,omitempty"`
+	// 是否为helm应用
 	CreationTimestamp *v1.Time `json:"creationTimestamp,omitempty"`
 	DeployStatus      *string  `json:"deployStatus,omitempty"`
 	IsZeroReplicas    *bool    `json:"isZeroReplicas,omitempty"`
+	// 是否暂停部署 只有一个应用并且replicas为0
+	DenyDelete *bool `json:"denyDelete,omitempty"`
 }
 
 // AppGroupItemStatusApplyConfiguration constructs a declarative configuration of the AppGroupItemStatus type for use with
@@ -110,5 +116,13 @@ func (b *AppGroupItemStatusApplyConfiguration) WithDeployStatus(value string) *A
 // If called multiple times, the IsZeroReplicas field is set to the value of the last call.
 func (b *AppGroupItemStatusApplyConfiguration) WithIsZeroReplicas(value bool) *AppGroupItemStatusApplyConfiguration {
 	b.IsZeroReplicas = &value
+	return b
+}
+
+// WithDenyDelete sets the DenyDelete field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the DenyDelete field is set to the value of the last call.
+func (b *AppGroupItemStatusApplyConfiguration) WithDenyDelete(value bool) *AppGroupItemStatusApplyConfiguration {
+	b.DenyDelete = &value
 	return b
 }

@@ -3,8 +3,8 @@ package controller
 import (
 	// "archive/zip"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 	"helm.sh/helm/v3/pkg/registry"
@@ -49,6 +49,13 @@ func (self Helm) Info(http *gin.Context) {
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
+	}
+	if test401 {
+		test401 = false
+		http.AbortWithStatusJSON(401, gin.H{
+			"code": 401,
+			"msg":  "401",
+		})
 	}
 	helmApi := k8s.NewHelm(client)
 	releases, err := helmApi.Info(http.Param("name"), params.Namespace)
@@ -135,6 +142,16 @@ func (self Helm) AppInfo(http *gin.Context) {
 		"deploymentName":  deploymentName,
 	}, nil, 200)
 
+}
+
+var test401 = false
+
+func (self Helm) Test401(http *gin.Context) {
+	test401 = !test401
+	self.JsonResponse(http, gin.H{
+		"msg":     "ok",
+		"test401": test401,
+	}, nil, 200)
 }
 
 func (self Helm) ReUseValues(http *gin.Context) {

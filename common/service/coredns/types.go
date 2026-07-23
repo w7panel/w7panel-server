@@ -1,53 +1,501 @@
 package coredns
 
 import (
-	"encoding/json"
+	"crypto/sha1"
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"io"
+	"net"
+	"net/netip"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
 
-	"github.com/coredns/caddy/caddyfile"
+	mdns "github.com/miekg/dns"
 )
 
-type DnsConfig struct {
-	Dns []Dns
+const (
+	CoreDNSNamespace      = "kube-system"
+	CoreDNSName           = "coredns"
+	CoreDNSCustomName     = "coredns-custom"
+	PublicDNSServiceName  = "w7-coredns-public"
+	DefaultTTL            = 60
+	DefaultMXPriority     = 10
+	recordIDCommentPrefix = "# w7-dns-record-id:"
+	soaRefresh            = 3600
+	soaRetry              = 1800
+	soaExpire             = 86400
+	soaMinimum            = 1
+	CoreDNSMinVersion     = "v1.12.2"
+	CoreDNSFallthroughUnsupportedMessage = "当前 CoreDNS 的版本低于 v1.12.2，暂不支持该功能，请及时升级版本。"
+)
+
+var (
+	domainPartRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
+	hostPartRe   = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
+)
+
+type Zone struct {
+	Domain     string    `json:"domain"`
+	RecordNum  int       `json:"recordNum"`
+	UpdateTime time.Time `json:"updateTime,omitempty"`
 }
 
-func (self DnsConfig) ToCaddyfile() ([]byte, error) {
-	file := self.ToEncodedCaddyfile()
-	data, err := json.Marshal(file)
+type Record struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	Value      string `json:"value"`
+	TTL        int    `json:"ttl"`
+	MXPriority int    `json:"mxPriority,omitempty"`
+}
+
+type ServerStatus struct {
+	Enabled     bool     `json:"enabled"`
+	ServiceName string   `json:"serviceName"`
+	ServiceType string   `json:"serviceType,omitempty"`
+	ExternalIPs []string `json:"externalIPs"`
+}
+
+type Info struct {
+	Image                     string `json:"image,omitempty"`
+	Version                   string `json:"version,omitempty"`
+	FileFallthroughSupported  bool   `json:"fileFallthroughSupported"`
+	FileFallthroughMinVersion string `json:"fileFallthroughMinVersion"`
+	FileFallthroughMessage    string `json:"fileFallthroughMessage,omitempty"`
+}
+
+func NormalizeDomain(domain string) (string, error) {
+	domain = strings.TrimSpace(strings.ToLower(domain))
+	domain = strings.TrimSuffix(domain, ".")
+	if domain == "" || len(domain) > 253 {
+		return "", errors.New("domain is invalid")
+	}
+	parts := strings.Split(domain, ".")
+	if len(parts) < 2 {
+		return "", errors.New("domain must include at least two labels")
+	}
+	for _, part := range parts {
+		if !domainPartRe.MatchString(part) {
+			return "", fmt.Errorf("domain label %q is invalid", part)
+		}
+	}
+	return domain, nil
+}
+
+func NormalizeRecord(domain string, record Record) (Record, error) {
+	domain, err := NormalizeDomain(domain)
+	if err != nil {
+		return record, err
+	}
+	record.Name = strings.TrimSpace(strings.ToLower(record.Name))
+	if record.Name == "" {
+		record.Name = "@"
+	}
+	if record.Name != "@" {
+		parts := strings.Split(strings.TrimSuffix(record.Name, "."), ".")
+		for _, part := range parts {
+			if !hostPartRe.MatchString(part) {
+				return record, fmt.Errorf("record name %q is invalid", record.Name)
+			}
+		}
+		record.Name = strings.Join(parts, ".")
+	}
+	record.Type = strings.ToUpper(strings.TrimSpace(record.Type))
+	record.Value = strings.TrimSpace(record.Value)
+	if record.TTL <= 0 {
+		record.TTL = DefaultTTL
+	}
+	if record.MXPriority <= 0 {
+		record.MXPriority = DefaultMXPriority
+	}
+	if err := validateRecordValue(domain, record); err != nil {
+		return record, err
+	}
+	if record.ID == "" {
+		record.ID = MakeRecordID(domain, record)
+	}
+	return record, nil
+}
+
+func MakeRecordID(domain string, record Record) string {
+	sum := sha1.Sum([]byte(strings.Join([]string{
+		domain,
+		record.Name,
+		record.Type,
+		record.Value,
+		strconv.Itoa(record.TTL),
+		strconv.Itoa(record.MXPriority),
+	}, "|")))
+	return hex.EncodeToString(sum[:])[:12]
+}
+
+func FQDN(domain string, name string) string {
+	if name == "" || name == "@" {
+		return domain + "."
+	}
+	return strings.TrimSuffix(name, ".") + "." + domain + "."
+}
+
+func RenderZone(domain string, records []Record) (string, error) {
+	return renderZone(domain, records, 0, time.Now())
+}
+
+func RenderZoneWithNextSerial(domain string, records []Record, previousZone string) (string, error) {
+	serial := nextZoneSerial(extractZoneSerial(previousZone), time.Now())
+	return renderZone(domain, records, serial, time.Now())
+}
+
+func RenderZoneServer(domain string) (string, error) {
+	domain, err := NormalizeDomain(domain)
+	if err != nil {
+		return "", err
+	}
+	var builder strings.Builder
+	builder.WriteString(domain)
+	builder.WriteString(" {\n")
+	builder.WriteString("  file /etc/coredns/custom/")
+	builder.WriteString(ZoneFileConfigMapKey(domain))
+	builder.WriteString(" {\n")
+	builder.WriteString("    reload 5s\n")
+	builder.WriteString("    fallthrough\n")
+	builder.WriteString("  }\n")
+	builder.WriteString("  forward . /etc/resolv.conf\n")
+	builder.WriteString("  reload\n")
+	builder.WriteString("  loadbalance\n")
+	builder.WriteString("}\n")
+	return builder.String(), nil
+}
+
+func renderZone(domain string, records []Record, serial int64, now time.Time) (string, error) {
+	domain, err := NormalizeDomain(domain)
+	if err != nil {
+		return "", err
+	}
+	normalized := make([]Record, 0, len(records))
+	for _, record := range records {
+		item, err := NormalizeRecord(domain, record)
+		if err != nil {
+			return "", err
+		}
+		normalized = append(normalized, item)
+	}
+	sortRecords(normalized)
+	if serial <= 0 {
+		serial = nextZoneSerial(0, now)
+	}
+
+	var builder strings.Builder
+	builder.WriteString("$ORIGIN ")
+	builder.WriteString(domain)
+	builder.WriteString(".\n\n")
+	builder.WriteString("@ IN SOA ns.")
+	builder.WriteString(domain)
+	builder.WriteString(". admin.")
+	builder.WriteString(domain)
+	builder.WriteString(". (\n")
+	builder.WriteString("    ")
+	builder.WriteString(strconv.FormatInt(serial, 10))
+	builder.WriteString("\n")
+	builder.WriteString("    ")
+	builder.WriteString(strconv.Itoa(soaRefresh))
+	builder.WriteString("\n")
+	builder.WriteString("    ")
+	builder.WriteString(strconv.Itoa(soaRetry))
+	builder.WriteString("\n")
+	builder.WriteString("    ")
+	builder.WriteString(strconv.Itoa(soaExpire))
+	builder.WriteString("\n")
+	builder.WriteString("    ")
+	builder.WriteString(strconv.Itoa(soaMinimum))
+	builder.WriteString("\n")
+	builder.WriteString(")\n\n")
+	for _, record := range normalized {
+		builder.WriteString(renderZoneRecord(record))
+		builder.WriteString("\n")
+	}
+	return builder.String(), nil
+}
+
+func ParseZone(domain string, data string) ([]Record, error) {
+	domain, err := NormalizeDomain(domain)
 	if err != nil {
 		return nil, err
 	}
-	return caddyfile.FromJSON(data)
-}
-
-func (self DnsConfig) ToEncodedCaddyfile() caddyfile.EncodedCaddyfile {
-	result := caddyfile.EncodedCaddyfile{}
-	for _, dns := range self.Dns {
-		block := caddyfile.EncodedServerBlock{}
-		block.Keys = []string{dns.Domain}
-		for _, record := range dns.DnsRecords {
-			ndomain := dns.ToDomain(record)
-			answerRes := fmt.Sprintf("%s %d In %s %s", ndomain, record.TTL, record.Type, record.Content)
-			template := []interface{}{"template", "IN", record.Type, record.Content, []string{"answer", answerRes}}
-			block.Body = append(block.Body, template)
+	parser := mdns.NewZoneParser(strings.NewReader(data), domain+".", "")
+	records := make([]Record, 0)
+	for rr, ok := parser.Next(); ok; rr, ok = parser.Next() {
+		record, err := recordFromRR(domain, rr)
+		if err != nil {
+			continue
 		}
-		result = append(result, block)
+		record, err = NormalizeRecord(domain, record)
+		if err != nil {
+			continue
+		}
+		records = append(records, record)
 	}
+	if err := parser.Err(); err != nil && !errors.Is(err, io.EOF) {
+		return nil, err
+	}
+	sortRecords(records)
+	return records, nil
+}
+
+func ParseLegacyTemplateZone(domain string, data string) ([]Record, error) {
+	domain, err := NormalizeDomain(domain)
+	if err != nil {
+		return nil, err
+	}
+	lines := strings.Split(data, "\n")
+	records := make([]Record, 0)
+	nextID := ""
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, recordIDCommentPrefix) {
+			nextID = strings.TrimSpace(strings.TrimPrefix(line, recordIDCommentPrefix))
+			continue
+		}
+		if !strings.HasPrefix(line, "answer ") {
+			continue
+		}
+		answer := strings.TrimSpace(strings.TrimPrefix(line, "answer "))
+		if unquoted, err := strconv.Unquote(answer); err == nil {
+			answer = unquoted
+		} else {
+			answer = strings.Trim(answer, `"`)
+			answer = strings.ReplaceAll(answer, `\"`, `"`)
+		}
+		record, err := parseLegacyTemplateAnswer(domain, answer)
+		if err != nil {
+			continue
+		}
+		if nextID != "" {
+			record.ID = nextID
+			nextID = ""
+		}
+		record, err = NormalizeRecord(domain, record)
+		if err != nil {
+			continue
+		}
+		records = append(records, record)
+	}
+	sortRecords(records)
+	return records, nil
+}
+
+func ConfigMapKey(domain string) string {
+	return domain + ".server"
+}
+
+func ZoneFileConfigMapKey(domain string) string {
+	return domain + ".zone"
+}
+
+func DomainFromConfigMapKey(key string) (string, bool) {
+	if !strings.HasSuffix(key, ".server") {
+		return "", false
+	}
+	domain := strings.TrimSuffix(key, ".server")
+	domain, err := NormalizeDomain(domain)
+	return domain, err == nil
+}
+
+func sortRecords(records []Record) {
+	sort.SliceStable(records, func(i, j int) bool {
+		a := records[i]
+		b := records[j]
+		if a.Name != b.Name {
+			return a.Name < b.Name
+		}
+		if a.Type != b.Type {
+			return a.Type < b.Type
+		}
+		return a.Value < b.Value
+	})
+}
+
+func validateRecordValue(domain string, record Record) error {
+	if record.Value == "" {
+		return errors.New("record value is required")
+	}
+	switch record.Type {
+	case "A":
+		addr, err := netip.ParseAddr(record.Value)
+		if err != nil || !addr.Is4() {
+			return errors.New("A record value must be an IPv4 address")
+		}
+	case "AAAA":
+		addr, err := netip.ParseAddr(record.Value)
+		if err != nil || !addr.Is6() {
+			return errors.New("AAAA record value must be an IPv6 address")
+		}
+	case "CNAME":
+		if _, err := NormalizeDomain(record.Value); err != nil {
+			return errors.New("CNAME value must be a domain")
+		}
+	case "TXT":
+		if strings.ContainsAny(record.Value, "\r\n") {
+			return errors.New("TXT value must be a single line")
+		}
+	case "MX":
+		if _, err := NormalizeDomain(record.Value); err != nil {
+			return errors.New("MX value must be a domain")
+		}
+	case "NS":
+		if _, err := NormalizeDomain(record.Value); err != nil {
+			return errors.New("NS value must be a domain")
+		}
+	default:
+		return fmt.Errorf("record type %q is unsupported", record.Type)
+	}
+	_ = domain
+	return nil
+}
+
+func renderZoneRecord(record Record) string {
+	name := record.Name
+	if name == "" {
+		name = "@"
+	}
+	switch record.Type {
+	case "CNAME":
+		return fmt.Sprintf("%s %d IN CNAME %s.", name, record.TTL, strings.TrimSuffix(record.Value, "."))
+	case "MX":
+		return fmt.Sprintf("%s %d IN MX %d %s.", name, record.TTL, record.MXPriority, strings.TrimSuffix(record.Value, "."))
+	case "NS":
+		return fmt.Sprintf("%s %d IN NS %s.", name, record.TTL, strings.TrimSuffix(record.Value, "."))
+	case "TXT":
+		return fmt.Sprintf("%s %d IN TXT %s", name, record.TTL, strconv.Quote(record.Value))
+	default:
+		return fmt.Sprintf("%s %d IN %s %s", name, record.TTL, record.Type, record.Value)
+	}
+}
+
+func parseLegacyTemplateAnswer(domain string, answer string) (Record, error) {
+	fields := strings.Fields(answer)
+	if len(fields) < 5 {
+		return Record{}, errors.New("answer is invalid")
+	}
+	name, err := recordNameFromQName(domain, fields[0])
+	if err != nil {
+		return Record{}, err
+	}
+	ttl, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return Record{}, err
+	}
+	recordType := strings.ToUpper(fields[3])
+	record := Record{Name: name, Type: recordType, TTL: ttl}
+	switch recordType {
+	case "MX":
+		if len(fields) < 6 {
+			return Record{}, errors.New("MX answer is invalid")
+		}
+		priority, err := strconv.Atoi(fields[4])
+		if err != nil {
+			return Record{}, err
+		}
+		record.MXPriority = priority
+		record.Value = strings.TrimSuffix(strings.ToLower(fields[5]), ".")
+	case "TXT":
+		value := strings.Join(fields[4:], " ")
+		value = strings.Trim(value, `"`)
+		record.Value = value
+	case "A", "AAAA":
+		record.Value = fields[4]
+	default:
+		record.Value = strings.TrimSuffix(strings.ToLower(fields[4]), ".")
+	}
+	return record, nil
+}
+
+func recordNameFromQName(domain string, qname string) (string, error) {
+	qname = strings.TrimSuffix(strings.ToLower(qname), ".")
+	name := "@"
+	if qname != domain {
+		suffix := "." + domain
+		if !strings.HasSuffix(qname, suffix) {
+			return "", errors.New("record domain mismatch")
+		}
+		name = strings.TrimSuffix(qname, suffix)
+	}
+	return name, nil
+}
+
+func recordNameFromRR(domain string, header *mdns.RR_Header) (string, error) {
+	return recordNameFromQName(domain, header.Name)
+}
+
+func recordFromRR(domain string, rr mdns.RR) (Record, error) {
+	header := rr.Header()
+	name, err := recordNameFromRR(domain, header)
+	if err != nil {
+		return Record{}, err
+	}
+	record := Record{Name: name, TTL: int(header.Ttl)}
+	switch item := rr.(type) {
+	case *mdns.A:
+		record.Type = "A"
+		record.Value = item.A.String()
+	case *mdns.AAAA:
+		record.Type = "AAAA"
+		record.Value = item.AAAA.String()
+	case *mdns.CNAME:
+		record.Type = "CNAME"
+		record.Value = strings.TrimSuffix(strings.ToLower(item.Target), ".")
+	case *mdns.MX:
+		record.Type = "MX"
+		record.MXPriority = int(item.Preference)
+		record.Value = strings.TrimSuffix(strings.ToLower(item.Mx), ".")
+	case *mdns.NS:
+		record.Type = "NS"
+		record.Value = strings.TrimSuffix(strings.ToLower(item.Ns), ".")
+	case *mdns.TXT:
+		record.Type = "TXT"
+		if len(item.Txt) == 0 {
+			record.Value = ""
+		} else {
+			record.Value = strings.Join(item.Txt, "")
+		}
+	default:
+		return Record{}, fmt.Errorf("record type %d is unsupported", header.Rrtype)
+	}
+	return record, nil
+}
+
+func extractZoneSerial(data string) int64 {
+	parser := mdns.NewZoneParser(strings.NewReader(data), "", "")
+	for rr, ok := parser.Next(); ok; rr, ok = parser.Next() {
+		if soa, ok := rr.(*mdns.SOA); ok {
+			return int64(soa.Serial)
+		}
+	}
+	return 0
+}
+
+func nextZoneSerial(previous int64, now time.Time) int64 {
+	base, _ := strconv.ParseInt(now.Format("20060102")+"01", 10, 64)
+	if previous >= base {
+		return previous + 1
+	}
+	return base
+}
+
+func CollectServiceExternalIPs(ingress []string, externalIPs []string) []string {
+	result := append([]string{}, externalIPs...)
+	for _, item := range ingress {
+		if ip := net.ParseIP(item); ip != nil {
+			result = append(result, item)
+			continue
+		}
+		if item != "" {
+			result = append(result, item)
+		}
+	}
+	sort.Strings(result)
 	return result
-}
-
-type DnsRecord struct {
-	Name    string
-	Type    string
-	TTL     int
-	Content string
-}
-
-type Dns struct {
-	Domain     string
-	DnsRecords []DnsRecord
-}
-
-func (self Dns) ToDomain(record DnsRecord) string {
-	return record.Name + "." + self.Domain + "."
 }

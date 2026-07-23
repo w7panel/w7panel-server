@@ -3,25 +3,38 @@ package appgroup
 import (
 	"testing"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	"github.com/stretchr/testify/assert"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestOnAdd(t *testing.T) {
-	sdk := k8s.NewK8sClient()
-	ingress, err := sdk.ClientSet.NetworkingV1().Ingresses("default").Get(sdk.Ctx, "ing-kubhutmv1", metav1.GetOptions{})
-	assert.Nil(t, err)
-	sigClient, err := sdk.ToSigClient()
-	assert.Nil(t, err)
-	OnAddIngress(sigClient, ingress)
+func TestGetResourceGroupNamesSupportsGroupNames(t *testing.T) {
+	obj := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"group":             "owner",
+				"w7.cc/group-names": "site-a",
+			},
+		},
+	}
+
+	assert.Equal(t, []string{"owner", "site-a"}, getResourceGroupNames(obj))
+	assert.True(t, resourceVisibleInGroup(obj, "site-a"))
+	assert.False(t, resourceVisibleInGroup(obj, "site"))
 }
 
-func TestOnDel(t *testing.T) {
-	sdk := k8s.NewK8sClient()
-	ingress, err := sdk.ClientSet.NetworkingV1().Ingresses("default").Get(sdk.Ctx, "ing-alqzvbhs", metav1.GetOptions{})
-	assert.Nil(t, err)
-	sigClient, err := sdk.ToSigClient()
-	assert.Nil(t, err)
-	OnDeleteIngress(sigClient, ingress)
+func TestGetResourceGroupNamesSupportsHelmMetadata(t *testing.T) {
+	obj := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"app.kubernetes.io/instance": "helm-instance",
+			},
+			Annotations: map[string]string{
+				"meta.helm.sh/release-name": "helm-release",
+			},
+		},
+	}
+
+	assert.Equal(t, []string{"helm-instance", "helm-release"}, getResourceGroupNames(obj))
+	assert.True(t, resourceVisibleInGroup(obj, "helm-release"))
 }

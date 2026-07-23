@@ -5,7 +5,7 @@ metadata:
    labels:
          {{- include "k8s-offline-metrics.labels" . | nindent 4 }}
 spec:
-    # bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
     honorLabels: true
     honorTimestamps: false
     interval: 60s
@@ -31,18 +31,18 @@ spec:
         -
             action: labeldrop
             regex: __meta_kubernetes_node_label_feature_node.*
-        -
-            sourceLabels:
-                - __metrics_path__
-            targetLabel: metrics_path
+        # -
+        #     sourceLabels:
+        #         - __metrics_path__
+        #     targetLabel: metrics_path
         # -
         #     replacement: kubelet-resource
         #     targetLabel: job
     jobLabel: node-exporter   
-    scheme: http
+    scheme: https
     scrapeTimeout: 5s
     selector: {}
-    # tlsConfig:
-    #     caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-    #     insecureSkipVerify: true
+    tlsConfig:
+        caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        insecureSkipVerify: true
 

@@ -3,14 +3,13 @@ package console
 import (
 	"log/slog"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/config"
-	"gitee.com/we7coreteam/k8s-offline/common/service/console"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	"github.com/spf13/cobra"
+	"github.com/w7panel/w7panel/common/service/config"
+	"github.com/w7panel/w7panel/common/service/console"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 )
 
-// username password register
 type Cluster struct {
 	console2.Abstract
 }
@@ -36,8 +35,6 @@ func (c Cluster) GetName() string {
 }
 
 func (c Cluster) Configure(cmd *cobra.Command) {
-	// username password register
-	//
 	cmd.Flags().StringVar(&cro.ApiServerUrl, "apiServerUrl", "", "apiServerUrl")
 	cmd.Flags().StringVar(&cro.ThirdPartyCDToken, "thirdPartyCDToken", "", "交付系统token")
 	cmd.Flags().StringVar(&cro.OfflineUrl, "offlineUrl", "", "离线地址")
@@ -69,11 +66,8 @@ func (c Cluster) Handle(cmd *cobra.Command, args []string) {
 
 	if cro.RegisterCluster {
 		slog.Info("register cluster")
-		// time.Sleep(66 * time.Second)
 		c.RegisterCluster(sdk)
 		slog.Info("register cluster end")
-
-		// c.RegisterCluster(sdk)
 	}
 
 }
@@ -90,7 +84,6 @@ func (c Cluster) RegisterCluster(sdk *k8s.Sdk) error {
 	err = client.RegisterUseCdToken(false, "")
 	if err != nil {
 		slog.Warn("err register cluster", "err", err)
-		// return
 		return err
 	}
 	return nil

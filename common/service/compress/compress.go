@@ -11,19 +11,25 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/procpath"
 	"github.com/bodgit/sevenzip"
 	"github.com/klauspost/pgzip"
 	"github.com/ulikunitz/xz"
+	"github.com/w7panel/w7panel/common/service/procpath"
 )
 
 type Compressor struct {
 	rootPath string
 }
 
-func NewCompressor(pid string) *Compressor {
+func NewCompressor(pid string, subPid string) *Compressor {
 	return &Compressor{
-		rootPath: procpath.GetRootPath(pid),
+		rootPath: procpath.GetRootPathWithSubPid(pid, subPid),
+	}
+}
+
+func NewCompressorRootPath(rootPath string) *Compressor {
+	return &Compressor{
+		rootPath: rootPath,
 	}
 }
 
@@ -40,21 +46,78 @@ func (c *Compressor) Compress(sources []string, output string) error {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
+	// 计算所有源的共同基础路径
+	basePath := c.calculateBasePath(sources)
+
 	switch format {
 	case "zip":
-		return c.compressZip(sources, outputPath)
+		return c.compressZip(sources, outputPath, basePath)
 	case "tar":
-		return c.compressTar(sources, outputPath, false, "")
+		return c.compressTar(sources, outputPath, false, "", basePath)
 	case "tar.gz", "tgz":
-		return c.compressTar(sources, outputPath, true, "gzip")
+		return c.compressTar(sources, outputPath, true, "gzip", basePath)
 	case "tar.bz2", "tbz2":
-		return c.compressTar(sources, outputPath, true, "bzip2")
+		return c.compressTar(sources, outputPath, true, "bzip2", basePath)
 	case "tar.xz", "txz":
-		return c.compressTar(sources, outputPath, true, "xz")
+		return c.compressTar(sources, outputPath, true, "xz", basePath)
 	default:
 		// 默认使用 zip
-		return c.compressZip(sources, outputPath)
+		return c.compressZip(sources, outputPath, basePath)
 	}
+}
+
+// calculateBasePath 计算所有源文件的共同基础路径
+func (c *Compressor) calculateBasePath(sources []string) string {
+	if len(sources) == 0 {
+		return c.rootPath
+	}
+	if len(sources) == 1 {
+		// 单个源：如果是文件，使用其目录；如果是目录，使用其本身
+		srcPath := filepath.Join(c.rootPath, sources[0])
+		info, err := os.Stat(srcPath)
+		if err != nil {
+			return c.rootPath
+		}
+		if info.IsDir() {
+			return srcPath
+		}
+		return filepath.Dir(srcPath)
+	}
+
+	// 多个源：找到所有路径的共同前缀
+	dirs := make([]string, 0, len(sources))
+	for _, src := range sources {
+		srcPath := filepath.Join(c.rootPath, src)
+		info, err := os.Stat(srcPath)
+		if err != nil {
+			continue
+		}
+		if info.IsDir() {
+			dirs = append(dirs, srcPath)
+		} else {
+			dirs = append(dirs, filepath.Dir(srcPath))
+		}
+	}
+
+	if len(dirs) == 0 {
+		return c.rootPath
+	}
+
+	// 找到共同父目录
+	common := dirs[0]
+	for _, d := range dirs[1:] {
+		common = c.commonPath(common, d)
+	}
+
+	return common
+}
+
+// commonPath 找到两个路径的共同父目录
+func (c *Compressor) commonPath(a, b string) string {
+	for len(a) > 0 && !strings.HasPrefix(b, a) {
+		a = filepath.Dir(a)
+	}
+	return a
 }
 
 // Extract 解压文件
@@ -114,7 +177,7 @@ func detectFormat(filename string) string {
 }
 
 // compressZip 压缩为 ZIP 格式
-func (c *Compressor) compressZip(sources []string, output string) error {
+func (c *Compressor) compressZip(sources []string, output string, basePath string) error {
 	zipFile, err := os.Create(output)
 	if err != nil {
 		return err
@@ -126,7 +189,7 @@ func (c *Compressor) compressZip(sources []string, output string) error {
 
 	for _, src := range sources {
 		srcPath := filepath.Join(c.rootPath, src)
-		if err := c.addToZip(zipWriter, srcPath, c.rootPath); err != nil {
+		if err := c.addToZip(zipWriter, srcPath, basePath); err != nil {
 			return err
 		}
 	}
@@ -135,15 +198,33 @@ func (c *Compressor) compressZip(sources []string, output string) error {
 }
 
 // addToZip 添加文件到 ZIP
-func (c *Compressor) addToZip(zipWriter *zip.Writer, filePath, rootPath string) error {
+func (c *Compressor) addToZip(zipWriter *zip.Writer, filePath, basePath string) error {
+	return c.addToZipWithBase(zipWriter, filePath, basePath, "")
+}
+
+// addToZipWithBase 添加文件到 ZIP，baseName 用于指定压缩后的文件名
+func (c *Compressor) addToZipWithBase(zipWriter *zip.Writer, filePath, basePath, baseName string) error {
 	info, err := os.Stat(filePath)
 	if err != nil {
 		return err
 	}
 
-	relPath, err := filepath.Rel(rootPath, filePath)
-	if err != nil {
-		return err
+	var relPath string
+	if !info.IsDir() {
+		// 单个文件：相对于 basePath 计算路径
+		if baseName != "" {
+			relPath = baseName
+		} else {
+			relPath, err = filepath.Rel(basePath, filePath)
+			if err != nil {
+				relPath = filepath.Base(filePath)
+			}
+		}
+	} else {
+		relPath, err = filepath.Rel(basePath, filePath)
+		if err != nil {
+			relPath = filepath.Base(filePath)
+		}
 	}
 
 	if info.IsDir() {
@@ -153,7 +234,7 @@ func (c *Compressor) addToZip(zipWriter *zip.Writer, filePath, rootPath string) 
 		}
 		for _, entry := range entries {
 			subPath := filepath.Join(filePath, entry.Name())
-			if err := c.addToZip(zipWriter, subPath, rootPath); err != nil {
+			if err := c.addToZipWithBase(zipWriter, subPath, basePath, ""); err != nil {
 				return err
 			}
 		}
@@ -184,7 +265,7 @@ func (c *Compressor) addToZip(zipWriter *zip.Writer, filePath, rootPath string) 
 }
 
 // compressTar 压缩为 TAR 格式（可选压缩）
-func (c *Compressor) compressTar(sources []string, output string, compress bool, compressType string) error {
+func (c *Compressor) compressTar(sources []string, output string, compress bool, compressType string, basePath string) error {
 	file, err := os.Create(output)
 	if err != nil {
 		return err
@@ -217,7 +298,7 @@ func (c *Compressor) compressTar(sources []string, output string, compress bool,
 
 	for _, src := range sources {
 		srcPath := filepath.Join(c.rootPath, src)
-		if err := c.addToTar(tarWriter, srcPath, c.rootPath); err != nil {
+		if err := c.addToTar(tarWriter, srcPath, basePath); err != nil {
 			return err
 		}
 	}
@@ -226,15 +307,33 @@ func (c *Compressor) compressTar(sources []string, output string, compress bool,
 }
 
 // addToTar 添加文件到 TAR
-func (c *Compressor) addToTar(tarWriter *tar.Writer, filePath, rootPath string) error {
+func (c *Compressor) addToTar(tarWriter *tar.Writer, filePath, basePath string) error {
+	return c.addToTarWithBase(tarWriter, filePath, basePath, "")
+}
+
+// addToTarWithBase 添加文件到 TAR，baseName 用于指定压缩后的文件名
+func (c *Compressor) addToTarWithBase(tarWriter *tar.Writer, filePath, basePath, baseName string) error {
 	info, err := os.Stat(filePath)
 	if err != nil {
 		return err
 	}
 
-	relPath, err := filepath.Rel(rootPath, filePath)
-	if err != nil {
-		return err
+	var relPath string
+	if !info.IsDir() {
+		// 单个文件：相对于 basePath 计算路径
+		if baseName != "" {
+			relPath = baseName
+		} else {
+			relPath, err = filepath.Rel(basePath, filePath)
+			if err != nil {
+				relPath = filepath.Base(filePath)
+			}
+		}
+	} else {
+		relPath, err = filepath.Rel(basePath, filePath)
+		if err != nil {
+			relPath = filepath.Base(filePath)
+		}
 	}
 
 	header, err := tar.FileInfoHeader(info, "")
@@ -264,7 +363,7 @@ func (c *Compressor) addToTar(tarWriter *tar.Writer, filePath, rootPath string) 
 		}
 		for _, entry := range entries {
 			subPath := filepath.Join(filePath, entry.Name())
-			if err := c.addToTar(tarWriter, subPath, rootPath); err != nil {
+			if err := c.addToTarWithBase(tarWriter, subPath, basePath, ""); err != nil {
 				return err
 			}
 		}
@@ -327,6 +426,44 @@ func (c *Compressor) extractTar(source, target string) error {
 		return err
 	}
 	defer file.Close()
+
+	// 检测实际文件类型（防止扩展名与实际格式不符）
+	buf := make([]byte, 512)
+	n, err := file.Read(buf)
+	if err != nil {
+		return err
+	}
+	buf = buf[:n]
+
+	// 重置文件指针
+	if _, err := file.Seek(0, 0); err != nil {
+		return err
+	}
+
+	// 检测是否为 gzip
+	if len(buf) >= 2 && buf[0] == 0x1F && buf[1] == 0x8B {
+		gzReader, err := pgzip.NewReader(file)
+		if err != nil {
+			return fmt.Errorf("failed to create gzip reader: %w", err)
+		}
+		defer gzReader.Close()
+		return c.extractTarReader(gzReader, target)
+	}
+
+	// 检测是否为 xz
+	if len(buf) >= 6 && buf[0] == 0xFD && buf[1] == 0x37 && buf[2] == 0x7A && buf[3] == 0x58 && buf[4] == 0x5A && buf[5] == 0x00 {
+		xzReader, err := xz.NewReader(file)
+		if err != nil {
+			return fmt.Errorf("failed to create xz reader: %w", err)
+		}
+		return c.extractTarReader(xzReader, target)
+	}
+
+	// 检测是否为 bzip2
+	if len(buf) >= 3 && buf[0] == 0x42 && buf[1] == 0x5A && buf[2] == 0x68 {
+		bz2Reader := bzip2.NewReader(file)
+		return c.extractTarReader(bz2Reader, target)
+	}
 
 	return c.extractTarReader(file, target)
 }

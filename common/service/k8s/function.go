@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"context"
-	"log/slog"
 	"os"
 
 	corev1 "k8s.io/api/core/v1"
@@ -15,7 +14,7 @@ func CheckLogo() error {
 	sdk := NewK8sClient()
 	configMap, err := sdk.ClientSet.CoreV1().ConfigMaps("kube-system").Get(context.TODO(), LOGO_NAME, metav1.GetOptions{})
 	if err != nil {
-		slog.Error("Failed to get logo config", "error", err)
+		// slog.Error("Failed to get logo config", "error", err)
 		return err
 	}
 	return WriteLogo(configMap)
@@ -30,7 +29,7 @@ func WriteLogo(configMap *corev1.ConfigMap) error {
 				// save configMap
 				err := os.WriteFile(kodata+"/assets/logo.png", logoData, 0644)
 				if err != nil {
-					slog.Error("Failed to write logo", "error", err)
+					// slog.Error("Failed to write logo", "error", err)
 					return err
 				}
 			} // save configMap

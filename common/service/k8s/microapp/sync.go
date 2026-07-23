@@ -1,16 +1,20 @@
 package microapp
 
 import (
-	"errors"
 	"log/slog"
+	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	microapp "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/microapp/v1alpha1"
 	"github.com/samber/lo"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 )
 
-func Sync(k3kName, k3kNs string) error {
+func Sync(k3kName, k3kNs, cvmName string) error {
+
+	if true {
+		return nil // 直接查询 不同步
+	}
 	rootSdk := k8s.NewK8sClient().Sdk
 	rootList, err := loadMicroAppList(rootSdk)
 	sa, err := rootSdk.GetServiceAccount("default", k3kName)
@@ -18,10 +22,10 @@ func Sync(k3kName, k3kNs string) error {
 		return err
 	}
 	currentRole, ok := sa.Annotations["w7.cc/role"]
-	if !ok {
-		return errors.New("sync microapp role is empty")
+	if !ok || currentRole == "" {
+		currentRole = "normal"
 	}
-	k3kConfig := k8s.NewK3kConfig(k3kName, k3kNs, helper.GetApiServerHost(k3kNs))
+	k3kConfig := k8s.NewK3kConfig(k3kName, k3kNs, helper.GetApiServerHost(k3kNs), cvmName)
 	root := k8s.NewK8sClient()
 	clientsdk, err := root.GetK3kClusterSdkByConfig(k3kConfig)
 	if err != nil {
@@ -47,7 +51,8 @@ func Sync(k3kName, k3kNs string) error {
 	// 删除多余的
 	for _, item := range clientList.Items {
 		if item.Labels["microapp.w7.cc/from"] == "root" {
-			_, has := rootItemsKeyBy[item.Name]
+			rootMicroName := strings.ReplaceAll(item.Name, "-root", "")
+			_, has := rootItemsKeyBy[rootMicroName]
 			if !has {
 				err = delMicroApp(clientsdk, &item)
 				if err != nil {

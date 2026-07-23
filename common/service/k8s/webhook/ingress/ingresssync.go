@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/appgroup"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -267,7 +267,6 @@ func doSync(client sigclient.Client, ing *networkingv1.Ingress, delete bool) {
 }
 
 func OnAdd(client sigclient.Client, ingress *networkingv1.Ingress) {
-	appgroup.OnAddIngress(client, ingress)
 	if !isMain(ingress) {
 		return
 	}

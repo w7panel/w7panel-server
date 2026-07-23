@@ -4,9 +4,11 @@ import (
 	"errors"
 	"net/url"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	v1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
+	"github.com/w7panel/w7panel/common/helper"
+	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 )
+
+const panelInstallURLAnnotation = "w7.cc/panel-install-url"
 
 func NeedNotifyInstalled(group *v1alpha1.AppGroup) bool {
 	if group.Annotations == nil {
@@ -38,7 +40,7 @@ func NotifyInstalled(group *v1alpha1.AppGroup) error {
 		return err
 	}
 	uri.Path = "/zpk/respo/install/complete-notify"
-	err = notify(uri.String(), group.Annotations["w7.cc/ticket"])
+	err = notify(uri.String(), group)
 	if err != nil {
 		return err
 	}
@@ -58,7 +60,7 @@ func NotifyDeleted(group *v1alpha1.AppGroup) error {
 		return err
 	}
 	uri.Path = "/zpk/respo/uninstall/complete-notify"
-	err = notify(uri.String(), group.Annotations["w7.cc/ticket"])
+	err = notify(uri.String(), group)
 	if err != nil {
 
 		return err
@@ -66,10 +68,12 @@ func NotifyDeleted(group *v1alpha1.AppGroup) error {
 	return err
 }
 
-func notify(url string, ticket string) error {
+func notify(url string, group *v1alpha1.AppGroup) error {
 
 	data := map[string]string{
-		"ticket": ticket,
+		"ticket":          group.Annotations["w7.cc/ticket"],
+		"panel_device_sn": panelDeviceSN(),
+		"panel_url":       panelURL(group),
 	}
 	res, err := helper.RetryHttpClient().R().SetFormData(data).Post(url)
 	if err != nil {
@@ -79,4 +83,15 @@ func notify(url string, ticket string) error {
 		return errors.New("appgroup notify error")
 	}
 	return err
+}
+
+func panelDeviceSN() string {
+	return ""
+}
+
+func panelURL(group *v1alpha1.AppGroup) string {
+	if group == nil || group.Annotations == nil {
+		return ""
+	}
+	return group.Annotations[panelInstallURLAnnotation]
 }

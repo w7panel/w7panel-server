@@ -96,28 +96,3 @@ func AES_decrypt(text, key []byte) ([]byte, error) {
 	return result, nil
 
 }
-
-// func main() {
-
-// 	// 定义待加密文本
-// 	str := "Hello World"
-
-// 	// 定义密码(16, 24, 32)
-// 	key := []byte("我是小白呀!")
-// 	fmt.Println("原文本:", str, "密码:", string(key))
-
-// 	// 加密
-// 	encrypted, err := AES_encrypt([]byte(str), key)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	fmt.Println("加密结果:", base64.StdEncoding.EncodeToString(encrypted))
-
-// 	// 解密
-// 	decrypted, err := AES_decrypt(encrypted, key)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	fmt.Println("解密结果:", string(decrypted))
-
-// }

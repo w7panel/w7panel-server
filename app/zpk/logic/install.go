@@ -3,14 +3,14 @@ package logic
 import (
 	"log/slog"
 
-	"gitee.com/we7coreteam/k8s-offline/app/zpk/logic/types"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/appgroup"
-	convert "gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk"
-	helm "gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk"
-	zpktypes "gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk/types"
-	"gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
 	"github.com/samber/lo"
+	"github.com/w7panel/w7panel/app/zpk/logic/types"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
+	convert "github.com/w7panel/w7panel/common/service/k8s/zpk"
+	helm "github.com/w7panel/w7panel/common/service/k8s/zpk"
+	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/types"
+	"github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
 	batchv1 "k8s.io/api/batch/v1"
@@ -67,15 +67,16 @@ func (z *Install) createHelmJob(myPack *types.PackageApp, shellType types.ShellT
 		DeployStatus: v1alpha1.StatusDeploying,
 	}
 	if shellJob != nil {
-		shellInfo := v1alpha1.ResourceInfo{
-			Name:         shellJob.Name,
-			Namespace:    myPack.GetNamespace(),
-			Kind:         "Job",
-			ApiVersion:   "batch/v1",
-			DeployStatus: v1alpha1.StatusDeploying,
-			DeployTitle:  shell.GetTitle(),
-		}
-		installResult.ResourceList = append(installResult.ResourceList, shellInfo)
+		// 新版制品库 已经自带了helm job
+		// shellInfo := v1alpha1.ResourceInfo{
+		// 	Name:         shellJob.Name,
+		// 	Namespace:    myPack.GetNamespace(),
+		// 	Kind:         "Job",
+		// 	ApiVersion:   "batch/v1",
+		// 	DeployStatus: v1alpha1.StatusDeploying,
+		// 	DeployTitle:  shell.GetTitle(),
+		// }
+		// installResult.ResourceList = append(installResult.ResourceList, shellInfo)
 	}
 	return installResult, jobs, nil
 }
@@ -177,7 +178,7 @@ func (z *Install) NeedHelmInstall() bool {
 }
 
 func (z *Install) Install(name, namespace string) error {
-	go downStatic(z.pk.Root)
+	// go downStatic(z.pk.Root)
 	if z.NeedHelmInstall() {
 		//为啥helm 单独走一条线， 如果helmjob 当作一个helmchart安装的花，导致helm更新时候判断currentRelease只有一个job,比对不出来需要更新的资源
 		//导致pvc每次都重建 数据丢失
@@ -211,7 +212,6 @@ func (z *Install) Install(name, namespace string) error {
 }
 
 func (z *Install) Upgrade(name, namespace string) error {
-	go downStatic(z.pk.Root)
 	if z.NeedHelmInstall() {
 		return z.InstallUseJob(name, namespace, types.ShellUpgrade)
 	}
@@ -256,13 +256,20 @@ func (z *Install) persistGroup(group *v1alpha1.AppGroup) error {
 	oldVersion := fetchGroup.Spec.Version
 	fetchGroup.Spec = group.Spec
 	keepAnnoKey := []string{"w7.cc/domains", "w7.cc/ports", "w7.cc/default-domain", "w7.cc/create-svc"}
-	for k, v := range group.Annotations {
-		if !lo.Contains(keepAnnoKey, k) {
-			fetchGroup.Annotations[k] = v
+	if fetchGroup.Annotations == nil {
+		fetchGroup.Annotations = map[string]string{}
+	}
+	keepAv := map[string]string{}
+	for k, v := range fetchGroup.Annotations {
+		if lo.Contains(keepAnnoKey, k) {
+			keepAv[k] = v
 		}
 	}
 	//更新中的版本
 	fetchGroup.Annotations = group.Annotations
+	for k, v := range keepAv {
+		fetchGroup.Annotations[k] = v
+	}
 	fetchGroup.Labels = group.Labels
 
 	fetchGroup.Spec.Version = oldVersion
@@ -297,10 +304,20 @@ func (z *Install) CreateOrUpdateGroup(namespace, name string, items []v1alpha1.D
 	if group != nil {
 		group3 := helm.ToAppGroup(z.pk.Root, items)
 		keepAnnoKey := []string{"w7.cc/domains", "w7.cc/ports", "w7.cc/default-domain", "w7.cc/create-svc"}
-		for k, v := range group3.Annotations {
-			if !lo.Contains(keepAnnoKey, k) {
-				group.Annotations[k] = v
+		// for k, v := range group3.Annotations {
+		// 	if !lo.Contains(keepAnnoKey, k) {
+		// 		group.Annotations[k] = v
+		// 	}
+		// }
+		keepAv := map[string]string{}
+		for k, v := range group.Annotations {
+			if lo.Contains(keepAnnoKey, k) {
+				keepAv[k] = v
 			}
+		}
+		group.Annotations = group3.Annotations
+		for k, v := range keepAv {
+			group.Annotations[k] = v
 		}
 		oldVersion := group.Spec.Version
 		group.Spec = group3.Spec

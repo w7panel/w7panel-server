@@ -3,7 +3,7 @@ package logic
 import (
 	"testing"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s"
 )
 
 func TestCheckX(t *testing.T) {
@@ -14,6 +14,5 @@ func TestCheckX(t *testing.T) {
 	upgradeCheck := NewUpgradeCheck(sdk)
 	upgradeCheck.WithCDToken(token)
 	upgradeCheck.Check("default", "w7-pros-28693-gte7p7a84d")
-	// t.print(result)
 
 }

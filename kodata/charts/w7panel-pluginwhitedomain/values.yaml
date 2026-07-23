@@ -1,0 +1,42 @@
+app:
+  identify: w7panel-pluginwhitedomain
+  title: higress域名白名单
+gatewayPlugin:
+  configSchema: null
+  defaultConfig:
+    response_code: "404"
+    response_content: not found
+    white_domains: []
+  hasFrontend: true
+  runtime:
+    phase: AUTHN
+    priority: 220
+    url: http://w7panel-offline.default.svc:8000/ui/wasm/plugin-domain-1.0.2.wasm
+  supportGlobal: true
+  supportRule: false
+
+
+backend_config:
+- backend_port: 0
+  backend_url: ""
+  frontend_props: {}
+  load_mode: static_hosting
+  proxy_request:
+    headers: null
+    query: null
+  role: founder
+  type: external
+bindings:
+- menu:
+  - displayorder: 0
+    do: '#/'
+    icon: ""
+    icon_svg: null
+    is_default: 1
+    location: normal
+    parent: ""
+    title: 通用设置
+  name: founder
+  status: 1
+  support: thirdparty_cd
+  title: 创始人

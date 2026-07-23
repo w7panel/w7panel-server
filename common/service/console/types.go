@@ -2,10 +2,11 @@ package console
 
 import (
 	"crypto/x509"
+	"log/slog"
 	"time"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/config"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/config"
 )
 
 type PayInfo struct {
@@ -18,17 +19,6 @@ type CouponCode struct {
 	Code string `json:"code"`
 }
 
-/*
-*
-
-	'canBuy' => $canBuy,
-	                   'needCheckFinish' => true,
-	                   'needCheckAfter' => false,
-	                   'orderSn' => $k3kOrder->ip_order_sn,
-	                   'orderId' => $k3kOrder->ip_order_id,
-	                   "error" => "有未验收的订单，请先完成验收后再购买资源包",
-	                   "goBtn" => "去验收"
-*/
 type LastPaidOrder struct {
 	CanBuy          bool     `json: "canBuy"`
 	NeedCheckFinish bool     `json: "needCheckFinish"`
@@ -117,9 +107,13 @@ func IsFree() bool {
 
 func RefreshLicense() {
 	if licenseClient != nil {
-		currentLicense, _ = licenseClient.GetLicense()
-		if currentLicense != nil {
-			config.MainW7Config, _ = licenseClient.GetConfig(currentLicense.FounderSaName)
+		cl, err := licenseClient.GetLicense()
+		if err != nil {
+			slog.Error("获取license失败", "err", err)
+		}
+		if cl != nil {
+			currentLicense = cl
+			config.MainW7Config, _ = licenseClient.GetConfig(cl.FounderSaName)
 		}
 	}
 }
@@ -185,5 +179,17 @@ func (c *License) ToArray() map[string]interface{} {
 
 type ThirdPartyCDToken struct {
 	Token string `json:"token"`
+	// Exp   int64  `json:"expiretime"`
+}
+
+type PassportToken struct {
+	Token      string `json:"access_token"`
+	ExpireTime int64  `json:"expire_time"`
+	// Exp   int64  `json:"expiretime"`
+}
+
+type PassportCode struct {
+	Code string `json:"code"`
+
 	// Exp   int64  `json:"expiretime"`
 }

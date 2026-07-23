@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 )
@@ -35,7 +35,43 @@ func RegisterSite(token, releaseName, host string) (appSecret *AppSecret, err er
 	return cdClient.CreateSite(host, releaseName)
 }
 
-func PatchAppId(client *k8s.Sdk, appSecret *AppSecret, deploymentName string, namespace string) (err error) {
+func RegisterSiteZpk(host, identifie string) (appSecret *AppSecret, err error) {
+
+	sdkClient, err := NewDefaultSdkClient()
+	if err != nil {
+		slog.Error("RegisterSiteZpk error", "err", err)
+	}
+
+	license, err := sdkClient.CreateSiteFromPanel("https://"+host, identifie)
+	if err != nil {
+		return nil, err
+	}
+	return &AppSecret{
+		AppId:     license.AppId,
+		AppSecret: license.AppSecret,
+	}, nil
+
+}
+
+func RegisterSiteZpkOpenId(host, identifie, openid string) (appSecret *AppSecret, err error) {
+
+	sdkClient, err := NewDefaultSdkClient()
+	if err != nil {
+		slog.Error("RegisterSiteZpk error", "err", err)
+	}
+
+	license, err := sdkClient.CreateSiteFromPanel2("https://"+host, identifie, openid)
+	if err != nil {
+		return nil, err
+	}
+	return &AppSecret{
+		AppId:     license.AppId,
+		AppSecret: license.AppSecret,
+	}, nil
+
+}
+
+func PatchAppId(client *k8s.Sdk, appSecret *AppSecret, deploymentName string, namespace string, containerName string) (err error) {
 	patchData := `{
 		"spec": {
 			"template": {
@@ -59,7 +95,7 @@ func PatchAppId(client *k8s.Sdk, appSecret *AppSecret, deploymentName string, na
 			}
 		}
 	}`
-	patchData = fmt.Sprintf(patchData, deploymentName, appSecret.AppId, appSecret.AppSecret)
+	patchData = fmt.Sprintf(patchData, containerName, appSecret.AppId, appSecret.AppSecret)
 	//deployment 修改env
 	//patch deployment
 

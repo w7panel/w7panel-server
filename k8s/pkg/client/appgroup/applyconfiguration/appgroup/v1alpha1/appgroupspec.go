@@ -20,17 +20,29 @@ package v1alpha1
 // AppGroupSpecApplyConfiguration represents a declarative configuration of the AppGroupSpec type for use
 // with apply.
 type AppGroupSpecApplyConfiguration struct {
-	Identifie        *string                       `json:"identifie,omitempty"`
-	Type             *string                       `json:"type,omitempty"`
-	Version          *string                       `json:"version,omitempty"`
-	UpgradingVersion *string                       `json:"upgradingVersion,omitempty"`
-	Title            *string                       `json:"title,omitempty"`
-	Logo             *string                       `json:"logo,omitempty"`
-	Description      *string                       `json:"description,omitempty"`
-	Suffix           *string                       `json:"suffix,omitempty"`
-	ZpkUrl           *string                       `json:"zpkUrl,omitempty"`
-	HelmConfig       *HelmConfigApplyConfiguration `json:"helmConfig,omitempty"`
-	IsHelm           *bool                         `json:"isHelm,omitempty"`
+	Identifie *string `json:"identifie,omitempty"`
+	// 应用标识
+	Type *string `json:"type,omitempty"`
+	// "helm" or "zpk" or "custom"
+	Version *string `json:"version,omitempty"`
+	// 版本号
+	UpgradingVersion *string `json:"upgradingVersion,omitempty"`
+	// 更新中的版本号
+	Title *string `json:"title,omitempty"`
+	// 应用标题
+	Logo *string `json:"logo,omitempty"`
+	// logo地址
+	Description *string `json:"description,omitempty"`
+	// 应用描述
+	Suffix *string `json:"suffix,omitempty"`
+	// Domains       []string   `json:"domains"`       //域名列表
+	// DefaultDomain string     `json:"defaultDomain"` //默认域名
+	ZpkUrl *string `json:"zpkUrl,omitempty"`
+	// 制品库地址
+	HelmConfig     *HelmConfigApplyConfiguration     `json:"helmConfig,omitempty"`
+	AppCredentials *AppCredentialsApplyConfiguration `json:"appCredentials,omitempty"`
+	// Annotations   map[string]string `json:"annotations"`   //annotations
+	IsHelm *bool `json:"isHelm,omitempty"`
 }
 
 // AppGroupSpecApplyConfiguration constructs a declarative configuration of the AppGroupSpec type for use with
@@ -116,6 +128,14 @@ func (b *AppGroupSpecApplyConfiguration) WithZpkUrl(value string) *AppGroupSpecA
 // If called multiple times, the HelmConfig field is set to the value of the last call.
 func (b *AppGroupSpecApplyConfiguration) WithHelmConfig(value *HelmConfigApplyConfiguration) *AppGroupSpecApplyConfiguration {
 	b.HelmConfig = value
+	return b
+}
+
+// WithAppCredentials sets the AppCredentials field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the AppCredentials field is set to the value of the last call.
+func (b *AppGroupSpecApplyConfiguration) WithAppCredentials(value *AppCredentialsApplyConfiguration) *AppGroupSpecApplyConfiguration {
+	b.AppCredentials = value
 	return b
 }
 

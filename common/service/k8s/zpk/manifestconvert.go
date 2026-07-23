@@ -1,18 +1,21 @@
 package zpk
 
 import (
+	"context"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/appgroup"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk/types"
-	v1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
-	microapp "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/microapp/v1alpha1"
 	"github.com/aws/smithy-go/ptr"
 	"github.com/samber/lo"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
+	bi "github.com/w7panel/w7panel/common/service/k8s/buildimage"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/types"
+	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
+	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	v1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +24,16 @@ import (
 	// applyv1 "k8s.io/client-go/applyconfigurations/core/v1"
 	// appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 )
+
+var buildimage = "ccr.ccs.tencentyun.com/afan-public/kaniko:w7console-new5-25"
+
+// convvst buildimage = "ccr.ccs.tencentyun.com/afan-public/kaniko:w7console-build-test1"
+func init() {
+	img, ok := os.LookupEnv("BUILD_IMAGE")
+	if ok {
+		buildimage = img
+	}
+}
 
 type K8sResourceMetaInterface interface {
 	GetTitle() string
@@ -78,6 +91,8 @@ type K8sResourceInterface interface {
 	GetBackendUrl() string
 	GetFrontendUrl() string
 	GetMicroAppProps() map[string]string
+	OnlyStatic() bool // 只静态部署
+	HasHelmUrl() bool //是否有helm url 制品库普通应用才有
 }
 
 type K8sResourceIngressInterface interface {
@@ -128,7 +143,9 @@ func toPodTemplateSpec(manifest K8sResourceInterface, command []string, restartP
 			Labels:      matchLabels,
 			Annotations: defaultAnn,
 		},
+
 		Spec: corev1.PodSpec{
+
 			RestartPolicy: restartPolicy,
 			Containers: []corev1.Container{
 				{
@@ -237,6 +254,19 @@ func ToBuildJob(p K8sResourceInterface, opt types.BuildImageInterface, shellType
 		shellTitle = "应用更新时触发"
 	}
 	option := types.NewBuildImageOption(opt)
+	spec := option.ToBuilImageSpec()
+	jobName := p.GetBuildJobName()
+	spec.TaskID = jobName
+	host := opt.GetPanelRegistryServerHost()
+	ctx := context.Background()
+	if host != "" {
+		ctx = context.WithValue(ctx, bi.PanelRegistryServerHostKey, host)
+	}
+	job, err := bi.CrdSpecToJob(ctx, spec)
+	if err != nil {
+		slog.Error("crd to job err", "err", err)
+		return nil
+	}
 	title := shellTitle + p.GetTitle() + "构建镜像任务"
 	annotations := map[string]string{
 		"title":              title,
@@ -253,47 +283,52 @@ func ToBuildJob(p K8sResourceInterface, opt types.BuildImageInterface, shellType
 	labels["w7.cc/job-source"] = "appgroup"
 	labels["searchJob"] = p.GetName() + "-build-" + shellType
 	labels["w7.cc/shell-type"] = shellType
-	backofflimit := int32(3)
-	// afterSeconds := int32(3600)
-	job := &batchv1.Job{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "batch/v1",
-			Kind:       "Job",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        p.GetBuildJobName(),
-			Labels:      labels,
-			Annotations: annotations,
-		},
-		Spec: batchv1.JobSpec{
-			// TTLSecondsAfterFinished: &afterSeconds,
-			BackoffLimit: &backofflimit,
-			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					//挂载hostPath
-					Volumes:       option.GetVolumes(),
-					DNSPolicy:     corev1.DNSClusterFirstWithHostNet,
-					HostNetwork:   option.GetHostNetwork(),
-					HostPID:       option.GetHostNetwork(),
-					HostAliases:   option.GetHostAliases(),
-					HostIPC:       option.IsInner(),
-					RestartPolicy: corev1.RestartPolicyNever,
-					Containers: []corev1.Container{
-						{
-							Name:            "docker-build",
-							Image:           "ccr.ccs.tencentyun.com/afan-public/kaniko:w7console-new5-19",
-							Env:             option.ToEnv(),
-							WorkingDir:      "/workspace",
-							ImagePullPolicy: corev1.PullAlways,
-							Command:         []string{"/kaniko/start.sh"},
-							VolumeMounts:    option.GetVolumeMounts(),
-						},
-					},
-				},
-			},
-		},
-	}
+
+	job.Annotations = annotations
+	job.Labels = labels
+	// appendPodAffinity(&job.Spec.Template, p.GetReleaseName())
 	return job
+	// backofflimit := int32(3)
+	// afterSeconds := int32(3600)
+	// job := &batchv1.Job{
+	// 	TypeMeta: metav1.TypeMeta{
+	// 		APIVersion: "batch/v1",
+	// 		Kind:       "Job",
+	// 	},
+	// 	ObjectMeta: metav1.ObjectMeta{
+	// 		Name:        p.GetBuildJobName(),
+	// 		Labels:      labels,
+	// 		Annotations: annotations,
+	// 	},
+	// 	Spec: batchv1.JobSpec{
+	// 		// TTLSecondsAfterFinished: &afterSeconds,
+	// 		BackoffLimit: &backofflimit,
+	// 		Template: corev1.PodTemplateSpec{
+	// 			Spec: corev1.PodSpec{
+	// 				//挂载hostPath
+	// 				Volumes:       option.GetVolumes(),
+	// 				DNSPolicy:     corev1.DNSClusterFirstWithHostNet,
+	// 				HostNetwork:   option.GetHostNetwork(),
+	// 				HostPID:       option.GetHostNetwork(),
+	// 				HostAliases:   option.GetHostAliases(),
+	// 				HostIPC:       option.IsInner(),
+	// 				RestartPolicy: corev1.RestartPolicyNever,
+	// 				Containers: []corev1.Container{
+	// 					{
+	// 						Name:            "docker-build",
+	// 						Image:           buildimage,
+	// 						Env:             option.ToEnv(),
+	// 						WorkingDir:      "/workspace",
+	// 						ImagePullPolicy: corev1.PullAlways,
+	// 						Command:         []string{"/kaniko/start.sh"},
+	// 						VolumeMounts:    option.GetVolumeMounts(),
+	// 					},
+	// 				},
+	// 			},
+	// 		},
+	// 	},
+	// }
+	// return job
 }
 
 /*
@@ -343,6 +378,7 @@ func ToShellJob(p K8sResourceInterface, shell ManifestShellInterface) *batchv1.J
 			Template: toPodTemplateSpec(p, cmd, corev1.RestartPolicyNever, matchlabels, annotations),
 		},
 	}
+	// appendPodAffinity(&job.Spec.Template, p.GetReleaseName())
 	return job
 }
 
@@ -554,7 +590,7 @@ func ToShellJob2(manifest K8sResourceInterface, ingress K8sResourceIngressInterf
 	deploymentName := manifest.GetName()
 	namespace := manifest.GetNamespace()
 	cdToken := manifest.GetThirdpartyCDToken()
-	// afterSeconds := int32(3600)
+	afterSeconds := int32(3600)
 	shellTitle := "[应用安装时触发]"
 	deployTitle := "安装脚本"
 	if shellType == "upgrade" {
@@ -564,7 +600,7 @@ func ToShellJob2(manifest K8sResourceInterface, ingress K8sResourceIngressInterf
 	recordApp := []string{}
 	// if manifest.RequireSite() && shellType == "install" { //创建站点会更新版本号
 	if manifest.RequireSite() {
-		cmd := "ko-app/k8s-offline site:register --thirdPartyCDToken=" + cdToken + " --host=" + host + " --releaseName=" + releaseName + " --deploymentName=" + deploymentName + " --namespace=" + namespace
+		cmd := "ko-app/w7panel site:register --thirdPartyCDToken=" + cdToken + " --host=" + host + " --releaseName=" + releaseName + " --deploymentName=" + deploymentName + " --namespace=" + namespace
 		siteC := corev1.Container{
 			Name:  "check-site",
 			Image: helper.SelfImage(),
@@ -626,7 +662,7 @@ func ToShellJob2(manifest K8sResourceInterface, ingress K8sResourceIngressInterf
 	}
 	ok, dbName := manifest.RequireCreateDb()
 	if ok {
-		cmd := "/ko-app/k8s-offline db:create-inner --database=" + dbName + " --namespace=" + namespace
+		cmd := "/ko-app/w7panel db:create-inner --database=" + dbName + " --namespace=" + namespace
 		createDbC := corev1.Container{
 			Name:  "create-db",
 			Image: helper.SelfImage(),
@@ -773,14 +809,16 @@ func ToShellJob2(manifest K8sResourceInterface, ingress K8sResourceIngressInterf
 			Annotations: annotations,
 		},
 		Spec: batchv1.JobSpec{
-			// TTLSecondsAfterFinished: &afterSeconds,
-			BackoffLimit: &backofflimit,
+			TTLSecondsAfterFinished: &afterSeconds,
+			BackoffLimit:            &backofflimit,
 			// Selector: &metav1.LabelSelector{
 			// 	MatchLabels: matchlabels,
 			// },
 			Template: pod,
 		},
 	}
+
+	appendPodAffinity(&job.Spec.Template, manifest.GetName())
 	return job
 }
 
@@ -825,7 +863,7 @@ func ToHelmShellJob(p K8sResourceInterface, shell ManifestShellInterface) *batch
 	labels["w7.cc/job-source"] = "appgroup"
 	labels["w7.cc/identifie"] = p.GetIdentifie()
 	labels["w7.cc/helm-install"] = "true"
-
+	afterSeconds := int32(300)
 	container := corev1.Container{
 		Name:  "helm-go",
 		Image: helper.SelfImage(),
@@ -866,8 +904,8 @@ func ToHelmShellJob(p K8sResourceInterface, shell ManifestShellInterface) *batch
 			Annotations: annotations,
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: &backofflimit,
-			// TTLSecondsAfterFinished: &afterSeconds,
+			BackoffLimit:            &backofflimit,
+			TTLSecondsAfterFinished: &afterSeconds,
 			// BackoffLimit: &backofflimit,
 			// Selector: &metav1.LabelSelector{
 			// 	MatchLabels: matchlabels,
@@ -914,7 +952,7 @@ func ToAppGroup(p K8sResourceInterface, installResult []v1alpha1.DeployItem) *v1
 
 	aType := "zpk"
 	isHelm := false
-	if p.IsHelm() {
+	if p.IsHelm() || p.HasHelmUrl() {
 		aType = "helm"
 		isHelm = true
 	}
@@ -959,7 +997,7 @@ func ToMicroApp(p K8sResourceInterface) *microapp.MicroApp {
 	}
 	obj := microapp.MicroApp{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "microapp.w7.cc/v1alpha1",
+			APIVersion: "w7panel.w7.com/v1alpha1",
 			Kind:       "MicroApp",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -997,7 +1035,7 @@ func toBuildPodSpec(option types.BuildImageOption) corev1.PodSpec {
 		Containers: []corev1.Container{
 			{
 				Name:            "docker-build",
-				Image:           "ccr.ccs.tencentyun.com/afan-public/kaniko:w7console-new5-16",
+				Image:           buildimage,
 				Env:             option.ToEnv(),
 				WorkingDir:      "/workspace",
 				ImagePullPolicy: corev1.PullAlways,
@@ -1011,34 +1049,51 @@ func toBuildPodSpec(option types.BuildImageOption) corev1.PodSpec {
 func ToZpkBuildJob(opt types.BuildImageInterface) *batchv1.Job {
 
 	option := types.NewBuildImageOption(opt)
+
+	spec := option.ToBuilImageSpec()
+	jobName := opt.GetBuildJobName()
+	spec.TaskID = jobName
+	host := opt.GetPanelRegistryServerHost()
+	ctx := context.Background()
+	if host != "" {
+		ctx = context.WithValue(ctx, bi.PanelRegistryServerHostKey, host)
+	}
+	job, err := bi.CrdSpecToJob(ctx, spec)
+	if err != nil {
+		slog.Error("crd to job err", "err", err)
+		return nil
+	}
+
 	title := opt.GetTitle()
 	annotations := map[string]string{
 		"title":       title,
 		"w7.cc/title": title,
 	}
 	labels := opt.GetLabels()
-
-	backofflimit := int32(1)
-	afterSeconds := int32(3600)
-	job := &batchv1.Job{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "batch/v1",
-			Kind:       "Job",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        opt.GetBuildJobName(),
-			Labels:      labels,
-			Annotations: annotations,
-		},
-		Spec: batchv1.JobSpec{
-			TTLSecondsAfterFinished: &afterSeconds,
-			BackoffLimit:            &backofflimit,
-			Template: corev1.PodTemplateSpec{
-				Spec: toBuildPodSpec(option),
-			},
-		},
-	}
+	job.Annotations = annotations
+	job.Labels = labels
 	return job
+	// backofflimit := int32(1)
+	// afterSeconds := int32(3600)
+	// job := &batchv1.Job{
+	// 	TypeMeta: metav1.TypeMeta{
+	// 		APIVersion: "batch/v1",
+	// 		Kind:       "Job",
+	// 	},
+	// 	ObjectMeta: metav1.ObjectMeta{
+	// 		Name:        opt.GetBuildJobName(),
+	// 		Labels:      labels,
+	// 		Annotations: annotations,
+	// 	},
+	// 	Spec: batchv1.JobSpec{
+	// 		TTLSecondsAfterFinished: &afterSeconds,
+	// 		BackoffLimit:            &backofflimit,
+	// 		Template: corev1.PodTemplateSpec{
+	// 			Spec: toBuildPodSpec(option),
+	// 		},
+	// 	},
+	// }
+	// return job
 }
 
 func ToZpkBuildCronJob(opt types.BuildImageInterface, schedule string) *batchv1.CronJob {
@@ -1080,7 +1135,7 @@ func ToZpkBuildCronJob(opt types.BuildImageInterface, schedule string) *batchv1.
 	return job
 }
 func ToBeianCheckJob(info K8sResourceInterface, host string) *batchv1.Job {
-	shellStr := "ko-app/k8s-offline beian-check --host=" + host
+	shellStr := "ko-app/w7panel beian-check --host=" + host
 	cmd := []string{"/bin/sh", "-c", shellStr}
 	jobName := "beian-job-" + helper.RandomString(8)
 
@@ -1172,4 +1227,28 @@ helm upgrade kubeblocks $KO_DATA_PATH/charts/kubeblocks-1.0.1.tgz -n kb-system -
 		},
 	}
 	return job
+}
+
+func appendPodAffinity(pod *corev1.PodTemplateSpec, name string) {
+	if pod.Spec.Affinity == nil {
+		pod.Spec.Affinity = &corev1.Affinity{}
+	}
+	pod.Spec.Affinity = &corev1.Affinity{
+		PodAffinity: &corev1.PodAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "app",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{name},
+							},
+						},
+					},
+					TopologyKey: "kubernetes.io/hostname",
+				},
+			},
+		},
+	}
 }

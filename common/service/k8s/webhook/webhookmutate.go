@@ -1,8 +1,8 @@
 package webhook
 
 import (
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -11,9 +11,15 @@ import (
 )
 
 const WebHookName = "webhook-w7panel"
+const certManagerInjectCAFromAnnotation = "cert-manager.io/inject-ca-from"
 
 type WebHookMutate struct {
 	sdk *k8s.Sdk
+}
+
+type webhookTLSConfig struct {
+	CABundle     []byte
+	InjectCAFrom string
 }
 
 func NewWebHookMutate(sdk *k8s.Sdk) *WebHookMutate {
@@ -34,6 +40,24 @@ func getCrdOperations() []admissionregistrationv1.RuleWithOperations {
 	}
 	return getDefaultCrdOperations()
 }
+
+func getMatchConditions() []admissionregistrationv1.MatchCondition {
+	return []admissionregistrationv1.MatchCondition{
+		{
+			Name:       "only-longhorn-storageclass",
+			Expression: `request.resource.group != "storage.k8s.io" || request.resource.resource != "storageclasses" || object.metadata.name == "longhorn"`,
+		},
+		{
+			Name:       "only-default-namespace-pod",
+			Expression: `request.resource.group != "" || request.resource.resource != "pods" || request.namespace == "default"`,
+		},
+		{
+			Name:       "only-k3k-logo-configmap",
+			Expression: `request.resource.group != "" || request.resource.resource != "configmaps" || (object.metadata.name == "k3k.logo.config" && request.namespace == "kube-system")`,
+		},
+	}
+}
+
 func getAgentOperations() []admissionregistrationv1.RuleWithOperations {
 	return []admissionregistrationv1.RuleWithOperations{
 		{
@@ -45,14 +69,6 @@ func getAgentOperations() []admissionregistrationv1.RuleWithOperations {
 			},
 		},
 
-		{
-			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
-			Rule: admissionregistrationv1.Rule{
-				APIGroups:   []string{""},
-				APIVersions: []string{"v1"},
-				Resources:   []string{"configmaps"},
-			},
-		},
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
 			Rule: admissionregistrationv1.Rule{
@@ -67,19 +83,19 @@ func getAgentOperations() []admissionregistrationv1.RuleWithOperations {
 func getAgentCrdOperations() []admissionregistrationv1.RuleWithOperations {
 	return []admissionregistrationv1.RuleWithOperations{
 		{
+			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
+			Rule: admissionregistrationv1.Rule{
+				APIGroups:   []string{"microapp.w7.cc"},
+				APIVersions: []string{"v1alpha1"},
+				Resources:   []string{"microapps"},
+			},
+		},
+		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
 			Rule: admissionregistrationv1.Rule{
 				APIGroups:   []string{"networking.higress.io"},
 				APIVersions: []string{"v1"},
 				Resources:   []string{"mcpbridges"},
-			},
-		},
-		{
-			Operations: []admissionregistrationv1.OperationType{"DELETE"},
-			Rule: admissionregistrationv1.Rule{
-				APIGroups:   []string{"apps.kubeblocks.io"},
-				APIVersions: []string{"v1alpha1"},
-				Resources:   []string{"clusters"},
 			},
 		},
 	}
@@ -95,20 +111,23 @@ func getDefaultOperations() []admissionregistrationv1.RuleWithOperations {
 				Resources:   []string{"services"},
 			},
 		},
+
 		{
-			Operations: []admissionregistrationv1.OperationType{"UPDATE"},
+			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
 			Rule: admissionregistrationv1.Rule{
 				APIGroups:   []string{""},
 				APIVersions: []string{"v1"},
-				Resources:   []string{"serviceaccounts"},
+				Resources:   []string{"configmaps"},
 			},
 		},
+
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
 			Rule: admissionregistrationv1.Rule{
 				APIGroups:   []string{"apps"},
 				APIVersions: []string{"v1"},
 				Resources:   []string{"statefulsets"},
+				// Scope:       ptr.String(admissionregistrationv1.NamespacedScope),
 			},
 		},
 		{
@@ -169,6 +188,14 @@ func getDefaultOperations() []admissionregistrationv1.RuleWithOperations {
 				Resources:   []string{"storageclasses"},
 			},
 		},
+		{
+			Operations: []admissionregistrationv1.OperationType{"UPDATE"},
+			Rule: admissionregistrationv1.Rule{
+				APIGroups:   []string{""},
+				APIVersions: []string{"v1"},
+				Resources:   []string{"persistentvolumeclaims"},
+			},
+		},
 	}
 }
 
@@ -177,9 +204,9 @@ func getDefaultCrdOperations() []admissionregistrationv1.RuleWithOperations {
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
 			Rule: admissionregistrationv1.Rule{
-				APIGroups:   []string{"k3k.io"},
+				APIGroups:   []string{"microapp.w7.cc"},
 				APIVersions: []string{"v1alpha1"},
-				Resources:   []string{"virtualclusterpolicies", "clusters"},
+				Resources:   []string{"microapps"},
 			},
 		},
 
@@ -207,31 +234,68 @@ func getDefaultCrdOperations() []admissionregistrationv1.RuleWithOperations {
 				Resources:   []string{"nodes"},
 			},
 		},
+
 		{
-			Operations: []admissionregistrationv1.OperationType{"DELETE"},
+			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
 			Rule: admissionregistrationv1.Rule{
-				APIGroups:   []string{"apps.kubeblocks.io"},
+				APIGroups:   []string{"w7panel.w7.com"},
 				APIVersions: []string{"v1alpha1"},
-				Resources:   []string{"clusters"},
+				Resources:   []string{"apiclients"},
 			},
 		},
 	}
 }
 
 func (w *WebHookMutate) CreateOrUpdate(caBound []byte, svcName string, namespace string, hookName string, rules []admissionregistrationv1.RuleWithOperations) error {
+	return w.createOrUpdate(webhookTLSConfig{CABundle: caBound}, svcName, namespace, hookName, rules)
+}
+
+func (w *WebHookMutate) CreateOrUpdateWithCertManager(injectCAFrom string, svcName string, namespace string, hookName string, rules []admissionregistrationv1.RuleWithOperations) error {
+	return w.createOrUpdate(webhookTLSConfig{InjectCAFrom: injectCAFrom}, svcName, namespace, hookName, rules)
+}
+
+func (w *WebHookMutate) createOrUpdate(tlsConfig webhookTLSConfig, svcName string, namespace string, hookName string, rules []admissionregistrationv1.RuleWithOperations) error {
+	webhookConfig := buildMutatingWebhookConfiguration(tlsConfig, svcName, namespace, hookName, rules)
+
+	// 尝试获取现有的 webhook 配置
+	existingConfig, err := w.sdk.ClientSet.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(w.sdk.Ctx, hookName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// 如果不存在，创建新的配置
+			_, err := w.sdk.ClientSet.AdmissionregistrationV1().MutatingWebhookConfigurations().Create(w.sdk.Ctx, webhookConfig, metav1.CreateOptions{})
+			return err
+		}
+		return err
+	}
+
+	// 如果已存在，更新配置
+	// 保留现有的 ResourceVersion 以避免冲突
+	webhookConfig.ObjectMeta.ResourceVersion = existingConfig.ObjectMeta.ResourceVersion
+	preserveInjectedCABundle(webhookConfig, existingConfig)
+
+	_, err = w.sdk.ClientSet.AdmissionregistrationV1().MutatingWebhookConfigurations().Update(w.sdk.Ctx, webhookConfig, metav1.UpdateOptions{})
+	return err
+}
+
+func buildMutatingWebhookConfiguration(tlsConfig webhookTLSConfig, svcName string, namespace string, hookName string, rules []admissionregistrationv1.RuleWithOperations) *admissionregistrationv1.MutatingWebhookConfiguration {
 	path := "/mutate"
 	port := int32(9443)
 	sideEffects := admissionregistrationv1.SideEffectClassNoneOnDryRun
 	policy := admissionregistrationv1.Ignore
+	annotations := map[string]string{}
+	if tlsConfig.InjectCAFrom != "" {
+		annotations[certManagerInjectCAFromAnnotation] = tlsConfig.InjectCAFrom
+	}
 
 	// 创建 webhook 配置对象
-	webhookConfig := &admissionregistrationv1.MutatingWebhookConfiguration{
+	return &admissionregistrationv1.MutatingWebhookConfiguration{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "MutatingWebhookConfiguration",
 			APIVersion: "admissionregistration.k8s.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: hookName,
+			Name:        hookName,
+			Annotations: annotations,
 		},
 		Webhooks: []admissionregistrationv1.MutatingWebhook{
 			{
@@ -253,30 +317,30 @@ func (w *WebHookMutate) CreateOrUpdate(caBound []byte, svcName string, namespace
 						Path:      &path,
 						Port:      &port,
 					},
-					CABundle: caBound,
+					CABundle: tlsConfig.CABundle,
 				},
 				AdmissionReviewVersions: []string{"v1"},
 				SideEffects:             &sideEffects,
 				FailurePolicy:           &policy,
+				MatchConditions:         getMatchConditions(),
 			},
 		},
 	}
+}
 
-	// 尝试获取现有的 webhook 配置
-	existingConfig, err := w.sdk.ClientSet.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(w.sdk.Ctx, hookName, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// 如果不存在，创建新的配置
-			_, err := w.sdk.ClientSet.AdmissionregistrationV1().MutatingWebhookConfigurations().Create(w.sdk.Ctx, webhookConfig, metav1.CreateOptions{})
-			return err
-		}
-		return err
+func preserveInjectedCABundle(next, existing *admissionregistrationv1.MutatingWebhookConfiguration) {
+	if next.Annotations[certManagerInjectCAFromAnnotation] == "" {
+		return
 	}
-
-	// 如果已存在，更新配置
-	// 保留现有的 ResourceVersion 以避免冲突
-	webhookConfig.ObjectMeta.ResourceVersion = existingConfig.ObjectMeta.ResourceVersion
-
-	_, err = w.sdk.ClientSet.AdmissionregistrationV1().MutatingWebhookConfigurations().Update(w.sdk.Ctx, webhookConfig, metav1.UpdateOptions{})
-	return err
+	existingBundles := map[string][]byte{}
+	for _, webhook := range existing.Webhooks {
+		if len(webhook.ClientConfig.CABundle) > 0 {
+			existingBundles[webhook.Name] = webhook.ClientConfig.CABundle
+		}
+	}
+	for i := range next.Webhooks {
+		if len(next.Webhooks[i].ClientConfig.CABundle) == 0 {
+			next.Webhooks[i].ClientConfig.CABundle = existingBundles[next.Webhooks[i].Name]
+		}
+	}
 }

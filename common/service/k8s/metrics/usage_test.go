@@ -4,22 +4,27 @@ package metrics
 import (
 	"testing"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/k3k/types"
+	"github.com/w7panel/w7panel/common/service/k8s"
 )
 
 func TestGetResourceDiskUsage(t *testing.T) {
 
-	usge := NewK3kUsage(k8s.NewK8sClient().Sdk)
-	sa, err := k8s.NewK8sClient().GetServiceAccount("default", "k3k-s84")
-	if err != nil {
-		t.Error(err)
-	}
-	a, b, err := usge.GetResourceDiskUsage(types.NewK3kUser(sa))
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log(a, b)
-
 	// a1, b1, err := usge.GetResourceDiskUsage(types.NewK3kUser(sa))
+}
+
+func TestGetResourceUsage(t *testing.T) {
+
+	usageApi := NewK3kUsage(k8s.NewK8sClient().Sdk)
+	cvm, err := usageApi.getCvm("console-164315", "k3k-console-164315")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	usage, total, err := usageApi.GetResourceCvmDiskUsage(cvm)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Log(total, usage)
+	// a1, b1, c1, d1, err := usge.GetResourceUsage(types.NewK3kUser(sa))
 }

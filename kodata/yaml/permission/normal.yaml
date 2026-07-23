@@ -1,0 +1,69 @@
+apiVersion: w7panel.w7.com/v1alpha1
+kind: Permission
+metadata:
+    labels:
+        typemode: in
+    name: normal
+spec:
+    apiRules:
+        -
+            method:
+                - get
+            path: /panel-api/v1/app-info
+        -
+            method:
+                - get
+            path: /panel-api/v1/auth/console/info
+        -
+            method:
+                - get
+            path: /panel-api/v1/auth/userinfo
+        -
+            method:
+                - get
+            path: /panel-api/v1/k3k/info
+        -
+            method:
+                - get
+            path: /panel-api/v1/microapp/*/frontprops
+        -
+            method:
+                - get
+            path: /panel-api/v1/microapp/*/info
+        -
+            method:
+                - delete
+                - get
+                - patch
+                - create
+                - update
+            path: /panel-api/v1/microapp/*/proxy/*
+        -
+            method:
+                - get
+            path: /panel-api/v1/microapp/global-frontprops
+        -
+            method:
+                - get
+            path: /panel-api/v1/microapp/top
+                -
+        -   method:
+                - create
+            path: /panel-api/v1/static/*/download/*    
+        -
+            method:
+                - get
+            path: /panel-api/v1/static/*/status
+        -   method:
+                - create
+            path: /panel-api/v1/oidc/js-code        
+    domainWhiteList: []
+    features:
+        debug: false
+        fileeditor: false
+        webshell: false
+    menuRules: []
+    parentPermission: ''
+    role: normal
+    title: 普通用户
+    type: builtin

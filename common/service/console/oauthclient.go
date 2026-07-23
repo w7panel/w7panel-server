@@ -3,10 +3,10 @@ package console
 import (
 	"os"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/config"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	w7 "github.com/w7corp/sdk-open-cloud-go"
 	"github.com/w7corp/sdk-open-cloud-go/service"
+	"github.com/w7panel/w7panel/common/service/config"
+	"github.com/w7panel/w7panel/common/service/k8s"
 )
 
 // BindConsoleUserUseAccessToken 绑定用户信息 k3ksacontroller.go 中使用
@@ -84,13 +84,6 @@ func (c *OauthClient) GetUserInfo(code string) (*service.ResultAccessToken, *ser
 	}
 	return result, userInfo, nil
 }
-
-// func (c *OauthClient) UnBind() error {
-// 	config, _ := c.repo.Get()
-// 	config.AccessToken = ""
-// 	config.ExpireTime = 0
-// 	return c.repo.Set(config)
-// }
 
 func DefaultClient(debug bool) *w7.Client {
 	// debug = true

@@ -4,16 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"reflect"
 	"strconv"
 	"strings"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	helm "gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/zpk/types"
-	v1alpha1 "gitee.com/we7coreteam/k8s-offline/k8s/pkg/apis/appgroup/v1alpha1"
-
+	"github.com/aws/smithy-go/ptr"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	helm "github.com/w7panel/w7panel/common/service/k8s/zpk"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/types"
+	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -27,7 +26,9 @@ func GetDeployName(identifie, suffix string) string {
 	identifie = strings.ToLower(strings.Replace(identifie, "_", "-", -1))
 	return strings.ToLower(strings.ReplaceAll(identifie+"-"+suffix, "_", "-"))
 }
-
+func GetIdentifieName(identifie string) string {
+	return strings.ToLower(strings.ReplaceAll(identifie, "_", "-"))
+}
 func getSuffix(releaseName string) string {
 	suffix := releaseName
 	rp := strings.Split(suffix, "-")
@@ -77,6 +78,8 @@ type InstallOption struct {
 	Volumes                  []corev1.Volume      `json:"volumes"`
 	VolumesMounts            []corev1.VolumeMount `json:"volumesMounts"`
 	K8sToken                 *k8s.K8sToken
+	IsChild                  bool
+	RealToken                string // 子集群token需要返回实际的token 内网访问面板代理 不会经过主集群面板
 	// K3kMode                  string               `json:"k3kMode"`              // 子集群模式
 }
 
@@ -135,10 +138,13 @@ func NewPackage(mPackage *ManifestPackage, installOptions []InstallOption,
 	suffix := getSuffix(releaseName)
 	for _, installOption := range installOptions {
 		findPackage := mPackage.GetChildren(installOption.Identifie)
-		//
-		if reflect.ValueOf(findPackage).IsZero() {
+		if findPackage == nil {
 			continue
 		}
+		// //
+		// if reflect.ValueOf(findPackage).IsZero() {
+		// 	continue
+		// }
 		installOption.ReleaseName = strings.ToLower(releaseName)
 		// installOption.ServiceAccountName = releaseName
 		installOption.InstallId = installId
@@ -224,8 +230,9 @@ type PackageApp struct {
 	Parent *PackageApp
 	*ManifestPackage
 	*InstallOption
-	ThirdpartyCDToken     string
-	AppGroupInstallResult *v1alpha1.DeployItem
+	ThirdpartyCDToken       string
+	AppGroupInstallResult   *v1alpha1.DeployItem
+	PanelRegistryServerHost string
 }
 
 func NewPackageApp(manifestPackage *ManifestPackage, installOption *InstallOption) *PackageApp {
@@ -321,7 +328,7 @@ func (p *PackageApp) GetLabels() map[string]string {
 		"app":                              p.GetName(),
 		"w7.cc/install-id":                 p.InstallId,
 		"w7.cc/suffix":                     p.GetSuffix(),
-		"w7.cc/manifest-version":           p.Manifest.V.String(),
+		"w7.cc/manifest-version":           p.Manifest.Version.String(),
 	}
 	if p.Parent != nil {
 		result["w7.cc/parent"] = p.Parent.GetName()
@@ -340,7 +347,7 @@ func (p *PackageApp) GetLabels() map[string]string {
 		result[k] = v
 	}
 	if p.K8sToken != nil {
-		saName, err := p.K8sToken.GetSaName()
+		saName, err := p.K8sToken.GetUserName()
 		if err != nil {
 			slog.Warn("get sa name", "err", err)
 		}
@@ -469,6 +476,7 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 		"w7.cc/ticket":                   p.Ticket,
 		"meta.helm.sh/release-name":      p.GetReleaseName(),
 		"meta.helm.sh/release-namespace": p.GetNamespace(),
+		"w7.cc/panel-install-url":        p.PanelUrl,
 	}
 	// if !p.IsUpgrade() {
 	result["w7.cc/domains"] = string(domainsJson)
@@ -478,6 +486,9 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 	}
 	if p.RequireBuildImage() {
 		result["w7.cc/has-build"] = "true"
+	}
+	if p.Manifest.Application.Type == "tradition" {
+		result["w7.cc/hide"] = "true" //隐藏传统应用
 	}
 
 	for k, v := range p.InstallOption.Annotations {
@@ -573,22 +584,50 @@ func (p *PackageApp) GetRuntimeClassName() string {
 }
 
 func (p *PackageApp) GetPodSecurityContext() *corev1.PodSecurityContext {
-	return &corev1.PodSecurityContext{
-		RunAsUser:    &p.Manifest.Platform.Container.SecurityContext.RunAsUser,
-		RunAsGroup:   &p.Manifest.Platform.Container.SecurityContext.RunAsGroup,
-		RunAsNonRoot: &p.Manifest.Platform.Container.SecurityContext.RunAsNonRoot,
-		FSGroup:      &p.Manifest.Platform.Container.SecurityContext.FsGroup,
+	result := &corev1.PodSecurityContext{
+		// RunAsUser:    &p.Manifest.Platform.Container.SecurityContext.RunAsUser,
+		// RunAsGroup:   &p.Manifest.Platform.Container.SecurityContext.RunAsGroup,
+		// RunAsNonRoot: &p.Manifest.Platform.Container.SecurityContext.RunAsNonRoot,
+		// FSGroup:      &p.Manifest.Platform.Container.SecurityContext.FsGroup,
 	}
+	if p.Manifest.Platform.Container.SecurityContext.FsGroup > 0 {
+		result.FSGroup = &p.Manifest.Platform.Container.SecurityContext.FsGroup
+	}
+	if p.Manifest.Platform.Container.SecurityContext.RunAsGroup > 0 {
+		result.RunAsGroup = &p.Manifest.Platform.Container.SecurityContext.RunAsGroup
+	}
+	if p.Manifest.Platform.Container.SecurityContext.RunAsUser > 0 {
+		result.RunAsUser = &p.Manifest.Platform.Container.SecurityContext.RunAsUser
+	}
+	if p.Manifest.Platform.Container.SecurityContext.RunAsNonRoot {
+		result.RunAsNonRoot = &p.Manifest.Platform.Container.SecurityContext.RunAsNonRoot
+	}
+	return result
 }
 
 func (p *PackageApp) GetContainerSecurityContext() *corev1.SecurityContext {
-	return &corev1.SecurityContext{
-		RunAsUser:    &p.Manifest.Platform.Container.SecurityContext.RunAsUser,
-		RunAsGroup:   &p.Manifest.Platform.Container.SecurityContext.RunAsGroup,
-		RunAsNonRoot: &p.Manifest.Platform.Container.SecurityContext.RunAsNonRoot,
-		// Privileged:   &p.Manifest.Platform.Container.Privileged.Bool(),
-		// FSGroup:      &p.Manifest.Platform.Container.SecurityContext.FsGroup,
+	result := &corev1.SecurityContext{}
+	// if p.Manifest.Platform.Container.SecurityContext.RunAsUser > 0 {
+	// 	result.RunAsUser = &p.Manifest.Platform.Container.SecurityContext.RunAsUser
+	// }
+	// if p.Manifest.Platform.Container.SecurityContext.RunAsGroup > 0 {
+	// 	result.RunAsGroup = &p.Manifest.Platform.Container.SecurityContext.RunAsGroup
+	// }
+	// if p.Manifest.Platform.Container.SecurityContext.RunAsNonRoot {
+	// 	result.RunAsNonRoot = &p.Manifest.Platform.Container.SecurityContext.RunAsNonRoot
+	// }
+	if p.IsPrivileged() {
+		result.Privileged = ptr.Bool(p.IsPrivileged())
 	}
+	return result
+
+	// return &corev1.SecurityContext{
+	// 	RunAsUser:    &p.Manifest.Platform.Container.SecurityContext.RunAsUser,
+	// 	RunAsGroup:   &p.Manifest.Platform.Container.SecurityContext.RunAsGroup,
+	// 	RunAsNonRoot: &p.Manifest.Platform.Container.SecurityContext.RunAsNonRoot,
+	// 	// Privileged:   &p.Manifest.Platform.Container.Privileged.Bool(),
+	// 	// FSGroup:      &p.Manifest.Platform.Container.SecurityContext.FsGroup,
+	// }
 }
 
 /*
@@ -925,9 +964,9 @@ func (p *PackageApp) GetMicroAppProps() map[string]string {
 func (p *PackageApp) GetBackendUrl() string {
 	port := p.GetFirstPort()
 	if port == 80 || port == 0 {
-		return "/k8s/v1/namespaces/default/services/" + p.GetName() + "/proxy-no"
+		return "/panel-api/v1/namespaces/default/services/" + p.GetName() + "/proxy-no"
 	}
-	return "/k8s/v1/namespaces/default/services/" + p.GetName() + ":" + strconv.Itoa(int(port)) + "/proxy-no"
+	return "/panel-api/v1/namespaces/default/services/" + p.GetName() + ":" + strconv.Itoa(int(port)) + "/proxy-no"
 }
 
 func (p *PackageApp) GetFrontendUrl() string {
@@ -936,4 +975,16 @@ func (p *PackageApp) GetFrontendUrl() string {
 
 func (p *PackageApp) SupportMicroApp() bool {
 	return p.Manifest.SupportMicroApp()
+}
+
+func (b *PackageApp) GetPanelRegistryServerHost() string {
+	return b.PanelRegistryServerHost
+}
+
+func (b *PackageApp) OnlyStatic() bool {
+	return b.Manifest.Application.Type == "front"
+}
+
+func (b *PackageApp) HasHelmUrl() bool {
+	return b.HelmUrl != ""
 }

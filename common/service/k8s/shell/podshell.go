@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
+	"github.com/w7panel/w7panel/common/helper"
 )
 
 type PodShell struct {
@@ -203,7 +203,6 @@ BEGIN {
     print;
 }'
 	`
-	// print(shellstr)
 	return s.Runsh("sh", "-c", shellstr)
 }
 
@@ -241,16 +240,12 @@ func (s *PodShell) ChrootSh(chroot string, name string, arg ...string) error {
 	// 执行命令
 	err := cmd.Run()
 	if err != nil {
-		// slog.Info("Command failed with error: %s\n", err)
-		print(errOut.String())
-		// fmt.Print(errOut.String())
-		// fmt.Printf("Command failed with error: %s\n", err)
-		// fmt.Printf("Error output:\n%s\n", errOut.String())
+		slog.Error("command failed", "error", err, "stderr", errOut.String())
 		return err
 	}
-	// fmt.Print(out.String())
-	// slog.Info("Command failed with error: %s\n", out.String())
-	print(out.String())
+	if out.Len() > 0 {
+		slog.Debug("command output", "stdout", out.String())
+	}
 	return nil
 
 }
@@ -269,15 +264,11 @@ func (s *PodShell) Runsh(name string, arg ...string) error {
 	// 执行命令
 	err := cmd.Run()
 	if err != nil {
-		// slog.Info("Command failed with error: %s\n", err)
-		print(errOut.String())
-		// fmt.Print(errOut.String())
-		// fmt.Printf("Command failed with error: %s\n", err)
-		// fmt.Printf("Error output:\n%s\n", errOut.String())
+		slog.Error("command failed", "error", err, "stderr", errOut.String())
 		return err
 	}
-	// fmt.Print(out.String())
-	// slog.Info("Command failed with error: %s\n", out.String())
-	print(out.String())
+	if out.Len() > 0 {
+		slog.Debug("command output", "stdout", out.String())
+	}
 	return nil
 }

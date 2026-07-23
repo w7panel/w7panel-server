@@ -4,11 +4,16 @@ import (
 	"log/slog"
 	"os"
 
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/k3k"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s/service"
-	webhooklocal "gitee.com/we7coreteam/k8s-offline/common/service/k8s/webhook"
 	"github.com/go-logr/logr"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/buildimage"
+	"github.com/w7panel/w7panel/common/service/k8s/higress"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
+	"github.com/w7panel/w7panel/common/service/k8s/privatedns"
+	"github.com/w7panel/w7panel/common/service/k8s/service"
+	"github.com/w7panel/w7panel/common/service/k8s/site"
+	"github.com/w7panel/w7panel/common/service/k8s/user"
+	webhooklocal "github.com/w7panel/w7panel/common/service/k8s/webhook"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -75,23 +80,48 @@ func StartControlManager() error {
 	if err != nil {
 		return err
 	}
-	if facade.GetConfig().GetBool("higress.watch") {
-		// slog.Info("higress watch enabled") //走webhook
-		// err := higress.SetupManager(mgr, sdk)
-		// if err != nil {
-		// 	slog.Error("setup higress controllers failed", "err", err)
-		// 	return err
-		// }
+	err = permissionservice.SetupPermissionController(mgr, sdk)
+	if err != nil {
+		slog.Error("setup permission controller failed", "err", err)
+		return err
 	}
-
-	if facade.GetConfig().GetBool("k3k.watch") {
-		slog.Info("k3k watch enabled")
-		err = k3k.SetupK3kControllers(mgr)
+	err = user.SetupServiceAccountController(mgr, sdk)
+	if err != nil {
+		slog.Error("setup service account controller failed", "err", err)
+		return err
+	}
+	//webhook 和 higress 用一个
+	if facade.GetConfig().GetBool("higress.watch") && !facade.GetConfig().GetBool("webhook.enabled") {
+		err := higress.SetupManager(mgr, sdk)
 		if err != nil {
-			slog.Error("setup k3k controllers failed", "err", err)
+			slog.Error("setup higress controllers failed", "err", err)
 			return err
 		}
 	}
+
+	if facade.GetConfig().GetBool("buildimage.enabled") {
+		err = buildimage.SetupBuildImageController(mgr, sdk)
+		if err != nil {
+			slog.Error("setup build image controller failed", "err", err)
+			return err
+		}
+	}
+	if facade.GetConfig().GetBool("site.enabled") {
+		err = site.SetupSiteController(mgr, sdk)
+		if err != nil {
+			slog.Error("setup site controller failed", "err", err)
+			return err
+		}
+	}
+	if facade.GetConfig().GetBool("privatedns.enabled") {
+		err = privatedns.SetupPrivateDNSController(mgr, sdk)
+		if err != nil {
+			slog.Error("setup private dns controller failed", "err", err)
+			return err
+		}
+	}
+	//
+
 	// cache.Init
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

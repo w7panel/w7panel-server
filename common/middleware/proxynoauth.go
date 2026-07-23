@@ -1,9 +1,9 @@
 package middleware
 
 import (
-	"gitee.com/we7coreteam/k8s-offline/common/helper"
-	"gitee.com/we7coreteam/k8s-offline/common/service/k8s"
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
 )
 
@@ -30,11 +30,11 @@ func (self ProxyNoAuth) Process(gin *gin.Context) {
 		path := gin.Request.URL.String()
 		// agentHost := config.GetK3kAgentLbHost()
 		proxyUrl := "http://" + config.GetK3kAgentLbHost()
-		saName, err := k3ktoken.GetSaName()
+		userName, err := k3ktoken.GetUserName()
 
 		headers := map[string]string{
 			"PANEL_ROLE":     k3ktoken.GetRole(), //当前角色
-			"PANEL_USERNAME": saName,             //当前用户
+			"PANEL_USERNAME": userName,           //当前用户
 		}
 		proxy, err := helper.ProxyUrl(proxyUrl, path, "", headers, nil)
 		if err != nil {

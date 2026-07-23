@@ -19,6 +19,20 @@ func TestCreateProductOrder(t *testing.T) {
 	t.Log(info)
 }
 
+func TestCreatePanelSite(t *testing.T) {
+	os.Setenv("USER_AGENT", "we7test-beta")
+	os.Setenv("LOCAL_MOCK", "1")
+	sdkClient, err := NewDefaultSdkClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := sdkClient.CreateSiteFromPanel("https://test.cc", "aaaa")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(info)
+}
+
 func TestCreateProductOrder1(t *testing.T) {
 	os.Setenv("USER_AGENT", "we7test-beta")
 	sdkClient, err := NewDefaultSdkClient()
@@ -76,18 +90,30 @@ func TestUpdateCoupon(t *testing.T) {
 
 }
 
-func TestFindLastReturnOrder(t *testing.T) {
-	os.Setenv("USER_AGENT", "we7test-beta")
-	// os.Setenv("LOCAL_MOCK", "true")
-	// os.Setenv("")
-	// sdkClient, err := NewDefaultSdkClient()
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
+func TestOpenIdToPassportToken(t *testing.T) {
+	// os.Setenv("USER_AGENT", "we7test-beta")
+	// os.Setenv("LOCAL_MOCK", "1")
+	sdkClient, err := NewDefaultSdkClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := sdkClient.OpenIdToCloudAccessToken("mzUZB6jb59EJKakQsGrVSg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(info)
+}
 
-	// err = sdkClient.FindLastReturnOrder("")
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-
+func TestOpenIdToCode(t *testing.T) {
+	// os.Setenv("USER_AGENT", "we7test-beta")
+	os.Setenv("LOCAL_MOCK", "1")
+	sdkClient, err := NewDefaultSdkClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := sdkClient.OpenIdToCloudCode("mzUZB6jb59EJKakQsGrVSg", "510929")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(info)
 }
