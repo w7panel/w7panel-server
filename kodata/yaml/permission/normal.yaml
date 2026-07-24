@@ -56,7 +56,11 @@ spec:
             path: /panel-api/v1/static/*/status
         -   method:
                 - create
-            path: /panel-api/v1/oidc/js-code        
+            path: /panel-api/v1/oidc/js-code      
+        -
+            method:
+                - create
+            path: /panel-api/v1/auth/console/register-to-console      # 注册到控制台 才能安装微擎
     domainWhiteList: []
     features:
         debug: false

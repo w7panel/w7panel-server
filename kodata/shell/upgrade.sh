@@ -25,7 +25,7 @@ echo "升级站点设置"
 w7panel site-setting-upgrade
 
 echo "补齐 Ingress 应用分组"
-w7panel ingress-add-group
+# w7panel ingress-add-group 
 
 echo "导入yaml"
 kubectl apply -f $KO_DATA_PATH/yaml/nvidia.yaml
