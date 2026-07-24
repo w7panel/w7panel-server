@@ -43,6 +43,10 @@ type SiteStatus struct {
 	// AppSecret is the registered App Secret returned from the panel.
 	// +optional
 	AppSecret string `json:"appSecret,omitempty"`
+	// ObservedSiteIdentifier is the SiteIdentifier currently being reconciled.
+	// It is used to detect when a SiteIdentifier change requires re-registration.
+	// +optional
+	ObservedSiteIdentifier string `json:"observedSiteIdentifier,omitempty"`
 	// Conditions represents the latest available observations of the site's state.
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`

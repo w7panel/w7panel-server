@@ -81,6 +81,9 @@ spec:
               appSecret:
                 description: AppSecret is the registered App Secret returned from the panel.
                 type: string
+              observedSiteIdentifier:
+                description: ObservedSiteIdentifier is the SiteIdentifier currently being reconciled.
+                type: string
               conditions:
                 description: |-
                   Conditions represents the latest available observations of the

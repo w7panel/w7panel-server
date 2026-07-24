@@ -216,13 +216,17 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 	if self.IsConsole {
 		manifest.AppendDomainStartParams()
 	}
+	zpkURL := zpkInfo.Data.InfoURL
+	if zpkURL == "" {
+		zpkURL = self.repoUrl
+	}
 	// manifest.Application.Identifie = strings.ToLower(manifest.Application.Identifie)
 	p := &types.ManifestPackage{
 		Manifest: manifest,
 		// Title :    manifest.Application.Name,
 		// Identifie: manifest.Application.Identifie,
 		HelmUrl:            zpkInfo.Data.HelmUrl,
-		ZpkUrl:             self.repoUrl,
+		ZpkUrl:             zpkURL,
 		ZipUrl:             zpkInfo.Data.ZipURL,
 		OciUrl:             zpkInfo.Data.OciURL,
 		WebZipUrl:          zpkInfo.Data.WebZipURL,

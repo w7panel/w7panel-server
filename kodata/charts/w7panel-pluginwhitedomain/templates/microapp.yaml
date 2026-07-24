@@ -28,16 +28,16 @@ metadata:
   name: {{ $releaseName }}
   labels:
     w7.cc/identifie: "w7panel-pluginwhitedomain"
-    w7.cc/version: "1.0.1"
+    w7.cc/version: "1.0.5"
     {{- range .Values.backend_config }}
     role.w7.cc/{{ .role }}: "true"
     {{- end }}
   annotations:
-    w7.cc/version: "1.0.1"
+    w7.cc/version: "1.0.5"
 spec:
   title: "higress域名白名单"
   {{ if or (ne $applicationType "gateway-plugin") (and .Values.gatewayPlugin .Values.gatewayPlugin.hasFrontend) }}
-  frontendUrl: /ui/microapp/w7panel-pluginwhitedomain/1.0.1/index.html
+  frontendUrl: /ui/microapp/w7panel-pluginwhitedomain/1.0.5/index.html
   {{ end }}
 
   config-v2:
