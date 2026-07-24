@@ -137,6 +137,18 @@ storage:
   storageClassName: "longhorn"
   storageSize: "5Gi"
   storageRWMode: ReadWriteOnce
+alerting:
+  enabled: true
+  warning:
+    threshold: 80
+    for: 15m
+  critical:
+    threshold: 90
+    for: 5m
+  webhookURL: "https://webhook.wssproxy.cloud/dingding"
+  groupWait: 30s
+  groupInterval: 5m
+  repeatInterval: 4h
 victoriaLogs:
   enabled: true
   name: w7panel-logs

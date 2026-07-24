@@ -1,0 +1,50 @@
+{{- if .Values.alerting.enabled }}
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: {{ include "k8s-offline-metrics.fullname" . }}-node-disk-alert
+  labels:
+    {{- include "k8s-offline-metrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: node-disk-alert
+spec:
+  groups:
+    - name: node-disk-usage
+      interval: 1m
+      rules:
+        - alert: NodeDiskSpaceWarning
+          expr: |-
+            (
+              (1 - (
+                node_filesystem_avail_bytes{job="{{ .Release.Namespace }}/{{ include "k8s-offline-metrics.fullname" . }}-node-exporter",fstype!=""}
+                /
+                node_filesystem_size_bytes{job="{{ .Release.Namespace }}/{{ include "k8s-offline-metrics.fullname" . }}-node-exporter",fstype!=""}
+              )) * 100
+            ) >= {{ .Values.alerting.warning.threshold }}
+            and on (node, device, mountpoint)
+            node_filesystem_readonly{job="{{ .Release.Namespace }}/{{ include "k8s-offline-metrics.fullname" . }}-node-exporter"} == 0
+          for: {{ .Values.alerting.warning.for | quote }}
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node disk usage is high"
+            description: "Node {{ "{{" }} $labels.node {{ "}}" }} mount {{ "{{" }} $labels.mountpoint {{ "}}" }} is using {{ "{{" }} $value | printf \"%.2f\" {{ "}}" }}% of disk space."
+            threshold: "{{ .Values.alerting.warning.threshold }}%"
+        - alert: NodeDiskSpaceCritical
+          expr: |-
+            (
+              (1 - (
+                node_filesystem_avail_bytes{job="{{ .Release.Namespace }}/{{ include "k8s-offline-metrics.fullname" . }}-node-exporter",fstype!=""}
+                /
+                node_filesystem_size_bytes{job="{{ .Release.Namespace }}/{{ include "k8s-offline-metrics.fullname" . }}-node-exporter",fstype!=""}
+              )) * 100
+            ) >= {{ .Values.alerting.critical.threshold }}
+            and on (node, device, mountpoint)
+            node_filesystem_readonly{job="{{ .Release.Namespace }}/{{ include "k8s-offline-metrics.fullname" . }}-node-exporter"} == 0
+          for: {{ .Values.alerting.critical.for | quote }}
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node disk usage is critical"
+            description: "Node {{ "{{" }} $labels.node {{ "}}" }} mount {{ "{{" }} $labels.mountpoint {{ "}}" }} is using {{ "{{" }} $value | printf \"%.2f\" {{ "}}" }}% of disk space."
+            threshold: "{{ .Values.alerting.critical.threshold }}%"
+{{- end }}
