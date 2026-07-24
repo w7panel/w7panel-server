@@ -127,3 +127,22 @@ w7panel longhornupgrade
 
 echo "安装/升级cloudnoauth"
 helm upgrade --namespace "${NAMESPACE:-default}" w7panel-cloudnoauth $KO_DATA_PATH/charts/w7panel-cloudnoauth --install --timeout 600s
+
+
+echo "clear completed jobs and pod..."
+
+kubectl get jobs -n default -o json \
+  | jq -r '.items[]
+    | select(
+        any(.status.conditions[]?; (.type == "Complete" or .type == "Failed") and .status == "True")
+      )
+    | .metadata.name' \
+  | xargs -r kubectl delete job -n default
+
+echo "Deleting completed pods..."
+
+kubectl get pods -n default -o json \
+  | jq -r '.items[]
+    | select(.status.phase == "Succeeded" or .status.phase == "Failed")
+    | .metadata.name' \
+  | xargs -r kubectl delete pod -n default
