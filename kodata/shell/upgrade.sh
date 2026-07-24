@@ -16,7 +16,16 @@ echo "升级私有DNS"
 w7panel privatedns-upgrade
 
 echo "升级用户"
-w7panel user-upgrade 
+w7panel user-upgrade
+
+echo "升级用户配置"
+w7panel w7config-upgrade
+
+echo "升级站点设置"
+w7panel site-setting-upgrade
+
+echo "补齐 Ingress 应用分组"
+w7panel ingress-add-group
 
 echo "导入yaml"
 kubectl apply -f $KO_DATA_PATH/yaml/nvidia.yaml
@@ -61,9 +70,9 @@ echo "create权限 不使用apply"
 # kubectl get permission founder >/dev/null 2>&1 || kubectl apply -f $KO_DATA_PATH/yaml/permission/founder.yaml --server-side
 kubectl annotate serviceaccount "${SERVICE_ACCOUNT_NAME:-w7panel-offline}" -n "${NAMESPACE:-default}" w7.cc/menu-name- --overwrite || true
 kubectl delete permission tech --ignore-not-found
-kubectl delete configmap tech -n default --ignore-not-found
-kubectl delete configmap k3k.permission.tech -n default --ignore-not-found
-kubectl delete configmap permission.tech -n default --ignore-not-found
+kubectl delete configmap tech -n "${NAMESPACE:-default}" --ignore-not-found
+kubectl delete configmap k3k.permission.tech -n "${NAMESPACE:-default}" --ignore-not-found
+kubectl delete configmap permission.tech -n "${NAMESPACE:-default}" --ignore-not-found
 kubectl create -f $KO_DATA_PATH/yaml/permission || echo "已存在"
 
 # 系统内置权限直接替换，自定义权限不在该目录中

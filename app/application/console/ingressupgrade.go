@@ -37,8 +37,12 @@ func (c IngressUpgrade) Handle(cmd *cobra.Command, args []string) {
 	}
 	slog.Info("开始升级ingress信息到新版")
 	sdk := k8s.NewK8sClient().Sdk
-	now := time.Now()
-	for true {
+	deadline := time.Now().Add(5 * time.Minute)
+	for {
+		if time.Now().After(deadline) {
+			slog.Error("等待面板就绪超时", "deployment", deploymentName)
+			os.Exit(1)
+		}
 		deployment, err := sdk.ClientSet.AppsV1().Deployments(sdk.GetNamespace()).Get(sdk.Ctx, deploymentName, metav1.GetOptions{})
 		if err != nil {
 			slog.Error("获取面板信息失败", slog.String("error", err.Error()))
@@ -47,11 +51,6 @@ func (c IngressUpgrade) Handle(cmd *cobra.Command, args []string) {
 		}
 		if c.IsReady(deployment) {
 			slog.Info("面板 已就绪")
-			if time.Now().Sub(now).Seconds() > 300 {
-				slog.Info("升级超时退出")
-				os.Exit(0)
-			}
-			time.Sleep(3 * time.Second)
 			break
 		}
 		time.Sleep(3 * time.Second)
@@ -59,12 +58,18 @@ func (c IngressUpgrade) Handle(cmd *cobra.Command, args []string) {
 	old, err := appgroup.NewOldUpgrade(sdk)
 	if err != nil {
 		slog.Error("新版升级失败", slog.String("error", err.Error()))
-		return
+		os.Exit(1)
 	}
-	old.Upgrade()
+	if err := old.Upgrade(); err != nil {
+		slog.Error("升级 Ingress 应用分组失败", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
 }
 
 func (c IngressUpgrade) IsReady(deployment *appsv1.Deployment) bool {
+	if deployment == nil || deployment.Spec.Replicas == nil || len(deployment.Spec.Template.Spec.Containers) == 0 {
+		return false
+	}
 	if deployment.Status.ReadyReplicas == *deployment.Spec.Replicas && deployment.Generation == deployment.Status.ObservedGeneration {
 		envs := deployment.Spec.Template.Spec.Containers[0].Env
 		for _, env := range envs {

@@ -1,12 +1,15 @@
 package console
 
 import (
+	"errors"
 	"log/slog"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 const repo = "https://zpk.w7.cc/respo/info/w7panel_metrics"
@@ -25,26 +28,30 @@ func (c MetricsUpgrade) Handle(cmd *cobra.Command, args []string) {
 	helmApi := k8s.NewHelm(sdk)
 	_, err := helmApi.Info("vm-operator", "w7-system")
 	if err != nil {
-		slog.Error("默认监控未安装跳过", "err", err)
-		return
+		if errors.Is(err, driver.ErrReleaseNotFound) {
+			slog.Info("默认监控未安装，跳过迁移")
+			return
+		}
+		slog.Error("查询默认监控失败", "err", err)
+		os.Exit(1)
 	}
 	slog.Info("start uninstall vm-operator")
 	_, err = helmApi.UnInstall("vm-operator", "w7-system")
 	if err != nil {
 		slog.Error("uninstall vm-operator error", "err", err)
-		return
+		os.Exit(1)
 	}
 	slog.Info("开始安装面板监控")
 
 	longhornClient, err := longhorn.NewLonghornClient(sdk)
 	if err != nil {
 		slog.Error("new longhorn client error", "err", err)
-		return
+		os.Exit(1)
 	}
 	list, err := longhornClient.GetK8sStorageClassList()
 	if err != nil {
 		slog.Error("get k8s storage class list error", "err", err)
-		return
+		os.Exit(1)
 	}
 	defaultStorageClass := ""
 	for _, v := range list.Items {
@@ -54,15 +61,15 @@ func (c MetricsUpgrade) Handle(cmd *cobra.Command, args []string) {
 	}
 	if defaultStorageClass == "" {
 		slog.Error("default storage class not found")
-		return
+		os.Exit(1)
 	}
 	vals := map[string]interface{}{
 		"storage.storageClassName": defaultStorageClass,
 	}
-	_, err = helmApi.InstallRaw(cmd.Context(), "", chartName, "w7panel-metrics", "default", vals, nil)
+	_, err = helmApi.InstallRaw(cmd.Context(), "", chartName, "w7panel-metrics", sdk.GetNamespace(), vals, nil)
 	if err != nil {
 		slog.Error("install w7panel-metrics error", "err", err)
-		return
+		os.Exit(1)
 	}
 
 }

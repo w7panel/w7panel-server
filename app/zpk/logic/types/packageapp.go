@@ -834,6 +834,22 @@ func (p *PackageApp) GetZipUrl() string {
 func (p *PackageApp) GetZpkUrl() string {
 	return p.ZpkUrl
 }
+
+func (p *PackageApp) GetExternalServices() []types.ExternalService {
+	if p.Parent != nil {
+		return nil
+	}
+	services := make([]types.ExternalService, 0, len(p.ExternalServices))
+	for _, service := range p.ExternalServices {
+		services = append(services, types.ExternalService{
+			Key:      service.Key,
+			Title:    service.Title,
+			URL:      service.URL,
+			OpenMode: service.OpenMode,
+		})
+	}
+	return services
+}
 func (p *PackageApp) GetBuildContext() string {
 	return p.Manifest.GetBuildContext()
 }

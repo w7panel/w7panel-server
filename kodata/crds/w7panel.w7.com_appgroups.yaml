@@ -51,6 +51,25 @@ spec:
                 type: object
               description:
                 type: string
+              externalServices:
+                items:
+                  properties:
+                    key:
+                      type: string
+                    openMode:
+                      enum:
+                      - iframe
+                      type: string
+                    title:
+                      type: string
+                    url:
+                      type: string
+                  required:
+                  - key
+                  - title
+                  - url
+                  type: object
+                type: array
               helmConfig:
                 properties:
                   chartName:
