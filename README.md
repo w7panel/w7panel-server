@@ -100,10 +100,13 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 - **压缩/解压** - 支持 zip, tar, tar.gz, tar.xz
 - **权限管理** - chmod, chown 操作
 - **应用部署** - Helm, Docker Compose, YAML
+- **应用外部服务** - AppGroup 可声明多个中立服务入口，供续费、授权、工单等外部系统接入
 - **集群管理** - 节点、资源对象管理
 - **网关插件权限** - 为创始人默认权限注册网关插件查看、新建、编辑和删除菜单权限
 
 ## 维护命令
+
+ZPK 仓库信息接口返回 `data.external_services` 时，安装器会将有效入口写入根 AppGroup 的 `spec.externalServices`。
 
 ```bash
 # 将旧 kube-system/coredns-custom 私有 DNS 配置迁移为 PrivateDNS CRD

@@ -39,8 +39,9 @@ type AppGroupSpecApplyConfiguration struct {
 	// DefaultDomain string     `json:"defaultDomain"` //默认域名
 	ZpkUrl *string `json:"zpkUrl,omitempty"`
 	// 制品库地址
-	HelmConfig     *HelmConfigApplyConfiguration     `json:"helmConfig,omitempty"`
-	AppCredentials *AppCredentialsApplyConfiguration `json:"appCredentials,omitempty"`
+	HelmConfig       *HelmConfigApplyConfiguration       `json:"helmConfig,omitempty"`
+	AppCredentials   *AppCredentialsApplyConfiguration   `json:"appCredentials,omitempty"`
+	ExternalServices []ExternalServiceApplyConfiguration `json:"externalServices,omitempty"`
 	// Annotations   map[string]string `json:"annotations"`   //annotations
 	IsHelm *bool `json:"isHelm,omitempty"`
 }
@@ -136,6 +137,19 @@ func (b *AppGroupSpecApplyConfiguration) WithHelmConfig(value *HelmConfigApplyCo
 // If called multiple times, the AppCredentials field is set to the value of the last call.
 func (b *AppGroupSpecApplyConfiguration) WithAppCredentials(value *AppCredentialsApplyConfiguration) *AppGroupSpecApplyConfiguration {
 	b.AppCredentials = value
+	return b
+}
+
+// WithExternalServices adds the given value to the ExternalServices field in the declarative configuration
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the ExternalServices field.
+func (b *AppGroupSpecApplyConfiguration) WithExternalServices(values ...*ExternalServiceApplyConfiguration) *AppGroupSpecApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithExternalServices")
+		}
+		b.ExternalServices = append(b.ExternalServices, *values[i])
+	}
 	return b
 }
 

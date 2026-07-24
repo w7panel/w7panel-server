@@ -41,6 +41,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &appgroupv1alpha1.AppGroupStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DeployItem"):
 		return &appgroupv1alpha1.DeployItemApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ExternalService"):
+		return &appgroupv1alpha1.ExternalServiceApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("HelmConfig"):
 		return &appgroupv1alpha1.HelmConfigApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ResourceInfo"):
