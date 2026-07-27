@@ -199,7 +199,8 @@ func (self Zpk) Install(http *gin.Context) {
 	namespace := params.Namespace
 	mPackage, err := repo.Load()
 	if err != nil {
-		if conflictErr, ok := errors.AsType[*logic.ArtifactInstallConflictError](err); ok {
+		var conflictErr *logic.ArtifactInstallConflictError
+		if errors.As(err, &conflictErr) {
 			http.JSON(nethttp.StatusConflict, gin.H{
 				"code":  nethttp.StatusConflict,
 				"error": "制品安装绑定冲突",

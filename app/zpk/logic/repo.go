@@ -242,11 +242,8 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		if resp.StatusCode() == http.StatusConflict {
-			var conflictResponse artifactInstallConflictResponse
-			if err := json.Unmarshal(resp.Body(), &conflictResponse); err == nil && conflictResponse.Data != nil && conflictResponse.Data.Reason != "" {
-				return nil, conflictResponse.Data
-			}
+		if conflictErr := parseArtifactInstallConflictError(resp.Body()); conflictErr != nil {
+			return nil, conflictErr
 		}
 		return nil, errors.New(resp.String())
 	}
@@ -418,4 +415,15 @@ func getSourceHost(uri string) (string, error) {
 func parseUri(uri string) (*url.URL, error) {
 	parsedURL, err := url.Parse(uri)
 	return parsedURL, err
+}
+
+func parseArtifactInstallConflictError(body []byte) *ArtifactInstallConflictError {
+	var conflictResponse artifactInstallConflictResponse
+	if err := json.Unmarshal(body, &conflictResponse); err != nil || conflictResponse.Data == nil || conflictResponse.Data.Reason == "" {
+		return nil
+	}
+	if conflictResponse.Code != http.StatusConflict && conflictResponse.Error != "制品安装绑定冲突" {
+		return nil
+	}
+	return conflictResponse.Data
 }
