@@ -34,11 +34,30 @@ type Zpk struct {
 	controller.Abstract
 }
 
+func writeArtifactInstallConflictResponse(http *gin.Context, err error) bool {
+	var conflictErr *logic.ArtifactInstallConflictError
+	if !errors.As(err, &conflictErr) {
+		return false
+	}
+	http.JSON(nethttp.StatusConflict, gin.H{
+		"code":  nethttp.StatusConflict,
+		"error": "制品安装绑定冲突",
+		"data": gin.H{
+			"conflict_reason": conflictErr.Reason,
+			"domain":          conflictErr.Domain,
+			"panel_url":       conflictErr.PanelURL,
+			"panel_device_sn": conflictErr.PanelDeviceSN,
+		},
+	})
+	return true
+}
+
 func (self Zpk) GetConfig(http *gin.Context) {
 	type ParamsValidate struct {
 		RepoUrl           string `form:"repoUrl" binding:"required"`
 		ThirdpartyCDToken string `form:"thirdpartyCDToken"` // 域名选择业务名称
 		ReleaseName       string `form:"releaseName"`
+		Reinstall         bool   `form:"reinstall"`
 	}
 	params := ParamsValidate{}
 	if !self.Validate(http, &params) {
@@ -75,6 +94,8 @@ func (self Zpk) GetConfig(http *gin.Context) {
 		slog.Error("zpk config get saName err", "err", err)
 	}
 	params.ReleaseName = strings.ToLower(params.ReleaseName)
+	repo.SetAppIdentify(params.ReleaseName)
+	repo.SetReinstall(params.Reinstall)
 	appgroupObj, err := appgroup.GetAppgroupUseSdk(params.ReleaseName, client.GetNamespace(), client)
 	// helmApi := k8s.NewHelm(client)
 	// _, err = helmApi.Info(params.ReleaseName, client.GetNamespace())
@@ -88,6 +109,9 @@ func (self Zpk) GetConfig(http *gin.Context) {
 	}
 	mPackage, err := repo.Load()
 	if err != nil {
+		if writeArtifactInstallConflictResponse(http, err) {
+			return
+		}
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
@@ -199,18 +223,7 @@ func (self Zpk) Install(http *gin.Context) {
 	namespace := params.Namespace
 	mPackage, err := repo.Load()
 	if err != nil {
-		var conflictErr *logic.ArtifactInstallConflictError
-		if errors.As(err, &conflictErr) {
-			http.JSON(nethttp.StatusConflict, gin.H{
-				"code":  nethttp.StatusConflict,
-				"error": "制品安装绑定冲突",
-				"data": gin.H{
-					"conflict_reason": conflictErr.Reason,
-					"domain":          conflictErr.Domain,
-					"panel_url":       conflictErr.PanelURL,
-					"panel_device_sn": conflictErr.PanelDeviceSN,
-				},
-			})
+		if writeArtifactInstallConflictResponse(http, err) {
 			return
 		}
 		self.JsonResponseWithServerError(http, err)
