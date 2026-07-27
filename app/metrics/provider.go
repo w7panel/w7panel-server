@@ -35,6 +35,15 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		engine.GET("/panel-api/v1/metrics/installed", middleware.Auth{}.Process, controller2.Metrics{}.VmOperatorInstalled)
 		engine.GET("/panel-api/v1/metrics/state", middleware.Auth{}.Process, controller2.Metrics{}.MetricsState)
 		engine.GET("/panel-api/v1/metrics/query-range", middleware.Auth{}.Process, controller2.Metrics{}.QueryRange)
+
+		traffic := engine.Group("/panel-api/v1/traffic")
+		traffic.Use(middleware.Auth{}.Process)
+		traffic.GET("/health", controller2.Metrics{}.TrafficHealth)
+		traffic.GET("/summary", controller2.Metrics{}.TrafficSummary)
+		traffic.GET("/series", controller2.Metrics{}.TrafficSeries)
+		traffic.GET("/pods", controller2.Metrics{}.TrafficPods)
+		traffic.GET("/domains", controller2.Metrics{}.TrafficDomains)
+		traffic.GET("/urls", controller2.Metrics{}.TrafficURLs)
 	})
 }
 
