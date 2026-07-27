@@ -229,11 +229,8 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		if resp.StatusCode() == http.StatusConflict {
-			var conflictResponse artifactInstallConflictResponse
-			if err := json.Unmarshal(resp.Body(), &conflictResponse); err == nil && conflictResponse.Data != nil && conflictResponse.Data.Reason != "" {
-				return nil, conflictResponse.Data
-			}
+		if conflictErr := parseArtifactInstallConflictError(resp.Body()); conflictErr != nil {
+			return nil, conflictErr
 		}
 		return nil, errors.New(resp.String())
 	}
@@ -359,6 +356,17 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 	}
 
 	return p, nil
+}
+
+func parseArtifactInstallConflictError(body []byte) *ArtifactInstallConflictError {
+	var conflictResponse artifactInstallConflictResponse
+	if err := json.Unmarshal(body, &conflictResponse); err != nil || conflictResponse.Data == nil || conflictResponse.Data.Reason == "" {
+		return nil
+	}
+	if conflictResponse.Code != http.StatusConflict && conflictResponse.Error != "制品安装绑定冲突" {
+		return nil
+	}
+	return conflictResponse.Data
 }
 
 func (self repo) LoadDependsByPackage(p *types.ManifestPackage) error {
