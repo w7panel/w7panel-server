@@ -112,6 +112,24 @@ sh $KO_DATA_PATH/shell/upgrade-wasm-plugins.sh all
 # echo "卸载异常面板"
 # w7panel uninstall-store-panel
 
+echo "开启Cilium Prometheus指标"
+if kubectl get crd helmchartconfigs.helm.cattle.io >/dev/null 2>&1 \
+  && kubectl get helmchart cilium -n kube-system >/dev/null 2>&1; then
+  kubectl apply -f - <<'EOF'
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: cilium
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    prometheus:
+      enabled: true
+EOF
+else
+  echo "未发现K3s Cilium HelmChart，跳过开启Cilium Prometheus指标"
+fi
+
 echo "新版metrics"
 w7panel metrics:upgrade
 
