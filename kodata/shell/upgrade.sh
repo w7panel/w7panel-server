@@ -112,7 +112,7 @@ sh $KO_DATA_PATH/shell/upgrade-wasm-plugins.sh all
 # echo "卸载异常面板"
 # w7panel uninstall-store-panel
 
-echo "开启Cilium Prometheus指标"
+echo "开启Cilium和Hubble Prometheus指标"
 if kubectl get crd helmchartconfigs.helm.cattle.io >/dev/null 2>&1 \
   && kubectl get helmchart cilium -n kube-system >/dev/null 2>&1; then
   kubectl apply -f - <<'EOF'
@@ -125,9 +125,20 @@ spec:
   valuesContent: |-
     prometheus:
       enabled: true
+    hubble:
+      enabled: true
+      metrics:
+        enableOpenMetrics: true
+        enabled:
+          - dns:query;ignoreAAAA;sourceContext=pod;destinationContext=pod
+          - drop:sourceContext=pod;destinationContext=pod
+          - tcp:sourceContext=pod;destinationContext=pod
+          - flow:sourceContext=pod;destinationContext=pod
+          - icmp:sourceContext=pod;destinationContext=pod
+          - http:sourceContext=pod;destinationContext=pod
 EOF
 else
-  echo "未发现K3s Cilium HelmChart，跳过开启Cilium Prometheus指标"
+  echo "未发现K3s Cilium HelmChart，跳过开启Cilium和Hubble Prometheus指标"
 fi
 
 echo "新版metrics"
