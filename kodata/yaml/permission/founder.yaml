@@ -11,6 +11,7 @@ spec:
   menuRules:
   - cluster
   - cluster/panel
+  - cluster/traffic
   - cluster/resource
   - app
   - app/apps

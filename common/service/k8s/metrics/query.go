@@ -29,6 +29,15 @@ func MetricsServiceName(version string) string {
 
 // QueryRange queries VictoriaMetrics through the Kubernetes service proxy.
 func QueryRange(ctx context.Context, sdk *k8s.Sdk, params map[string]string) ([]byte, error) {
+	return query(ctx, sdk, "prometheus/api/v1/query_range", params)
+}
+
+// Query queries the current VictoriaMetrics value through the Kubernetes service proxy.
+func Query(ctx context.Context, sdk *k8s.Sdk, params map[string]string) ([]byte, error) {
+	return query(ctx, sdk, "prometheus/api/v1/query", params)
+}
+
+func query(ctx context.Context, sdk *k8s.Sdk, path string, params map[string]string) ([]byte, error) {
 	serviceName := metricsService
 	if group, err := appgroup.GetAppgroupUseSdk(metricsAppGroup, metricsNamespace, sdk); err == nil {
 		serviceName = MetricsServiceName(group.Spec.Version)
@@ -39,7 +48,7 @@ func QueryRange(ctx context.Context, sdk *k8s.Sdk, params map[string]string) ([]
 	}
 
 	return sdk.ClientSet.CoreV1().Services(metricsNamespace).
-		ProxyGet("http", serviceName, metricsServicePort, "prometheus/api/v1/query_range", params).
+		ProxyGet("http", serviceName, metricsServicePort, path, params).
 		DoRaw(ctx)
 }
 

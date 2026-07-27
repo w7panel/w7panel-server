@@ -87,6 +87,9 @@ spec:
   - path: /panel-api/v1/metrics/*
     method:
     - get
+  - path: /panel-api/v1/traffic/*
+    method:
+    - get
   - path: /panel-api/v1/gpu/*
     method:
     - '*'
