@@ -73,7 +73,6 @@ func notify(url string, group *v1alpha1.AppGroup) error {
 		"ticket":          group.Annotations["w7.cc/ticket"],
 		"panel_device_sn": panelDeviceSN(),
 		"panel_url":       panelURL(group),
-		"app_identify":    group.Name,
 	}
 	res, err := helper.RetryHttpClient().R().SetFormData(data).Post(url)
 	if err != nil {
