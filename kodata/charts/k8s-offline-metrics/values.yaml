@@ -160,6 +160,9 @@ victoriaLogs:
     accessModes:
       - ReadWriteOnce
     size: "10Gi"
+ciliumMetrics:
+  # Cilium must expose its Prometheus endpoint (prometheus.enabled=true).
+  enabled: true
 victoria-metrics-operator:
   crds:
     enabled: true
