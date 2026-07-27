@@ -102,9 +102,12 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 - **权限管理** - chmod, chown 操作
 - **应用部署** - Helm, Docker Compose, YAML
 - **预装制品协调** - 通过 BootstrapProfile 同步 BootstrapInstallation，按依赖、版本与并发策略复用 ZPK/AppGroup 安装
+- **制品订单通知** - 安装时将应用域名和规范化应用标识写入制品 ticket，并在安装完成后通过 ticket 传给市场订单链路
+- **制品安装冲突处理** - 解析仓库返回的订单绑定冲突；域名冲突返回原绑定域名，应用引用冲突返回原面板地址，并支持用户确认后以受控 `reinstall` 覆盖旧绑定；升级始终校验应用标识
 - **应用外部服务** - AppGroup 可声明多个中立服务入口，供续费、授权、工单等外部系统接入
 - **集群管理** - 节点、资源对象管理
 - **网关插件权限** - 为创始人默认权限注册网关插件查看、新建、编辑和删除菜单权限
+- **插件微应用入口过滤** - 顶部微应用接口根据 MicroApp 的 `w7.cc/manifest-type=gateway-plugin` 注解排除插件，避免出现在顶部菜单和“应用直达”列表
 
 ### BootstrapProfile 预装制品
 

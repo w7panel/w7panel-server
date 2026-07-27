@@ -7,15 +7,12 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/barkimedes/go-deepcopy"
 	"github.com/w7panel/w7panel/app/zpk/logic/types"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/console"
-	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
@@ -30,8 +27,33 @@ type repo struct {
 	upgrade        bool   `json:"upgrade"`       // 是否升级包
 	checkUpgrade   bool   `json:"check_upgrade"` // 是否升级包
 	curVersion     string `json:"cur_version"`
+	domain         string `json:"domain"`
+	appIdentify    string `json:"app_identify"`
+	reinstall      bool   `json:"reinstall"`
 	targetVersion  string `json:"target_version"`
 	// loadInnerDepends bool   `json:"load_inner_depends"` // 是否加载内部依赖
+}
+
+const (
+	ArtifactInstallConflictDomainMismatch    = "domain_mismatch"
+	ArtifactInstallConflictAppIdentifyExists = "app_identify_exists"
+)
+
+type ArtifactInstallConflictError struct {
+	Reason        string `json:"conflict_reason"`
+	Domain        string `json:"domain"`
+	PanelURL      string `json:"panel_url"`
+	PanelDeviceSN string `json:"panel_device_sn"`
+}
+
+func (e *ArtifactInstallConflictError) Error() string {
+	return "artifact install binding conflict"
+}
+
+type artifactInstallConflictResponse struct {
+	Code  int                           `json:"code"`
+	Error string                        `json:"error"`
+	Data  *ArtifactInstallConflictError `json:"data"`
 }
 
 func NewRepo(repoUrl, token, baseConsoleUrl string) *repo {
@@ -59,7 +81,7 @@ func LoadPackage2(uri string, token string, checkUpgrade bool) (*types.ManifestP
 	return repo.Load()
 
 }
-func LoadPackageWithPanelToken(uri string, token string, checkUpgrade bool, panelToken string, curVersion string) (*types.ManifestPackage, error) {
+func LoadPackageWithPanelToken(uri string, token string, checkUpgrade bool, panelToken string, curVersion, appIdentify string) (*types.ManifestPackage, error) {
 	//获取source scheme
 	scheme := getSourceUri(uri)
 	if scheme == "" {
@@ -69,6 +91,7 @@ func LoadPackageWithPanelToken(uri string, token string, checkUpgrade bool, pane
 	repo.SetCheckUpgrade(checkUpgrade)
 	repo.SetUpgrade(checkUpgrade)
 	repo.SetPanelToken(panelToken)
+	repo.SetAppIdentify(appIdentify)
 	if curVersion != "" {
 		repo.SetCurVersion(curVersion)
 	}
@@ -96,6 +119,18 @@ func (self *repo) SetCurVersion(version string) {
 
 func (self *repo) SetTargetVersion(version string) {
 	self.targetVersion = version
+}
+
+func (self *repo) SetDomain(domain string) {
+	self.domain = domain
+}
+
+func (self *repo) SetAppIdentify(appIdentify string) {
+	self.appIdentify = appIdentify
+}
+
+func (self *repo) SetReinstall(reinstall bool) {
+	self.reinstall = reinstall
 }
 
 func (self *repo) getConsoleUrl() string {
@@ -192,8 +227,14 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 	if self.targetVersion != "" {
 		req.SetQueryParam("version", self.targetVersion)
 	}
-	if isParent {
-		req.SetQueryParam("reinstall", strconv.FormatBool(self.isFormulaMissingInCurrentPanel(ctx, uri)))
+	if self.domain != "" {
+		req.SetQueryParam("domain", self.domain)
+	}
+	if self.appIdentify != "" {
+		req.SetQueryParam("app_identify", self.appIdentify)
+	}
+	if self.reinstall {
+		req.SetQueryParam("reinstall", "true")
 	}
 	resp, err := req.Get(requestURI)
 	if err != nil {
@@ -201,6 +242,12 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 	}
 
 	if resp.StatusCode() != http.StatusOK {
+		if resp.StatusCode() == http.StatusConflict {
+			var conflictResponse artifactInstallConflictResponse
+			if err := json.Unmarshal(resp.Body(), &conflictResponse); err == nil && conflictResponse.Data != nil && conflictResponse.Data.Reason != "" {
+				return nil, conflictResponse.Data
+			}
+		}
 		return nil, errors.New(resp.String())
 	}
 
@@ -325,55 +372,6 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 	}
 
 	return p, nil
-}
-
-func (self *repo) isFormulaMissingInCurrentPanel(ctx context.Context, uri string) bool {
-	identifie := formulaIdentifieFromInfoURL(uri)
-	if identifie == "" {
-		return false
-	}
-	sdk := k8s.NewK8sClient().Sdk
-	scopedSDK := *sdk
-	scopedSDK.Ctx = ctx
-	api, err := appgroup.NewAppGroupApi(&scopedSDK)
-	if err != nil {
-		slog.Warn("init appgroup api failed", "identifie", identifie, "err", err)
-		return false
-	}
-	groups, err := api.GetAppGroupListByLabel(sdk.GetNamespace(), identifieLabelSelector(identifie))
-	if err != nil {
-		slog.Warn("query appgroup install status failed", "identifie", identifie, "err", err)
-		return false
-	}
-	for _, group := range groups.Items {
-		if !group.DeletionTimestamp.IsZero() {
-			continue
-		}
-		return false
-	}
-	return true
-}
-
-func identifieLabelSelector(identifie string) string {
-	normalized := strings.ReplaceAll(identifie, "_", "-")
-	if normalized == identifie {
-		return "w7.cc/identifie=" + identifie
-	}
-	return "w7.cc/identifie in (" + identifie + "," + normalized + ")"
-}
-
-func formulaIdentifieFromInfoURL(rawURL string) string {
-	uri, err := url.Parse(rawURL)
-	if err != nil {
-		return ""
-	}
-	parts := strings.Split(strings.Trim(uri.Path, "/"), "/")
-	for i := 0; i < len(parts)-1; i++ {
-		if parts[i] == "info" {
-			return parts[i+1]
-		}
-	}
-	return ""
 }
 
 func (self repo) LoadDependsByPackage(ctx context.Context, p *types.ManifestPackage) error {

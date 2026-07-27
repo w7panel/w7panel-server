@@ -25,7 +25,7 @@ echo "升级站点设置"
 w7panel site-setting-upgrade
 
 echo "补齐 Ingress 应用分组"
-w7panel ingress-add-group
+# w7panel ingress-add-group 
 
 echo "导入yaml"
 kubectl apply -f $KO_DATA_PATH/yaml/nvidia.yaml
@@ -114,6 +114,35 @@ kubectl apply -f $KO_DATA_PATH/yaml/bootstrap-profile.yaml --server-side
 
 # echo "卸载异常面板"
 # w7panel uninstall-store-panel
+
+echo "开启Cilium和Hubble Prometheus指标"
+if kubectl get crd helmchartconfigs.helm.cattle.io >/dev/null 2>&1 \
+  && kubectl get helmchart cilium -n kube-system >/dev/null 2>&1; then
+  kubectl apply -f - <<'EOF'
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: cilium
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    prometheus:
+      enabled: true
+    hubble:
+      enabled: true
+      metrics:
+        enableOpenMetrics: true
+        enabled:
+          - dns:query;ignoreAAAA;sourceContext=pod;destinationContext=pod
+          - drop:sourceContext=pod;destinationContext=pod
+          - tcp:sourceContext=pod;destinationContext=pod
+          - flow:sourceContext=pod;destinationContext=pod
+          - icmp:sourceContext=pod;destinationContext=pod
+          - http:sourceContext=pod;destinationContext=pod
+EOF
+else
+  echo "未发现K3s Cilium HelmChart，跳过开启Cilium和Hubble Prometheus指标"
+fi
 
 echo "新版metrics"
 w7panel metrics:upgrade

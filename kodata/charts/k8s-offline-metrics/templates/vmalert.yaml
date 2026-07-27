@@ -1,0 +1,21 @@
+{{- if .Values.alerting.enabled }}
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: {{ include "k8s-offline-metrics.fullname" . }}-alert
+  labels:
+    {{- include "k8s-offline-metrics.labels" . | nindent 4 }}
+spec:
+  datasource:
+    url: http://vmsingle-{{ include "k8s-offline-metrics.fullname" . }}-single.{{ .Release.Namespace }}.svc.cluster.local.:8429
+  notifier:
+    selector:
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/instance: {{ .Release.Name }}
+          app.kubernetes.io/component: alertmanager
+  ruleSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: node-disk-alert
+{{- end }}

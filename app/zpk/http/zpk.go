@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	nethttp "net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -148,6 +149,7 @@ func (self Zpk) Install(http *gin.Context) {
 		IsTrandition       bool                  `json:"isTrandition"`       // 是否传统应用
 		ZipUrl             string                `json:"zipUrl"`             // 代码包地址
 		PanelUrl           string                `json:"panelUrl"`           // 安装时候的面板地址
+		Reinstall          bool                  `json:"reinstall"`          // 强制覆盖旧安装绑定，仅允许非升级安装
 
 	}
 
@@ -177,11 +179,14 @@ func (self Zpk) Install(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	params.ReleaseName = strings.ToLower(params.ReleaseName)
+	params.ReleaseName = strings.ReplaceAll(strings.ToLower(params.ReleaseName), "_", "-")
 	// helmApi := k8s.NewHelm(client)
 	appgroupObj, err := appgroup.GetAppgroupUseSdk(params.ReleaseName, client.GetNamespace(), client)
 
 	repo := logic.NewRepo(repoUrl, params.ThirdpartyCDToken, "")
+	repo.SetDomain(params.IngressHost)
+	repo.SetAppIdentify(params.ReleaseName)
+	repo.SetReinstall(params.Reinstall)
 	if err == nil {
 		repo.SetUpgrade(true)
 		if appgroupObj != nil {
@@ -194,6 +199,19 @@ func (self Zpk) Install(http *gin.Context) {
 	namespace := params.Namespace
 	mPackage, err := repo.Load()
 	if err != nil {
+		if conflictErr, ok := errors.AsType[*logic.ArtifactInstallConflictError](err); ok {
+			http.JSON(nethttp.StatusConflict, gin.H{
+				"code":  nethttp.StatusConflict,
+				"error": "制品安装绑定冲突",
+				"data": gin.H{
+					"conflict_reason": conflictErr.Reason,
+					"domain":          conflictErr.Domain,
+					"panel_url":       conflictErr.PanelURL,
+					"panel_device_sn": conflictErr.PanelDeviceSN,
+				},
+			})
+			return
+		}
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
