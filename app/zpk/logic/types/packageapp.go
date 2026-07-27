@@ -478,6 +478,7 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 		"meta.helm.sh/release-namespace": p.GetNamespace(),
 		"w7.cc/panel-install-url":        p.PanelUrl,
 	}
+	result[types.HELM_APPLICATION_TYPE] = p.Manifest.Application.Type
 	// if !p.IsUpgrade() {
 	result["w7.cc/domains"] = string(domainsJson)
 	result["w7.cc/ingress-domains"] = string(ingressDomainsJson)

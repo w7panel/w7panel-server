@@ -7,6 +7,7 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/types"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,7 +32,7 @@ func ListTop(t string) (*microapp.MicroAppList, error) {
 	}
 	rootList.Items = lo.Filter(rootList.Items, func(item microapp.MicroApp, index int) bool {
 		_, hasRole := item.Spec.ConfigV2.Props.RoleConfig[role]
-		return item.RoleCount() > 1 && hasRole
+		return item.RoleCount() > 1 && hasRole && !isPluginMicroApp(item)
 	})
 
 	rootList.Items = lo.Map(rootList.Items, func(item microapp.MicroApp, index int) microapp.MicroApp {
@@ -48,6 +49,10 @@ func ListTop(t string) (*microapp.MicroAppList, error) {
 	})
 
 	return newList, nil
+}
+
+func isPluginMicroApp(item microapp.MicroApp) bool {
+	return item.Annotations[zpktypes.HELM_APPLICATION_TYPE] == "gateway-plugin"
 }
 
 func ListInfo(t string, name string) (*microapp.MicroApp, error) {
