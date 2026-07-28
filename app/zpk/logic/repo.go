@@ -42,6 +42,7 @@ type ArtifactInstallConflictError struct {
 	Domain        string `json:"domain"`
 	PanelURL      string `json:"panel_url"`
 	PanelDeviceSN string `json:"panel_device_sn"`
+	AppIdentify   string `json:"app_identify"`
 }
 
 func (e *ArtifactInstallConflictError) Error() string {

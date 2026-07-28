@@ -47,6 +47,7 @@ func writeArtifactInstallConflictResponse(http *gin.Context, err error) bool {
 			"domain":          conflictErr.Domain,
 			"panel_url":       conflictErr.PanelURL,
 			"panel_device_sn": conflictErr.PanelDeviceSN,
+			"app_identify":    conflictErr.AppIdentify,
 		},
 	})
 	return true
