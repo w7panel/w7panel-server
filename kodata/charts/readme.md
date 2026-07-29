@@ -34,7 +34,7 @@ helm lint kodata/charts/k8s-offline
 以下应用不再维护 `kodata/charts/w7panel-*` 本地 Chart，而是由 `kodata/yaml/bootstrap-profile.yaml` 声明并通过 ZPK 首次安装：
 
 - `w7panel-pluginwhitedomain`
-- `w7panel-pluginratelimit`
+- `w7panel-zpk respo:import-higress-plugins` 导入的 42 个 `w7panel-plugin*` Higress 内置插件制品（包含 `w7panel-pluginratelimit`，不包含 `cluster-key-rate-limit`）
 - `w7panel-cloudnoauth`
 
 基础 `w7panel-higress` 由集群初始化流程预先安装，不属于 BootstrapProfile。

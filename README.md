@@ -141,7 +141,7 @@ w7panel privatedns-upgrade --overwrite
 升级脚本会应用 `kodata/yaml/bootstrap-profile.yaml`，由 BootstrapProfile 安装以下内置应用：
 
 - `w7panel-pluginwhitedomain`：域名插件
-- `w7panel-pluginratelimit`：限流插件
+- `w7panel-plugin*`：`w7panel-zpk respo:import-higress-plugins` 命令导入的 42 个 Higress 内置插件制品（包含 `w7panel-pluginratelimit`，不包含 `cluster-key-rate-limit`）
 - `w7panel-cloudnoauth`：CloudNoAuth
 
 随后自动将历史内置 WasmPlugin 的用户配置迁移到制品资源。维护命令为：
