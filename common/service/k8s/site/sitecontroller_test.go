@@ -2,8 +2,11 @@ package site
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"github.com/w7corp/sdk-open-cloud-go/service"
+	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	appgroupv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	sitev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/site/v1alpha1"
@@ -12,6 +15,40 @@ import (
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+func TestSiteUserOpenID(t *testing.T) {
+	tests := []struct {
+		name      string
+		w7config  *config.W7Config
+		configErr error
+		want      string
+		wantErr   string
+	}{
+		{name: "config error", configErr: errors.New("not found"), wantErr: "get user cloud config: not found"},
+		{name: "missing config", wantErr: "user cloud config is empty"},
+		{name: "missing user info", w7config: &config.W7Config{}, wantErr: "user info is empty"},
+		{name: "missing openid", w7config: &config.W7Config{UserInfo: &service.ResultUserinfo{}}, wantErr: "user OpenID is empty"},
+		{name: "success", w7config: &config.W7Config{UserInfo: &service.ResultUserinfo{OpenId: "openid"}}, want: "openid"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := siteUserOpenID(tt.w7config, tt.configErr)
+			if tt.wantErr != "" {
+				if err == nil || err.Error() != tt.wantErr {
+					t.Fatalf("error = %v, want %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("siteUserOpenID() error = %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("OpenID = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
 
 func TestPatchTargetResourceAppGroupStoresAppCredentialsInSpec(t *testing.T) {
 	scheme := runtime.NewScheme()

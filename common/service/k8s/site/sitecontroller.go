@@ -13,6 +13,7 @@ import (
 	sitev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/site/v1alpha1"
 
 	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
@@ -150,14 +151,25 @@ func (r *SiteController) handlePending(ctx context.Context, site *sitev1alpha1.S
 		}
 		return ctrl.Result{}, nil
 	}
-	userName := site.Spec.UserName
-	
-	if userName == "" {
-		// openId := site.Spec.OpenId
-
-	}
 	slog.Info("Registering site via ZPK", "name", site.GetName())
-	secret, err := console.RegisterSiteZpk(site.Spec.Host, site.Spec.SiteIdentifier)
+	var secret *console.AppSecret
+	var err error
+	if site.Spec.UserName == "" {
+		secret, err = console.RegisterSiteZpk(site.Spec.Host, site.Spec.SiteIdentifier)
+	} else {
+		w7config, configErr := config.NewW7ConfigRepository(r.Sdk).Get(site.Spec.UserName)
+		openID, openIDErr := siteUserOpenID(w7config, configErr)
+		if openIDErr != nil {
+			slog.Error("Failed to get OpenID for site registration", "name", site.GetName(), "userName", site.Spec.UserName, "error", openIDErr)
+			r.setPhase(site, "Failed", "OpenIDUnavailable", metav1.ConditionFalse, fmt.Sprintf("get OpenID for user %q: %s", site.Spec.UserName, openIDErr.Error()))
+			if statusErr := r.Status().Update(ctx, site); statusErr != nil {
+				slog.Error("Failed to update site status", "name", site.GetName(), "error", statusErr)
+				return ctrl.Result{RequeueAfter: time.Minute}, nil
+			}
+			return ctrl.Result{}, nil
+		}
+		secret, err = console.RegisterSiteZpkOpenId(site.Spec.Host, site.Spec.SiteIdentifier, openID)
+	}
 	if err != nil {
 		site.Status.RegisterRetryCount++
 		if site.Status.RegisterRetryCount >= 3 {
@@ -189,6 +201,22 @@ func (r *SiteController) handlePending(ctx context.Context, site *sitev1alpha1.S
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 	return ctrl.Result{RequeueAfter: time.Second * 5}, nil
+}
+
+func siteUserOpenID(w7config *config.W7Config, configErr error) (string, error) {
+	if configErr != nil {
+		return "", fmt.Errorf("get user cloud config: %w", configErr)
+	}
+	if w7config == nil {
+		return "", fmt.Errorf("user cloud config is empty")
+	}
+	if w7config.UserInfo == nil {
+		return "", fmt.Errorf("user info is empty")
+	}
+	if w7config.UserInfo.OpenId == "" {
+		return "", fmt.Errorf("user OpenID is empty")
+	}
+	return w7config.UserInfo.OpenId, nil
 }
 
 // siteIdentifierChanged reports whether the current registration state belongs
