@@ -12,6 +12,13 @@ spec:
   defaults:
     failurePolicy: Continue
   installations:
+    - name: higress
+      type: ZPK
+      identifie: w7panel-higress
+      source: https://zpk.w7.cc/zpk/respo/info/w7panel-higress
+      releaseName: w7panel-higress
+      namespace: default
+
     - name: pluginwhitedomain
       type: ZPK
       identifie: w7panel-pluginwhitedomain
