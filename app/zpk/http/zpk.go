@@ -206,6 +206,11 @@ func (self Zpk) Install(http *gin.Context) {
 		self.JsonResponseWithServerError(http, errors.New("only founder can install"))
 		return
 	}
+	userName, err := k8sToken.GetUserName()
+	if err != nil {
+		userName = ""
+		slog.Warn("get user name error", "err", err)
+	}
 	client, err := k8s.NewK8sClient().Channel(token)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
@@ -314,8 +319,10 @@ func (self Zpk) Install(http *gin.Context) {
 	packageApps.Root.K8sToken = k8sToken
 	packageApps.Root.IsChild = isChild
 	packageApps.Root.RealToken = realToken
+	packageApps.Root.UserName = userName
 	for _, child := range packageApps.Children {
 		child.ServiceAccountName = sa
+		child.UserName = userName
 		if k8sToken.IsK3kCluster() {
 			child.IngressClassName = packageApps.Root.IngressClassName
 		}
