@@ -157,7 +157,7 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 			ActualSize:        size,
 			AccessMode:        string(volume.Spec.AccessMode),
 			CreationTimestamp: volume.CreationTimestamp.Format("2006-01-02 15:04:05"),
-			SnapShotSize:      longhorn.GetSnapshopSize(volume.Name, snapList),
+			SnapShotSize:      longhorn.GetSnapshotSize(volume.Name, snapList, engineList),
 			IsExpanding:       isExpanding,
 			ExpandErr:         expandErrstr,
 			State:             state,
@@ -172,6 +172,57 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		result[volume.Status.KubernetesStatus.PVCName+":"+volume.Status.KubernetesStatus.Namespace] = vs
 	}
 
+	self.JsonResponseWithoutError(http, result)
+}
+
+func (self Longhorn) GetVolumeSnapshots(http *gin.Context) {
+	volumeName := http.Param("volumeName")
+
+	sdk := k8s.NewK8sClient().Sdk
+	longhornclient, err := longhorn.NewLonghornClient(sdk)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	volume, err := longhornclient.GetVolume(volumeName)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	snapList, err := longhornclient.GetSnapshotList()
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	engineList, err := longhornclient.GetEngineList()
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+
+	type SnapshotStatus struct {
+		Name              string `json:"name"`
+		Volume            string `json:"volume"`
+		Size              int64  `json:"size"`
+		VolumeSize        int64  `json:"volumeSize"`
+		CreationTimestamp string `json:"creationTimestamp"`
+		MarkRemoved       bool   `json:"markRemoved"`
+		UserCreated       bool   `json:"userCreated"`
+	}
+
+	snapshots := longhorn.GetVolumeSnapshots(volumeName, snapList, engineList)
+	result := make([]SnapshotStatus, 0, len(snapshots))
+	for _, snapshot := range snapshots {
+		result = append(result, SnapshotStatus{
+			Name:              snapshot.Name,
+			Volume:            volumeName,
+			Size:              snapshot.Size,
+			VolumeSize:        volume.Spec.Size,
+			CreationTimestamp: snapshot.Created,
+			MarkRemoved:       snapshot.Removed,
+			UserCreated:       snapshot.UserCreated,
+		})
+	}
 	self.JsonResponseWithoutError(http, result)
 }
 

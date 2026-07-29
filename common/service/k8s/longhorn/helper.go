@@ -4,11 +4,20 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"strconv"
 
 	longhornV1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	"github.com/samber/lo"
 	"github.com/w7panel/w7panel/common/service/k8s"
 )
+
+type VolumeSnapshotInfo struct {
+	Name        string
+	Size        int64
+	Created     string
+	Removed     bool
+	UserCreated bool
+}
 
 func updateAllReplicaCount() error {
 	nodes, err := lclient.GetNodeList()
@@ -174,15 +183,114 @@ func containsAll(a, b []string) bool {
 	return true
 }
 
-// 快照大小
-func GetSnapshopSize(volumeName string, snapList *longhornV1beta2.SnapshotList) int64 {
-	var size int64
-	for _, snap := range snapList.Items {
-		if snap.Spec.Volume == volumeName {
-			size += snap.Status.Size
+// GetVolumeSnapshots returns the snapshot layers that currently occupy the
+// volume's engine chain. volume-head is writable data rather than a snapshot
+// and is deliberately excluded. A removed layer is kept until Longhorn purges
+// it because it can still consume physical storage.
+func GetVolumeSnapshots(volumeName string, snapList *longhornV1beta2.SnapshotList, engineList *longhornV1beta2.EngineList) []VolumeSnapshotInfo {
+	if engine := selectVolumeEngine(volumeName, engineList); engine != nil && engine.Status.Snapshots != nil {
+		result := make([]VolumeSnapshotInfo, 0, len(engine.Status.Snapshots))
+		for key, snapshot := range engine.Status.Snapshots {
+			if snapshot == nil {
+				continue
+			}
+			name := snapshot.Name
+			if name == "" {
+				name = key
+			}
+			if name == "volume-head" {
+				continue
+			}
+			size, err := strconv.ParseInt(snapshot.Size, 10, 64)
+			if err != nil {
+				slog.Warn("invalid longhorn engine snapshot size", "volumeName", volumeName, "snapshotName", name, "size", snapshot.Size, "err", err)
+			}
+			result = append(result, VolumeSnapshotInfo{
+				Name:        name,
+				Size:        size,
+				Created:     snapshot.Created,
+				Removed:     snapshot.Removed,
+				UserCreated: snapshot.UserCreated,
+			})
 		}
+		sortVolumeSnapshots(result)
+		return result
+	}
+
+	result := make([]VolumeSnapshotInfo, 0)
+	if snapList == nil {
+		return result
+	}
+	for _, snapshot := range snapList.Items {
+		if snapshot.Spec.Volume != volumeName {
+			continue
+		}
+		result = append(result, VolumeSnapshotInfo{
+			Name:        snapshot.Name,
+			Size:        snapshot.Status.Size,
+			Created:     snapshot.Status.CreationTime,
+			Removed:     snapshot.Status.MarkRemoved,
+			UserCreated: snapshot.Status.UserCreated,
+		})
+	}
+	sortVolumeSnapshots(result)
+	return result
+}
+
+func GetSnapshotSize(volumeName string, snapList *longhornV1beta2.SnapshotList, engineList *longhornV1beta2.EngineList) int64 {
+	var size int64
+	for _, snapshot := range GetVolumeSnapshots(volumeName, snapList, engineList) {
+		size += snapshot.Size
 	}
 	return size
+}
+
+func selectVolumeEngine(volumeName string, engineList *longhornV1beta2.EngineList) *longhornV1beta2.Engine {
+	if engineList == nil {
+		return nil
+	}
+	candidates := make([]*longhornV1beta2.Engine, 0)
+	for i := range engineList.Items {
+		engine := &engineList.Items[i]
+		if engine.Spec.VolumeName == volumeName || engine.Labels["longhornvolume"] == volumeName {
+			candidates = append(candidates, engine)
+		}
+	}
+	sort.SliceStable(candidates, func(i, j int) bool {
+		leftRank := engineSelectionRank(candidates[i])
+		rightRank := engineSelectionRank(candidates[j])
+		if leftRank != rightRank {
+			return leftRank < rightRank
+		}
+		return candidates[i].Name < candidates[j].Name
+	})
+	if len(candidates) == 0 {
+		return nil
+	}
+	return candidates[0]
+}
+
+func engineSelectionRank(engine *longhornV1beta2.Engine) int {
+	running := string(engine.Status.CurrentState) == "running"
+	if engine.Spec.Active && running {
+		return 0
+	}
+	if engine.Spec.Active {
+		return 1
+	}
+	if running {
+		return 2
+	}
+	return 3
+}
+
+func sortVolumeSnapshots(snapshots []VolumeSnapshotInfo) {
+	sort.SliceStable(snapshots, func(i, j int) bool {
+		if snapshots[i].Created != snapshots[j].Created {
+			return snapshots[i].Created > snapshots[j].Created
+		}
+		return snapshots[i].Name < snapshots[j].Name
+	})
 }
 
 // 是否扩容中 longhorn ui的逻辑
