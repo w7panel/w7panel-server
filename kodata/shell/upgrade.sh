@@ -156,6 +156,8 @@ w7panel longhornupgrade
 
 echo "安装/升级cloudnoauth"
 helm upgrade --namespace "${NAMESPACE:-default}" w7panel-cloudnoauth $KO_DATA_PATH/charts/w7panel-cloudnoauth --install --timeout 600s
+echo "安装/升级higress"
+helm upgrade --namespace "${NAMESPACE:-default}" w7panel-higress $KO_DATA_PATH/charts/w7panel-higress --install --timeout 600s
 
 
 echo "clear completed jobs and pod..."
