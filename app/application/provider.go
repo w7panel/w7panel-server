@@ -204,6 +204,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			localApiGroup.GET("/longhorn/need-delete-replica", middleware.Auth{}.Process, controller2.Longhorn{}.GetNeedDeleteReplicas)
 			localApiGroup.GET("/longhorn/volumes/status", middleware.Auth{}.Process, controller2.Longhorn{}.GetVolumesStatus)
+			localApiGroup.GET("/longhorn/volumes/:volumeName/snapshots", middleware.Auth{}.Process, controller2.Longhorn{}.GetVolumeSnapshots)
 			localApiGroup.POST("/longhorn/install", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.Install)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/attach", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.Attach)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/detach", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.Detach)
