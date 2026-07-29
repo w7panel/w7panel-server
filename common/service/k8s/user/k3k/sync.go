@@ -595,14 +595,17 @@ func SyncSite(params *K3kSync) error {
 	}
 	w7configRepo := config.NewW7ConfigRepository(root.Sdk)
 	w7config, err := w7configRepo.Get(params.K3kName)
-	if err != nil || w7config.UserInfo == nil || w7config.UserInfo.OpenId == "" {
-		site.Status.Phase = "Failed"
-		site.Status.Message = fmt.Sprintf("register site zpk error get openid err: %s", err.Error())
-		clientSigClient.Status().Update(root.Ctx, site)
-		return err
+	openID, openIDErr := siteRegistrationOpenID(w7config, err)
+	if openIDErr != nil {
+		slog.Error("Failed to get OpenID for site registration", "name", params.VirtualName, "error", openIDErr)
+		setSiteRegistrationFailed(site, "OpenIDUnavailable", openIDErr.Error())
+		if statusErr := clientSigClient.Status().Update(root.Ctx, site); statusErr != nil {
+			return fmt.Errorf("update site status after OpenID lookup failure: %w", statusErr)
+		}
+		return openIDErr
 	}
 	// 按openid 注册站点，获取 appId 和 appSecret
-	secret, err := console.RegisterSiteZpkOpenId(site.Spec.Host, site.Spec.SiteIdentifier, w7config.UserInfo.OpenId)
+	secret, err := console.RegisterSiteZpkOpenId(site.Spec.Host, site.Spec.SiteIdentifier, openID)
 	if err != nil {
 		slog.Error("Failed to register site via ZPK", "name", params.VirtualName, "error", err)
 		site.Status.Phase = "Failed"
@@ -635,6 +638,35 @@ func SyncSite(params *K3kSync) error {
 
 	slog.Info("Site sync completed", "name", params.VirtualName)
 	return nil
+}
+
+func siteRegistrationOpenID(w7config *config.W7Config, configErr error) (string, error) {
+	if configErr != nil {
+		return "", fmt.Errorf("get W7Config: %w", configErr)
+	}
+	if w7config == nil {
+		return "", fmt.Errorf("W7Config is empty")
+	}
+	if w7config.UserInfo == nil {
+		return "", fmt.Errorf("W7Config user info is empty")
+	}
+	if w7config.UserInfo.OpenId == "" {
+		return "", fmt.Errorf("W7Config user OpenID is empty")
+	}
+	return w7config.UserInfo.OpenId, nil
+}
+
+func setSiteRegistrationFailed(site *sitev1alpha1.Site, reason, message string) {
+	now := metav1.Now()
+	site.Status.Phase = "Failed"
+	site.Status.Message = message
+	site.Status.Conditions = append(site.Status.Conditions, metav1.Condition{
+		Type:               "Ready",
+		Status:             metav1.ConditionFalse,
+		Reason:             reason,
+		Message:            message,
+		LastTransitionTime: now,
+	})
 }
 
 func siteIdentifierChanged(site *sitev1alpha1.Site) bool {
