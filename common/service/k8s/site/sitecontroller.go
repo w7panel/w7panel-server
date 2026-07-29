@@ -150,7 +150,12 @@ func (r *SiteController) handlePending(ctx context.Context, site *sitev1alpha1.S
 		}
 		return ctrl.Result{}, nil
 	}
+	userName := site.Spec.UserName
+	
+	if userName == "" {
+		// openId := site.Spec.OpenId
 
+	}
 	slog.Info("Registering site via ZPK", "name", site.GetName())
 	secret, err := console.RegisterSiteZpk(site.Spec.Host, site.Spec.SiteIdentifier)
 	if err != nil {
