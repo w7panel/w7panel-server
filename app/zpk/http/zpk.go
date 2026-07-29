@@ -119,6 +119,13 @@ func (self Zpk) GetConfig(http *gin.Context) {
 	mPackage.ReplaceDefault(saName)
 	rootConfig := mPackage.ToPackageAddConfig(params.ReleaseName, false)
 	rootConfig.IsUpgrade = upgrade
+	if upgrade {
+		// Cross-application upgrades may return a different manifest identifie or
+		// app_name. Keep the existing installation identity so the UI reads the
+		// original Deployment env and Helm values.
+		rootConfig.ReleaseName = appgroupObj.Name
+		rootConfig.DeployName = appgroupObj.Name
+	}
 	if dependsEnv != nil {
 		rootConfig = dependsEnv.ReplacePackageAddConfig(mPackage, rootConfig)
 	}
