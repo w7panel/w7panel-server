@@ -68,9 +68,9 @@ func Cleanup(ctx context.Context, client dynamic.Interface, hostRoot string) err
 		slog.Info("ensured legacy k3s addon is removed", "name", name)
 	}
 
-	if err := client.Resource(helmChartGVR).Namespace("kube-system").Delete(ctx, "higress", metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("delete legacy k3s helmchart higress: %w", err)
-	}
-	slog.Info("ensured legacy k3s helmchart is removed", "namespace", "kube-system", "name", "higress")
+	// if err := client.Resource(helmChartGVR).Namespace("kube-system").Delete(ctx, "higress", metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+	// 	return fmt.Errorf("delete legacy k3s helmchart higress: %w", err)
+	// }
+	// slog.Info("ensured legacy k3s helmchart is removed", "namespace", "kube-system", "name", "higress")
 	return nil
 }
