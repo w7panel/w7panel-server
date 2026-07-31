@@ -21,8 +21,8 @@ w7panel user-upgrade
 echo "升级用户配置"
 w7panel w7config-upgrade
 
-echo "升级站点设置"
-w7panel site-setting-upgrade
+# echo "升级站点设置"
+# w7panel site-setting-upgrade
 
 echo "补齐 Ingress 应用分组"
 # w7panel ingress-add-group 
@@ -156,8 +156,8 @@ w7panel longhornupgrade
 
 echo "安装/升级cloudnoauth"
 helm upgrade --namespace "${NAMESPACE:-default}" w7panel-cloudnoauth $KO_DATA_PATH/charts/w7panel-cloudnoauth --install --timeout 600s
-echo "安装/升级higress"
-helm upgrade --namespace "${NAMESPACE:-default}" w7panel-higress $KO_DATA_PATH/charts/w7panel-higress --install --timeout 600s
+# echo "安装/升级higress"
+# helm upgrade --namespace "${NAMESPACE:-default}" w7panel-higress $KO_DATA_PATH/charts/w7panel-higress --install --timeout 600s
 
 
 echo "clear completed jobs and pod..."
