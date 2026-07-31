@@ -145,9 +145,7 @@ downloadResource() {
         https://cdn.w7.cc/w7panel/images/jetstack.cert-manager-controller-v1.16.2.tar
         https://cdn.w7.cc/w7panel/images/jetstack.cert-manager-webhook-v1.16.2.tar
         https://cdn.w7.cc/w7panel/images/jetstack.cert-manager-startupapicheck-v1.16.2.tar
-        https://cdn.w7.cc/w7panel/manifests/cert-manager.yaml
         https://cdn.w7.cc/w7panel/manifests/cilium.yaml
-        https://cdn.w7.cc/w7panel/manifests/higress.yaml
         https://cdn.w7.cc/w7panel/manifests/w7panel-offline.yaml
     "
 

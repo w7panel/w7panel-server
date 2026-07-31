@@ -13,6 +13,7 @@ import (
 	"github.com/w7panel/w7panel/common/middleware"
 	console2 "github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/addon"
 	appctl "github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/w7panel/w7panel/common/service/k8s/core"
 	"github.com/w7panel/w7panel/common/service/k8s/gpu/gpustack"
@@ -46,6 +47,7 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(consoleShell.TestUploadChunk)) // 测试分片上传功能
 
 	p.RegisterHttpRoutes(httpServer)
+	p.cleanupLegacyK3sAddons()
 	console2.SetConsoleApi(facade.GetConfig().GetString("app.console_base_url"))
 	if helper.IsLocalMock() {
 		// console2.SetConsoleApi("http://172.16.1.116:9004")
@@ -84,6 +86,26 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	go k8s.CheckLogo()
 	go higress.LoadBkConfig()
 
+}
+
+// cleanupLegacyK3sAddons is deliberately executed by the privileged agent
+// DaemonSet. K3s server manifests are node-local, so every server node must
+// remove its stale files before an upgrade can safely manage these components.
+func (p Provider) cleanupLegacyK3sAddons() {
+	if !helper.IsAgent() || !addon.IsK3sServer("/host") {
+		return
+	}
+	go func() {
+		client := k8s.NewK8sClient().DynamicClient()
+		for {
+			if err := addon.Cleanup(context.Background(), client, "/host"); err == nil {
+				return
+			} else {
+				slog.Error("清理旧 K3s Addon 失败，30 秒后重试", "error", err)
+			}
+			time.Sleep(30 * time.Second)
+		}
+	}()
 }
 
 func (p Provider) syncSelfImageConfigMap() error {
