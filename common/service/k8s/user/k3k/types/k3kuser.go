@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/w7panel/w7panel/common/service/config"
@@ -145,7 +146,9 @@ func (u *k3kUser) GetK3kNamespace() string {
 }
 
 func (u *k3kUser) GetPermissionName() string {
-	return u.Spec.PermissionName
+	val := strings.ReplaceAll(u.Spec.PermissionName, "k3k.permission.", "")
+	return strings.ReplaceAll(val, "permission.", "")
+	// return u.Spec.PermissionName
 }
 
 func (u *k3kUser) GetRole() string {

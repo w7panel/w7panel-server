@@ -98,7 +98,8 @@ func RefreshK3kUser(user *types.K3kUser, rootSdk *k8s.Sdk, update bool) (*types.
 		user.Spec.PermissionName = permissionservice.NormalPermissionName
 	}
 	if !user.IsCustomPermission() {
-		permissionConfig, err := permissionservice.Get(rootSdk.Ctx, rootSdk, user.GetPermissionName())
+		pName := user.GetPermissionName()
+		permissionConfig, err := permissionservice.Get(rootSdk.Ctx, rootSdk, pName)
 		if err == nil {
 			permissionservice.EnsureBuiltinDefaults(permissionConfig)
 			user.ApplyPermission(permissionConfig.Name, permissionConfig.Spec.Role, permissionservice.MenuRules(permissionConfig), permissionConfig.Spec.Features, permissionConfig.Spec.DomainWhiteList, permissionservice.APIRules(permissionConfig))
