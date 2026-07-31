@@ -284,6 +284,8 @@ func (u *k3kUser) ToArray() map[string]string {
 		oldAndNewMenu := append([]string(nil), K3K_MENU_FOUNDER_RULES...)
 		oldAndNewMenu = append(oldAndNewMenu, u.Spec.MenuRules...)
 		oldAndNewMenu = withoutMenu(oldAndNewMenu, "zpk")
+		oldAndNewMenu = withoutMenu(oldAndNewMenu, "cluster/nodes-image-list")
+		oldAndNewMenu = withoutMenu(oldAndNewMenu, "cluster/nodes")
 		result["w7.cc/is-ckm-req"] = "true"
 		result[W7_CKM_NAME] = u.GetCkmName()
 		result["ckm-namespace"] = u.GetK3kNamespace()
