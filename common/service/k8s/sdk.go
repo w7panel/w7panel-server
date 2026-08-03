@@ -25,7 +25,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/terminal"
 	apiclientv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/apiclient/v1alpha1"
 	appgroupv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
-	bootstrapv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrap/v1alpha1"
+	bootstrapinstallationv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrapinstallation/v1alpha1"
 	buildimagev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/buildimage/v1alpha1"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
@@ -93,7 +93,7 @@ func init() {
 	_ = microapp.AddToScheme(scheme)
 	_ = microappsettingv1alpha1.AddToScheme(scheme)
 	_ = buildimagev1alpha1.AddToScheme(scheme)
-	_ = bootstrapv1alpha1.AddToScheme(scheme)
+	_ = bootstrapinstallationv1alpha1.AddToScheme(scheme)
 	_ = cvmv1alpha1.AddToScheme(scheme)
 	_ = oidcv1alpha1.AddToScheme(scheme)
 	_ = privatednsv1alpha1.AddToScheme(scheme)

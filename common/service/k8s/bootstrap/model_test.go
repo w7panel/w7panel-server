@@ -4,117 +4,86 @@ import (
 	"strings"
 	"testing"
 
-	bootstrapv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrap/v1alpha1"
+	installationv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrapinstallation/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 )
 
-func TestValidateProfile(t *testing.T) {
-	t.Setenv("BOOTSTRAP_ALLOWED_SOURCE_HOSTS", "packages.example.com")
-	base := bootstrapv1.BootstrapProfile{
-		ObjectMeta: metav1.ObjectMeta{Name: "default-profile"},
-		Spec: bootstrapv1.BootstrapProfileSpec{
-			Revision: "1.0.0-1",
-			Installations: []bootstrapv1.BootstrapInstallationTemplate{
-				{Name: "domain", Identifie: "domain", Source: "https://packages.example.com/info/domain", ReleaseName: "domain", Namespace: "default"},
-				{Name: "rate", Identifie: "rate", Source: "https://packages.example.com/info/rate", ReleaseName: "rate", Namespace: "default", DependsOn: []string{"domain"}},
-			},
+func validInstallation() *installationv1.BootstrapInstallation {
+	return &installationv1.BootstrapInstallation{
+		ObjectMeta: metav1.ObjectMeta{Name: "w7panel-default-higress", UID: types.UID("installation-uid")},
+		Spec: installationv1.BootstrapInstallationSpec{
+			Revision: "1.1.76-6",
+			Artifact: installationv1.ArtifactReference{Name: "higress", Type: installationv1.ArtifactTypeZPK, Identifie: "w7panel-higress", Source: "https://zpk.w7.cc/info/higress"},
+			Target:   installationv1.ArtifactTarget{ReleaseName: "w7panel-higress", Namespace: "default"},
 		},
 	}
+}
 
+func TestValidateInstallation(t *testing.T) {
+	base := validInstallation()
 	tests := []struct {
 		name    string
-		mutate  func(*bootstrapv1.BootstrapProfile)
+		mutate  func(*installationv1.BootstrapInstallation)
 		wantErr string
 	}{
 		{name: "valid"},
-		{name: "duplicate target", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Installations[1].ReleaseName = "domain"
-		}, wantErr: "相同安装目标"},
-		{name: "missing dependency", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Installations[1].DependsOn = []string{"missing"}
-		}, wantErr: "不存在的依赖"},
-		{name: "dependency cycle", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Installations[0].DependsOn = []string{"rate"}
-		}, wantErr: "依赖存在环"},
-		{name: "http rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Installations[0].Source = "http://packages.example.com/info/domain"
-		}, wantErr: "仅允许 HTTPS"},
-		{name: "oci rejected until executor is available", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Installations[0].Source = "oci://packages.example.com/domain"
-		}, wantErr: "仅允许 HTTPS"},
-		{name: "credentials in source rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Installations[0].Source = "https://user:password@packages.example.com/info/domain"
-		}, wantErr: "不能包含用户名或密码"},
-		{name: "reserved helm type rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Installations[0].Type = "Helm"
-		}, wantErr: "仅 ZPK 执行器已启用"},
-		{name: "invalid helm value rejected", mutate: func(profile *bootstrapv1.BootstrapProfile) {
-			profile.Spec.Installations[0].InstallOptions.HelmValues = map[string]string{"service.type": "value,with,commas"}
+		{name: "revision required", mutate: func(item *installationv1.BootstrapInstallation) { item.Spec.Revision = "" }, wantErr: "revision"},
+		{name: "http rejected", mutate: func(item *installationv1.BootstrapInstallation) {
+			item.Spec.Artifact.Source = "http://zpk.w7.cc/info/higress"
+		}, wantErr: "仅支持 HTTPS"},
+		{name: "credentials rejected", mutate: func(item *installationv1.BootstrapInstallation) {
+			item.Spec.Artifact.Source = "https://user:password@zpk.w7.cc/info/higress"
+		}, wantErr: "用户名或密码"},
+		{name: "unsupported type", mutate: func(item *installationv1.BootstrapInstallation) { item.Spec.Artifact.Type = "Helm" }, wantErr: "仅 ZPK"},
+		{name: "invalid helm value", mutate: func(item *installationv1.BootstrapInstallation) {
+			item.Spec.InstallOptions.HelmValues = map[string]string{"service.type": "value,with,commas"}
 		}, wantErr: "helmValues"},
 	}
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			profile := base.DeepCopy()
+			item := base.DeepCopy()
 			if test.mutate != nil {
-				test.mutate(profile)
+				test.mutate(item)
 			}
-			err := validateProfile(profile)
+			err := validateInstallation(item)
 			if test.wantErr == "" && err != nil {
-				t.Fatalf("validateProfile() error = %v", err)
+				t.Fatalf("validateInstallation() error = %v", err)
 			}
 			if test.wantErr != "" && (err == nil || !strings.Contains(err.Error(), test.wantErr)) {
-				t.Fatalf("validateProfile() error = %v, want substring %q", err, test.wantErr)
+				t.Fatalf("validateInstallation() error = %v, want %q", err, test.wantErr)
 			}
 		})
 	}
 }
 
-func TestProfileSettingsMaxRetries(t *testing.T) {
+func TestInstallationSettingsMaxRetries(t *testing.T) {
 	tests := []struct {
 		name       string
 		maxRetries *int32
 		want       int32
 	}{
-		{name: "omitted uses default", want: defaultMaxRetries},
-		{name: "explicit zero disables retries", maxRetries: ptr.To[int32](0), want: 0},
-		{name: "explicit value", maxRetries: ptr.To[int32](5), want: 5},
+		{name: "default", want: defaultMaxRetries},
+		{name: "zero", maxRetries: ptr.To[int32](0), want: 0},
+		{name: "custom", maxRetries: ptr.To[int32](5), want: 5},
 	}
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			profile := &bootstrapv1.BootstrapProfile{
-				Spec: bootstrapv1.BootstrapProfileSpec{
-					Strategy: bootstrapv1.BootstrapStrategy{MaxRetries: test.maxRetries},
-				},
-			}
-			if got := profileSettings(profile).MaxRetries; got != test.want {
+			item := validInstallation()
+			item.Spec.Strategy.MaxRetries = test.maxRetries
+			if got := installationSettings(item).MaxRetries; got != test.want {
 				t.Fatalf("MaxRetries = %d, want %d", got, test.want)
 			}
 		})
 	}
 }
 
-func TestEffectiveArtifactDefaultsTypeAndCopiesHelmValues(t *testing.T) {
-	profile := &bootstrapv1.BootstrapProfile{
-		ObjectMeta: metav1.ObjectMeta{Name: "default-profile"},
-		Spec:       bootstrapv1.BootstrapProfileSpec{Revision: "1.0.0-1"},
-	}
-	artifact := bootstrapv1.BootstrapInstallationTemplate{
-		Name: "domain", Identifie: "domain", Source: "https://zpk.w7.cc/domain",
-		ReleaseName: "domain", Namespace: "default",
-		InstallOptions: bootstrapv1.BootstrapInstallOptions{
-			HelmValues: map[string]string{"service.type": "ClusterIP"},
-		},
-	}
-
-	spec := effectiveArtifact(profile, artifact)
-	if spec.Artifact.Type != bootstrapv1.ArtifactTypeZPK {
-		t.Fatalf("artifact type = %q, want %q", spec.Artifact.Type, bootstrapv1.ArtifactTypeZPK)
-	}
-	spec.InstallOptions.HelmValues["service.type"] = "LoadBalancer"
-	if artifact.InstallOptions.HelmValues["service.type"] != "ClusterIP" {
-		t.Fatal("effectiveArtifact must deep-copy helmValues")
+func TestOperationIDChangesWithRevision(t *testing.T) {
+	item := validInstallation()
+	first := operationID(item)
+	item.Spec.Revision = "1.1.76-7"
+	if second := operationID(item); second == first {
+		t.Fatal("operation ID must change with revision")
 	}
 }

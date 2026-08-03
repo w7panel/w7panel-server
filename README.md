@@ -101,7 +101,7 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 - **压缩/解压** - 支持 zip, tar, tar.gz, tar.xz
 - **权限管理** - chmod, chown 操作
 - **应用部署** - Helm, Docker Compose, YAML
-- **预装制品协调** - 通过 BootstrapProfile 同步 BootstrapInstallation，按依赖、版本与并发策略复用 ZPK/AppGroup 安装
+- **预装制品协调** - 通过自包含的 BootstrapInstallation 按版本、重试和并发策略复用 ZPK/AppGroup 安装
 - **制品订单通知** - 安装时将应用域名和规范化应用标识写入制品 ticket，并在安装完成后通过 ticket 传给市场订单链路
 - **制品安装冲突处理** - 配置读取和安装接口统一解析仓库返回的订单绑定冲突；域名冲突返回原绑定域名，应用引用冲突返回原面板地址及原应用标识，支持跳转原面板定位应用或在用户确认后以受控 `reinstall` 覆盖旧绑定；升级始终校验应用标识
 - **制品跨应用更新** - 新制品标识与原应用不同时，配置接口仍返回已有 AppGroup 名称，供安装界面读取原实例保存的参数
@@ -110,13 +110,13 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 - **网关插件权限** - 为创始人默认权限注册网关插件查看、新建、编辑和删除菜单权限
 - **插件微应用入口过滤** - 顶部微应用接口根据 MicroApp 的 `w7.cc/manifest-type=gateway-plugin` 注解排除插件，避免出现在顶部菜单和“应用直达”列表
 
-### BootstrapProfile 预装制品
+### BootstrapInstallation 预装制品
 
-控制器在 `k8s.watch=true` 时随共享 Controller Manager 启动。BootstrapProfile 和 BootstrapInstallation 统一使用 `w7panel.w7.com/v1alpha1` API Group。BootstrapInstallation 只有在对应 AppGroup 同时满足 `status.ready=true` 和 `status.deployStatus=deployed` 时才进入 Ready；安装 Lease 会持有到真实部署完成、失败或超时。Lease 抢占、续租、释放和并发槽已统一复用 `common/service/k8s/coordination/`，详细设计见 [Kubernetes Lease 协调组件](../docs/src/development/k8s-coordination.md)。CRD 清单位于 `kodata/crds/w7panel.w7.com_bootstrapprofiles.yaml` 和 `kodata/crds/w7panel.w7.com_bootstrapinstallations.yaml`，字段、状态机和示例见 [BootstrapProfile 预装制品方案](../docs/src/development/bootstrap-installation.md)。
+控制器在 `k8s.watch=true` 时随共享 Controller Manager 启动。每个 BootstrapInstallation 直接声明 revision、制品、目标和执行策略，不再依赖 BootstrapProfile。只有对应 AppGroup 同时满足 `status.ready=true` 和 `status.deployStatus=deployed` 时任务才进入 Ready；安装 Lease 会持有到真实部署完成、失败或超时。CRD 清单位于 `kodata/crds/w7panel.w7.com_bootstrapinstallations.yaml`，详细设计见 [BootstrapInstallation 预装制品方案](../docs/src/development/bootstrap-installation.md)。
 
 `spec.strategy.maxRetries` 未填写时默认重试 3 次；显式设置为 `0` 时不重试。
 
-当前自动安装执行器仅支持 HTTPS ZPK 源。`type` 作为执行器扩展点，未填写时兼容默认为 `ZPK`，当前其他类型会在 Profile 校验阶段被拒绝。Profile 里声明的每个 installation 都会安装，不再使用 `enabled`/`required`。ZPK 可通过 `installOptions.helmValues` 提供内部 Helm 首次安装参数。已存在对应 AppGroup 时 Bootstrap 直接跳过，不执行自动升级。用户主动删除 AppGroup 后不会自动重装，直到 Profile revision 再次更新。OCI 地址仍未开放执行。内置允许 `zpk.w7.cc` 和 `zpk.fan.b2.sz.w7.com`，其他 HTTPS 主机需显式配置：
+当前自动安装执行器仅支持 HTTPS ZPK 源。`type` 未填写时默认为 `ZPK`，其他类型会被 Installation 校验拒绝。ZPK 可通过 `installOptions.helmValues` 提供首次安装参数。已存在 identifie 一致的 AppGroup 时不执行自动升级。删除 BootstrapInstallation 会通过 finalizer 自动删除其拥有的 AppGroup，再由 AppGroup Controller 完成 Helm 卸载。内置允许 `zpk.w7.cc` 和 `zpk.fan.b2.sz.w7.com`，其他 HTTPS 主机需显式配置：
 
 Bootstrap Controller 使用 ServiceAccount Token 作为 ZPK 安装的 Kubernetes 访问凭证，但不会将其作为面板用户身份写入 AppGroup 的 `w7.cc/create-username` 或 `w7.cc/create-role` Label。
 
@@ -136,34 +136,24 @@ w7panel privatedns-upgrade
 w7panel privatedns-upgrade --overwrite
 ```
 
-### 内置应用与旧版 Higress 插件迁移
+### 内置 BootstrapInstallation
 
-升级脚本会应用 `kodata/yaml/bootstrap-profile.yaml`，由 BootstrapProfile 安装以下内置应用：
+升级脚本会应用 `kodata/yaml/bootstrap-installations.yaml`，安装以下内置应用：
 
-- `w7panel-pluginwhitedomain`：域名插件
-- `w7panel-plugin*`：`w7panel-zpk respo:import-higress-plugins` 命令导入的 42 个 Higress 内置插件制品（包含 `w7panel-pluginratelimit`，不包含 `cluster-key-rate-limit`）
+- `w7panel-higress`：Higress
 - `w7panel-cloudnoauth`：CloudNoAuth
 
-随后自动将历史内置 WasmPlugin 的用户配置迁移到制品资源。维护命令为：
+默认清单不再预装插件类型应用。维护命令为：
 
 ```bash
 # 创建或更新内置预装清单
-kubectl apply -f "$KO_DATA_PATH/yaml/bootstrap-profile.yaml" --server-side
+kubectl apply -f "$KO_DATA_PATH/yaml/bootstrap-installations.yaml" --server-side
 
 # 查看安装状态
-kubectl get bootstrapprofile w7panel-default
-kubectl get bootstrapinstallation -l w7.cc/bootstrap-profile=w7panel-default
-
-# 等待制品资源就绪并迁移旧配置
-DOMAIN_TARGET_GROUP=w7panel-pluginwhitedomain \
-RATE_LIMIT_TARGET_GROUP=w7panel-pluginratelimit \
-DELETE_LEGACY=true \
-sh "$KO_DATA_PATH/shell/upgrade-wasm-plugins.sh" all
+kubectl get bootstrapinstallation
 ```
 
-基础 Higress 由集群安装流程预先提供，不属于该 Profile。修改内置应用清单时必须同步递增 BootstrapProfile 的 `spec.revision`。迁移脚本会备份旧资源、迁移全局及域名规则配置、切换插件并校验结果，失败时自动恢复旧插件。面板自动升级在校验成功后会删除旧资源；新集群没有旧资源时，只为制品插件补充稳定的逻辑标签。手工执行脚本未设置 `DELETE_LEGACY=true` 时，仍会保留已停用的旧资源，便于调试。
-
-集群升级会对已达到最大重试次数并进入 `Failed` 的内置 BootstrapInstallation 发起非阻塞重建，使相同 Profile revision 在下一次集群升级时也能重新尝试安装。Profile revision 发生变化时，Controller 会先清理上一轮由 Bootstrap 拥有的失败 AppGroup，再开始新一轮安装。
+修改某个内置应用声明时必须同步递增对应 BootstrapInstallation 的 `spec.revision`。
 
 ## API 接口
 

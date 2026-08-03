@@ -10,7 +10,6 @@ import (
 	zpktypes "github.com/w7panel/w7panel/app/zpk/logic/types"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	appgroupv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
-	bootstrapv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrap/v1alpha1"
 	installationv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrapinstallation/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -60,9 +59,9 @@ func newZPKArtifactInstaller(sdk *k8s.Sdk) (*zpkArtifactInstaller, error) {
 	return &zpkArtifactInstaller{sdk: sdk, panelToken: config.BearerToken}, nil
 }
 
-func (i *zpkArtifactInstaller) load(ctx context.Context, reference bootstrapv1.ArtifactReference) (*zpktypes.ManifestPackage, error) {
+func (i *zpkArtifactInstaller) load(ctx context.Context, reference installationv1.ArtifactReference) (*zpktypes.ManifestPackage, error) {
 	if strings.HasPrefix(reference.Source, "oci://") {
-		return nil, errors.New("当前 ZPK 加载器尚不支持 OCI BootstrapProfile source")
+		return nil, errors.New("当前 ZPK 加载器尚不支持 OCI BootstrapInstallation source")
 	}
 	repo := logic.NewRepo(reference.Source, "", "")
 	repo.SetPanelToken(i.panelToken)
@@ -119,7 +118,7 @@ func appGroupArtifactState(group *appgroupv1.AppGroup) installedArtifactState {
 }
 
 func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *installationv1.BootstrapInstallation) error {
-	if effectiveArtifactType(installation.Spec.Artifact.Type) != bootstrapv1.ArtifactTypeZPK {
+	if effectiveArtifactType(installation.Spec.Artifact.Type) != installationv1.ArtifactTypeZPK {
 		return fmt.Errorf("制品类型 %q 当前不支持", installation.Spec.Artifact.Type)
 	}
 	reference := installation.Spec.Artifact
@@ -147,7 +146,7 @@ func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *instal
 		Replicas:   1,
 		HelmValues: cloneStringMap(installation.Spec.InstallOptions.HelmValues),
 		Annotations: map[string]string{
-			bootstrapv1.AnnotationInstallationOwner: artifactOwner(installation),
+			installationv1.AnnotationInstallationOwner: artifactOwner(installation),
 		},
 	})
 	for name, child := range pack.Children {
@@ -222,11 +221,17 @@ func (i *zpkArtifactInstaller) Uninstall(ctx context.Context, installation *inst
 }
 
 func artifactOwner(installation *installationv1.BootstrapInstallation) string {
-	return installation.Spec.ProfileRef.UID + "/" + installation.Spec.Artifact.Name
+	return "bootstrapinstallation/" + string(installation.UID)
 }
 
 func isArtifactOwner(annotations map[string]string, installation *installationv1.BootstrapInstallation) bool {
-	return annotations[bootstrapv1.AnnotationInstallationOwner] == artifactOwner(installation)
+	owner := annotations[installationv1.AnnotationInstallationOwner]
+	if owner == artifactOwner(installation) {
+		return true
+	}
+	// 兼容旧 BootstrapProfile 写入的 "profileUID/artifactName" 所有权值，
+	// 保证迁移后的 Installation 删除时仍会卸载原先由 Bootstrap 创建的应用。
+	return owner != "" && strings.HasSuffix(owner, "/"+installation.Spec.Artifact.Name)
 }
 
 func normalizeIdentifie(value string) string {

@@ -29,20 +29,19 @@ helm lint kodata/charts/k8s-offline
 
 更新压缩包时，必须同步修改调用方中的文件名和版本，不能只替换本目录文件。
 
-## BootstrapProfile 管理的内置应用
+## BootstrapInstallation 管理的内置应用
 
-以下应用不再维护 `kodata/charts/w7panel-*` 本地 Chart，而是由 `kodata/yaml/bootstrap-profile.yaml` 声明并通过 ZPK 首次安装：
+以下应用不再维护 `kodata/charts/w7panel-*` 本地 Chart，而是由 `kodata/yaml/bootstrap-installations.yaml` 声明并通过 ZPK 首次安装：
 
-- `w7panel-pluginwhitedomain`
-- `w7panel-zpk respo:import-higress-plugins` 导入的 42 个 `w7panel-plugin*` Higress 内置插件制品（包含 `w7panel-pluginratelimit`，不包含 `cluster-key-rate-limit`）
+- `w7panel-higress`
 - `w7panel-cloudnoauth`
 
-基础 `w7panel-higress` 由集群初始化流程预先安装，不属于 BootstrapProfile。
+默认清单不再预装插件类型应用。
 
-修改内置应用清单时必须同步递增 `BootstrapProfile.spec.revision`，并运行：
+修改内置应用清单时必须同步递增对应 `BootstrapInstallation.spec.revision`，并运行：
 
 ```bash
 go test ./common/service/k8s/bootstrap
 ```
 
-新增内置应用时优先使用 BootstrapProfile，不要重新增加 `w7panel-*` 本地 Chart 或在 `upgrade.sh` 中直接执行 `helm upgrade`。
+新增内置应用时优先增加独立 BootstrapInstallation，不要重新增加 `w7panel-*` 本地 Chart 或在 `upgrade.sh` 中直接执行 `helm upgrade`。

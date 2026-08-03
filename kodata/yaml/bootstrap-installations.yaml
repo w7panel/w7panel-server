@@ -1,0 +1,37 @@
+apiVersion: w7panel.w7.com/v1alpha1
+kind: BootstrapInstallation
+metadata:
+  name: w7panel-default-higress
+spec:
+  revision: "1.1.76-6"
+  strategy:
+    maxConcurrent: 2
+    maxRetries: 3
+    timeoutPerArtifact: 10m
+  artifact:
+    name: higress
+    type: ZPK
+    identifie: w7panel-higress
+    source: https://zpk.w7.cc/zpk/respo/info/w7panel-higress
+  target:
+    releaseName: w7panel-higress
+    namespace: default
+---
+apiVersion: w7panel.w7.com/v1alpha1
+kind: BootstrapInstallation
+metadata:
+  name: w7panel-default-cloudnoauth
+spec:
+  revision: "1.1.76-6"
+  strategy:
+    maxConcurrent: 2
+    maxRetries: 3
+    timeoutPerArtifact: 10m
+  artifact:
+    name: cloudnoauth
+    type: ZPK
+    identifie: w7panel-cloudnoauth
+    source: https://zpk.w7.cc/zpk/respo/info/w7panel_cloudnoauth
+  target:
+    releaseName: w7panel-cloudnoauth
+    namespace: default

@@ -7,186 +7,96 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
-	bootstrapv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrap/v1alpha1"
 	installationv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrapinstallation/v1alpha1"
 	"golang.org/x/mod/semver"
 	"helm.sh/helm/v3/pkg/strvals"
-	apiMeta "k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 const (
 	defaultMaxConcurrent int32 = 3
 	defaultMaxRetries    int32 = 3
+	bootstrapSlotScope         = "installations"
 )
 
 var defaultArtifactTimeout = 10 * time.Minute
 
-type effectiveProfile struct {
+type effectiveSettings struct {
 	MaxConcurrent      int32
 	MaxRetries         int32
 	TimeoutPerArtifact time.Duration
 }
 
-func profileSettings(profile *bootstrapv1.BootstrapProfile) effectiveProfile {
-	settings := effectiveProfile{
-		MaxConcurrent:      defaultMaxConcurrent,
-		MaxRetries:         defaultMaxRetries,
-		TimeoutPerArtifact: defaultArtifactTimeout,
+func installationSettings(installation *installationv1.BootstrapInstallation) effectiveSettings {
+	settings := effectiveSettings{MaxConcurrent: defaultMaxConcurrent, MaxRetries: defaultMaxRetries, TimeoutPerArtifact: defaultArtifactTimeout}
+	strategy := installation.Spec.Strategy
+	if strategy.MaxConcurrent > 0 {
+		settings.MaxConcurrent = strategy.MaxConcurrent
 	}
-	if profile.Spec.Strategy.MaxConcurrent > 0 {
-		settings.MaxConcurrent = profile.Spec.Strategy.MaxConcurrent
+	if strategy.MaxRetries != nil {
+		settings.MaxRetries = *strategy.MaxRetries
 	}
-	if profile.Spec.Strategy.MaxRetries != nil {
-		settings.MaxRetries = *profile.Spec.Strategy.MaxRetries
-	}
-	if profile.Spec.Strategy.TimeoutPerArtifact.Duration > 0 {
-		settings.TimeoutPerArtifact = profile.Spec.Strategy.TimeoutPerArtifact.Duration
+	if strategy.TimeoutPerArtifact.Duration > 0 {
+		settings.TimeoutPerArtifact = strategy.TimeoutPerArtifact.Duration
 	}
 	return settings
 }
 
-func effectiveArtifact(profile *bootstrapv1.BootstrapProfile, artifact bootstrapv1.BootstrapInstallationTemplate) installationv1.BootstrapInstallationSpec {
-	failurePolicy := artifact.FailurePolicy
-	if failurePolicy == "" {
-		failurePolicy = profile.Spec.Defaults.FailurePolicy
-	}
-	if failurePolicy == "" {
-		failurePolicy = bootstrapv1.FailurePolicyContinue
-	}
-	return installationv1.BootstrapInstallationSpec{
-		ProfileRef: bootstrapv1.BootstrapProfileReference{
-			Name: profile.Name,
-			UID:  string(profile.UID),
-		},
-		ProfileRevision: profile.Spec.Revision,
-		Artifact: bootstrapv1.ArtifactReference{
-			Name:      artifact.Name,
-			Type:      effectiveArtifactType(artifact.Type),
-			Identifie: artifact.Identifie,
-			Source:    artifact.Source,
-			Version:   artifact.Version,
-		},
-		Target: bootstrapv1.ArtifactTarget{
-			ReleaseName: artifact.ReleaseName,
-			Namespace:   artifact.Namespace,
-		},
-		FailurePolicy: failurePolicy,
-		DependsOn:     append([]string(nil), artifact.DependsOn...),
-		InstallOptions: bootstrapv1.BootstrapInstallOptions{
-			HelmValues: cloneStringMap(artifact.InstallOptions.HelmValues),
-		},
-	}
-}
-
-func effectiveArtifactType(value bootstrapv1.ArtifactType) bootstrapv1.ArtifactType {
+func effectiveArtifactType(value installationv1.ArtifactType) installationv1.ArtifactType {
 	if value == "" {
-		return bootstrapv1.ArtifactTypeZPK
+		return installationv1.ArtifactTypeZPK
 	}
 	return value
 }
 
-func bootstrapInstallationName(profileName, artifactName string) string {
-	name := profileName + "-" + artifactName
-	if len(name) <= 253 {
-		return name
-	}
-	sum := sha256.Sum256([]byte(name))
-	return strings.TrimRight(name[:236], "-.") + "-" + hex.EncodeToString(sum[:8])
-}
-
 func operationID(installation *installationv1.BootstrapInstallation) string {
-	input := fmt.Sprintf("%s\x00%s\x00%s\x00%s",
-		installation.Spec.ProfileRef.UID,
-		installation.Spec.ProfileRevision,
-		installation.Spec.Artifact.Name,
-		installation.Spec.Artifact.Version,
-	)
+	input := fmt.Sprintf("%s\x00%s\x00%s\x00%s", installation.UID, installation.Spec.Revision, installation.Spec.Artifact.Name, installation.Spec.Artifact.Version)
 	sum := sha256.Sum256([]byte(input))
-	// 128 bits keeps the ID collision-resistant and valid as a Kubernetes label value.
 	return hex.EncodeToString(sum[:16])
 }
 
-func validateProfile(profile *bootstrapv1.BootstrapProfile) error {
-	if profile.Spec.Revision == "" {
+func validateInstallation(installation *installationv1.BootstrapInstallation) error {
+	if installation.Spec.Revision == "" {
 		return errors.New("spec.revision 不能为空")
 	}
-	if errs := validation.IsValidLabelValue(profile.Name); len(errs) > 0 {
-		return fmt.Errorf("Profile 名称不能作为标签值: %s", strings.Join(errs, ", "))
+	if errs := validation.IsValidLabelValue(installation.Name); len(errs) > 0 {
+		return fmt.Errorf("Installation 名称不能作为标签值: %s", strings.Join(errs, ", "))
 	}
-	settings := profileSettings(profile)
-	if profile.Spec.Strategy.MaxConcurrent < 0 ||
-		(profile.Spec.Strategy.MaxRetries != nil && *profile.Spec.Strategy.MaxRetries < 0) ||
-		profile.Spec.Strategy.TimeoutPerArtifact.Duration < 0 {
+	strategy := installation.Spec.Strategy
+	settings := installationSettings(installation)
+	if strategy.MaxConcurrent < 0 || (strategy.MaxRetries != nil && *strategy.MaxRetries < 0) || strategy.TimeoutPerArtifact.Duration < 0 {
 		return errors.New("strategy 中的数值不能为负数")
 	}
 	if settings.MaxConcurrent > 50 {
 		return errors.New("strategy.maxConcurrent 不能大于 50")
 	}
-	if err := validateFailurePolicy(profile.Spec.Defaults.FailurePolicy); err != nil {
-		return fmt.Errorf("spec.defaults: %w", err)
+	artifact := installation.Spec.Artifact
+	if artifact.Name == "" || artifact.Identifie == "" || artifact.Source == "" || installation.Spec.Target.ReleaseName == "" || installation.Spec.Target.Namespace == "" {
+		return errors.New("spec.artifact 的 name、identifie、source 以及 spec.target 的 releaseName、namespace 均为必填项")
 	}
-
-	byName := make(map[string]bootstrapv1.BootstrapInstallationTemplate, len(profile.Spec.Installations))
-	targets := make(map[string]string, len(profile.Spec.Installations))
-	for i, artifact := range profile.Spec.Installations {
-		path := fmt.Sprintf("spec.installations[%d]", i)
-		if artifact.Name == "" || artifact.Identifie == "" || artifact.Source == "" || artifact.ReleaseName == "" || artifact.Namespace == "" {
-			return fmt.Errorf("%s 的 name、identifie、source、releaseName 和 namespace 均为必填项", path)
-		}
-		artifactType := effectiveArtifactType(artifact.Type)
-		if artifactType != bootstrapv1.ArtifactTypeZPK {
-			return fmt.Errorf("%s.type %q 当前不支持，仅 ZPK 执行器已启用", path, artifact.Type)
-		}
-		if errs := validation.IsDNS1123Label(artifact.Name); len(errs) > 0 {
-			return fmt.Errorf("%s.name 无效: %s", path, strings.Join(errs, ", "))
-		}
-		if errs := validation.IsDNS1123Label(artifact.Namespace); len(errs) > 0 {
-			return fmt.Errorf("%s.namespace 无效: %s", path, strings.Join(errs, ", "))
-		}
-		if errs := validation.IsDNS1123Subdomain(artifact.ReleaseName); len(errs) > 0 || len(artifact.ReleaseName) > 53 {
-			return fmt.Errorf("%s.releaseName 必须是最长 53 字符的 DNS 子域名: %s", path, strings.Join(errs, ", "))
-		}
-		if errs := validation.IsValidLabelValue(normalizeIdentifie(artifact.Identifie)); len(errs) > 0 {
-			return fmt.Errorf("%s.identifie 无效: %s", path, strings.Join(errs, ", "))
-		}
-		if _, exists := byName[artifact.Name]; exists {
-			return fmt.Errorf("制品名称 %q 重复", artifact.Name)
-		}
-		byName[artifact.Name] = artifact
-		target := artifact.Namespace + "/" + artifact.ReleaseName
-		if previous, exists := targets[target]; exists {
-			return fmt.Errorf("制品 %q 与 %q 使用了相同安装目标 %q", previous, artifact.Name, target)
-		}
-		targets[target] = artifact.Name
-		if err := validateSource(artifact.Source); err != nil {
-			return fmt.Errorf("%s.source 无效: %w", path, err)
-		}
-		if err := validateHelmValues(artifact.InstallOptions.HelmValues); err != nil {
-			return fmt.Errorf("%s.installOptions.helmValues: %w", path, err)
-		}
-		if err := validateFailurePolicy(artifact.FailurePolicy); err != nil {
-			return fmt.Errorf("%s: %w", path, err)
-		}
+	if effectiveArtifactType(artifact.Type) != installationv1.ArtifactTypeZPK {
+		return fmt.Errorf("spec.artifact.type %q 当前不支持，仅 ZPK 执行器已启用", artifact.Type)
 	}
-
-	for _, artifact := range profile.Spec.Installations {
-		for _, dependency := range artifact.DependsOn {
-			if dependency == artifact.Name {
-				return fmt.Errorf("制品 %q 不能依赖自身", artifact.Name)
-			}
-			if _, exists := byName[dependency]; !exists {
-				return fmt.Errorf("制品 %q 引用了不存在的依赖 %q", artifact.Name, dependency)
-			}
-		}
+	if errs := validation.IsDNS1123Label(artifact.Name); len(errs) > 0 {
+		return fmt.Errorf("spec.artifact.name 无效: %s", strings.Join(errs, ", "))
 	}
-	if cycle := dependencyCycle(byName); len(cycle) > 0 {
-		return fmt.Errorf("制品依赖存在环: %s", strings.Join(cycle, " -> "))
+	if errs := validation.IsDNS1123Label(installation.Spec.Target.Namespace); len(errs) > 0 {
+		return fmt.Errorf("spec.target.namespace 无效: %s", strings.Join(errs, ", "))
+	}
+	if errs := validation.IsDNS1123Subdomain(installation.Spec.Target.ReleaseName); len(errs) > 0 || len(installation.Spec.Target.ReleaseName) > 53 {
+		return fmt.Errorf("spec.target.releaseName 必须是最长 53 字符的 DNS 子域名: %s", strings.Join(errs, ", "))
+	}
+	if errs := validation.IsValidLabelValue(normalizeIdentifie(artifact.Identifie)); len(errs) > 0 {
+		return fmt.Errorf("spec.artifact.identifie 无效: %s", strings.Join(errs, ", "))
+	}
+	if err := validateSource(artifact.Source); err != nil {
+		return fmt.Errorf("spec.artifact.source 无效: %w", err)
+	}
+	if err := validateHelmValues(installation.Spec.InstallOptions.HelmValues); err != nil {
+		return fmt.Errorf("spec.installOptions.helmValues: %w", err)
 	}
 	return nil
 }
@@ -209,87 +119,40 @@ func validateHelmValues(values map[string]string) error {
 	return nil
 }
 
-func validateFailurePolicy(policy bootstrapv1.FailurePolicy) error {
-	if policy != "" && policy != bootstrapv1.FailurePolicyContinue && policy != bootstrapv1.FailurePolicyStop {
-		return fmt.Errorf("failurePolicy %q 无效", policy)
-	}
-	return nil
-}
-
-func validateSource(raw string) error {
-	u, err := url.Parse(raw)
+func validateSource(source string) error {
+	parsed, err := url.Parse(source)
 	if err != nil {
 		return err
 	}
-	if u.Scheme != "https" {
-		return errors.New("当前仅允许 HTTPS 地址")
+	if parsed.Scheme != "https" {
+		return errors.New("仅支持 HTTPS ZPK source")
 	}
-	if u.Hostname() == "" {
-		return errors.New("地址缺少主机名")
+	if parsed.User != nil {
+		return errors.New("source 不能包含用户名或密码")
 	}
-	if u.User != nil {
-		return errors.New("source 不能包含用户名或密码，请使用 Secret 引用")
-	}
-	for key := range u.Query() {
+	for key := range parsed.Query() {
 		normalized := strings.ToLower(key)
 		if strings.Contains(normalized, "token") || strings.Contains(normalized, "password") || strings.Contains(normalized, "secret") || strings.Contains(normalized, "auth") {
-			return errors.New("source 不能在查询参数中包含凭据，请使用 Secret 引用")
+			return errors.New("source 不能在查询参数中包含凭据")
 		}
 	}
-	allowed := map[string]struct{}{
-		"zpk.w7.cc":            {},
-		"zpk.fan.b2.sz.w7.com": {},
+	if parsed.Hostname() == "" {
+		return errors.New("source 缺少主机名")
 	}
+	allowed := map[string]struct{}{"zpk.w7.cc": {}, "zpk.fan.b2.sz.w7.com": {}}
 	for _, host := range strings.Split(os.Getenv("BOOTSTRAP_ALLOWED_SOURCE_HOSTS"), ",") {
-		host = strings.TrimSpace(strings.ToLower(host))
-		if host != "" {
+		if host = strings.ToLower(strings.TrimSpace(host)); host != "" {
 			allowed[host] = struct{}{}
 		}
 	}
-	if _, ok := allowed[strings.ToLower(u.Hostname())]; !ok {
-		return fmt.Errorf("主机 %q 不在 BOOTSTRAP_ALLOWED_SOURCE_HOSTS 白名单中", u.Hostname())
+	if _, ok := allowed[strings.ToLower(parsed.Hostname())]; !ok {
+		return fmt.Errorf("主机 %q 不在允许列表", parsed.Hostname())
 	}
 	return nil
 }
 
-func dependencyCycle(artifacts map[string]bootstrapv1.BootstrapInstallationTemplate) []string {
-	state := make(map[string]uint8, len(artifacts))
-	stack := make([]string, 0, len(artifacts))
-	var visit func(string) []string
-	visit = func(name string) []string {
-		state[name] = 1
-		stack = append(stack, name)
-		for _, dependency := range artifacts[name].DependsOn {
-			switch state[dependency] {
-			case 0:
-				if cycle := visit(dependency); len(cycle) > 0 {
-					return cycle
-				}
-			case 1:
-				for i, item := range stack {
-					if item == dependency {
-						return append(append([]string(nil), stack[i:]...), dependency)
-					}
-				}
-			}
-		}
-		stack = stack[:len(stack)-1]
-		state[name] = 2
-		return nil
-	}
-	names := make([]string, 0, len(artifacts))
-	for name := range artifacts {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		if state[name] == 0 {
-			if cycle := visit(name); len(cycle) > 0 {
-				return cycle
-			}
-		}
-	}
-	return nil
+func terminalPhase(phase installationv1.BootstrapPhase) bool {
+	return phase == installationv1.BootstrapPhaseReady || phase == installationv1.BootstrapPhaseFailed
 }
 
 func compareVersions(left, right string) int {
@@ -306,18 +169,4 @@ func normalizeSemver(version string) string {
 		return "v" + version
 	}
 	return version
-}
-
-func terminalPhase(phase bootstrapv1.BootstrapPhase) bool {
-	switch phase {
-	case bootstrapv1.BootstrapPhaseReady,
-		bootstrapv1.BootstrapPhaseFailed:
-		return true
-	default:
-		return false
-	}
-}
-
-func setCondition(conditions *[]metav1.Condition, condition metav1.Condition) {
-	apiMeta.SetStatusCondition(conditions, condition)
 }
