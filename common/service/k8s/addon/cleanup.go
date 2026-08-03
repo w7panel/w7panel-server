@@ -29,6 +29,8 @@ var (
 		"cert-manager.yml",
 		"higress.yaml",
 		"higress.yml",
+		"longhorn.yaml",
+		"longhorn.yml",
 	}
 	legacyAddons = []string{"cert-manager", "higress"}
 )
