@@ -21,8 +21,8 @@ w7panel user-upgrade
 echo "升级用户配置"
 w7panel w7config-upgrade
 
-echo "升级站点设置"
-w7panel site-setting-upgrade
+# echo "升级站点设置"
+# w7panel site-setting-upgrade
 
 echo "补齐 Ingress 应用分组"
 # w7panel ingress-add-group 

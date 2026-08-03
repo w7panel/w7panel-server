@@ -11,7 +11,6 @@ spec:
   menuRules:
   - cluster
   - cluster/panel
-  - cluster/traffic
   - cluster/resource
   - app
   - app/apps
@@ -27,6 +26,7 @@ spec:
   - app/rvproxy/edit
   - app/rvproxy/delete
   - gateway
+  - gateway/traffic
   - gateway/rvproxy
   - gateway/rvproxy/add
   - gateway/rvproxy/edit

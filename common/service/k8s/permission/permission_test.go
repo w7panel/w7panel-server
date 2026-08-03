@@ -382,6 +382,17 @@ func TestBuiltinAdminPermissionsDoNotGrantFounderWildcards(t *testing.T) {
 	}
 }
 
+func TestBuiltinFounderUsesGatewayTrafficMenu(t *testing.T) {
+	p := loadBuiltinPermission(t, "founder.yaml")
+	menuRules := MenuRules(p)
+	if !containsString(menuRules, "gateway/traffic") {
+		t.Fatal("founder permission should include gateway/traffic")
+	}
+	if containsString(menuRules, "cluster/traffic") {
+		t.Fatal("founder permission should not include legacy cluster/traffic")
+	}
+}
+
 func TestBuiltinNormalPermissionHasNoPanelOrKubernetesPermission(t *testing.T) {
 	p := loadBuiltinPermission(t, "normal.yaml")
 	api := APIMap(p)

@@ -34,11 +34,14 @@ func TestParseTrafficParamsAllowsFounderAllNamespaces(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	initTrafficTestConfig()
 	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
-	ctx.Request = httptest.NewRequest("GET", "/panel-api/v1/traffic/domains?namespace=*", nil)
+	ctx.Request = httptest.NewRequest("GET", "/panel-api/v1/traffic/domains?namespace=*&domain=demo.example.com&upstreamIp=10.42.0.8&search=checkout", nil)
 	ctx.Set("user_mode", "founder")
 
 	params, ok := parseTrafficParams(ctx)
 	if !ok || params.Namespace != "*" {
 		t.Fatalf("founder namespace = %q, ok=%v", params.Namespace, ok)
+	}
+	if params.Domain != "demo.example.com" || params.UpstreamIP != "10.42.0.8" || params.Search != "checkout" {
+		t.Fatalf("filter params were not parsed: %#v", params)
 	}
 }

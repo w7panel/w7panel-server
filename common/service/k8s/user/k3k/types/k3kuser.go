@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/w7panel/w7panel/common/service/config"
@@ -145,7 +146,9 @@ func (u *k3kUser) GetK3kNamespace() string {
 }
 
 func (u *k3kUser) GetPermissionName() string {
-	return u.Spec.PermissionName
+	val := strings.ReplaceAll(u.Spec.PermissionName, "k3k.permission.", "")
+	return strings.ReplaceAll(val, "permission.", "")
+	// return u.Spec.PermissionName
 }
 
 func (u *k3kUser) GetRole() string {
@@ -278,7 +281,11 @@ func (u *k3kUser) ToArray() map[string]string {
 		"w7.cc/has-password": boolString(u.Spec.PasswordHash != ""),
 	}
 	if u.IsCkmReqUser() {
-		oldAndNewMenu := append(K3K_MENU_FOUNDER_RULES, u.Spec.MenuRules...)
+		oldAndNewMenu := append([]string(nil), K3K_MENU_FOUNDER_RULES...)
+		oldAndNewMenu = append(oldAndNewMenu, u.Spec.MenuRules...)
+		oldAndNewMenu = withoutMenu(oldAndNewMenu, "zpk")
+		oldAndNewMenu = withoutMenu(oldAndNewMenu, "cluster/nodes-image-list")
+		oldAndNewMenu = withoutMenu(oldAndNewMenu, "cluster/nodes")
 		result["w7.cc/is-ckm-req"] = "true"
 		result[W7_CKM_NAME] = u.GetCkmName()
 		result["ckm-namespace"] = u.GetK3kNamespace()
@@ -288,6 +295,16 @@ func (u *k3kUser) ToArray() map[string]string {
 		result["w7.cc/cvm-namespace"] = u.GetK3kNamespace()
 		result["w7.cc/menu"] = mustJSON(oldAndNewMenu) // 兼容新 旧面板
 		result[W7_SERVER0_POD_NAME] = u.Annotations[W7_SERVER0_POD_NAME]
+	}
+	return result
+}
+
+func withoutMenu(menuRules []string, menu string) []string {
+	result := make([]string, 0, len(menuRules))
+	for _, rule := range menuRules {
+		if rule != menu {
+			result = append(result, rule)
+		}
 	}
 	return result
 }
