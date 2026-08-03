@@ -24,16 +24,18 @@ type TimeRange struct {
 }
 
 type QueryParams struct {
-	Namespace string
-	Domain    string
-	Method    string
-	Status    string
-	Keyword   string
-	Sort      string
-	Page      int
-	PageSize  int
-	Step      string
-	Range     TimeRange
+	Namespace  string
+	Domain     string
+	UpstreamIP string
+	Method     string
+	Status     string
+	Keyword    string
+	Search     string
+	Sort       string
+	Page       int
+	PageSize   int
+	Step       string
+	Range      TimeRange
 }
 
 type QueryClient struct {
@@ -153,14 +155,113 @@ func (q *QueryClient) URLs(ctx context.Context, params QueryParams) ([]map[strin
 	return q.query(ctx, query, params.Range)
 }
 
-func (q *QueryClient) Series(ctx context.Context, params QueryParams, dimension string) ([]map[string]any, error) {
-	group := "authority"
-	if dimension == "pod" {
-		group = "upstream_ip"
-	}
+func (q *QueryClient) Series(ctx context.Context, params QueryParams) ([]map[string]any, error) {
 	step := sanitizeStep(params.Step)
-	query := fmt.Sprintf(`%s | stats by (_time:%s, %s, status_code) count() as requests, sum(bytes_received) as bytes_received, sum(bytes_sent) as bytes_sent`, buildFilter(params), step, group)
-	return q.query(ctx, query, params.Range)
+	query := fmt.Sprintf(`%s | stats by (_time:%s, protocol, status_code) count() as requests, sum(bytes_received) as bytes_received, sum(bytes_sent) as bytes_sent`, buildFilter(params), step)
+	rows, err := q.query(ctx, query, params.Range)
+	if err != nil {
+		return nil, err
+	}
+	httpsQuery := fmt.Sprintf(`%s requested_server_name:!"" | stats by (_time:%s) count() as requests`, buildFilter(params), step)
+	httpsRows, err := q.query(ctx, httpsQuery, params.Range)
+	if err != nil {
+		return nil, err
+	}
+	return buildSeriesRows(rows, httpsRows, step), nil
+}
+
+func buildSeriesRows(rows, httpsRows []map[string]any, step string) []map[string]any {
+	buckets := map[string]map[string]any{}
+	for _, row := range rows {
+		timestamp := fmt.Sprint(row["_time"])
+		if timestamp == "" || timestamp == "<nil>" {
+			continue
+		}
+		bucket := buckets[timestamp]
+		if bucket == nil {
+			bucket = newSeriesBucket(timestamp)
+			buckets[timestamp] = bucket
+		}
+
+		requests := number(row["requests"])
+		bucket["requests_total"] = number(bucket["requests_total"]) + requests
+		if field := protocolRequestField(fmt.Sprint(row["protocol"])); field != "" {
+			bucket[field] = number(bucket[field]) + requests
+		}
+		statusField := statusHitField(fmt.Sprint(row["status_code"]))
+		bucket[statusField] = number(bucket[statusField]) + requests
+		bucket["traffic_bytes"] = number(bucket["traffic_bytes"]) + number(row["bytes_received"]) + number(row["bytes_sent"])
+	}
+	for _, row := range httpsRows {
+		timestamp := fmt.Sprint(row["_time"])
+		bucket := buckets[timestamp]
+		if bucket == nil && timestamp != "" && timestamp != "<nil>" {
+			bucket = newSeriesBucket(timestamp)
+			buckets[timestamp] = bucket
+		}
+		if bucket != nil {
+			bucket["requests_https"] = number(bucket["requests_https"]) + number(row["requests"])
+		}
+	}
+
+	seconds := stepSeconds(step)
+	result := make([]map[string]any, 0, len(buckets))
+	for _, bucket := range buckets {
+		total := number(bucket["requests_total"])
+		bucket["hits_total"] = total
+		bucket["bandwidth_bps"] = number(bucket["traffic_bytes"]) * 8 / seconds
+		if total > 0 {
+			bucket["hit_rate_total"] = float64(1)
+			for _, class := range []string{"2xx", "3xx", "4xx", "5xx", "other"} {
+				bucket["hit_rate_"+class] = number(bucket["hits_"+class]) / total
+			}
+		}
+		result = append(result, bucket)
+	}
+	sort.Slice(result, func(i, j int) bool { return fmt.Sprint(result[i]["_time"]) < fmt.Sprint(result[j]["_time"]) })
+	return result
+}
+
+func newSeriesBucket(timestamp string) map[string]any {
+	return map[string]any{
+		"_time":          timestamp,
+		"requests_total": float64(0), "requests_http1": float64(0), "requests_http2": float64(0), "requests_http3": float64(0), "requests_https": float64(0),
+		"traffic_bytes": float64(0), "bandwidth_bps": float64(0),
+		"hit_rate_total": float64(0), "hit_rate_2xx": float64(0), "hit_rate_3xx": float64(0), "hit_rate_4xx": float64(0), "hit_rate_5xx": float64(0), "hit_rate_other": float64(0),
+		"hits_total": float64(0), "hits_2xx": float64(0), "hits_3xx": float64(0), "hits_4xx": float64(0), "hits_5xx": float64(0), "hits_other": float64(0),
+	}
+}
+
+func protocolRequestField(protocol string) string {
+	switch strings.ToUpper(strings.TrimSpace(protocol)) {
+	case "HTTP/1", "HTTP/1.0", "HTTP/1.1":
+		return "requests_http1"
+	case "HTTP/2", "HTTP/2.0":
+		return "requests_http2"
+	case "HTTP/3", "HTTP/3.0":
+		return "requests_http3"
+	default:
+		return ""
+	}
+}
+
+func statusHitField(status string) string {
+	code, err := strconv.Atoi(strings.TrimSpace(status))
+	if err == nil && code >= 200 && code <= 599 {
+		return fmt.Sprintf("hits_%dxx", code/100)
+	}
+	return "hits_other"
+}
+
+func stepSeconds(step string) float64 {
+	if sanitizeStep(step) == "1d" {
+		return (24 * time.Hour).Seconds()
+	}
+	duration, err := time.ParseDuration(sanitizeStep(step))
+	if err != nil || duration <= 0 {
+		return (5 * time.Minute).Seconds()
+	}
+	return duration.Seconds()
 }
 
 func sanitizeStep(step string) string {
@@ -179,6 +280,9 @@ func buildFilter(params QueryParams) string {
 	if params.Domain != "" {
 		parts = append(parts, fmt.Sprintf(`authority:%q`, params.Domain))
 	}
+	if params.UpstreamIP != "" {
+		parts = append(parts, fmt.Sprintf(`upstream_ip:%q`, params.UpstreamIP))
+	}
 	if params.Method != "" {
 		parts = append(parts, fmt.Sprintf(`method:%q`, strings.ToUpper(params.Method)))
 	}
@@ -194,6 +298,23 @@ func buildFilter(params QueryParams) string {
 		parts = append(parts, fmt.Sprintf(`path:~%q`, ".*"+regexp.QuoteMeta(params.Keyword)+".*"))
 	}
 	return strings.Join(parts, " ")
+}
+
+func SearchRows(rows []map[string]any, search string, fields ...string) []map[string]any {
+	keyword := strings.ToLower(strings.TrimSpace(search))
+	if keyword == "" {
+		return rows
+	}
+	result := make([]map[string]any, 0, len(rows))
+	for _, row := range rows {
+		for _, field := range fields {
+			if strings.Contains(strings.ToLower(fmt.Sprint(row[field])), keyword) {
+				result = append(result, row)
+				break
+			}
+		}
+	}
+	return result
 }
 
 func (q *QueryClient) query(ctx context.Context, query string, timerange TimeRange) ([]map[string]any, error) {

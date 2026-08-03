@@ -60,6 +60,7 @@ func (self Metrics) TrafficPods(ctx *gin.Context) {
 	rows = traffic.FoldRows(rows, "upstream_ip", "upstream_service", "upstream_namespace")
 	traffic.SortRows(rows, params.Sort)
 	resolvePodNames(ctx, params.Namespace, rows)
+	rows = traffic.SearchRows(rows, params.Search, "pod_name", "upstream_ip", "upstream_service", "upstream_namespace")
 	list, total := traffic.Paginate(rows, params.Page, params.PageSize)
 	self.JsonResponseWithoutError(ctx, gin.H{"list": list, "total": total, "page": params.Page, "pageSize": params.PageSize})
 }
@@ -76,6 +77,7 @@ func (self Metrics) TrafficDomains(ctx *gin.Context) {
 	}
 	rows = traffic.FoldRows(rows, "authority")
 	traffic.SortRows(rows, params.Sort)
+	rows = traffic.SearchRows(rows, params.Search, "authority")
 	list, total := traffic.Paginate(rows, params.Page, params.PageSize)
 	self.JsonResponseWithoutError(ctx, gin.H{"list": list, "total": total, "page": params.Page, "pageSize": params.PageSize})
 }
@@ -101,12 +103,7 @@ func (self Metrics) TrafficSeries(ctx *gin.Context) {
 	if !ok {
 		return
 	}
-	dimension := ctx.DefaultQuery("dimension", "domain")
-	if dimension != "domain" && dimension != "pod" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"code": 400, "msg": "dimension仅支持domain或pod"})
-		return
-	}
-	rows, err := traffic.NewQueryClient().Series(ctx.Request.Context(), params, dimension)
+	rows, err := traffic.NewQueryClient().Series(ctx.Request.Context(), params)
 	if err != nil {
 		self.JsonResponseWithError(ctx, err, http.StatusInternalServerError)
 		return
@@ -133,7 +130,7 @@ func parseTrafficParams(ctx *gin.Context) (traffic.QueryParams, bool) {
 	}
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "20"))
-	params := traffic.QueryParams{Namespace: namespace, Domain: strings.TrimSpace(ctx.Query("domain")), Method: strings.TrimSpace(ctx.Query("method")), Status: strings.TrimSpace(ctx.Query("status")), Keyword: strings.TrimSpace(ctx.Query("keyword")), Sort: strings.TrimSpace(ctx.Query("sort")), Step: strings.TrimSpace(ctx.Query("step")), Page: page, PageSize: pageSize, Range: rangeValue}
+	params := traffic.QueryParams{Namespace: namespace, Domain: strings.TrimSpace(ctx.Query("domain")), UpstreamIP: strings.TrimSpace(ctx.Query("upstreamIp")), Method: strings.TrimSpace(ctx.Query("method")), Status: strings.TrimSpace(ctx.Query("status")), Keyword: strings.TrimSpace(ctx.Query("keyword")), Search: strings.TrimSpace(ctx.Query("search")), Sort: strings.TrimSpace(ctx.Query("sort")), Step: strings.TrimSpace(ctx.Query("step")), Page: page, PageSize: pageSize, Range: rangeValue}
 	traffic.NormalizeParams(&params)
 	return params, true
 }
