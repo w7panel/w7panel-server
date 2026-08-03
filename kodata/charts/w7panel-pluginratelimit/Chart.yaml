@@ -1,7 +1,7 @@
 apiVersion: v2
 appVersion: 1.16.0
 deprecated: false
-description: higress 限流
+description: 基于Key限流
 home: ""
 icon: ""
 kubeVersion: ""
@@ -11,11 +11,11 @@ version: 0.1.0
 
 
 annotations:
-  w7.cc/title: "higress限流"
-  w7.cc/description: "higress限流"
-  title: "higress限流"
+  w7.cc/title: "基于Key限流"
+  w7.cc/description: "基于Key限流"
+  title: "基于Key限流"
   w7.cc/deny-delete: "true"
   w7.cc/official-app: "true"
-  w7.cc/icon: "https://zpk.fan.b2.sz.w7.com/zpk/zip/icon/w7panel-pluginratelimit"
-  w7.cc/zpk-url: "https://zpk.fan.b2.sz.w7.com/zpk/respo/info/w7panel-pluginratelimit"
+  w7.cc/icon: "https://zpk.w7.cc/zpk/zip/icon/w7panel-pluginratelimit"
+  w7.cc/zpk-url: "https://zpk.w7.cc/zpk/respo/info/w7panel-pluginratelimit"
   w7.cc/identifie: "w7panel-pluginratelimit"
