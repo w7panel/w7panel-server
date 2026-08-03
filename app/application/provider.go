@@ -47,7 +47,7 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(consoleShell.TestUploadChunk)) // 测试分片上传功能
 
 	p.RegisterHttpRoutes(httpServer)
-	// p.cleanupLegacyK3sAddons()
+	p.cleanupLegacyK3sAddons()
 	console2.SetConsoleApi(facade.GetConfig().GetString("app.console_base_url"))
 	if helper.IsLocalMock() {
 		// console2.SetConsoleApi("http://172.16.1.116:9004")
