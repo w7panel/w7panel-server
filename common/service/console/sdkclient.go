@@ -534,29 +534,42 @@ func (c *SdkClient) ReturnOrderFinish(k3kName string, sn string) (*LastReturnOrd
 
 // 当前方法只支持创始人 创建站点 暂时不支持其他用户创建站点
 func (c *SdkClient) CreateSiteFromPanel(url, siteIdentifie string) (*License, error) {
+	return c.CreateSiteFromPanelWithName(url, siteIdentifie, "")
+}
+
+// CreateSiteFromPanelWithName registers a founder-owned site with an optional display name.
+func (c *SdkClient) CreateSiteFromPanelWithName(url, siteIdentifie, siteName string) (*License, error) {
 	order := &License{}
-	params := map[string]string{
-		// "clusterId": clusterId,
-		"url":            url,
-		"site_identifie": siteIdentifie,
-		// "orderSn": sn,
-	}
+	params := createSiteFromPanelParams(url, siteIdentifie, siteName, "")
 	_, err := c.Post(order, "/api/thirdparty-cd/k8s-offline/sdk/license/register-from-w7panel", params)
 	return order, err
 }
 
 // 支持openid 创建站点 支持其他用户创建站点 比如子集群
 func (c *SdkClient) CreateSiteFromPanel2(url, siteIdentifie, openid string) (*License, error) {
+	return c.CreateSiteFromPanel2WithName(url, siteIdentifie, openid, "")
+}
+
+// CreateSiteFromPanel2WithName registers an OpenID-owned site with an optional display name.
+func (c *SdkClient) CreateSiteFromPanel2WithName(url, siteIdentifie, openid, siteName string) (*License, error) {
 	order := &License{}
-	params := map[string]string{
-		// "clusterId": clusterId,
-		"url":            url,
-		"site_identifie": siteIdentifie,
-		"openid":         openid,
-		// "orderSn": sn,
-	}
+	params := createSiteFromPanelParams(url, siteIdentifie, siteName, openid)
 	_, err := c.Post(order, "/api/thirdparty-cd/k8s-offline/sdk/license/register-from-w7panel2", params)
 	return order, err
+}
+
+func createSiteFromPanelParams(siteURL, siteIdentifie, siteName, openid string) map[string]string {
+	params := map[string]string{
+		"url":            siteURL,
+		"site_identifie": siteIdentifie,
+	}
+	if siteName != "" {
+		params["site_name"] = siteName
+	}
+	if openid != "" {
+		params["openid"] = openid
+	}
+	return params
 }
 
 func (c *SdkClient) CreatePanelOrder(urlValues url.Values) (*PayResult, error) {

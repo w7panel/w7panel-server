@@ -24,6 +24,9 @@ type SiteSpec struct {
 	Host string `json:"host"`
 	// SiteIdentifier is the unique identifier for the site.
 	SiteIdentifier string `json:"siteIdentifier"`
+	// SiteName is the display name submitted when registering the site.
+	// +optional
+	SiteName string `json:"siteName,omitempty"`
 	// UserName is the user who owns or manages this site.
 	// +optional
 	UserName string `json:"userName,omitempty"`

@@ -36,13 +36,17 @@ func RegisterSite(token, releaseName, host string) (appSecret *AppSecret, err er
 }
 
 func RegisterSiteZpk(host, identifie string) (appSecret *AppSecret, err error) {
+	return RegisterSiteZpkWithName(host, identifie, "")
+}
+
+func RegisterSiteZpkWithName(host, identifie, siteName string) (appSecret *AppSecret, err error) {
 
 	sdkClient, err := NewDefaultSdkClient()
 	if err != nil {
 		slog.Error("RegisterSiteZpk error", "err", err)
 	}
 
-	license, err := sdkClient.CreateSiteFromPanel("https://"+host, identifie)
+	license, err := sdkClient.CreateSiteFromPanelWithName("https://"+host, identifie, siteName)
 	if err != nil {
 		return nil, err
 	}
@@ -54,13 +58,17 @@ func RegisterSiteZpk(host, identifie string) (appSecret *AppSecret, err error) {
 }
 
 func RegisterSiteZpkOpenId(host, identifie, openid string) (appSecret *AppSecret, err error) {
+	return RegisterSiteZpkOpenIdWithName(host, identifie, openid, "")
+}
+
+func RegisterSiteZpkOpenIdWithName(host, identifie, openid, siteName string) (appSecret *AppSecret, err error) {
 
 	sdkClient, err := NewDefaultSdkClient()
 	if err != nil {
 		slog.Error("RegisterSiteZpk error", "err", err)
 	}
 
-	license, err := sdkClient.CreateSiteFromPanel2("https://"+host, identifie, openid)
+	license, err := sdkClient.CreateSiteFromPanel2WithName("https://"+host, identifie, openid, siteName)
 	if err != nil {
 		return nil, err
 	}
