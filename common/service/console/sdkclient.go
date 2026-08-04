@@ -565,6 +565,7 @@ func createSiteFromPanelParams(siteURL, siteIdentifie, siteName, openid string) 
 	}
 	if siteName != "" {
 		params["site_name"] = siteName
+		params["name"] = siteName //后端用name
 	}
 	if openid != "" {
 		params["openid"] = openid
