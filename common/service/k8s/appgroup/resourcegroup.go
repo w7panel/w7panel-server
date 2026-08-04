@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	groupNameKey  = "w7.cc/group-name"
 	groupNamesKey = "w7.cc/group-names"
 )
 
@@ -17,8 +18,8 @@ func getResourceGroupName(labels map[string]string) string {
 	if labels["group"] != "" {
 		return labels["group"]
 	}
-	if labels["w7.cc/group-name"] != "" {
-		return labels["w7.cc/group-name"]
+	if labels[groupNameKey] != "" {
+		return labels[groupNameKey]
 	}
 	if labels["w7.cc/release-name"] != "" {
 		return labels["w7.cc/release-name"]
@@ -46,7 +47,7 @@ func getResourceGroupNames(obj metav1.Object) []string {
 	}
 	labels := obj.GetLabels()
 	if labels != nil {
-		add(labels["group"], labels["w7.cc/group-name"], labels["w7.cc/release-name"], labels["app.kubernetes.io/instance"], labels["w7.cc/suffix"])
+		add(labels["group"], labels[groupNameKey], labels["w7.cc/release-name"], labels["app.kubernetes.io/instance"], labels["w7.cc/suffix"])
 		add(splitGroupNames(labels[groupNamesKey])...)
 	}
 	annotations := obj.GetAnnotations()

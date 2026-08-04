@@ -104,6 +104,7 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 - **制品安装冲突处理** - 配置读取和安装接口统一解析仓库返回的订单绑定冲突；域名冲突返回原绑定域名，应用引用冲突返回原面板地址及原应用标识，支持跳转原面板定位应用或在用户确认后以受控 `reinstall` 覆盖旧绑定；升级始终校验应用标识
 - **制品跨应用更新** - 新制品标识与原应用不同时，配置接口仍返回已有 AppGroup 名称，供安装界面读取原实例保存的参数
 - **应用外部服务** - AppGroup 可声明多个中立服务入口，供续费、授权、工单等外部系统接入
+- **应用资源跟踪** - AppGroup Controller 自动为已归组的 workload 补齐 `w7.cc/group-name`，由 informer 持续同步 Deployment、StatefulSet、DaemonSet 等资源状态
 - **集群管理** - 节点、资源对象管理
 - **网关插件权限** - 为创始人默认权限注册网关插件查看、新建、编辑和删除菜单权限
 - **插件微应用入口过滤** - 顶部微应用接口根据 MicroApp 的 `w7.cc/manifest-type=gateway-plugin` 注解排除插件，避免出现在顶部菜单和“应用直达”列表

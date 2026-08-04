@@ -2,6 +2,7 @@ package appgroup
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 
@@ -21,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/selection"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 	appsv1lister "k8s.io/client-go/listers/apps/v1"
 	batchv1lister "k8s.io/client-go/listers/batch/v1"
 	corev1lister "k8s.io/client-go/listers/core/v1"
@@ -275,6 +277,10 @@ func (d *WorkloadManager) HandleWorkload(ds WorkloadWrapperInterface, delete boo
 		slog.Error("update group error", "error", err)
 		return err
 	}
+	if err := d.ensureWorkloadGroupNameLabel(ds, group.Name); err != nil {
+		slog.Error("patch workload group name label error", "error", err, "kind", ds.Kind(), "namespace", ds.Namespace(), "name", ds.Name(), "groupName", group.Name)
+		return err
+	}
 
 	if itemStatus.Kind != "Job" {
 		notifyInstalledForReadyGroups(group)
@@ -282,6 +288,42 @@ func (d *WorkloadManager) HandleWorkload(ds WorkloadWrapperInterface, delete boo
 
 	return nil
 
+}
+
+func (d *WorkloadManager) ensureWorkloadGroupNameLabel(workload WorkloadWrapperInterface, groupName string) error {
+	if workload == nil || groupName == "" || workload.Labels()[groupNameKey] != "" {
+		return nil
+	}
+	patch, err := json.Marshal(map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"labels": map[string]string{groupNameKey: groupName},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("marshal workload group name label patch: %w", err)
+	}
+
+	ctx := d.sdk.Ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	patchOptions := metav1.PatchOptions{FieldManager: "w7panel-appgroup-controller"}
+	switch workload.Kind() {
+	case "Deployment":
+		_, err = d.sdk.ClientSet.AppsV1().Deployments(workload.Namespace()).Patch(ctx, workload.Name(), k8stypes.MergePatchType, patch, patchOptions)
+	case "StatefulSet":
+		_, err = d.sdk.ClientSet.AppsV1().StatefulSets(workload.Namespace()).Patch(ctx, workload.Name(), k8stypes.MergePatchType, patch, patchOptions)
+	case "DaemonSet":
+		_, err = d.sdk.ClientSet.AppsV1().DaemonSets(workload.Namespace()).Patch(ctx, workload.Name(), k8stypes.MergePatchType, patch, patchOptions)
+	case "Job":
+		_, err = d.sdk.ClientSet.BatchV1().Jobs(workload.Namespace()).Patch(ctx, workload.Name(), k8stypes.MergePatchType, patch, patchOptions)
+	default:
+		return fmt.Errorf("unsupported workload kind for group name label: %s", workload.Kind())
+	}
+	if err != nil {
+		return fmt.Errorf("patch %s %s/%s group name label: %w", workload.Kind(), workload.Namespace(), workload.Name(), err)
+	}
+	return nil
 }
 
 func (d *WorkloadManager) handleAppGroupResourceTrackedEvent(evt *K8sResourceEvent, groups []*appgroupWrapper) error {
