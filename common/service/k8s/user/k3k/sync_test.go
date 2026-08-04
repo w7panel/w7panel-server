@@ -9,6 +9,7 @@ import (
 
 	"github.com/w7corp/sdk-open-cloud-go/service"
 	"github.com/w7panel/w7panel/common/service/config"
+	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	sitev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/site/v1alpha1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -61,6 +62,25 @@ func TestSetSiteRegistrationFailed(t *testing.T) {
 	}
 	if len(site.Status.Conditions) != 1 || site.Status.Conditions[0].Reason != "OpenIDUnavailable" {
 		t.Fatalf("conditions = %#v, want OpenIDUnavailable", site.Status.Conditions)
+	}
+}
+
+func TestRegisterSyncedSitePassesSiteName(t *testing.T) {
+	site := &sitev1alpha1.Site{Spec: sitev1alpha1.SiteSpec{
+		Host:           "site.example.com",
+		SiteIdentifier: "site-id",
+		SiteName:       "子集群站点",
+	}}
+	original := registerSyncedSiteWithName
+	t.Cleanup(func() { registerSyncedSiteWithName = original })
+	registerSyncedSiteWithName = func(host, identifier, openID, siteName string) (*console.AppSecret, error) {
+		if host != site.Spec.Host || identifier != site.Spec.SiteIdentifier || openID != "openid" || siteName != site.Spec.SiteName {
+			t.Fatalf("registration args = %q, %q, %q, %q", host, identifier, openID, siteName)
+		}
+		return &console.AppSecret{}, nil
+	}
+	if _, err := registerSyncedSite(site, "openid"); err != nil {
+		t.Fatalf("register synced site: %v", err)
 	}
 }
 

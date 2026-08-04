@@ -545,6 +545,12 @@ func SyncSiteHttp(site *sitev1alpha1.Site) error {
 	return nil
 }
 
+var registerSyncedSiteWithName = console.RegisterSiteZpkOpenIdWithName
+
+func registerSyncedSite(site *sitev1alpha1.Site, openID string) (*console.AppSecret, error) {
+	return registerSyncedSiteWithName(site.Spec.Host, site.Spec.SiteIdentifier, openID, site.Spec.SiteName)
+}
+
 func SyncSite(params *K3kSync) error {
 	k3kConfig := k8s.NewK3kConfig(params.K3kName, params.K3kNamespace, helper.GetApiServerHost(params.K3kNamespace), params.CkmName)
 	root := k8s.NewK8sClient()
@@ -605,7 +611,7 @@ func SyncSite(params *K3kSync) error {
 		return openIDErr
 	}
 	// 按openid 注册站点，获取 appId 和 appSecret
-	secret, err := console.RegisterSiteZpkOpenId(site.Spec.Host, site.Spec.SiteIdentifier, openID)
+	secret, err := registerSyncedSite(site, openID)
 	if err != nil {
 		slog.Error("Failed to register site via ZPK", "name", params.VirtualName, "error", err)
 		site.Status.Phase = "Failed"

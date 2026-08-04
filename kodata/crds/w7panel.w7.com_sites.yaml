@@ -46,6 +46,9 @@ spec:
               siteIdentifier:
                 description: SiteIdentifier is the unique identifier for the site.
                 type: string
+              siteName:
+                description: SiteName is the display name submitted when registering the site.
+                type: string
               target:
                 description: Target is the target Kubernetes resource to patch with the registered credentials.
                 properties:
