@@ -14,5 +14,5 @@ const (
 	HELM_APPLICATION_TYPE = "w7.cc/manifest-type"
 	HELM_STATIC_URL       = "w7.cc/static-url"
 	HELM_DENY_DELETE      = "w7.cc/deny-delete"  //禁止删除
-	HELM_OFFICAL_APP      = "w7.cc/official-app" //禁止删除
+	HELM_OFFICAL_APP      = "w7.cc/official-app" //官方应用标识
 )
