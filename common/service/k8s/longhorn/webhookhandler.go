@@ -140,25 +140,3 @@ func WebHookDeleteNode(node *v1.Node) {
 func GetLonghornNodeList() (*longhornV1beta2.NodeList, error) {
 	return lclient.GetNodeList()
 }
-
-func WebHookOnPvcSizeChange(pvc *v1.PersistentVolumeClaim) {
-	time.AfterFunc(time.Second*1, func() {
-
-		sdk := k8s.NewK8sClient().Sdk
-		vname := pvc.Spec.VolumeName
-		volume, err := lclient.GetVolume(vname)
-		if err != nil {
-			slog.Error("longhorn get volume error", "error", err)
-			return
-		}
-		workloads := volume.Status.KubernetesStatus.WorkloadsStatus
-		for _, workload := range workloads {
-			podName := workload.PodName
-			namespace := pvc.Namespace
-			err := sdk.ClientSet.CoreV1().Pods(namespace).Delete(context.TODO(), podName, metav1.DeleteOptions{})
-			if err != nil {
-				slog.Error("longhorn webhook handler delete pod error", "error", err)
-			}
-		}
-	})
-}

@@ -8,6 +8,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/buildimage"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
+	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/w7panel/w7panel/common/service/k8s/privatedns"
 	"github.com/w7panel/w7panel/common/service/k8s/service"
@@ -89,6 +90,13 @@ func StartControlManager() error {
 	if err != nil {
 		slog.Error("setup service account controller failed", "err", err)
 		return err
+	}
+	if facade.GetConfig().GetBool("longhorn.watch") {
+		err = longhorn.SetupPVCResizeController(mgr, sdk)
+		if err != nil {
+			slog.Error("setup PVC resize controller failed", "err", err)
+			return err
+		}
 	}
 	//webhook 和 higress 用一个
 	if facade.GetConfig().GetBool("higress.watch") && !facade.GetConfig().GetBool("webhook.enabled") {
