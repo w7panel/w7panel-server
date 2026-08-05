@@ -99,18 +99,12 @@ kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
 # kubectl apply -f $KO_DATA_PATH/yaml/k3k/virtualclusterpolicy.yaml
 
 
-# BootstrapInstallation
-
-# 先把旧子资源更新为自包含 Spec；成功后解除级联所有权，再删除旧 Profile。
-# 该顺序可避免新 CRD 校验旧 Spec 失败，也避免 Profile 删除触发 finalizer 卸载应用。
 echo "同步内置 BootstrapInstallation"
-kubectl delete bootstrapprofile w7panel-default --ignore-not-found --wait=false 2>/dev/null || true
-kubectl delete crd bootstrapprofiles.w7panel.w7.com --ignore-not-found --wait=false 2>/dev/null || true
-
-kubectl patch bootstrapinstallation w7panel-default-higress --type=merge -p '{"metadata":{"ownerReferences":null}}' 2>/dev/null || true
-kubectl patch bootstrapinstallation w7panel-default-cloudnoauth --type=merge -p '{"metadata":{"ownerReferences":null}}' 2>/dev/null || true
-
-kubectl apply -f $KO_DATA_PATH/yaml/bootstrap-installations.yaml --server-side
+kubectl apply -f "$KO_DATA_PATH/yaml/bootstrap-installations.yaml" \
+  --server-side \
+  --prune \
+  -l 'w7.cc/bootstrap-builtin=true' \
+  --prune-allowlist='w7panel.w7.com/v1alpha1/BootstrapInstallation'
 
 
 # echo "卸载异常面板"

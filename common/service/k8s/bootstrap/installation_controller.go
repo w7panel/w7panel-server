@@ -54,55 +54,34 @@ func (r *InstallationReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		controllerutil.AddFinalizer(installation, installationv1.InstallationFinalizer)
 		return ctrl.Result{}, r.Patch(ctx, installation, client.MergeFrom(base))
 	}
+	if installation.Status.Phase == installationv1.BootstrapPhaseReady {
+		return ctrl.Result{}, nil
+	}
 	if err := validateInstallation(installation); err != nil {
 		return ctrl.Result{}, r.updateStatus(ctx, installation, installationv1.BootstrapPhaseFailed, "BootstrapInstallation 配置无效: "+err.Error(), nil, true)
 	}
 	settings := installationSettings(installation)
-	if installation.Status.ObservedRevision != "" && installation.Status.ObservedRevision != installation.Spec.Revision {
-		if installation.Status.OperationID != "" {
-			_ = r.slots.release(ctx, installation.Status.OperationID)
-		}
-		if err := r.resetForRevision(ctx, installation); err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{Requeue: true}, nil
-	}
 
 	installed, err := r.installer.Lookup(ctx, installation)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	if installed != nil && installed.State == installedArtifactDeleting {
-		r.releaseOperation(ctx, installation)
-		return r.requeueWithStatus(ctx, installation, installationv1.BootstrapPhaseBlocked, "等待对应应用删除完成", 5*time.Second)
-	}
-	if installed != nil && normalizeIdentifie(installed.Identifie) != normalizeIdentifie(installation.Spec.Artifact.Identifie) {
-		r.releaseOperation(ctx, installation)
-		return ctrl.Result{}, r.updateStatus(ctx, installation, installationv1.BootstrapPhaseFailed,
-			fmt.Sprintf("已安装应用 %s/%s identifie=%q 与 Installation 的 %q 冲突", installed.Namespace, installed.Name, installed.Identifie, installation.Spec.Artifact.Identifie), nil, true)
-	}
-	if installed != nil && installed.State == installedArtifactReady {
-		r.releaseOperation(ctx, installation)
-		return ctrl.Result{}, r.updateStatus(ctx, installation, installationv1.BootstrapPhaseReady, "AppGroup 已安装完成", installed, true)
-	}
-	if installed != nil && installed.State == installedArtifactFailed {
-		r.releaseOperation(ctx, installation)
-		if installation.Status.Phase == installationv1.BootstrapPhaseFailed && installation.Status.RetryCount >= settings.MaxRetries {
-			return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+	if installed != nil {
+		switch installed.State {
+		case installedArtifactDeleting:
+			r.releaseOperation(ctx, installation)
+			return r.requeueWithStatus(ctx, installation, installationv1.BootstrapPhaseBlocked, "等待对应应用删除完成", 5*time.Second)
+		case installedArtifactReady:
+			r.releaseOperation(ctx, installation)
+			return ctrl.Result{}, r.updateStatus(ctx, installation, installationv1.BootstrapPhaseReady, "AppGroup 已安装完成", installed, true)
+		case installedArtifactFailed:
+			return r.retryFailedAppGroup(ctx, installation, installed, settings)
+		case installedArtifactInstalling:
+			if installation.Status.Phase == installationv1.BootstrapPhaseInstalling && installation.Status.OperationID != "" {
+				return r.waitForAppGroup(ctx, installation, settings)
+			}
+			return r.waitForExistingAppGroup(ctx, installation, installed, settings)
 		}
-		return r.retry(ctx, installation, settings, errors.New("AppGroup 安装失败"))
-	}
-	if installed != nil && installed.State == installedArtifactInstalling {
-		if installation.Status.Phase == installationv1.BootstrapPhaseFailed && installation.Status.RetryCount >= settings.MaxRetries {
-			return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
-		}
-		if installation.Status.Phase == installationv1.BootstrapPhaseInstalling && installation.Status.OperationID != "" {
-			return r.waitForAppGroup(ctx, installation, settings)
-		}
-		return r.waitForExistingAppGroup(ctx, installation, settings)
-	}
-	if installation.Status.ObservedRevision == installation.Spec.Revision && terminalPhase(installation.Status.Phase) {
-		return ctrl.Result{}, nil
 	}
 	if installation.Status.Phase == installationv1.BootstrapPhaseInstalling && installation.Status.OperationID != "" {
 		return r.waitForAppGroup(ctx, installation, settings)
@@ -118,7 +97,6 @@ func (r *InstallationReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	now := metav1.Now()
-	installation.Status.ObservedRevision = installation.Spec.Revision
 	installation.Status.Phase = installationv1.BootstrapPhaseInstalling
 	installation.Status.OperationID = operation
 	installation.Status.StartedAt = &now
@@ -144,6 +122,22 @@ func (r *InstallationReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 	slog.Info("Bootstrap 应用操作已提交", "installation", installation.Name, "application", installation.Spec.Artifact.Name, "operationID", operation)
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+}
+
+func (r *InstallationReconciler) retryFailedAppGroup(ctx context.Context, installation *installationv1.BootstrapInstallation, installed *installedArtifact, settings effectiveSettings) (ctrl.Result, error) {
+	r.releaseOperation(ctx, installation)
+	cause := errors.New("AppGroup 安装失败")
+	if installation.Status.RetryCount >= settings.MaxRetries {
+		return ctrl.Result{}, nil
+	}
+	if !installed.Owned {
+		return ctrl.Result{}, r.updateStatus(ctx, installation, installationv1.BootstrapPhaseFailed,
+			"已有非 Bootstrap 管理的 AppGroup 安装失败，不能自动删除并重试", installed, true)
+	}
+	if err := r.installer.Uninstall(ctx, installation); err != nil {
+		return ctrl.Result{}, fmt.Errorf("清理失败的 AppGroup 以便重试: %w", err)
+	}
+	return r.retry(ctx, installation, settings, cause)
 }
 
 func (r *InstallationReconciler) releaseOperation(ctx context.Context, installation *installationv1.BootstrapInstallation) {
@@ -172,23 +166,33 @@ func (r *InstallationReconciler) reconcileDeletion(ctx context.Context, installa
 func (r *InstallationReconciler) waitForAppGroup(ctx context.Context, installation *installationv1.BootstrapInstallation, settings effectiveSettings) (ctrl.Result, error) {
 	if installation.Status.StartedAt != nil && time.Since(installation.Status.StartedAt.Time) > settings.TimeoutPerArtifact {
 		_ = r.slots.release(ctx, installation.Status.OperationID)
+		if installation.Status.RetryCount < settings.MaxRetries {
+			if err := r.installer.Uninstall(ctx, installation); err != nil {
+				return ctrl.Result{}, fmt.Errorf("清理超时的 AppGroup 以便重试: %w", err)
+			}
+		}
 		return r.retry(ctx, installation, settings, fmt.Errorf("等待 AppGroup 就绪超过 %s", settings.TimeoutPerArtifact))
 	}
 	_, err := r.slots.acquire(ctx, bootstrapSlotScope, installation.Status.OperationID, settings.MaxConcurrent, settings.TimeoutPerArtifact)
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, err
 }
 
-func (r *InstallationReconciler) waitForExistingAppGroup(ctx context.Context, installation *installationv1.BootstrapInstallation, settings effectiveSettings) (ctrl.Result, error) {
+func (r *InstallationReconciler) waitForExistingAppGroup(ctx context.Context, installation *installationv1.BootstrapInstallation, installed *installedArtifact, settings effectiveSettings) (ctrl.Result, error) {
 	if installation.Status.StartedAt != nil && time.Since(installation.Status.StartedAt.Time) > settings.TimeoutPerArtifact {
+		if installed != nil && installed.Owned && installation.Status.RetryCount < settings.MaxRetries {
+			if err := r.installer.Uninstall(ctx, installation); err != nil {
+				return ctrl.Result{}, fmt.Errorf("清理超时的已有 AppGroup 以便重试: %w", err)
+			}
+		}
 		return r.retry(ctx, installation, settings, fmt.Errorf("等待已有 AppGroup 就绪超过 %s", settings.TimeoutPerArtifact))
 	}
 	base := installation.DeepCopy()
-	installation.Status.ObservedRevision = installation.Spec.Revision
 	installation.Status.Phase = installationv1.BootstrapPhaseInstalling
 	installation.Status.Message = "等待已有 AppGroup 安装完成"
-	if installation.Status.StartedAt == nil {
+	if base.Status.Phase != installationv1.BootstrapPhaseInstalling || installation.Status.StartedAt == nil {
 		now := metav1.Now()
 		installation.Status.StartedAt = &now
+		installation.Status.CompletedAt = nil
 	}
 	if err := r.Status().Patch(ctx, installation, client.MergeFrom(base)); err != nil {
 		return ctrl.Result{}, err
@@ -198,18 +202,16 @@ func (r *InstallationReconciler) waitForExistingAppGroup(ctx context.Context, in
 
 func (r *InstallationReconciler) retry(ctx context.Context, installation *installationv1.BootstrapInstallation, settings effectiveSettings, cause error) (ctrl.Result, error) {
 	base := installation.DeepCopy()
-	if installation.Status.RetryCount < settings.MaxRetries {
-		installation.Status.RetryCount++
-	}
 	installation.Status.Message = cause.Error()
 	installation.Status.StartedAt = nil
 	if installation.Status.RetryCount >= settings.MaxRetries {
 		installation.Status.Phase = installationv1.BootstrapPhaseFailed
-		installation.Status.ObservedRevision = installation.Spec.Revision
 		now := metav1.Now()
 		installation.Status.CompletedAt = &now
 	} else {
+		installation.Status.RetryCount++
 		installation.Status.Phase = installationv1.BootstrapPhasePending
+		installation.Status.CompletedAt = nil
 	}
 	if err := r.Status().Patch(ctx, installation, client.MergeFrom(base)); err != nil {
 		return ctrl.Result{}, err
@@ -222,23 +224,15 @@ func (r *InstallationReconciler) retry(ctx context.Context, installation *instal
 	return ctrl.Result{RequeueAfter: delay}, nil
 }
 
-func (r *InstallationReconciler) resetForRevision(ctx context.Context, installation *installationv1.BootstrapInstallation) error {
-	base := installation.DeepCopy()
-	appGroup := installation.Status.AppGroup
-	installation.Status = installationv1.BootstrapInstallationStatus{Phase: installationv1.BootstrapPhasePending, AppGroup: appGroup}
-	return r.Status().Patch(ctx, installation, client.MergeFrom(base))
-}
-
 func (r *InstallationReconciler) updateStatus(ctx context.Context, installation *installationv1.BootstrapInstallation, phase installationv1.BootstrapPhase, message string, installed *installedArtifact, complete bool) error {
 	base := installation.DeepCopy()
 	installation.Status.Phase = phase
 	installation.Status.Message = message
-	installation.Status.ObservedRevision = installation.Spec.Revision
 	if installed != nil {
 		installation.Status.InstalledVersion = installed.Version
 		installation.Status.AppGroup = installationv1.ArtifactAppGroupStatus{Name: installed.Name, Namespace: installed.Namespace}
 	}
-	if complete {
+	if complete && (base.Status.Phase != phase || installation.Status.CompletedAt == nil) {
 		now := metav1.Now()
 		installation.Status.CompletedAt = &now
 	}

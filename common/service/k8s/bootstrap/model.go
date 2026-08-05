@@ -53,15 +53,11 @@ func effectiveArtifactType(value installationv1.ArtifactType) installationv1.Art
 }
 
 func operationID(installation *installationv1.BootstrapInstallation) string {
-	input := fmt.Sprintf("%s\x00%s\x00%s\x00%s", installation.UID, installation.Spec.Revision, installation.Spec.Artifact.Name, installation.Spec.Artifact.Version)
-	sum := sha256.Sum256([]byte(input))
+	sum := sha256.Sum256([]byte(installation.UID))
 	return hex.EncodeToString(sum[:16])
 }
 
 func validateInstallation(installation *installationv1.BootstrapInstallation) error {
-	if installation.Spec.Revision == "" {
-		return errors.New("spec.revision 不能为空")
-	}
 	if errs := validation.IsValidLabelValue(installation.Name); len(errs) > 0 {
 		return fmt.Errorf("Installation 名称不能作为标签值: %s", strings.Join(errs, ", "))
 	}
@@ -149,10 +145,6 @@ func validateSource(source string) error {
 		return fmt.Errorf("主机 %q 不在允许列表", parsed.Hostname())
 	}
 	return nil
-}
-
-func terminalPhase(phase installationv1.BootstrapPhase) bool {
-	return phase == installationv1.BootstrapPhaseReady || phase == installationv1.BootstrapPhaseFailed
 }
 
 func compareVersions(left, right string) int {

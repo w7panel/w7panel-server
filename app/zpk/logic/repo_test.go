@@ -1,6 +1,9 @@
 package logic
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
@@ -8,6 +11,24 @@ import (
 	"github.com/w7panel/w7panel/app/zpk/logic/types"
 	zpktypes "github.com/w7panel/w7panel/app/zpk/logic/types"
 )
+
+func TestZPKRequestDoesNotForwardPanelToken(t *testing.T) {
+	header := make(chan string, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		header <- request.Header.Get("X-W7Panel-Token")
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{"data":{"manifest":"{}"}}`))
+	}))
+	defer server.Close()
+
+	repository := NewRepo(server.URL+"/zpk/respo/info/demo", "", "")
+	repository.SetPanelToken("cluster-service-account-token")
+	_, _ = repository.loadPackageByHttp(context.Background(), repository.repoUrl, "", true)
+
+	if got := <-header; got != "" {
+		t.Fatalf("X-W7Panel-Token = %q, want empty", got)
+	}
+}
 
 func TestLoadPackage(t *testing.T) {
 	type args struct {

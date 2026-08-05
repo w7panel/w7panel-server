@@ -14,7 +14,6 @@ func validInstallation() *installationv1.BootstrapInstallation {
 	return &installationv1.BootstrapInstallation{
 		ObjectMeta: metav1.ObjectMeta{Name: "w7panel-default-higress", UID: types.UID("installation-uid")},
 		Spec: installationv1.BootstrapInstallationSpec{
-			Revision: "1.1.76-6",
 			Artifact: installationv1.ArtifactReference{Name: "higress", Type: installationv1.ArtifactTypeZPK, Identifie: "w7panel-higress", Source: "https://zpk.w7.cc/info/higress"},
 			Target:   installationv1.ArtifactTarget{ReleaseName: "w7panel-higress", Namespace: "default"},
 		},
@@ -29,7 +28,6 @@ func TestValidateInstallation(t *testing.T) {
 		wantErr string
 	}{
 		{name: "valid"},
-		{name: "revision required", mutate: func(item *installationv1.BootstrapInstallation) { item.Spec.Revision = "" }, wantErr: "revision"},
 		{name: "http rejected", mutate: func(item *installationv1.BootstrapInstallation) {
 			item.Spec.Artifact.Source = "http://zpk.w7.cc/info/higress"
 		}, wantErr: "仅支持 HTTPS"},
@@ -79,11 +77,15 @@ func TestInstallationSettingsMaxRetries(t *testing.T) {
 	}
 }
 
-func TestOperationIDChangesWithRevision(t *testing.T) {
+func TestOperationIDUsesInstallationUID(t *testing.T) {
 	item := validInstallation()
 	first := operationID(item)
-	item.Spec.Revision = "1.1.76-7"
+	item.Spec.Artifact.Version = "2.0.0"
+	if second := operationID(item); second != first {
+		t.Fatal("operation ID must remain stable when the spec changes")
+	}
+	item.UID = types.UID("another-installation-uid")
 	if second := operationID(item); second == first {
-		t.Fatal("operation ID must change with revision")
+		t.Fatal("operation ID must change with the installation UID")
 	}
 }

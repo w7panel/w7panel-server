@@ -38,7 +38,7 @@ helm lint kodata/charts/k8s-offline
 
 默认清单不再预装插件类型应用。
 
-修改内置应用清单时必须同步递增对应 `BootstrapInstallation.spec.revision`，并运行：
+内置声明必须保留 `w7.cc/bootstrap-builtin=true` 标签，升级脚本仅在该标签和 BootstrapInstallation 类型范围内清理已从清单移除的资源，不影响用户自建声明。修改清单后运行：
 
 ```bash
 go test ./common/service/k8s/bootstrap

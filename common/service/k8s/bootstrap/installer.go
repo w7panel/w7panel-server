@@ -225,13 +225,7 @@ func artifactOwner(installation *installationv1.BootstrapInstallation) string {
 }
 
 func isArtifactOwner(annotations map[string]string, installation *installationv1.BootstrapInstallation) bool {
-	owner := annotations[installationv1.AnnotationInstallationOwner]
-	if owner == artifactOwner(installation) {
-		return true
-	}
-	// 兼容旧 BootstrapProfile 写入的 "profileUID/artifactName" 所有权值，
-	// 保证迁移后的 Installation 删除时仍会卸载原先由 Bootstrap 创建的应用。
-	return owner != "" && strings.HasSuffix(owner, "/"+installation.Spec.Artifact.Name)
+	return annotations[installationv1.AnnotationInstallationOwner] == artifactOwner(installation)
 }
 
 func normalizeIdentifie(value string) string {

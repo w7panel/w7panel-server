@@ -2,8 +2,9 @@ apiVersion: w7panel.w7.com/v1alpha1
 kind: BootstrapInstallation
 metadata:
   name: w7panel-default-higress
+  labels:
+    w7.cc/bootstrap-builtin: "true"
 spec:
-  revision: "1.1.76-6"
   strategy:
     maxConcurrent: 2
     maxRetries: 3
@@ -21,8 +22,9 @@ apiVersion: w7panel.w7.com/v1alpha1
 kind: BootstrapInstallation
 metadata:
   name: w7panel-default-cloudnoauth
+  labels:
+    w7.cc/bootstrap-builtin: "true"
 spec:
-  revision: "1.1.76-6"
   strategy:
     maxConcurrent: 2
     maxRetries: 3

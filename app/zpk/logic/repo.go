@@ -207,7 +207,6 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 	requestURI := helper.RemoveQueryParam(uri, "reinstall")
 	req := helper.RetryHttpClient().R().SetContext(ctx).SetAuthToken(token)
 	if self.panelToken != "" {
-		req.SetHeader("X-W7Panel-Token", self.panelToken)
 		replace, err := microapp.NewMicroAppReplace(self.panelToken)
 		if err == nil && replace.GetConsoleOpenId() != "" {
 			cloudAccessToken, err := microapp.GetCloudAccessToken(replace.GetConsoleOpenId())

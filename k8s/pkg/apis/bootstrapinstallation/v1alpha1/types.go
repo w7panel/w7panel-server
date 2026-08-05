@@ -50,7 +50,6 @@ type ArtifactTarget struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster,shortName=binstall
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Revision",type=string,JSONPath=`.spec.revision`
 // +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 type BootstrapInstallation struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -60,7 +59,6 @@ type BootstrapInstallation struct {
 }
 
 type BootstrapInstallationSpec struct {
-	Revision       string                  `json:"revision"`
 	Strategy       BootstrapStrategy       `json:"strategy,omitempty"`
 	Artifact       ArtifactReference       `json:"artifact"`
 	Target         ArtifactTarget          `json:"target"`
@@ -73,7 +71,6 @@ type ArtifactAppGroupStatus struct {
 }
 
 type BootstrapInstallationStatus struct {
-	ObservedRevision string                 `json:"observedRevision,omitempty"`
 	Phase            BootstrapPhase         `json:"phase,omitempty"`
 	InstalledVersion string                 `json:"installedVersion,omitempty"`
 	AppGroup         ArtifactAppGroupStatus `json:"appGroup,omitempty"`

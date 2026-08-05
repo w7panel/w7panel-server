@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -11,11 +12,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 type fakeArtifactInstaller struct {
+	lookupCalls    int
 	installCalls   int
 	uninstallCalls int
 	installed      *installedArtifact
@@ -23,6 +26,7 @@ type fakeArtifactInstaller struct {
 }
 
 func (f *fakeArtifactInstaller) Lookup(context.Context, *installationv1.BootstrapInstallation) (*installedArtifact, error) {
+	f.lookupCalls++
 	return f.installed, f.err
 }
 func (f *fakeArtifactInstaller) Install(context.Context, *installationv1.BootstrapInstallation) error {
@@ -85,7 +89,7 @@ func TestInstallationReconcilerInstallsDirectResource(t *testing.T) {
 	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: item.Name}, updated); err != nil {
 		t.Fatal(err)
 	}
-	if updated.Status.Phase != installationv1.BootstrapPhaseInstalling || updated.Status.ObservedRevision != item.Spec.Revision {
+	if updated.Status.Phase != installationv1.BootstrapPhaseInstalling {
 		t.Fatalf("unexpected status: %#v", updated.Status)
 	}
 }
@@ -113,44 +117,225 @@ func TestInstallationDeletionUninstallsApplication(t *testing.T) {
 	}
 }
 
-func TestReadyApplicationIsNotReinstalled(t *testing.T) {
+func TestAvailableAppGroupMarksInstallationReadyAndStops(t *testing.T) {
 	item := validInstallation()
 	item.Finalizers = []string{installationv1.InstallationFinalizer}
 	installer := &fakeArtifactInstaller{installed: &installedArtifact{Name: "w7panel-higress", Namespace: "default", Identifie: "w7panel-higress", State: installedArtifactReady}}
 	k8sClient := fake.NewClientBuilder().WithScheme(bootstrapTestScheme(t)).WithStatusSubresource(item).WithObjects(item).Build()
 	reconciler := &InstallationReconciler{Client: k8sClient, Scheme: bootstrapTestScheme(t), installer: installer, slots: newLeaseSlots(k8sClient, "default")}
+	result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: item.Name}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if installer.installCalls != 0 {
+		t.Fatalf("install calls = %d, want 0", installer.installCalls)
+	}
+	if result.Requeue || result.RequeueAfter != 0 {
+		t.Fatalf("ready installation must stop reconciling: %#v", result)
+	}
+	updated := &installationv1.BootstrapInstallation{}
+	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: item.Name}, updated); err != nil {
+		t.Fatal(err)
+	}
+	if updated.Status.Phase != installationv1.BootstrapPhaseReady || updated.Status.CompletedAt == nil {
+		t.Fatalf("unexpected ready status: %#v", updated.Status)
+	}
+	if installer.lookupCalls != 1 {
+		t.Fatalf("lookup calls = %d, want 1", installer.lookupCalls)
+	}
+}
+
+func TestReadyInstallationStopsWithoutLookingUpAppGroup(t *testing.T) {
+	item := validInstallation()
+	item.Finalizers = []string{installationv1.InstallationFinalizer}
+	item.Status.Phase = installationv1.BootstrapPhaseReady
+	installer := &fakeArtifactInstaller{}
+	k8sClient := fake.NewClientBuilder().WithScheme(bootstrapTestScheme(t)).WithStatusSubresource(item).WithObjects(item).Build()
+	reconciler := &InstallationReconciler{Client: k8sClient, Scheme: bootstrapTestScheme(t), installer: installer, slots: newLeaseSlots(k8sClient, "default")}
+
 	if _, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: item.Name}}); err != nil {
 		t.Fatal(err)
 	}
 	if installer.installCalls != 0 {
 		t.Fatalf("install calls = %d, want 0", installer.installCalls)
 	}
+	if installer.lookupCalls != 0 {
+		t.Fatalf("lookup calls = %d, want 0", installer.lookupCalls)
+	}
 }
 
-func TestRevisionChangeResetsExecutionState(t *testing.T) {
+func TestFailedApplicationAtRetryLimitRemainsIdle(t *testing.T) {
 	item := validInstallation()
 	item.Finalizers = []string{installationv1.InstallationFinalizer}
 	item.Status = installationv1.BootstrapInstallationStatus{
-		ObservedRevision: "1.1.76-5",
-		Phase:            installationv1.BootstrapPhaseFailed,
-		RetryCount:       3,
-		OperationID:      "old-operation",
+		Phase:      installationv1.BootstrapPhaseFailed,
+		RetryCount: defaultMaxRetries,
+		Message:    "AppGroup 安装失败",
 	}
-	installer := &fakeArtifactInstaller{}
+	installer := &fakeArtifactInstaller{installed: &installedArtifact{
+		Name: "w7panel-higress", Namespace: "default", State: installedArtifactFailed, Owned: true,
+	}}
 	k8sClient := fake.NewClientBuilder().WithScheme(bootstrapTestScheme(t)).WithStatusSubresource(item).WithObjects(item).Build()
 	reconciler := &InstallationReconciler{Client: k8sClient, Scheme: bootstrapTestScheme(t), installer: installer, slots: newLeaseSlots(k8sClient, "default")}
-	if result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: item.Name}}); err != nil || !result.Requeue {
-		t.Fatalf("reconcile = %#v, %v; want immediate requeue", result, err)
+
+	result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: item.Name}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Requeue || result.RequeueAfter != 0 || installer.installCalls != 0 || installer.uninstallCalls != 0 {
+		t.Fatalf("unexpected terminal retry activity: result=%#v installs=%d uninstalls=%d", result, installer.installCalls, installer.uninstallCalls)
+	}
+}
+
+func TestFailedApplicationRetriesAfterMaxRetriesIncreases(t *testing.T) {
+	item := validInstallation()
+	item.Finalizers = []string{installationv1.InstallationFinalizer}
+	item.Status = installationv1.BootstrapInstallationStatus{
+		Phase:      installationv1.BootstrapPhaseFailed,
+		RetryCount: defaultMaxRetries,
+	}
+	item.Spec.Strategy.MaxRetries = ptr.To(defaultMaxRetries + 1)
+	installer := &fakeArtifactInstaller{installed: &installedArtifact{
+		Name: "w7panel-higress", Namespace: "default", State: installedArtifactFailed, Owned: true,
+	}}
+	k8sClient := fake.NewClientBuilder().WithScheme(bootstrapTestScheme(t)).WithStatusSubresource(item).WithObjects(item).Build()
+	reconciler := &InstallationReconciler{Client: k8sClient, Scheme: bootstrapTestScheme(t), installer: installer, slots: newLeaseSlots(k8sClient, "default")}
+
+	if _, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: item.Name}}); err != nil {
+		t.Fatal(err)
+	}
+	if installer.uninstallCalls != 1 {
+		t.Fatalf("uninstall calls = %d, want 1", installer.uninstallCalls)
 	}
 	updated := &installationv1.BootstrapInstallation{}
 	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: item.Name}, updated); err != nil {
 		t.Fatal(err)
 	}
-	if updated.Status.Phase != installationv1.BootstrapPhasePending || updated.Status.RetryCount != 0 || updated.Status.OperationID != "" {
-		t.Fatalf("execution state was not reset: %#v", updated.Status)
+	if updated.Status.Phase != installationv1.BootstrapPhasePending || updated.Status.RetryCount != defaultMaxRetries+1 {
+		t.Fatalf("unexpected retry status: %#v", updated.Status)
 	}
-	if installer.installCalls != 0 {
-		t.Fatalf("install calls = %d, want 0 during reset", installer.installCalls)
+}
+
+func TestFailedApplicationIsReinstalledWhenAppGroupDisappears(t *testing.T) {
+	item := validInstallation()
+	item.Finalizers = []string{installationv1.InstallationFinalizer}
+	item.Status = installationv1.BootstrapInstallationStatus{
+		Phase:      installationv1.BootstrapPhaseFailed,
+		RetryCount: defaultMaxRetries,
+	}
+	installer := &fakeArtifactInstaller{}
+	k8sClient := fake.NewClientBuilder().WithScheme(bootstrapTestScheme(t)).WithStatusSubresource(item).WithObjects(item).Build()
+	reconciler := &InstallationReconciler{Client: k8sClient, Scheme: bootstrapTestScheme(t), installer: installer, slots: newLeaseSlots(k8sClient, "default")}
+
+	if _, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: item.Name}}); err != nil {
+		t.Fatal(err)
+	}
+	if installer.installCalls != 1 {
+		t.Fatalf("install calls = %d, want 1", installer.installCalls)
+	}
+}
+
+func TestFailedOwnedApplicationIsDeletedBeforeRetry(t *testing.T) {
+	item := validInstallation()
+	item.Finalizers = []string{installationv1.InstallationFinalizer}
+	item.Status = installationv1.BootstrapInstallationStatus{
+		Phase:       installationv1.BootstrapPhaseInstalling,
+		OperationID: "failed-operation",
+		StartedAt:   ptr.To(metav1.Now()),
+	}
+	installer := &fakeArtifactInstaller{installed: &installedArtifact{
+		Name: "w7panel-higress", Namespace: "default", Identifie: "w7panel-higress",
+		State: installedArtifactFailed, Owned: true,
+	}}
+	k8sClient := fake.NewClientBuilder().WithScheme(bootstrapTestScheme(t)).WithStatusSubresource(item).WithObjects(item).Build()
+	reconciler := &InstallationReconciler{Client: k8sClient, Scheme: bootstrapTestScheme(t), installer: installer, slots: newLeaseSlots(k8sClient, "default")}
+	request := ctrl.Request{NamespacedName: types.NamespacedName{Name: item.Name}}
+
+	if _, err := reconciler.Reconcile(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	if installer.uninstallCalls != 1 {
+		t.Fatalf("uninstall calls = %d, want 1", installer.uninstallCalls)
+	}
+	updated := &installationv1.BootstrapInstallation{}
+	if err := k8sClient.Get(context.Background(), request.NamespacedName, updated); err != nil {
+		t.Fatal(err)
+	}
+	if updated.Status.Phase != installationv1.BootstrapPhasePending || updated.Status.RetryCount != 1 {
+		t.Fatalf("unexpected retry status: %#v", updated.Status)
+	}
+
+	installer.installed = nil
+	if _, err := reconciler.Reconcile(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	if installer.installCalls != 1 {
+		t.Fatalf("install calls after cleanup = %d, want 1", installer.installCalls)
+	}
+}
+
+func TestFailedForeignApplicationIsNotDeletedForRetry(t *testing.T) {
+	item := validInstallation()
+	item.Finalizers = []string{installationv1.InstallationFinalizer}
+	installer := &fakeArtifactInstaller{installed: &installedArtifact{
+		Name: "w7panel-higress", Namespace: "default", Identifie: "w7panel-higress",
+		State: installedArtifactFailed, Owned: false,
+	}}
+	k8sClient := fake.NewClientBuilder().WithScheme(bootstrapTestScheme(t)).WithStatusSubresource(item).WithObjects(item).Build()
+	reconciler := &InstallationReconciler{Client: k8sClient, Scheme: bootstrapTestScheme(t), installer: installer, slots: newLeaseSlots(k8sClient, "default")}
+	request := ctrl.Request{NamespacedName: types.NamespacedName{Name: item.Name}}
+
+	if _, err := reconciler.Reconcile(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	if installer.uninstallCalls != 0 {
+		t.Fatalf("uninstall calls = %d, want 0", installer.uninstallCalls)
+	}
+	updated := &installationv1.BootstrapInstallation{}
+	if err := k8sClient.Get(context.Background(), request.NamespacedName, updated); err != nil {
+		t.Fatal(err)
+	}
+	if updated.Status.Phase != installationv1.BootstrapPhaseFailed {
+		t.Fatalf("unexpected foreign application status: %#v", updated.Status)
+	}
+}
+
+func TestRetryAllowsConfiguredNumberOfRetries(t *testing.T) {
+	item := validInstallation()
+	item.Finalizers = []string{installationv1.InstallationFinalizer}
+	k8sClient := fake.NewClientBuilder().WithScheme(bootstrapTestScheme(t)).WithStatusSubresource(item).WithObjects(item).Build()
+	reconciler := &InstallationReconciler{Client: k8sClient}
+	settings := installationSettings(item)
+	key := types.NamespacedName{Name: item.Name}
+
+	for failure := int32(1); failure <= settings.MaxRetries; failure++ {
+		current := &installationv1.BootstrapInstallation{}
+		if err := k8sClient.Get(context.Background(), key, current); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := reconciler.retry(context.Background(), current, settings, errors.New("install failed")); err != nil {
+			t.Fatal(err)
+		}
+		if err := k8sClient.Get(context.Background(), key, current); err != nil {
+			t.Fatal(err)
+		}
+		if current.Status.Phase != installationv1.BootstrapPhasePending || current.Status.RetryCount != failure {
+			t.Fatalf("failure %d status = %#v", failure, current.Status)
+		}
+	}
+
+	current := &installationv1.BootstrapInstallation{}
+	if err := k8sClient.Get(context.Background(), key, current); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reconciler.retry(context.Background(), current, settings, errors.New("install failed")); err != nil {
+		t.Fatal(err)
+	}
+	if err := k8sClient.Get(context.Background(), key, current); err != nil {
+		t.Fatal(err)
+	}
+	if current.Status.Phase != installationv1.BootstrapPhaseFailed || current.Status.RetryCount != settings.MaxRetries {
+		t.Fatalf("terminal retry status = %#v", current.Status)
 	}
 }
 
@@ -171,21 +356,28 @@ func TestInvalidInstallationDoesNotInstall(t *testing.T) {
 	if updated.Status.Phase != installationv1.BootstrapPhaseFailed || installer.installCalls != 0 {
 		t.Fatalf("unexpected invalid-resource result: status=%#v installs=%d", updated.Status, installer.installCalls)
 	}
+
+	updated.Spec.Artifact.Source = validInstallation().Spec.Artifact.Source
+	if err := k8sClient.Update(context.Background(), updated); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: item.Name}}); err != nil {
+		t.Fatal(err)
+	}
+	if installer.installCalls != 1 {
+		t.Fatalf("install calls after fixing resource = %d, want 1", installer.installCalls)
+	}
 }
 
-func TestArtifactOwnershipSupportsDirectAndLegacyValues(t *testing.T) {
+func TestArtifactOwnershipRequiresInstallationUID(t *testing.T) {
 	item := validInstallation()
 	direct := map[string]string{installationv1.AnnotationInstallationOwner: artifactOwner(item)}
 	if !isArtifactOwner(direct, item) {
 		t.Fatal("direct ownership was not recognized")
 	}
 	legacy := map[string]string{installationv1.AnnotationInstallationOwner: "legacy-profile-uid/higress"}
-	if !isArtifactOwner(legacy, item) {
-		t.Fatal("legacy profile ownership was not recognized")
-	}
-	foreign := map[string]string{installationv1.AnnotationInstallationOwner: "legacy-profile-uid/cloudnoauth"}
-	if isArtifactOwner(foreign, item) {
-		t.Fatal("foreign ownership was accepted")
+	if isArtifactOwner(legacy, item) {
+		t.Fatal("legacy profile ownership must not be accepted")
 	}
 }
 
