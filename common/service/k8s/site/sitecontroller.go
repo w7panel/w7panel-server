@@ -55,6 +55,18 @@ type SiteController struct {
 	*k8s.Sdk
 }
 
+var (
+	registerSiteZpkWithName       = console.RegisterSiteZpkWithName
+	registerSiteZpkOpenIdWithName = console.RegisterSiteZpkOpenIdWithName
+)
+
+func registerSite(site *sitev1alpha1.Site, openID string) (*console.AppSecret, error) {
+	if openID == "" {
+		return registerSiteZpkWithName(site.Spec.Host, site.Spec.SiteIdentifier, site.Spec.SiteName)
+	}
+	return registerSiteZpkOpenIdWithName(site.Spec.Host, site.Spec.SiteIdentifier, openID, site.Spec.SiteName)
+}
+
 func (r *SiteController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	result, err := r.reconcile0(ctx, req)
 	if err != nil {
@@ -155,7 +167,7 @@ func (r *SiteController) handlePending(ctx context.Context, site *sitev1alpha1.S
 	var secret *console.AppSecret
 	var err error
 	if site.Spec.UserName == "" {
-		secret, err = console.RegisterSiteZpk(site.Spec.Host, site.Spec.SiteIdentifier)
+		secret, err = registerSite(site, "")
 	} else {
 		w7config, configErr := config.NewW7ConfigRepository(r.Sdk).Get(site.Spec.UserName)
 		openID, openIDErr := siteUserOpenID(w7config, configErr)
@@ -168,7 +180,7 @@ func (r *SiteController) handlePending(ctx context.Context, site *sitev1alpha1.S
 			}
 			return ctrl.Result{}, nil
 		}
-		secret, err = console.RegisterSiteZpkOpenId(site.Spec.Host, site.Spec.SiteIdentifier, openID)
+		secret, err = registerSite(site, openID)
 	}
 	if err != nil {
 		site.Status.RegisterRetryCount++

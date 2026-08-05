@@ -32,7 +32,7 @@ var (
 		"longhorn.yaml",
 		"longhorn.yml",
 	}
-	legacyAddons = []string{"cert-manager", "higress"}
+	legacyAddons = []string{"cert-manager", "higress", "longhorn"}
 )
 
 // IsK3sServer reports whether hostRoot belongs to a K3s server node. The

@@ -50,6 +50,41 @@ func TestSiteUserOpenID(t *testing.T) {
 	}
 }
 
+func TestRegisterSitePassesSiteName(t *testing.T) {
+	site := &sitev1alpha1.Site{Spec: sitev1alpha1.SiteSpec{
+		Host:           "site.example.com",
+		SiteIdentifier: "site-id",
+		SiteName:       "示例站点",
+	}}
+
+	originalFounder := registerSiteZpkWithName
+	originalOpenID := registerSiteZpkOpenIdWithName
+	t.Cleanup(func() {
+		registerSiteZpkWithName = originalFounder
+		registerSiteZpkOpenIdWithName = originalOpenID
+	})
+
+	registerSiteZpkWithName = func(host, identifier, siteName string) (*console.AppSecret, error) {
+		if host != site.Spec.Host || identifier != site.Spec.SiteIdentifier || siteName != site.Spec.SiteName {
+			t.Fatalf("founder registration args = %q, %q, %q", host, identifier, siteName)
+		}
+		return &console.AppSecret{}, nil
+	}
+	if _, err := registerSite(site, ""); err != nil {
+		t.Fatalf("register founder site: %v", err)
+	}
+
+	registerSiteZpkOpenIdWithName = func(host, identifier, openID, siteName string) (*console.AppSecret, error) {
+		if host != site.Spec.Host || identifier != site.Spec.SiteIdentifier || openID != "openid" || siteName != site.Spec.SiteName {
+			t.Fatalf("OpenID registration args = %q, %q, %q, %q", host, identifier, openID, siteName)
+		}
+		return &console.AppSecret{}, nil
+	}
+	if _, err := registerSite(site, "openid"); err != nil {
+		t.Fatalf("register OpenID site: %v", err)
+	}
+}
+
 func TestPatchTargetResourceAppGroupStoresAppCredentialsInSpec(t *testing.T) {
 	scheme := runtime.NewScheme()
 	if err := appgroupv1alpha1.AddToScheme(scheme); err != nil {

@@ -1,12 +1,32 @@
 package appgroup
 
 import (
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 type mockWorkloadWrapper struct {
 	isHelm bool
 	name   string
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
 }
 
 func TestWorkloadManager_Handle(t *testing.T) {
@@ -35,4 +55,84 @@ func TestWorkloadManager_HandleJob(t *testing.T) {
 
 	// 验证AppGroupApi的Persist方法是否被调用
 	// 验证AppGroupApi的Persist方法是否返回错误
+}
+
+func TestEnsureWorkloadGroupNameLabel(t *testing.T) {
+	tests := []struct {
+		name         string
+		path         string
+		workload     WorkloadWrapperInterface
+		responseBody string
+	}{
+		{
+			name: "deployment",
+			path: "/apis/apps/v1/namespaces/default/deployments/demo",
+			workload: NewWorkloadWrapper(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
+				Name: "demo", Namespace: "default",
+			}}),
+			responseBody: `{"apiVersion":"apps/v1","kind":"Deployment","metadata":{"name":"demo","namespace":"default"}}`,
+		},
+		{
+			name: "statefulset",
+			path: "/apis/apps/v1/namespaces/default/statefulsets/demo",
+			workload: NewWorkloadWrapper(&appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{
+				Name: "demo", Namespace: "default",
+			}}),
+			responseBody: `{"apiVersion":"apps/v1","kind":"StatefulSet","metadata":{"name":"demo","namespace":"default"}}`,
+		},
+		{
+			name: "daemonset",
+			path: "/apis/apps/v1/namespaces/default/daemonsets/demo",
+			workload: NewWorkloadWrapper(&appsv1.DaemonSet{ObjectMeta: metav1.ObjectMeta{
+				Name: "demo", Namespace: "default",
+			}}),
+			responseBody: `{"apiVersion":"apps/v1","kind":"DaemonSet","metadata":{"name":"demo","namespace":"default"}}`,
+		},
+		{
+			name: "job",
+			path: "/apis/batch/v1/namespaces/default/jobs/demo",
+			workload: NewWorkloadWrapper(&batchv1.Job{ObjectMeta: metav1.ObjectMeta{
+				Name: "demo", Namespace: "default",
+			}}),
+			responseBody: `{"apiVersion":"batch/v1","kind":"Job","metadata":{"name":"demo","namespace":"default"}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			requestCount := 0
+			transport := roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				requestCount++
+				assert.Equal(t, http.MethodPatch, r.Method)
+				assert.Equal(t, tt.path, r.URL.Path)
+				var patch map[string]map[string]map[string]string
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&patch))
+				assert.Equal(t, "demo-group", patch["metadata"]["labels"][groupNameKey])
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     http.Header{"Content-Type": []string{"application/json"}},
+					Body:       io.NopCloser(strings.NewReader(tt.responseBody)),
+					Request:    r,
+				}, nil
+			})
+
+			clientset, err := kubernetes.NewForConfig(&rest.Config{Host: "https://cluster.test", Transport: transport})
+			require.NoError(t, err)
+			manager := &WorkloadManager{sdk: &k8s.Sdk{ClientSet: clientset, Ctx: context.Background()}}
+
+			require.NoError(t, manager.ensureWorkloadGroupNameLabel(tt.workload, "demo-group"))
+			assert.Equal(t, 1, requestCount)
+		})
+	}
+}
+
+func TestEnsureWorkloadGroupNameLabelSkipsExistingLabel(t *testing.T) {
+	manager := &WorkloadManager{}
+	workload := NewWorkloadWrapper(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
+		Name:      "demo",
+		Namespace: "default",
+		Labels:    map[string]string{groupNameKey: "existing-group"},
+	}})
+
+	require.NoError(t, manager.ensureWorkloadGroupNameLabel(workload, "demo-group"))
 }
