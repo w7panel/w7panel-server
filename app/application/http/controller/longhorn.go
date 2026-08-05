@@ -97,9 +97,10 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		CreationTimestamp string `json:"creationTimestamp"`
 		AccessMode        string `json:"accessMode"`
 		SnapShotSize      int64  `json:"snapShotSize"`
-		IsExpanding       bool   `json:"isExpanding"` //是否在扩容中
-		ExpandErr         string `json:"expandErr"`   //扩容失败消息
-		State             string `json:"state"`       //volume状态
+		IsExpanding       bool   `json:"isExpanding"`     //是否在扩容中
+		ExpandErr         string `json:"expandErr"`       //扩容失败消息
+		State             string `json:"state"`           //volume状态
+		AttachmentState   string `json:"attachmentState"` //实际绑定操作状态
 		VolumeName        string `json:"volumeName"`
 		IsLock            string `json:"isLock"`         //是否锁定
 		LockNodeId        string `json:"lockNodeId"`     //锁定nodeId
@@ -144,9 +145,11 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 		isLock, nodeId := longhorn.IsVolumeLock(&volume, vtList)
 		attchNodeId := longhorn.VolumeAttachNodeId(&volume, vtList)
 		state := string(volume.Status.State)
+		attachmentState := longhorn.VolumeAttachmentState(&volume, vtList)
 		if os.Getenv("MOCK_LONGHORN_LOCK") == "true" {
 			isLock = true //test
 			state = "attaching"
+			attachmentState = "attaching"
 		}
 		// isLock = true //test
 		// isExpanding = true
@@ -161,6 +164,7 @@ func (self Longhorn) GetVolumesStatus(http *gin.Context) {
 			IsExpanding:       isExpanding,
 			ExpandErr:         expandErrstr,
 			State:             state,
+			AttachmentState:   attachmentState,
 			VolumeName:        volume.Name,
 			IsLock:            strconv.FormatBool(isLock),
 			LockNodeId:        nodeId,

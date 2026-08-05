@@ -335,6 +335,34 @@ func IsVolumeLock(volume *longhornV1beta2.Volume, eList *longhornV1beta2.VolumeA
 	}
 	return false, ""
 }
+
+// VolumeAttachmentState returns the requested attachment direction instead of
+// relying only on Volume.Status.State, which can lag behind ticket changes.
+func VolumeAttachmentState(volume *longhornV1beta2.Volume, eList *longhornV1beta2.VolumeAttachmentList) string {
+	hasAttachmentTicket := false
+	for _, attachment := range eList.Items {
+		if attachment.Spec.Volume == volume.Name && len(attachment.Spec.AttachmentTickets) > 0 {
+			hasAttachmentTicket = true
+			break
+		}
+	}
+
+	state := string(volume.Status.State)
+	if hasAttachmentTicket {
+		if state == "attached" {
+			return "attached"
+		}
+		return "attaching"
+	}
+	if state == "detached" {
+		return "detached"
+	}
+	if state == "attached" || state == "attaching" || state == "detaching" {
+		return "detaching"
+	}
+	return state
+}
+
 func VolumeAttachNodeId(volume *longhornV1beta2.Volume, eList *longhornV1beta2.VolumeAttachmentList) string {
 	vtList := lo.Filter(eList.Items, func(eg longhornV1beta2.VolumeAttachment, index int) bool {
 		return eg.Spec.Volume == volume.Name
