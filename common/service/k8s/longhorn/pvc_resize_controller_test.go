@@ -7,7 +7,7 @@ import (
 
 	longhornv1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,8 +16,9 @@ import (
 )
 
 type fakeResizeLonghornClient struct {
-	volume  *longhornv1beta2.Volume
-	engines *longhornv1beta2.EngineList
+	volume     *longhornv1beta2.Volume
+	engines    *longhornv1beta2.EngineList
+	attachment *longhornv1beta2.VolumeAttachment
 }
 
 func (f *fakeResizeLonghornClient) GetVolume(string) (*longhornv1beta2.Volume, error) {
@@ -26,6 +27,10 @@ func (f *fakeResizeLonghornClient) GetVolume(string) (*longhornv1beta2.Volume, e
 
 func (f *fakeResizeLonghornClient) GetEngineList() (*longhornv1beta2.EngineList, error) {
 	return f.engines.DeepCopy(), nil
+}
+
+func (f *fakeResizeLonghornClient) GetVolumeAttachment(string) (*longhornv1beta2.VolumeAttachment, error) {
+	return f.attachment.DeepCopy(), nil
 }
 
 func resizeControllerTestPVC(state string) *corev1.PersistentVolumeClaim {
@@ -54,12 +59,16 @@ func newResizeTestReconciler(t *testing.T, objects ...client.Object) (*PVCResize
 	if err := corev1.AddToScheme(scheme); err != nil {
 		t.Fatal(err)
 	}
+	if err := storagev1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objects...).Build()
 	r := &PVCResizeReconciler{
 		Client: cl,
 		longhorn: &fakeResizeLonghornClient{
-			volume:  &longhornv1beta2.Volume{},
-			engines: &longhornv1beta2.EngineList{},
+			volume:     &longhornv1beta2.Volume{},
+			engines:    &longhornv1beta2.EngineList{},
+			attachment: &longhornv1beta2.VolumeAttachment{},
 		},
 		detachVolume: func(string, string, bool) error { return nil },
 		attachVolume: func(string, string, string, string, string, string) error { return nil },
@@ -71,6 +80,14 @@ func newResizeTestReconciler(t *testing.T, objects ...client.Object) (*PVCResize
 func TestPVCResizePrepareCapturesNodeAndPods(t *testing.T) {
 	pvc := resizeControllerTestPVC(PVCResizeStatePending)
 	r, cl := newResizeTestReconciler(t, pvc)
+	r.longhorn.(*fakeResizeLonghornClient).attachment = &longhornv1beta2.VolumeAttachment{
+		Spec: longhornv1beta2.VolumeAttachmentSpec{AttachmentTickets: map[string]*longhornv1beta2.AttachmentTicket{
+			"csi-test": {ID: "csi-test", Type: longhornv1beta2.AttacherTypeCSIAttacher, NodeID: "server1"},
+		}},
+	}
+	r.longhorn.(*fakeResizeLonghornClient).volume = &longhornv1beta2.Volume{
+		Status: longhornv1beta2.VolumeStatus{State: longhornv1beta2.VolumeStateAttached, CurrentNodeID: "server1"},
+	}
 	volume := &longhornv1beta2.Volume{
 		Status: longhornv1beta2.VolumeStatus{
 			State:         longhornv1beta2.VolumeStateAttached,
@@ -93,36 +110,105 @@ func TestPVCResizePrepareCapturesNodeAndPods(t *testing.T) {
 	if got.Annotations[PVCResizeNodeAnnotation] != "server1" {
 		t.Fatalf("expected original node server1, got %q", got.Annotations[PVCResizeNodeAnnotation])
 	}
-	if got.Annotations[PVCResizePodsAnnotation] != `["mysql-0"]` {
+	if got.Annotations[PVCResizePodsAnnotation] != `[{"name":"mysql-0"}]` {
 		t.Fatalf("unexpected pod snapshot %q", got.Annotations[PVCResizePodsAnnotation])
 	}
 }
 
-func TestPVCResizeRestartDeletesPodsLastAndCompletes(t *testing.T) {
+func TestPVCResizeRestartWaitsForReplacementPodAndKeepsCSITicket(t *testing.T) {
 	pvc := resizeControllerTestPVC(PVCResizeStateRestarting)
-	pvc.Annotations[PVCResizePodsAnnotation] = `["mysql-0"]`
-	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "mysql-0", Namespace: "default"}}
-	detachedTemporaryTicket := false
-	r, cl := newResizeTestReconciler(t, pvc, pod)
-	r.detachVolume = func(_ string, attachmentID string, force bool) error {
-		detachedTemporaryTicket = attachmentID == resizeAttachmentID && !force
-		return nil
-	}
+	pvc.Annotations[PVCResizePodsAnnotation] = `[{"name":"mysql-0","uid":"old-uid","waitForRestart":true}]`
 	pvc.Annotations[PVCResizeOriginallyAttachedAnnotation] = "true"
+	pvc.Annotations[PVCResizeNodeAnnotation] = "server1"
+	pvc.Annotations[PVCResizeAttachmentTicketsAnnotation] = `{"csi-test":{"id":"csi-test","type":"csi-attacher","nodeID":"server1","parameters":{"disableFrontend":"false"}}}`
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "mysql-0", Namespace: "default", UID: "old-uid"}}
+	r, cl := newResizeTestReconciler(t, pvc, pod)
+	r.longhorn.(*fakeResizeLonghornClient).attachment = &longhornv1beta2.VolumeAttachment{
+		Spec: longhornv1beta2.VolumeAttachmentSpec{AttachmentTickets: map[string]*longhornv1beta2.AttachmentTicket{
+			"csi-test": {ID: "csi-test", Generation: 1},
+		}},
+		Status: longhornv1beta2.VolumeAttachmentStatus{AttachmentTicketStatuses: map[string]*longhornv1beta2.AttachmentTicketStatus{
+			"csi-test": {ID: "csi-test", Generation: 1, Satisfied: true},
+		}},
+	}
+	r.longhorn.(*fakeResizeLonghornClient).volume = &longhornv1beta2.Volume{
+		Status: longhornv1beta2.VolumeStatus{State: longhornv1beta2.VolumeStateAttached, CurrentNodeID: "server1"},
+	}
 	if _, err := r.restartPods(context.Background(), pvc); err != nil {
 		t.Fatal(err)
 	}
-	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(pod), &corev1.Pod{}); !apierrors.IsNotFound(err) {
-		t.Fatalf("expected pod to be deleted, got %v", err)
+	replacement := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "mysql-0", Namespace: "default", UID: "new-uid"},
+		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}},
+	}
+	if err := cl.Create(context.Background(), replacement); err != nil {
+		t.Fatal(err)
 	}
 	got := &corev1.PersistentVolumeClaim{}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(pvc), got); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.restartPods(context.Background(), got); err != nil {
+		t.Fatal(err)
+	}
 	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(pvc), got); err != nil {
 		t.Fatal(err)
 	}
 	if got.Annotations[PVCResizeStateAnnotation] != PVCResizeStateSucceeded {
 		t.Fatalf("expected succeeded, got %q", got.Annotations[PVCResizeStateAnnotation])
 	}
-	if !detachedTemporaryTicket {
-		t.Fatal("expected temporary resize attachment to be removed")
+	if got.Annotations[PVCResizePodsRestartedAnnotation] != "" {
+		t.Fatal("expected pod restart marker to be cleared")
+	}
+}
+
+func TestPVCResizeCapturesCSITicketFromKubernetesVolumeAttachment(t *testing.T) {
+	pvc := resizeControllerTestPVC(PVCResizeStatePending)
+	pvName := pvc.Spec.VolumeName
+	attachment := &storagev1.VolumeAttachment{
+		ObjectMeta: metav1.ObjectMeta{Name: "csi-test"},
+		Spec: storagev1.VolumeAttachmentSpec{
+			Attacher: CSIDriverName,
+			NodeName: "server1",
+			Source:   storagev1.VolumeAttachmentSource{PersistentVolumeName: &pvName},
+		},
+	}
+	r, _ := newResizeTestReconciler(t, pvc, attachment)
+	tickets, err := r.captureAttachmentTickets(context.Background(), pvc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ticket := tickets["csi-test"]
+	if ticket == nil || ticket.Type != longhornv1beta2.AttacherTypeCSIAttacher || ticket.NodeID != "server1" {
+		t.Fatalf("unexpected restored CSI ticket %#v", ticket)
+	}
+}
+
+func TestPVCResizeRestoresOriginalAttachmentTicket(t *testing.T) {
+	pvc := resizeControllerTestPVC(PVCResizeStateAttaching)
+	r, _ := newResizeTestReconciler(t, pvc)
+	var gotID, gotType, gotNode string
+	r.attachVolume = func(_ string, node string, id string, _ string, ticketType string, _ string) error {
+		gotID, gotType, gotNode = id, ticketType, node
+		return nil
+	}
+	tickets := map[string]*longhornv1beta2.AttachmentTicket{
+		"csi-test": {ID: "csi-test", Type: longhornv1beta2.AttacherTypeCSIAttacher, NodeID: "server1"},
+	}
+	if err := r.restoreAttachmentTickets(pvc.Spec.VolumeName, "fallback", tickets, &longhornv1beta2.VolumeAttachment{}); err != nil {
+		t.Fatal(err)
+	}
+	if gotID != "csi-test" || gotType != "csi-attacher" || gotNode != "server1" {
+		t.Fatalf("unexpected restored ticket id=%q type=%q node=%q", gotID, gotType, gotNode)
+	}
+}
+
+func TestPVCResizeParsesLegacyPodNames(t *testing.T) {
+	pods, err := resizePodSnapshots(`["mysql-0"]`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pods) != 1 || pods[0].Name != "mysql-0" || !pods[0].WaitForRestart {
+		t.Fatalf("unexpected legacy pod snapshots %#v", pods)
 	}
 }
