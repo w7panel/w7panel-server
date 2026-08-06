@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -79,7 +78,6 @@ type K8sResourceInterface interface {
 	IsPrivileged() bool
 	GetZipUrl() string
 	GetZpkUrl() string
-	GetExternalServices() []types.ExternalService
 	RequireSite() bool
 	RequireCreateDb() (bool, string)
 	GetLogo() string
@@ -981,7 +979,6 @@ func ToAppGroup(p K8sResourceInterface, installResult []v1alpha1.DeployItem) *v1
 		IsHelm:      isHelm,
 	}
 	syncAppGroupZpkURL(obj, p.GetZpkUrl())
-	syncAppGroupExternalServices(obj, p.GetExternalServices())
 	obj.Status = v1alpha1.AppGroupStatus{
 		DeployItems:  installResult,
 		DeployStatus: v1alpha1.StatusPendingInstall,
@@ -992,43 +989,6 @@ func ToAppGroup(p K8sResourceInterface, installResult []v1alpha1.DeployItem) *v1
 	}
 	return obj
 
-}
-
-func syncAppGroupExternalServices(group *v1alpha1.AppGroup, services []types.ExternalService) {
-	seen := make(map[string]struct{}, len(services))
-	group.Spec.ExternalServices = make([]v1alpha1.ExternalService, 0, len(services))
-	for _, service := range services {
-		key := strings.TrimSpace(service.Key)
-		title := strings.TrimSpace(service.Title)
-		serviceURL := strings.TrimSpace(service.URL)
-		if key == "" || title == "" || serviceURL == "" {
-			continue
-		}
-		if _, ok := seen[key]; ok {
-			continue
-		}
-		parsedURL, err := url.Parse(serviceURL)
-		if err != nil || parsedURL.Host == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
-			continue
-		}
-		openMode := service.OpenMode
-		if openMode == "" {
-			openMode = "iframe"
-		}
-		if openMode != "iframe" {
-			continue
-		}
-		seen[key] = struct{}{}
-		group.Spec.ExternalServices = append(group.Spec.ExternalServices, v1alpha1.ExternalService{
-			Key:      key,
-			Title:    title,
-			URL:      parsedURL.String(),
-			OpenMode: openMode,
-		})
-	}
-	if len(group.Spec.ExternalServices) == 0 {
-		group.Spec.ExternalServices = nil
-	}
 }
 
 func syncAppGroupZpkURL(group *v1alpha1.AppGroup, zpkURL string) {
