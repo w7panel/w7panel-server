@@ -15,4 +15,5 @@ const (
 	HELM_STATIC_URL       = "w7.cc/static-url"
 	HELM_DENY_DELETE      = "w7.cc/deny-delete"  //禁止删除
 	HELM_OFFICAL_APP      = "w7.cc/official-app" //官方应用标识
+	HELM_INJECT_ROOT_CA   = "w7.cc/inject-root-ca"
 )

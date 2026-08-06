@@ -39,6 +39,9 @@ func (m *ResourceMutator) handlePod(ctx context.Context, req admission.Request) 
 	if isLxcfsAnnotationEnabled(pod) {
 		modified = injectLxcfs(pod) || modified
 	}
+	if isRootCAInjectionEnabled(pod) {
+		modified = injectRootCA(pod) || modified
+	}
 	if !modified {
 		return admission.Allowed("Pod cpu memory 无需配置")
 	}
