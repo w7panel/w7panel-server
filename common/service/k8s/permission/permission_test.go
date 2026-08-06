@@ -20,6 +20,28 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+func TestIsPanelRole(t *testing.T) {
+	tests := []struct {
+		name string
+		want bool
+	}{
+		{name: FounderPermissionName, want: true},
+		{name: SuperPermissionName, want: true},
+		{name: NormalPermissionName, want: true},
+		{name: APIPermissionName, want: false},
+		{name: "zpk-market", want: false},
+		{name: "test", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsPanelRole(tt.name); got != tt.want {
+				t.Fatalf("IsPanelRole(%q) = %v, want %v", tt.name, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestMatchAPI(t *testing.T) {
 	tests := []struct {
 		name   string

@@ -26,6 +26,16 @@ const (
 	APIPermissionName     = "api"
 )
 
+// IsPanelRole reports whether name is a role supported by the panel UI.
+func IsPanelRole(name string) bool {
+	switch name {
+	case FounderPermissionName, SuperPermissionName, NormalPermissionName:
+		return true
+	default:
+		return false
+	}
+}
+
 var permissionGVR = schema.GroupVersionResource{
 	Group:    "w7panel.w7.com",
 	Version:  "v1alpha1",

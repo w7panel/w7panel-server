@@ -7,6 +7,7 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/types"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -32,7 +33,7 @@ func ListTop(t string) (*microapp.MicroAppList, error) {
 	}
 	rootList.Items = lo.Filter(rootList.Items, func(item microapp.MicroApp, index int) bool {
 		_, hasRole := item.Spec.ConfigV2.Props.RoleConfig[role]
-		return item.RoleCount() > 1 && hasRole && !isPluginMicroApp(item)
+		return panelRoleBindingCount(item) > 1 && hasRole && !isPluginMicroApp(item)
 	})
 
 	rootList.Items = lo.Map(rootList.Items, func(item microapp.MicroApp, index int) microapp.MicroApp {
@@ -42,13 +43,19 @@ func ListTop(t string) (*microapp.MicroAppList, error) {
 
 	lo.ForEach(rootList.Items, func(item microapp.MicroApp, index int) {
 		if item.Labels != nil {
-			if item.RoleCount() > 1 || item.Labels["microapp.w7.cc/from"] == "root" {
+			if panelRoleBindingCount(item) > 1 || item.Labels["microapp.w7.cc/from"] == "root" {
 				newList.Items = append(newList.Items, item)
 			}
 		}
 	})
 
 	return newList, nil
+}
+
+func panelRoleBindingCount(item microapp.MicroApp) int {
+	return lo.CountBy(item.Spec.Bindings, func(binding microapp.Bindings) bool {
+		return binding.Support == "thirdparty_cd" && permissionservice.IsPanelRole(binding.Name)
+	})
 }
 
 func isPluginMicroApp(item microapp.MicroApp) bool {
@@ -110,15 +117,23 @@ func filterMicroapp(item *microapp.MicroApp, role string) {
 	// item.Labels["microapp.w7.cc/from"] = "root"
 	// item.Name = item.Name + "-root"
 	item.Spec.Bindings = lo.Filter(item.Spec.Bindings, func(bindings microapp.Bindings, index int) bool {
-		if role == "super" { //super 管理员可以看到所有角色
-			return bindings.Name != "founder"
-		}
-		return bindings.Name == role
+		return bindingVisibleToRole(bindings, role)
 	})
 	newRole := item.Spec.ConfigV2.Props.RoleConfig[role]
 	item.Spec.ConfigV2.Props.RoleConfig = map[string]microapp.Role{}
 	item.Spec.ConfigV2.Props.RoleConfig[role] = newRole
 }
+
+func bindingVisibleToRole(binding microapp.Bindings, role string) bool {
+	if role == "founder" {
+		return true
+	}
+	if role == "super" { // super 管理员可以看到除 founder 外的角色菜单
+		return binding.Name != "founder"
+	}
+	return binding.Name == role
+}
+
 func loadMicroApp(sdk *k8s.Sdk, name string) (*microapp.MicroApp, error) {
 	microapp := &microapp.MicroApp{}
 	sigClient, err := sdk.ToSigClient()
@@ -164,7 +179,7 @@ func patchRootMicroApp(sdk *k8s.Sdk, origin *microapp.MicroApp, role string) err
 		// 移除不属于当前角色的权限配置信息
 		item.Spec.Bindings = origin.Spec.Bindings
 		item.Spec.Bindings = lo.Filter(item.Spec.Bindings, func(bindings microapp.Bindings, index int) bool {
-			return bindings.Name == role
+			return bindingVisibleToRole(bindings, role)
 		})
 		newRole := item.Spec.ConfigV2.Props.RoleConfig[role]
 		item.Spec.ConfigV2.Props.RoleConfig = map[string]microapp.Role{}

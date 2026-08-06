@@ -43,7 +43,6 @@ type ManifestPackage struct {
 	IconUrl                  string                      `json:"iconUrl"`
 	Ticket                   string                      `json:"ticket"`
 	InstallFormulas          []InstallFormula            `json:"install_formulas"`
-	ExternalServices         []ExternalService           `json:"externalServices"`
 }
 
 func (p *ManifestPackage) GetChartAnnotations(releaseName string) map[string]string {

@@ -120,14 +120,6 @@ type AppCredentials struct {
 	AppSecret string `json:"appSecret"` //应用AppSecret
 }
 
-type ExternalService struct {
-	Key   string `json:"key"`
-	Title string `json:"title"`
-	URL   string `json:"url"`
-	// +kubebuilder:validation:Enum=iframe
-	OpenMode string `json:"openMode,omitempty"`
-}
-
 type AppGroupSpec struct {
 	Identifie        string `json:"identifie"`        //应用标识
 	Type             string `json:"type"`             // "helm" or "zpk" or "custom"
@@ -139,10 +131,9 @@ type AppGroupSpec struct {
 	Suffix           string `json:"suffix"`           //应用名后缀
 	// Domains       []string   `json:"domains"`       //域名列表
 	// DefaultDomain string     `json:"defaultDomain"` //默认域名
-	ZpkUrl           string            `json:"zpkUrl"`     //制品库地址
-	HelmConfig       HelmConfig        `json:"helmConfig"` //helm配置
-	AppCredentials   *AppCredentials   `json:"appCredentials,omitempty"`
-	ExternalServices []ExternalService `json:"externalServices,omitempty"`
+	ZpkUrl         string          `json:"zpkUrl"`     //制品库地址
+	HelmConfig     HelmConfig      `json:"helmConfig"` //helm配置
+	AppCredentials *AppCredentials `json:"appCredentials,omitempty"`
 	// Annotations   map[string]string `json:"annotations"`   //annotations
 	IsHelm bool `json:"isHelm"` //是否为helm应用
 }

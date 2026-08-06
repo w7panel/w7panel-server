@@ -8,9 +8,49 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TestMicroAppRoleCount tests the RoleCount method used in ListTop
-func TestMicroAppRoleCount(t *testing.T) {
+func TestPanelRoleBindingCount(t *testing.T) {
+	tests := []struct {
+		name     string
+		bindings []microappv1.Bindings
+		want     int
+	}{
+		{
+			name: "functional binding does not promote single-role app",
+			bindings: []microappv1.Bindings{
+				{Name: "founder", Support: "thirdparty_cd"},
+				{Name: "zpk-market", Support: "thirdparty_cd"},
+				{Name: "test", Support: "thirdparty_cd"},
+			},
+			want: 1,
+		},
+		{
+			name: "all supported panel roles count",
+			bindings: []microappv1.Bindings{
+				{Name: "founder", Support: "thirdparty_cd"},
+				{Name: "super", Support: "thirdparty_cd"},
+				{Name: "normal", Support: "thirdparty_cd"},
+				{Name: "zpk-market1", Support: "thirdparty_cd"},
+			},
+			want: 3,
+		},
+		{
+			name: "other support type does not count",
+			bindings: []microappv1.Bindings{
+				{Name: "founder", Support: "internal"},
+				{Name: "normal", Support: "thirdparty_cd"},
+			},
+			want: 1,
+		},
+	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			item := microappv1.MicroApp{Spec: microappv1.MicroAppSpec{Bindings: tt.bindings}}
+			if got := panelRoleBindingCount(item); got != tt.want {
+				t.Fatalf("panelRoleBindingCount() = %d, want %d", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestIsPluginMicroApp(t *testing.T) {
