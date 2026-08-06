@@ -8,8 +8,13 @@ sh $KO_DATA_PATH/shell/migrate-crd-groups.sh
 echo "导入webhook公共CA"
 if kubectl get namespace cert-manager >/dev/null 2>&1 && kubectl get crd certificates.cert-manager.io >/dev/null 2>&1 && kubectl get crd clusterissuers.cert-manager.io >/dev/null 2>&1; then
   kubectl apply -f $KO_DATA_PATH/yaml/webhook-ca.yaml
+  kubectl apply -f $KO_DATA_PATH/yaml/w7panel-root-ca.yaml
+  helm upgrade cert-manager-csi-driver $KO_DATA_PATH/charts/cert-manager-csi-driver-v0.16.0.tgz \
+    --namespace cert-manager \
+    --install \
+    --wait
 else
-  echo "cert-manager未就绪，跳过webhook公共CA"
+  echo "cert-manager未就绪，跳过webhook公共CA和CSI Driver"
 fi
 
 echo "升级私有DNS"
