@@ -467,9 +467,12 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 			}
 			return d.cleanGroupChildren(parentGroup)
 		} else {
-			if err := NotifyDeleted(group); err != nil {
-				slog.Warn("notify appgroup deleted failed", "namespace", group.Namespace, "name", group.Name, "error", err)
-			}
+			go func() {
+				if err := NotifyDeleted(group); err != nil {
+					slog.Warn("notify appgroup deleted failed", "namespace", group.Namespace, "name", group.Name, "error", err)
+				}
+			}()
+
 			return d.cleanGroupChildren(group)
 		}
 	}
@@ -626,7 +629,7 @@ func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) {
 	mc := &microapp.MicroApp{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      group.Name,
-			Namespace: group.Name,
+			Namespace: group.Namespace,
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "MicroApp",
