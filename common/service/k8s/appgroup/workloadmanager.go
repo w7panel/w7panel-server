@@ -17,7 +17,7 @@ import (
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	v1alpha1Lister "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -27,6 +27,11 @@ import (
 	batchv1lister "k8s.io/client-go/listers/batch/v1"
 	corev1lister "k8s.io/client-go/listers/core/v1"
 	networkingv1lister "k8s.io/client-go/listers/networking/v1"
+)
+
+const (
+	appGroupFinalizer       = "w7panel.w7.com/finalizer"
+	legacyAppGroupFinalizer = "w7panel.w7.com/finalizers"
 )
 
 var oldAppGroupGVR = schema.GroupVersionResource{
@@ -166,7 +171,13 @@ func (d *WorkloadManager) GetSecretFromRO(kind, namespace, name string) (*corev1
 }
 
 func (d *WorkloadManager) GetAppGroupFromRO(namespace, name string) (*v1alpha1.AppGroup, error) {
-	return d.AppGroupLister.AppGroups(namespace).Get(name)
+	group, err := d.AppGroupLister.AppGroups(namespace).Get(name)
+	if err != nil {
+		return nil, err
+	}
+	// Informer lister 返回的对象属于共享缓存，协调过程需要修改 finalizer，
+	// 必须先复制，避免污染缓存或与其他 worker 产生数据竞争。
+	return group.DeepCopy(), nil
 }
 
 func (d *WorkloadManager) GetAppGroupWrapper(ds WorkloadWrapperInterface) *appgroupWrapper {
@@ -202,7 +213,7 @@ func (d *WorkloadManager) HandleQueue(key interface{}) error {
 	if evt.Kind == "Secret" {
 		secret, err := d.GetSecretFromRO(evt.Kind, evt.Namespace, evt.Name)
 		if err != nil {
-			if errors.IsNotFound(err) {
+			if k8serrors.IsNotFound(err) {
 				return nil
 			}
 			// slog.Error("get from ro error", "error", err)
@@ -232,7 +243,7 @@ func (d *WorkloadManager) HandleQueue(key interface{}) error {
 	if isWorkloadKind(evt.Kind) {
 		ds, err := d.GetFromRO(evt.Kind, evt.Namespace, evt.Name)
 		if err != nil {
-			if errors.IsNotFound(err) {
+			if k8serrors.IsNotFound(err) {
 				workload := NewWorkloadFromEvent(evt)
 				return d.HandleWorkload(NewWorkloadWrapper(workload), true)
 			}
@@ -402,7 +413,7 @@ func (d *WorkloadManager) cleanGroupChildren(group *v1alpha1.AppGroup) error {
 		return err
 	}
 	mlabel := labels.NewSelector().Add(*req)
-	children, err := d.groupApi.lister.List(mlabel)
+	children, err := d.groupApi.lister.AppGroups(group.Namespace).List(mlabel)
 	if err != nil {
 		slog.Error("failed to list children", slog.String("error", err.Error()))
 		return err
@@ -412,12 +423,17 @@ func (d *WorkloadManager) cleanGroupChildren(group *v1alpha1.AppGroup) error {
 	for _, child := range children {
 		if child.DeletionTimestamp == nil {
 			hasChildren = true
-			d.groupApi.DeleteAppGroup(child.Namespace, child.Name)
+			err = d.groupApi.DeleteAppGroup(child.Namespace, child.Name)
+			if err != nil {
+				slog.Error("DeleteAppGroup err", "group", child.Name, "err", err)
+			}
 		}
 	}
 	if !hasChildren {
 		slog.Debug("no children need to delete", "group name", group.Name, "namespace", group.Namespace)
-		group.Finalizers = nil
+		if !removeManagedAppGroupFinalizers(group) {
+			return nil
+		}
 		_, err := d.groupApi.UpdateAppGroup(group.Namespace, group)
 		if err != nil {
 			slog.Error("update group error", "error", err)
@@ -434,33 +450,33 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 		d.cleanAppGroup(group)
 		parentName, isChild := group.Labels["w7.cc/parent"]
 		if isChild {
-			group.Finalizers = nil
-			_, err := d.groupApi.UpdateAppGroup(group.Namespace, group)
-			if err != nil {
-				slog.Error("update group error", "error", err)
-				return err
+			if removeManagedAppGroupFinalizers(group) {
+				_, err := d.groupApi.UpdateAppGroup(group.Namespace, group)
+				if err != nil {
+					slog.Error("update group error", "error", err)
+					return err
+				}
 			}
-			parentGroup, err := d.GetAppGroupFromRO(group.Namespace, group.Name)
+			parentGroup, err := d.GetAppGroupFromRO(group.Namespace, parentName)
 			if err != nil {
+				if k8serrors.IsNotFound(err) {
+					return nil
+				}
 				slog.Debug("cannot find parent group", slog.String("parentName", parentName), slog.String("error", err.Error()))
-				return nil
+				return err
 			}
 			return d.cleanGroupChildren(parentGroup)
 		} else {
-			NotifyDeleted(group)
+			go func() {
+				if err := NotifyDeleted(group); err != nil {
+					slog.Warn("notify appgroup deleted failed", "namespace", group.Namespace, "name", group.Name, "error", err)
+				}
+			}()
+
 			return d.cleanGroupChildren(group)
 		}
 	}
-	// 如果没有删除 且 没有finalizer 则添加finalizer
-	// if group.DeletionTimestamp == nil && (group.Finalizers == nil || len(group.Finalizers) == 0) {
-	// 	group.Finalizers = []string{"w7panel.w7.com/finalizer"}
-	// 	_, err := d.groupApi.UpdateAppGroup(group.Namespace, group)
-	// 	if err != nil {
-	// 		slog.Error("update group error", "error", err)
-	// 		return err
-	// 	}
-	// 	return nil
-	// }
+
 	changed := false
 	if group.Spec.Suffix == "" {
 		group.Spec.Suffix = group.Name
@@ -507,63 +523,47 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 	return nil
 }
 
-func (d *WorkloadManager) deleteOldAppGroup(group *v1alpha1.AppGroup) {
-	oldAppGroup, err := d.sdk.DynamicClient().Resource(oldAppGroupGVR).Namespace(group.Namespace).Get(d.sdk.Ctx, group.Name, metav1.GetOptions{})
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			slog.Error("failed to get old appgroup", slog.String("name", group.Name), slog.String("namespace", group.Namespace), slog.String("error", err.Error()))
+func removeManagedAppGroupFinalizers(group *v1alpha1.AppGroup) bool {
+	if group == nil || len(group.Finalizers) == 0 {
+		return false
+	}
+	finalizers := group.Finalizers[:0]
+	for _, finalizer := range group.Finalizers {
+		if finalizer == appGroupFinalizer || finalizer == legacyAppGroupFinalizer {
+			continue
 		}
-		return
+		finalizers = append(finalizers, finalizer)
 	}
-
-	if len(oldAppGroup.GetFinalizers()) > 0 {
-		oldAppGroup.SetFinalizers(nil)
-		if _, err := d.sdk.DynamicClient().Resource(oldAppGroupGVR).Namespace(group.Namespace).Update(d.sdk.Ctx, oldAppGroup, metav1.UpdateOptions{}); err != nil && !errors.IsNotFound(err) {
-			slog.Error("failed to clear old appgroup finalizers", slog.String("name", group.Name), slog.String("namespace", group.Namespace), slog.String("error", err.Error()))
-			return
-		}
-	}
-
-	err = d.sdk.DynamicClient().Resource(oldAppGroupGVR).Namespace(group.Namespace).Delete(d.sdk.Ctx, group.Name, metav1.DeleteOptions{})
-	if err != nil && !errors.IsNotFound(err) {
-		slog.Error("failed to delete old appgroup", slog.String("name", group.Name), slog.String("namespace", group.Namespace), slog.String("error", err.Error()))
-	}
+	changed := len(finalizers) != len(group.Finalizers)
+	group.Finalizers = finalizers
+	return changed
 }
 
-func (d *WorkloadManager) cleanHelm(group *v1alpha1.AppGroup, createJob bool) error {
-	if group.Name == "longhorn" || group.Name == "w7panel-offline" { //LonghornUpgrade 之前版本有bug 暂时不清理
+func skipHelmCleanup(group *v1alpha1.AppGroup) bool {
+	return group.Name == "longhorn" || group.Name == "w7panel-offline"
+}
+
+func (d *WorkloadManager) cleanHelm(group *v1alpha1.AppGroup) error {
+	if skipHelmCleanup(group) { //LonghornUpgrade 之前版本有bug 暂时不清理
 		return nil
 	}
 	_, err := d.helm.UnInstall(group.Name, group.Namespace)
 	if err != nil {
-		slog.Error("failed helm uninstall to uninstall app", slog.String("error", err.Error()))
+		return fmt.Errorf("uninstall helm release %s/%s: %w", group.Namespace, group.Name, err)
 	}
-	if !createJob {
-		return err
-	}
-	uninstallJob := ToUninstallTmpJob(group, "uninstall")
-	if uninstallJob != nil {
-		_, err := d.sdk.ClientSet.BatchV1().Jobs(group.Namespace).Create(context.TODO(), uninstallJob, metav1.CreateOptions{})
-		if err != nil {
-			slog.Error("failed to create delete job", slog.String("error", err.Error()))
-		}
-	}
-	return err
-
+	return nil
 }
 
 func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) {
-
-	defer func() {
-		slog.Info("start delete helm")
-		d.cleanHelm(group, true)
-	}()
 	defer helper.CleanStaticDir(group.Name)
 
 	if group.Spec.IsHelm {
 		// vm metrics opertor 会监听资源删除 如果helm uninstall 最后执行 会导致资源无法删除 helm清理不干净
 		slog.Info("start delete helm ")
-		d.cleanHelm(group, false)
+		err := d.cleanHelm(group)
+		if err != nil {
+			slog.Error("cleanHelm err", "group", group, "err", err)
+		}
 	}
 
 	slog.Info("start delete workload")
@@ -629,7 +629,7 @@ func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) {
 	mc := &microapp.MicroApp{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      group.Name,
-			Namespace: group.Name,
+			Namespace: group.Namespace,
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "MicroApp",
