@@ -293,7 +293,6 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 		IconUrl:            zpkInfo.Data.IconUrl,
 		Ticket:             zpkInfo.Data.Ticket,
 		InstallFormulas:    zpkInfo.Data.InstallFormulas,
-		ExternalServices:   zpkInfo.Data.ExternalServices,
 	}
 
 	uri2, err := parseUri(self.repoUrl)

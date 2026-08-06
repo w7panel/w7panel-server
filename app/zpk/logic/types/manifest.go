@@ -467,26 +467,18 @@ type Version struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 type Data struct {
-	Manifest         string            `json:"manifest"`
-	Version          Version           `json:"version"`
-	InfoURL          string            `json:"info_url"`
-	ZipURL           string            `json:"zip_url"`
-	HelmUrl          string            `json:"helm_url"`
-	OciURL           string            `json:"oci_url"`
-	WebZipURL        map[string]string `json:"webzip_url"`
-	ReleaseName      string            `json:"app_name"` //控制台接口用这个字段
-	DeployItems      []DeployItem      `json:"deploy_items"`
-	IconUrl          string            `json:"icon_url"`
-	Ticket           string            `json:"ticket"`
-	InstallFormulas  []InstallFormula  `json:"install_formulas"`
-	ExternalServices []ExternalService `json:"external_services"`
-}
-
-type ExternalService struct {
-	Key      string `json:"key"`
-	Title    string `json:"title"`
-	URL      string `json:"url"`
-	OpenMode string `json:"openMode,omitempty"`
+	Manifest        string            `json:"manifest"`
+	Version         Version           `json:"version"`
+	InfoURL         string            `json:"info_url"`
+	ZipURL          string            `json:"zip_url"`
+	HelmUrl         string            `json:"helm_url"`
+	OciURL          string            `json:"oci_url"`
+	WebZipURL       map[string]string `json:"webzip_url"`
+	ReleaseName     string            `json:"app_name"` //控制台接口用这个字段
+	DeployItems     []DeployItem      `json:"deploy_items"`
+	IconUrl         string            `json:"icon_url"`
+	Ticket          string            `json:"ticket"`
+	InstallFormulas []InstallFormula  `json:"install_formulas"`
 }
 
 type InstallFormula struct {

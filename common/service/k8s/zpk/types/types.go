@@ -13,13 +13,6 @@ type HelmConfigInterface interface {
 	GetVersion() string
 }
 
-type ExternalService struct {
-	Key      string `json:"key"`
-	Title    string `json:"title"`
-	URL      string `json:"url"`
-	OpenMode string `json:"openMode,omitempty"`
-}
-
 type Shell struct {
 	Shell     string `json:"shell"`
 	Title     string `json:"title"`
