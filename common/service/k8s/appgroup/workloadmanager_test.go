@@ -11,11 +11,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	appgroupv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
+	appgrouplister "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 )
 
 type mockWorkloadWrapper struct {
@@ -135,4 +140,43 @@ func TestEnsureWorkloadGroupNameLabelSkipsExistingLabel(t *testing.T) {
 	}})
 
 	require.NoError(t, manager.ensureWorkloadGroupNameLabel(workload, "demo-group"))
+}
+
+func TestRemoveManagedAppGroupFinalizers(t *testing.T) {
+	group := &appgroupv1alpha1.AppGroup{ObjectMeta: metav1.ObjectMeta{Finalizers: []string{
+		"other.example.com/finalizer",
+		appGroupFinalizer,
+		legacyAppGroupFinalizer,
+	}}}
+
+	require.True(t, removeManagedAppGroupFinalizers(group))
+	assert.Equal(t, []string{"other.example.com/finalizer"}, group.Finalizers)
+	require.False(t, removeManagedAppGroupFinalizers(group))
+}
+
+func TestIgnoreDeleteNotFound(t *testing.T) {
+	notFound := apierrors.NewNotFound(schema.GroupResource{Group: "apps", Resource: "deployments"}, "demo")
+	require.NoError(t, ignoreDeleteNotFound(notFound))
+
+	wantErr := context.DeadlineExceeded
+	require.ErrorIs(t, ignoreDeleteNotFound(wantErr), wantErr)
+}
+
+func TestGetAppGroupFromROReturnsDeepCopy(t *testing.T) {
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	original := &appgroupv1alpha1.AppGroup{ObjectMeta: metav1.ObjectMeta{
+		Name:       "demo",
+		Namespace:  "default",
+		Finalizers: []string{appGroupFinalizer},
+	}}
+	require.NoError(t, indexer.Add(original))
+	manager := &WorkloadManager{AppGroupLister: appgrouplister.NewAppGroupLister(indexer)}
+
+	group, err := manager.GetAppGroupFromRO("default", "demo")
+	require.NoError(t, err)
+	removeManagedAppGroupFinalizers(group)
+
+	cached, err := manager.AppGroupLister.AppGroups("default").Get("demo")
+	require.NoError(t, err)
+	assert.Equal(t, []string{appGroupFinalizer}, cached.Finalizers)
 }
