@@ -31,3 +31,9 @@
 - 修复 AppGroup 静态资源解压路径穿越、父子应用删除卡住及 MicroApp 卸载残留问题。
 - 影响模块：`common/service/k8s/appgroup`。
 - 验证：运行 AppGroup 定向 Go 测试。
+
+## 2026-08-07
+
+- 控制台 OAuth 注册新 User 时初始化 `spec.cloud.userInfo`，确保 User CRD 保留云端用户配置。
+- 影响模块：控制台认证、User CRD 序列化。
+- 验证：运行 User 服务定向 Go 测试。

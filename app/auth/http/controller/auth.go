@@ -172,6 +172,9 @@ func (self Auth) consoleUser(ctx context.Context, sdk *k8s.Sdk, userInfo *clouds
 		CloudId:        consoleID,
 		CloudOpenid:    userInfo.OpenId,
 		CloudNickname:  userInfo.Nickname,
+		Cloud: &userservice.W7Config{
+			UserInfo: userInfo,
+		},
 	})
 	if k8serrors.IsAlreadyExists(err) {
 		return userservice.Get(ctx, sdk, name)
