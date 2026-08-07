@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -522,7 +523,7 @@ func (c *w7ConfigRepository) MigrateSecretsToUsers(ctx context.Context) error {
 			continue
 		}
 		cfg := c.secretToW7config(secret, strings.TrimSuffix(secret.Name, ".w7-config"))
-		if err := c.setUserConfig(cfg); err != nil {
+		if err := c.mergeSecretToUser(ctx, cfg); err != nil {
 			if apierrors.IsNotFound(err) {
 				slog.Warn("skip w7-config secret because user not found", "secret", secret.Name, "user", cfg.Name)
 				continue
@@ -531,4 +532,76 @@ func (c *w7ConfigRepository) MigrateSecretsToUsers(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// mergeSecretToUser migrates only fields that are absent from spec.cloud. The
+// User CRD is the source of truth after migration, so an old Secret must not
+// overwrite newer values on repeated upgrade runs.
+func (c *w7ConfigRepository) mergeSecretToUser(ctx context.Context, config *W7Config) error {
+	obj, err := c.DynamicClient().Resource(userGVR).Get(ctx, config.Name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	configMap, err := w7ConfigToUserConfig(config)
+	if err != nil {
+		return err
+	}
+	existing, ok, err := nestedUserCloudConfig(obj)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		existing = map[string]interface{}{}
+	}
+	var changed bool
+	existing, changed = mergeMissingUserCloudConfig(existing, configMap)
+	changed = changed || !ok
+	if err := setNestedUserCloudConfig(obj, existing); err != nil {
+		return err
+	}
+	if config.UserInfo != nil {
+		before := obj.DeepCopy().Object
+		setCloudIdentityIfEmpty(obj, config.UserInfo)
+		unstructured.RemoveNestedField(obj.Object, "spec", "consoleId")
+		unstructured.RemoveNestedField(obj.Object, "spec", "consoleOpenid")
+		unstructured.RemoveNestedField(obj.Object, "spec", "consoleNickname")
+		if !reflect.DeepEqual(before, obj.Object) {
+			changed = true
+		}
+	}
+	if !changed {
+		return nil
+	}
+	_, err = c.DynamicClient().Resource(userGVR).Update(ctx, obj, metav1.UpdateOptions{})
+	return err
+}
+
+func mergeMissingUserCloudConfig(existing, incoming map[string]interface{}) (map[string]interface{}, bool) {
+	if existing == nil {
+		existing = map[string]interface{}{}
+	}
+	changed := false
+	for key, value := range incoming {
+		if _, exists := existing[key]; exists {
+			continue
+		}
+		existing[key] = value
+		changed = true
+	}
+	return existing, changed
+}
+
+func setCloudIdentityIfEmpty(obj *unstructured.Unstructured, userInfo *service.ResultUserinfo) {
+	cloudID, _, _ := unstructured.NestedString(obj.Object, "spec", "cloudId")
+	if cloudID == "" {
+		_ = unstructured.SetNestedField(obj.Object, strconv.Itoa(userInfo.UserId), "spec", "cloudId")
+	}
+	cloudOpenid, _, _ := unstructured.NestedString(obj.Object, "spec", "cloudOpenid")
+	if cloudOpenid == "" {
+		_ = unstructured.SetNestedField(obj.Object, userInfo.OpenId, "spec", "cloudOpenid")
+	}
+	cloudNickname, _, _ := unstructured.NestedString(obj.Object, "spec", "cloudNickname")
+	if cloudNickname == "" {
+		_ = unstructured.SetNestedField(obj.Object, userInfo.Nickname, "spec", "cloudNickname")
+	}
 }
