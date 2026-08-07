@@ -37,3 +37,9 @@
 - 控制台 OAuth 注册新 User 时初始化 `spec.cloud.userInfo`，确保 User CRD 保留云端用户配置。
 - 影响模块：控制台认证、User CRD 序列化。
 - 验证：运行 User 服务定向 Go 测试。
+
+## 2026-08-07
+
+- 控制台每次 OAuth 登录同步 User CRD 的 `spec.cloud` 用户信息及兼容字段，并保留 User 元数据。
+- 影响模块：控制台认证、User CRD。
+- 验证：运行 User 服务定向 Go 测试。

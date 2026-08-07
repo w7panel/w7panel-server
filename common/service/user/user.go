@@ -147,6 +147,10 @@ func UpdateSpec(ctx context.Context, sdk *k8s.Sdk, name string, spec Spec) (*Use
 		return nil, err
 	}
 	obj.SetResourceVersion(current.Object.GetResourceVersion())
+	obj.SetLabels(current.Object.GetLabels())
+	obj.SetAnnotations(current.Object.GetAnnotations())
+	obj.SetOwnerReferences(current.Object.GetOwnerReferences())
+	obj.SetFinalizers(current.Object.GetFinalizers())
 	updated, err := sdk.DynamicClient().Resource(GVR).Update(ctx, obj, metav1.UpdateOptions{})
 	if err != nil {
 		return nil, err

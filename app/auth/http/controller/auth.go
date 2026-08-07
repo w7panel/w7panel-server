@@ -149,7 +149,7 @@ func (self Auth) ConsoleLogin(http *gin.Context) {
 func (self Auth) consoleUser(ctx context.Context, sdk *k8s.Sdk, userInfo *cloudservice.ResultUserinfo, policyName string) (*userservice.User, error) {
 	consoleID := strconv.Itoa(userInfo.UserId)
 	if u, err := userservice.GetByConsoleID(ctx, sdk, consoleID); err == nil {
-		return u, nil
+		return self.syncConsoleUser(ctx, sdk, u, consoleID, userInfo)
 	} else if !k8serrors.IsNotFound(err) {
 		return nil, err
 	}
@@ -177,9 +177,26 @@ func (self Auth) consoleUser(ctx context.Context, sdk *k8s.Sdk, userInfo *clouds
 		},
 	})
 	if k8serrors.IsAlreadyExists(err) {
-		return userservice.Get(ctx, sdk, name)
+		u, getErr := userservice.Get(ctx, sdk, name)
+		if getErr != nil {
+			return nil, getErr
+		}
+		return self.syncConsoleUser(ctx, sdk, u, consoleID, userInfo)
 	}
 	return u, err
+}
+
+func (self Auth) syncConsoleUser(ctx context.Context, sdk *k8s.Sdk, u *userservice.User, consoleID string, userInfo *cloudservice.ResultUserinfo) (*userservice.User, error) {
+	cloud := u.Spec.Cloud
+	if cloud == nil {
+		cloud = &userservice.W7Config{}
+	}
+	cloud.UserInfo = userInfo
+	u.Spec.Cloud = cloud
+	u.Spec.CloudId = consoleID
+	u.Spec.CloudOpenid = userInfo.OpenId
+	u.Spec.CloudNickname = userInfo.Nickname
+	return userservice.UpdateSpec(ctx, sdk, u.Name, u.Spec)
 }
 
 func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Context, loginMethod string, ckmName string) {
