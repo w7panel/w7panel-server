@@ -13,6 +13,10 @@ spec:
         -
             method:
                 - get
+            path: /panel-api/v1/auth/console/bind
+        -
+            method:
+                - get
             path: /panel-api/v1/auth/console/info
         -
             method:
