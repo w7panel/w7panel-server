@@ -224,7 +224,10 @@ func extractZipToDir(zipPath, destDir string) error {
 	// 遍历zip文件中的每个文件
 	for _, file := range zipReader.File {
 		// 构造文件在目标目录中的路径
-		filePath := filepath.Join(destDir, file.Name)
+		filePath, err := secureZipPath(destDir, file.Name)
+		if err != nil {
+			return err
+		}
 
 		// 如果是目录，创建目录
 		if file.FileInfo().IsDir() {
@@ -260,6 +263,17 @@ func extractZipToDir(zipPath, destDir string) error {
 	}
 
 	return nil
+}
+
+// secureZipPath rejects entries that would escape destDir after path cleaning.
+func secureZipPath(destDir, name string) (string, error) {
+	base := filepath.Clean(destDir)
+	target := filepath.Join(base, name)
+	rel, err := filepath.Rel(base, target)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
+		return "", fmt.Errorf("zip entry escapes destination: %q", name)
+	}
+	return target, nil
 }
 
 func downStaticMap(webzipUrl map[string]string, releaseName, microappPath, version string) error {
