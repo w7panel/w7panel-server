@@ -282,12 +282,6 @@ func (d *WorkloadManager) HandleWorkload(ds WorkloadWrapperInterface, delete boo
 	if group == nil || (ds.IsHelm() && !group.exists) || (ok && managerBy != "Helm" && !group.exists) {
 		return nil
 	}
-	if itemStatus.Kind != "Job" {
-		if err := d.ensureWorkloadRootCAAnnotation(ds, group.Annotations[zpktypes.HELM_INJECT_ROOT_CA] == "true"); err != nil {
-			slog.Error("sync workload root CA annotation error", "error", err, "kind", ds.Kind(), "namespace", ds.Namespace(), "name", ds.Name())
-			return err
-		}
-	}
 
 	group.FixDeployItem(itemStatus)
 	_, err := d.groupApi.Persist(group)
@@ -298,6 +292,12 @@ func (d *WorkloadManager) HandleWorkload(ds WorkloadWrapperInterface, delete boo
 	if err := d.ensureWorkloadGroupNameLabel(ds, group.Name); err != nil {
 		slog.Error("patch workload group name label error", "error", err, "kind", ds.Kind(), "namespace", ds.Namespace(), "name", ds.Name(), "groupName", group.Name)
 		return err
+	}
+	if itemStatus.Kind != "Job" {
+		if err := d.ensureWorkloadRootCAAnnotation(ds, group.Annotations[zpktypes.HELM_INJECT_ROOT_CA] == "true"); err != nil {
+			slog.Error("sync workload root CA annotation error", "error", err, "kind", ds.Kind(), "namespace", ds.Namespace(), "name", ds.Name())
+			return err
+		}
 	}
 
 	if itemStatus.Kind != "Job" {
