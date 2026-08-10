@@ -250,3 +250,6 @@ cronjob:
   volumes: []
   volumeMounts: []
   annotations: {}
+
+  privatedns:
+    enabled: true

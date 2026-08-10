@@ -48,10 +48,6 @@ func getMatchConditions() []admissionregistrationv1.MatchCondition {
 			Expression: `request.resource.group != "storage.k8s.io" || request.resource.resource != "storageclasses" || object.metadata.name == "longhorn"`,
 		},
 		{
-			Name:       "only-default-namespace-pod",
-			Expression: `request.resource.group != "" || request.resource.resource != "pods" || request.namespace == "default"`,
-		},
-		{
 			Name:       "only-k3k-logo-configmap",
 			Expression: `request.resource.group != "" || request.resource.resource != "configmaps" || (object.metadata.name == "k3k.logo.config" && request.namespace == "kube-system")`,
 		},
@@ -60,6 +56,7 @@ func getMatchConditions() []admissionregistrationv1.MatchCondition {
 
 func getAgentOperations() []admissionregistrationv1.RuleWithOperations {
 	return []admissionregistrationv1.RuleWithOperations{
+		podMutationRule(),
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
 			Rule: admissionregistrationv1.Rule{
@@ -155,14 +152,7 @@ func getDefaultOperations() []admissionregistrationv1.RuleWithOperations {
 			},
 		},
 
-		{
-			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
-			Rule: admissionregistrationv1.Rule{
-				APIGroups:   []string{""},
-				APIVersions: []string{"v1"},
-				Resources:   []string{"pods", "pods/status"},
-			},
-		},
+		podMutationRule(),
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
 			Rule: admissionregistrationv1.Rule{
@@ -195,6 +185,17 @@ func getDefaultOperations() []admissionregistrationv1.RuleWithOperations {
 				APIVersions: []string{"v1"},
 				Resources:   []string{"persistentvolumeclaims"},
 			},
+		},
+	}
+}
+
+func podMutationRule() admissionregistrationv1.RuleWithOperations {
+	return admissionregistrationv1.RuleWithOperations{
+		Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
+		Rule: admissionregistrationv1.Rule{
+			APIGroups:   []string{""},
+			APIVersions: []string{"v1"},
+			Resources:   []string{"pods"},
 		},
 	}
 }

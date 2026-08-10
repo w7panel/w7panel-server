@@ -42,6 +42,18 @@
 
 ## 2026-08-07
 
-- 解决 `CHANGELOG.md` 合并冲突，保留 BootstrapInstallation 与 AppGroup 的历史变更记录。
-- 影响模块：项目变更日志。
-- 验证：确认 Git 不再报告未合并路径。
+- 控制台 OAuth 注册新 User 时初始化 `spec.cloud.userInfo`，确保 User CRD 保留云端用户配置。
+- 影响模块：控制台认证、User CRD 序列化。
+- 验证：运行 User 服务定向 Go 测试。
+
+## 2026-08-07
+
+- 修复 `w7config-upgrade` 重复执行时旧 Secret 覆盖 User CRD 最新 `spec.cloud` 配置的问题。
+- 影响模块：w7-config 到 User CRD 迁移。
+- 验证：运行配置服务定向 Go 测试。
+
+## 2026-08-07
+
+- 控制台每次 OAuth 登录同步 User CRD 的 `spec.cloud` 用户信息及兼容字段，并保留 User 元数据。
+- 影响模块：控制台认证、User CRD。
+- 验证：运行 User 服务定向 Go 测试。
