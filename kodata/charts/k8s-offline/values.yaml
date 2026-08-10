@@ -207,6 +207,8 @@ k8s:
 k3s:
   runtimedir: "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io"
 
+privatedns:
+  enabled: true
 # Example configuration for CronJob
 cronjob:
   enabled: true
@@ -251,5 +253,3 @@ cronjob:
   volumeMounts: []
   annotations: {}
 
-  privatedns:
-    enabled: true
