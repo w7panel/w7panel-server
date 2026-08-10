@@ -61,6 +61,9 @@ func TestToUnstructuredWritesOnlyCloudFields(t *testing.T) {
 		CloudId:       "10003",
 		CloudOpenid:   "openid-10003",
 		CloudNickname: "new user",
+		Cloud: &W7Config{
+			ClusterId: "cluster-10003",
+		},
 	})
 	if err != nil {
 		t.Fatalf("ToUnstructured() error = %v", err)
@@ -68,6 +71,9 @@ func TestToUnstructuredWritesOnlyCloudFields(t *testing.T) {
 
 	if got, _, _ := unstructured.NestedString(obj.Object, "spec", "cloudId"); got != "10003" {
 		t.Fatalf("spec.cloudId = %q, want 10003", got)
+	}
+	if got, _, _ := unstructured.NestedString(obj.Object, "spec", "cloud", "clusterId"); got != "cluster-10003" {
+		t.Fatalf("spec.cloud.clusterId = %q, want cluster-10003", got)
 	}
 	if _, ok, _ := unstructured.NestedString(obj.Object, "spec", "consoleId"); ok {
 		t.Fatal("legacy spec.consoleId should not be written")

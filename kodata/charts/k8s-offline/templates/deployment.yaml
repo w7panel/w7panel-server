@@ -107,6 +107,8 @@ spec:
             value: {{ .Values.image.repository | quote }}    
           - name: TZ
             value: {{ .Values.timezone | quote }} 
+          - name: PRIVATEDNS_ENABLED
+            value: {{ .Values.privatedns.enabled | quote }} 
           args:
           - server:start
           ports:

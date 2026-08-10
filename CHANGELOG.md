@@ -25,3 +25,27 @@
 - 删除 AppGroup 外部服务字段及其 ZPK 响应映射、安装转换、生成客户端和测试代码，服务中心入口统一由 MicroApp Binding 提供。
 - 影响模块：AppGroup CRD、ZPK 安装与 ManifestPackage、Kubernetes 生成代码、后端文档。
 - 验证：`go build ./...`、AppGroup 生成客户端相关包测试及 `TestSyncAppGroupZpkURL` 通过。
+
+## 2026-08-06
+
+- 修复 AppGroup 静态资源解压路径穿越、父子应用删除卡住及 MicroApp 卸载残留问题。
+- 影响模块：`common/service/k8s/appgroup`。
+- 验证：运行 AppGroup 定向 Go 测试。
+
+## 2026-08-07
+
+- 控制台 OAuth 注册新 User 时初始化 `spec.cloud.userInfo`，确保 User CRD 保留云端用户配置。
+- 影响模块：控制台认证、User CRD 序列化。
+- 验证：运行 User 服务定向 Go 测试。
+
+## 2026-08-07
+
+- 修复 `w7config-upgrade` 重复执行时旧 Secret 覆盖 User CRD 最新 `spec.cloud` 配置的问题。
+- 影响模块：w7-config 到 User CRD 迁移。
+- 验证：运行配置服务定向 Go 测试。
+
+## 2026-08-07
+
+- 控制台每次 OAuth 登录同步 User CRD 的 `spec.cloud` 用户信息及兼容字段，并保留 User 元数据。
+- 影响模块：控制台认证、User CRD。
+- 验证：运行 User 服务定向 Go 测试。

@@ -96,3 +96,29 @@ func TestUserConfigToW7ConfigMissingCloudError(t *testing.T) {
 		t.Fatalf("error = %q, want cloud config", err.Error())
 	}
 }
+
+func TestMergeMissingUserCloudConfigPreservesExistingValues(t *testing.T) {
+	existing := map[string]interface{}{
+		"clusterId": "new-cluster",
+		"userInfo":  map[string]interface{}{"openId": "new-openid"},
+	}
+	incoming := map[string]interface{}{
+		"clusterId":   "old-cluster",
+		"userInfo":    map[string]interface{}{"openId": "old-openid"},
+		"accessToken": "old-token",
+	}
+
+	merged, changed := mergeMissingUserCloudConfig(existing, incoming)
+	if !changed {
+		t.Fatal("mergeMissingUserCloudConfig() changed = false, want true")
+	}
+	if merged["clusterId"] != "new-cluster" {
+		t.Fatalf("clusterId = %v, want new-cluster", merged["clusterId"])
+	}
+	if merged["userInfo"].(map[string]interface{})["openId"] != "new-openid" {
+		t.Fatalf("userInfo.openId = %v, want new-openid", merged["userInfo"].(map[string]interface{})["openId"])
+	}
+	if merged["accessToken"] != "old-token" {
+		t.Fatalf("accessToken = %v, want old-token", merged["accessToken"])
+	}
+}
