@@ -20,13 +20,14 @@ func TestParseTrafficParamsDoesNotAllowNormalUserNamespaceOverride(t *testing.T)
 	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
 	ctx.Request = httptest.NewRequest("GET", "/panel-api/v1/traffic/pods?namespace=other", nil)
 	ctx.Set("user_mode", "normal")
+	ctx.Set("username", "minghu")
 
 	params, ok := parseTrafficParams(ctx)
 	if !ok {
 		t.Fatal("expected valid params")
 	}
-	if params.Namespace == "other" || params.Namespace == "*" {
-		t.Fatalf("normal user escaped namespace scope: %q", params.Namespace)
+	if params.Namespace != "k3k-minghu" {
+		t.Fatalf("normal user namespace = %q, want k3k-minghu", params.Namespace)
 	}
 }
 

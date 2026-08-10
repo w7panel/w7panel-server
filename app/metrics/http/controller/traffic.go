@@ -122,8 +122,11 @@ func parseTrafficParams(ctx *gin.Context) (traffic.QueryParams, bool) {
 	if namespace == "" {
 		namespace = "default"
 	}
-	if !current.IsAdmin || namespace == "" {
-		namespace = current.Tenant
+	if !current.IsAdmin {
+		// Traffic metrics are collected in the host cluster, where each normal
+		// user's virtual cluster resides in its own k3k-{username} namespace.
+		// Never trust a caller-provided namespace for a normal user.
+		namespace = "k3k-" + strings.TrimSpace(current.Username)
 	}
 	if namespace == "" {
 		namespace = "default"
