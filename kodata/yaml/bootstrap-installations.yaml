@@ -17,23 +17,3 @@ spec:
   target:
     releaseName: w7panel-higress
     namespace: default
----
-apiVersion: w7panel.w7.com/v1alpha1
-kind: BootstrapInstallation
-metadata:
-  name: w7panel-default-cloudnoauth
-  labels:
-    w7.cc/bootstrap-builtin: "true"
-spec:
-  strategy:
-    maxConcurrent: 2
-    maxRetries: 3
-    timeoutPerArtifact: 10m
-  artifact:
-    name: cloudnoauth
-    type: ZPK
-    identifie: w7panel-cloudnoauth
-    source: https://zpk.w7.cc/zpk/respo/info/w7panel_cloudnoauth
-  target:
-    releaseName: w7panel-cloudnoauth
-    namespace: default
