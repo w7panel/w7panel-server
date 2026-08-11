@@ -20,7 +20,14 @@ import (
 type artifactInstaller interface {
 	Lookup(context.Context, *installationv1.BootstrapInstallation) (*installedArtifact, error)
 	Install(context.Context, *installationv1.BootstrapInstallation) error
+	ResolveUpdate(context.Context, *installationv1.BootstrapInstallation, string) (*artifactUpdate, error)
+	Upgrade(context.Context, *installationv1.BootstrapInstallation, *artifactUpdate) error
 	Uninstall(context.Context, *installationv1.BootstrapInstallation) error
+}
+
+type artifactUpdate struct {
+	Version string
+	pack    *zpktypes.ManifestPackage
 }
 
 type installedArtifactState string
@@ -59,12 +66,20 @@ func newZPKArtifactInstaller(sdk *k8s.Sdk) (*zpkArtifactInstaller, error) {
 	return &zpkArtifactInstaller{sdk: sdk, panelToken: config.BearerToken}, nil
 }
 
-func (i *zpkArtifactInstaller) load(ctx context.Context, reference installationv1.ArtifactReference) (*zpktypes.ManifestPackage, error) {
+func (i *zpkArtifactInstaller) load(ctx context.Context, reference installationv1.ArtifactReference, currentVersion string) (*zpktypes.ManifestPackage, error) {
 	if strings.HasPrefix(reference.Source, "oci://") {
 		return nil, errors.New("当前 ZPK 加载器尚不支持 OCI BootstrapInstallation source")
 	}
+	reference.Version = strings.TrimSpace(reference.Version)
+	if reference.Version == "" || isLatestVersion(reference.Version) {
+		reference.Version = ""
+	}
 	repo := logic.NewRepo(reference.Source, "", "")
 	repo.SetPanelToken(i.panelToken)
+	if currentVersion != "" {
+		repo.SetUpgrade(true)
+		repo.SetCurVersion(currentVersion)
+	}
 	if reference.Version != "" {
 		repo.SetTargetVersion(reference.Version)
 	}
@@ -122,7 +137,7 @@ func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *instal
 		return fmt.Errorf("制品类型 %q 当前不支持", installation.Spec.Artifact.Type)
 	}
 	reference := installation.Spec.Artifact
-	pack, err := i.load(ctx, reference)
+	pack, err := i.load(ctx, reference, "")
 	if err != nil {
 		return err
 	}
@@ -130,7 +145,6 @@ func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *instal
 	if _, err := i.sdk.ClientSet.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: installation.Spec.Target.Namespace}}, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
 		return fmt.Errorf("创建命名空间 %q: %w", installation.Spec.Target.Namespace, err)
 	}
-	options := make([]zpktypes.InstallOption, 0, len(pack.Children)+1)
 	current, err := i.Lookup(ctx, installation)
 	if err != nil {
 		return err
@@ -141,6 +155,50 @@ func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *instal
 		}
 		return errArtifactAlreadyExists
 	}
+	return i.installOrUpgrade(ctx, installation, pack)
+}
+
+func (i *zpkArtifactInstaller) ResolveUpdate(ctx context.Context, installation *installationv1.BootstrapInstallation, currentVersion string) (*artifactUpdate, error) {
+	if effectiveArtifactType(installation.Spec.Artifact.Type) != installationv1.ArtifactTypeZPK {
+		return nil, fmt.Errorf("制品类型 %q 当前不支持", installation.Spec.Artifact.Type)
+	}
+	pack, err := i.load(ctx, installation.Spec.Artifact, currentVersion)
+	if err != nil {
+		return nil, err
+	}
+	availableVersion := strings.TrimSpace(pack.Version.Name)
+	if availableVersion == "" {
+		return nil, errors.New("制品库返回的版本为空")
+	}
+	return &artifactUpdate{Version: availableVersion, pack: pack}, nil
+}
+
+func (i *zpkArtifactInstaller) Upgrade(ctx context.Context, installation *installationv1.BootstrapInstallation, update *artifactUpdate) error {
+	if effectiveArtifactType(installation.Spec.Artifact.Type) != installationv1.ArtifactTypeZPK {
+		return fmt.Errorf("制品类型 %q 当前不支持", installation.Spec.Artifact.Type)
+	}
+	if update == nil || update.pack == nil {
+		return errors.New("待升级的 ZPK 制品为空")
+	}
+	current, err := i.Lookup(ctx, installation)
+	if err != nil {
+		return err
+	}
+	if current == nil {
+		return errors.New("待升级的 AppGroup 不存在")
+	}
+	if current.State == installedArtifactDeleting {
+		return errArtifactDeleting
+	}
+	if !current.Owned {
+		return errors.New("待升级的 AppGroup 不属于当前 BootstrapInstallation")
+	}
+
+	return i.installOrUpgrade(ctx, installation, update.pack)
+}
+
+func (i *zpkArtifactInstaller) installOrUpgrade(ctx context.Context, installation *installationv1.BootstrapInstallation, pack *zpktypes.ManifestPackage) error {
+	options := make([]zpktypes.InstallOption, 0, len(pack.Children)+1)
 	options = append(options, zpktypes.InstallOption{
 		Identifie:  pack.Manifest.Application.Identifie,
 		Replicas:   1,
@@ -157,10 +215,7 @@ func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *instal
 		options = append(options, zpktypes.InstallOption{Identifie: name, Replicas: replicas})
 	}
 
-	installID := installation.Status.OperationID
-	if len(installID) > 12 {
-		installID = installID[:12]
-	}
+	installID := executionID(installation, pack.Version.Name)
 	packages := zpktypes.NewPackage(pack, options, installation.Spec.Target.ReleaseName, installID,
 		installation.Spec.Target.Namespace, "", "", "")
 	if packages.Root == nil {
@@ -183,7 +238,7 @@ func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *instal
 		return errors.New("初始化 ZPK 安装器失败")
 	}
 	if err := installer.InstallOrUpgrade(installation.Spec.Target.ReleaseName, installation.Spec.Target.Namespace); err != nil {
-		return fmt.Errorf("执行 ZPK Install: %w", err)
+		return fmt.Errorf("执行 ZPK InstallOrUpgrade: %w", err)
 	}
 	return nil
 }

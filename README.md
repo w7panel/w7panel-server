@@ -113,11 +113,21 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 
 ### BootstrapInstallation 预装制品
 
-控制器在 `k8s.watch=true` 时随共享 Controller Manager 启动。每个 BootstrapInstallation 直接声明制品、目标和执行策略，不再依赖 BootstrapProfile 或 revision。只有对应 AppGroup 同时满足 `status.ready=true` 和 `status.deployStatus=deployed` 时任务才进入 Ready；安装 Lease 会持有到真实部署完成、失败或超时。CRD 清单位于 `kodata/crds/w7panel.w7.com_bootstrapinstallations.yaml`，详细设计见 [BootstrapInstallation 预装制品方案](../docs/src/development/bootstrap-installation.md)。
+控制器在 `k8s.watch=true` 时随共享 Controller Manager 启动。每个 BootstrapInstallation 直接声明制品、目标和执行策略，不再依赖 BootstrapProfile。只有对应 AppGroup 同时满足 `status.ready=true` 和 `status.deployStatus=deployed` 时任务才进入 Ready；安装 Lease 会持有到真实部署完成、失败或超时。CRD 清单位于 `kodata/crds/w7panel.w7.com_bootstrapinstallations.yaml`，详细设计见 [BootstrapInstallation 预装制品方案](../docs/src/development/bootstrap-installation.md)。
 
 `spec.strategy.maxRetries` 未填写时默认重试 3 次；显式设置为 `0` 时不重试。由 Bootstrap 创建的 AppGroup 部署失败或超时时，Controller 会先请求删除失败实例，待 AppGroup 标准卸载流程完成后重新安装；非 Bootstrap 所有的同名 AppGroup 不会被自动删除。
 
-当前自动安装执行器仅支持 HTTPS ZPK 源。`type` 未填写时默认为 `ZPK`，其他类型会被 Installation 校验拒绝。ZPK 可通过 `installOptions.helmValues` 提供首次安装参数。已存在 identifie 一致的 AppGroup 时不执行自动升级。删除 BootstrapInstallation 只会卸载 `w7.cc/bootstrap-owner` 精确匹配当前 Installation UID 的 AppGroup，再由 AppGroup Controller 完成 Helm 卸载；不兼容旧 BootstrapProfile 所有权格式。内置允许 `zpk.w7.cc` 和 `zpk.fan.b2.sz.w7.com`，其他 HTTPS 主机需显式配置：
+当前自动安装执行器仅支持 HTTPS ZPK 源。`type` 未填写时默认为 `ZPK`，其他类型会被 Installation 校验拒绝。ZPK 可通过 `installOptions.helmValues` 提供安装参数。Controller 在 BootstrapInstallation 被协调且 AppGroup Ready 时检查版本：固定 `artifact.version` 会先与 AppGroup 已安装版本进行本地比较，相同则不请求 ZPK；不一致以及版本留空或为 `latest` 时，才通过 ZPK 制品信息接口查询可用版本。请求使用有效的 `is_upgrade` 和 `cur_version` 参数，不再发送已废弃且服务端未使用的 `check_upgrade`。没有更新后不会安排定期检查，检测失败会在 1 分钟后重试。空版本或 `latest` 仅自动升级到更高版本，固定版本在不一致时收敛到该版本，也可用于回退。不需要 `revision` 手动触发。更新仅允许操作 `w7.cc/bootstrap-owner` 精确匹配当前 Installation UID 的 AppGroup，非 Bootstrap 管理的同名应用不会被更新。删除 BootstrapInstallation 只会卸载当前 Installation 所有的 AppGroup，再由 AppGroup Controller 完成 Helm 卸载；不兼容旧 BootstrapProfile 所有权格式。内置允许 `zpk.w7.cc` 和 `zpk.fan.b2.sz.w7.com`，其他 HTTPS 主机需显式配置：
+
+```yaml
+# 持续跟踪最新版（version 留空也具有相同行为）
+artifact:
+  version: latest
+
+# 收敛到指定版本（也可用于回退）
+artifact:
+  version: "1.2.3"
+```
 
 Bootstrap Controller 使用 ServiceAccount Token 作为 ZPK 安装的集群内 Kubernetes 访问凭证，但不会通过 `X-W7Panel-Token` 将该凭证发送给 ZPK 制品源，也不会将其作为面板用户身份写入 AppGroup 的 `w7.cc/create-username` 或 `w7.cc/create-role` Label。
 
@@ -154,7 +164,7 @@ kubectl apply -f "$KO_DATA_PATH/yaml/bootstrap-installations.yaml" --server-side
 kubectl get bootstrapinstallation
 ```
 
-BootstrapInstallation 不维护 revision。内置声明通过 `w7.cc/bootstrap-builtin=true` 标签限定清理范围；升级脚本会删除带该标签但已不在清单中的 Installation，用户自建声明不受影响。AppGroup 可用后 Installation 进入 Ready 并停止主动协调，不定时复查；Failed 在修正无效声明、目标 AppGroup 已消失或提高 `maxRetries` 后可以重新进入安装。已达重试上限且失败 AppGroup 仍存在时保持 Failed，不再写入状态或定时重试。
+BootstrapInstallation 的创建、spec 变更或 Controller 启动扫描会触发版本检查，Ready 后不做周期轮询。内置声明通过 `w7.cc/bootstrap-builtin=true` 标签限定清理范围；升级脚本会删除带该标签但已不在清单中的 Installation，用户自建声明不受影响。更新失败沿用 `maxRetries`；达到上限后停止主动协调，冷却 10 分钟后可由下一次外部协调事件重新尝试。
 
 ## API 接口
 
@@ -176,4 +186,3 @@ bash compress.sh
 - [部署文档](../docs/deployment/README.md)
 - [开发指南](../docs/development/README.md)
 - [测试文档](../docs/testing/README.md)
-

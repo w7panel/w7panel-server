@@ -52,9 +52,30 @@ func effectiveArtifactType(value installationv1.ArtifactType) installationv1.Art
 	return value
 }
 
+func isLatestVersion(version string) bool {
+	return strings.EqualFold(strings.TrimSpace(version), "latest")
+}
+
+func needsArtifactVersionLookup(targetVersion, installedVersion string) bool {
+	targetVersion = strings.TrimSpace(targetVersion)
+	return isLatestVersion(targetVersion) || compareVersions(targetVersion, installedVersion) != 0
+}
+
 func operationID(installation *installationv1.BootstrapInstallation) string {
 	sum := sha256.Sum256([]byte(installation.UID))
 	return hex.EncodeToString(sum[:16])
+}
+
+func executionID(installation *installationv1.BootstrapInstallation, targetVersion string) string {
+	value := installation.Status.OperationID
+	if targetVersion != "" || installation.Status.RetryCount != 0 {
+		sum := sha256.Sum256([]byte(fmt.Sprintf("%s\x00%s\x00%d", value, targetVersion, installation.Status.RetryCount)))
+		value = hex.EncodeToString(sum[:])
+	}
+	if len(value) > 12 {
+		value = value[:12]
+	}
+	return value
 }
 
 func validateInstallation(installation *installationv1.BootstrapInstallation) error {

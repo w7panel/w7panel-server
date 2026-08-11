@@ -36,7 +36,8 @@ type ArtifactReference struct {
 	Type      ArtifactType `json:"type,omitempty"`
 	Identifie string       `json:"identifie"`
 	Source    string       `json:"source"`
-	Version   string       `json:"version,omitempty"`
+	// Version pins an exact target version. Empty or "latest" tracks the latest available version.
+	Version string `json:"version,omitempty"`
 }
 
 type ArtifactTarget struct {

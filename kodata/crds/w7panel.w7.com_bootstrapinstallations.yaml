@@ -45,6 +45,7 @@ spec:
                         - ZPK
                       type: string
                     version:
+                      description: Exact target version. Empty or latest tracks the latest available version.
                       type: string
                   required:
                     - identifie
