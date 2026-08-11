@@ -150,6 +150,12 @@ func (r *InstallationReconciler) reconcileReadyAppGroup(ctx context.Context, ins
 		return r.requeueWithStatus(ctx, installation, installationv1.BootstrapPhaseReady,
 			"检查 ZPK 制品更新失败: "+err.Error(), updateCheckRetryInterval)
 	}
+	if !shouldUpgradeArtifact(installation.Spec.Artifact.Version, installed.Version, update.Version) {
+		if err := r.updateReadyStatus(ctx, installation, installed, fmt.Sprintf("当前已是可用版本 %q", installed.Version)); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
 
 	operation := operationID(installation)
 	acquired, err := r.slots.acquire(ctx, bootstrapSlotScope, operation, settings.MaxConcurrent, settings.TimeoutPerArtifact)

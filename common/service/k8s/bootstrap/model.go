@@ -61,6 +61,13 @@ func needsArtifactVersionLookup(targetVersion, installedVersion string) bool {
 	return isLatestVersion(targetVersion) || compareVersions(targetVersion, installedVersion) != 0
 }
 
+func shouldUpgradeArtifact(targetVersion, installedVersion, availableVersion string) bool {
+	if strings.TrimSpace(targetVersion) == "" || isLatestVersion(targetVersion) {
+		return compareVersions(availableVersion, installedVersion) > 0
+	}
+	return compareVersions(availableVersion, installedVersion) != 0
+}
+
 func operationID(installation *installationv1.BootstrapInstallation) string {
 	sum := sha256.Sum256([]byte(installation.UID))
 	return hex.EncodeToString(sum[:16])
