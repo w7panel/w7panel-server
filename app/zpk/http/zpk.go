@@ -202,10 +202,10 @@ func (self Zpk) Install(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
 	k8sToken := k8s.NewK8sToken(token)
 	// 普通用户curl 安装主集群问题
-	// if !k8sToken.IsFounder() && !helper.IsChildAgent() { // ckm 未升级导致判断 有误
-	// 	self.JsonResponseWithServerError(http, errors.New("only founder can install"))
-	// 	return
-	// }
+	if !k8sToken.IsFounder() && !k8sToken.IsK3kCluster() { // ckm 未升级导致判断 有误
+		self.JsonResponseWithServerError(http, errors.New("only founder can install"))
+		return
+	}
 	client, err := k8s.NewK8sClient().Channel(token)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
