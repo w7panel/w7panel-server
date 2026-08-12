@@ -122,3 +122,10 @@
 - 进一步将远端候选版本比较移出 ZPK installer：installer 只解析并返回候选制品，Controller 使用通用版本模型决定升级、回退或忽略。
 - 影响模块：BootstrapInstallation Controller、版本模型、ZPK 执行器和测试。
 - 验证：候选制品 HTTP 测试和升级决策表驱动测试通过。
+
+## 2026-08-12（工作负载根 CA 多运行时兼容）
+
+- 扩展 `w7.cc/inject-root-ca` Webhook 注入，为 curl、Python requests、Node.js、Git、AWS SDK/CLI 和 gRPC 补充各自的 CA 环境变量，PHP 容器内 curl 无需修改代码即可信任集群自建 CA。
+- 保留 OpenSSL 系统证书目录及用户显式配置的 `SSL_CERT_DIR`，并继续覆盖注解工作负载已有的 CA 文件变量，避免使用旧证书路径。
+- 影响模块：Kubernetes Pod Admission Webhook、根 CA 注入测试及后端使用说明。
+- 验证：`go test ./common/service/k8s/webhook` 通过。

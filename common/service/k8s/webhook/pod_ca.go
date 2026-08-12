@@ -12,6 +12,18 @@ const (
 	rootCASSLCertDir          = "/etc/ssl/certs:/etc/pki/tls/certs"
 )
 
+// rootCAEnvironmentVariables covers the common PEM CA entry points used by
+// language runtimes and command-line HTTP clients.
+var rootCAEnvironmentVariables = []string{
+	"SSL_CERT_FILE",                    // Go, OpenSSL, PHP streams, Ruby and others
+	"CURL_CA_BUNDLE",                   // curl CLI
+	"REQUESTS_CA_BUNDLE",               // Python requests
+	"NODE_EXTRA_CA_CERTS",              // Node.js (adds to the built-in roots)
+	"GIT_SSL_CAINFO",                   // Git HTTPS
+	"AWS_CA_BUNDLE",                    // AWS CLI and SDKs
+	"GRPC_DEFAULT_SSL_ROOTS_FILE_PATH", // gRPC C-core based clients
+}
+
 func isRootCAInjectionEnabled(pod *corev1.Pod) bool {
 	return pod != nil && pod.Annotations[rootCAInjectionAnnotation] == "true"
 }
@@ -68,7 +80,12 @@ func injectRootCAIntoContainer(container *corev1.Container) bool {
 		modified = true
 	}
 
-	modified = ensureContainerEnvValue(container, "SSL_CERT_FILE", rootCAMountPath, true) || modified
+	for _, name := range rootCAEnvironmentVariables {
+		modified = ensureContainerEnvValue(container, name, rootCAMountPath, true) || modified
+	}
+	// Preserve an explicitly configured OpenSSL certificate directory. The
+	// default covers Debian/Alpine and RHEL-family images and keeps their public
+	// CA directories available alongside the injected CA file.
 	modified = ensureContainerEnvValue(container, "SSL_CERT_DIR", rootCASSLCertDir, false) || modified
 	return modified
 }

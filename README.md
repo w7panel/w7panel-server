@@ -95,6 +95,23 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 | `W7PANEL_HTTP_SERVER_PORT` | 8000 | HTTP 端口 |
 | `BOOTSTRAP_ALLOWED_SOURCE_HOSTS` | - | 额外允许的预装制品源主机，多个值以逗号分隔；内置允许 `zpk.w7.cc` 和 `zpk.fan.b2.sz.w7.com` |
 
+### 工作负载根 CA 注入
+
+Pod 模板添加 `w7.cc/inject-root-ca: "true"` 注解后，Admission Webhook 会将集群
+`w7panel-root-ca-issuer` 的 CA 只读挂载到所有普通容器和 initContainer 的
+`/var/run/w7panel-root-ca/ca.crt`，并注入常见 TLS 客户端识别的环境变量：
+
+- Go、OpenSSL、PHP stream、Ruby：`SSL_CERT_FILE`
+- curl（包括 PHP 容器内的 curl CLI）：`CURL_CA_BUNDLE`
+- Python requests：`REQUESTS_CA_BUNDLE`
+- Node.js：`NODE_EXTRA_CA_CERTS`
+- Git、AWS SDK/CLI、gRPC C-core：对应的 CA 环境变量
+
+注入会覆盖上述 CA 文件环境变量，确保应用实际使用集群 CA；已有的
+`SSL_CERT_DIR` 会保留。JVM 使用独立的 JKS/PKCS12 truststore，不属于此 PEM
+环境变量注入范围，需要应用镜像预装 truststore 或单独注入
+`JAVA_TOOL_OPTIONS`。
+
 ## 主要功能
 
 - **WebDAV 文件管理** - 容器内文件在线管理
