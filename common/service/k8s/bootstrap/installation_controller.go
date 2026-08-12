@@ -28,7 +28,6 @@ type InstallationReconciler struct {
 
 const (
 	updateCheckRetryInterval = time.Minute
-	updateRetryCooldown      = 10 * time.Minute
 )
 
 func setupInstallationController(mgr ctrl.Manager, sdk *k8s.Sdk) error {
@@ -149,6 +148,10 @@ func (r *InstallationReconciler) reconcileReadyAppGroup(ctx context.Context, ins
 		slog.Warn("检查 Bootstrap 制品更新失败", "installation", installation.Name, "application", installation.Spec.Artifact.Name, "error", err)
 		return r.requeueWithStatus(ctx, installation, installationv1.BootstrapPhaseReady,
 			"检查 ZPK 制品更新失败: "+err.Error(), updateCheckRetryInterval)
+	}
+	if update == nil {
+		return r.requeueWithStatus(ctx, installation, installationv1.BootstrapPhaseReady,
+			"检查 ZPK 制品更新失败: 未返回候选制品", updateCheckRetryInterval)
 	}
 	if !shouldUpgradeArtifact(installation.Spec.Artifact.Version, installed.Version, update.Version) {
 		if err := r.updateReadyStatus(ctx, installation, installed, fmt.Sprintf("当前已是可用版本 %q", installed.Version)); err != nil {
