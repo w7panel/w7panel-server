@@ -46,3 +46,15 @@ func TestParseTrafficParamsAllowsFounderAllNamespaces(t *testing.T) {
 		t.Fatalf("filter params were not parsed: %#v", params)
 	}
 }
+
+func TestParseTrafficParamsReadsWorkloadFilters(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	initTrafficTestConfig()
+	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	ctx.Request = httptest.NewRequest("GET", "/panel-api/v1/traffic/apps?workloadKind=CronJob&workloadName=cleanup", nil)
+	ctx.Set("user_mode", "founder")
+	params, ok := parseTrafficParams(ctx)
+	if !ok || params.WorkloadKind != "CronJob" || params.WorkloadName != "cleanup" {
+		t.Fatalf("workload filters were not parsed: %#v", params)
+	}
+}

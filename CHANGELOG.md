@@ -2,6 +2,12 @@
 
 ## 2026-08-14
 
+- 新增 `/panel-api/v1/traffic/apps`，按日志入库时保存的 Kubernetes 工作负载类型、名称和命名空间聚合流量，并支持以工作负载筛选汇总、趋势、域名和热点 URL；旧的仅 Pod/IP 日志不会进入 Apps 排行，避免 Pod 重建后的错误归属。
+- 影响模块：流量查询 API 与 normal 角色权限。
+- 验证：待执行流量服务定向测试。
+
+## 2026-08-14
+
 - 新增根目录 `Makefile`，参考 CNB 的 ko 参数支持将单平台 W7Panel 镜像构建并加载到本机 Docker。
 - 影响模块：本地镜像构建流程。
 - 验证：安装 `ko v0.19.1` 后运行 `make image`，成功构建并加载 `w7panel:dev-v1`（linux/amd64）到本机 Docker。
