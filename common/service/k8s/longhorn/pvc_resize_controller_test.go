@@ -162,6 +162,29 @@ func TestPVCResizeRestartWaitsForReplacementPodAndKeepsCSITicket(t *testing.T) {
 	}
 }
 
+func TestPVCResizeRestartAcceptsReadyDeploymentReplacementWithNewName(t *testing.T) {
+	pvc := resizeControllerTestPVC(PVCResizeStateRestarting)
+	pvc.Annotations[PVCResizePodsAnnotation] = `[{"name":"app-7b9c8d6f4f-old","uid":"old-pod","controllerUID":"replica-set","waitForRestart":true}]`
+	pvc.Annotations[PVCResizePodsRestartedAnnotation] = "true"
+	old := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "app-7b9c8d6f4f-old", Namespace: "default", UID: "old-pod"}}
+	controller := true
+	replacement := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "app-7b9c8d6f4f-new", Namespace: "default", UID: "new-pod", OwnerReferences: []metav1.OwnerReference{{UID: "replica-set", Controller: &controller}}},
+		Status: corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}},
+	}
+	r, cl := newResizeTestReconciler(t, pvc, old, replacement)
+	if err := cl.Delete(context.Background(), old); err != nil {
+		t.Fatal(err)
+	}
+	ready, err := r.restartedPodsReady(context.Background(), "default", []pvcResizePodSnapshot{{Name: old.Name, UID: string(old.UID), ControllerUID: "replica-set", WaitForRestart: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ready {
+		t.Fatal("expected ready replacement Pod with a new Deployment name")
+	}
+}
+
 func TestPVCResizeCapturesCSITicketFromKubernetesVolumeAttachment(t *testing.T) {
 	pvc := resizeControllerTestPVC(PVCResizeStatePending)
 	pvName := pvc.Spec.VolumeName

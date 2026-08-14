@@ -58,9 +58,10 @@ type pvcResizeLonghornClient interface {
 }
 
 type pvcResizePodSnapshot struct {
-	Name           string `json:"name"`
-	UID            string `json:"uid,omitempty"`
-	WaitForRestart bool   `json:"waitForRestart,omitempty"`
+	Name          string `json:"name"`
+	UID           string `json:"uid,omitempty"`
+	ControllerUID string `json:"controllerUID,omitempty"`
+	WaitForRestart bool  `json:"waitForRestart,omitempty"`
 }
 
 type PVCResizeReconciler struct {
@@ -158,7 +159,10 @@ func (r *PVCResizeReconciler) prepare(ctx context.Context, pvc *corev1.Persisten
 			pod := &corev1.Pod{}
 			if err := r.Get(ctx, client.ObjectKey{Namespace: pvc.Namespace, Name: workload.PodName}, pod); err == nil {
 				snapshot.UID = string(pod.UID)
-				snapshot.WaitForRestart = metav1.GetControllerOf(pod) != nil
+				if controller := metav1.GetControllerOf(pod); controller != nil {
+					snapshot.WaitForRestart = true
+					snapshot.ControllerUID = string(controller.UID)
+				}
 			}
 			pods = append(pods, snapshot)
 		}
@@ -291,6 +295,12 @@ func (r *PVCResizeReconciler) restartPods(ctx context.Context, pvc *corev1.Persi
 	ready, err := r.restartedPodsReady(ctx, pvc.Namespace, pods)
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+	if !ready && len(pods) > 0 {
+		ready, err = r.currentVolumeWorkloadsReady(ctx, pvc.Namespace, pvc.Spec.VolumeName)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 	if !ready {
 		if r.stageTimedOut(pvc) {
@@ -457,6 +467,15 @@ func (r *PVCResizeReconciler) restartedPodsReady(ctx context.Context, namespace 
 		pod := &corev1.Pod{}
 		if err := r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: snapshot.Name}, pod); err != nil {
 			if apierrors.IsNotFound(err) {
+				if snapshot.ControllerUID != "" {
+					replacementReady, listErr := r.controllerReplacementPodReady(ctx, namespace, snapshot)
+					if listErr != nil {
+						return false, listErr
+					}
+					if replacementReady {
+						continue
+					}
+				}
 				return false, nil
 			}
 			return false, err
@@ -473,6 +492,63 @@ func (r *PVCResizeReconciler) restartedPodsReady(ctx context.Context, namespace 
 		}
 		if !ready {
 			return false, nil
+		}
+	}
+	return true, nil
+}
+
+// controllerReplacementPodReady supports controllers such as Deployments whose
+// replacement Pods receive a new name after a restart. StatefulSets keep the
+// original name and are handled by the direct lookup above.
+func (r *PVCResizeReconciler) controllerReplacementPodReady(ctx context.Context, namespace string, snapshot pvcResizePodSnapshot) (bool, error) {
+	list := &corev1.PodList{}
+	if err := r.List(ctx, list, client.InNamespace(namespace)); err != nil {
+		return false, err
+	}
+	for _, pod := range list.Items {
+		if snapshot.UID != "" && string(pod.UID) == snapshot.UID {
+			continue
+		}
+		controller := metav1.GetControllerOf(&pod)
+		if controller == nil || string(controller.UID) != snapshot.ControllerUID || !podReady(&pod) {
+			continue
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+func podReady(pod *corev1.Pod) bool {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
+}
+
+// currentVolumeWorkloadsReady supports resize records created before controller
+// UIDs were captured. Longhorn reports the replacement Pods currently using
+// the volume, so an old Deployment Pod name cannot leave the task stuck.
+func (r *PVCResizeReconciler) currentVolumeWorkloadsReady(ctx context.Context, namespace, volumeName string) (bool, error) {
+	volume, err := r.longhorn.GetVolume(volumeName)
+	if err != nil {
+		return false, err
+	}
+	workloads := volume.Status.KubernetesStatus.WorkloadsStatus
+	if len(workloads) == 0 {
+		return false, nil
+	}
+	for _, workload := range workloads {
+		if workload.PodName == "" {
+			return false, nil
+		}
+		pod := &corev1.Pod{}
+		if err := r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: workload.PodName}, pod); err != nil || !podReady(pod) {
+			if apierrors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
 		}
 	}
 	return true, nil

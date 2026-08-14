@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-08-13
+
+- 修复 Longhorn PVC 扩容在“正在重启 Pod”阶段卡住：Deployment 重建后的 Pod 名称会变化，控制器此前只按旧名称检查，导致新 Pod 已 Ready 仍无法完成。现按原 Controller UID 识别新名称的 Ready 替代 Pod；旧任务缺少该 UID 时回退检查 Longhorn 当前挂载的 Ready 工作负载，StatefulSet 同名 Pod 仍沿用原检查。
+- 影响模块：Longhorn PVC 扩容控制器与回归测试。
+- 验证：新增 Deployment 更名替代 Pod 的就绪判定测试。
+
 ## 2026-08-10
 
 - 为普通用户补充流量监测微应用所需的只读接口权限：健康检查、汇总、趋势、Pod、域名和 URL 查询；避免 normal 角色打开流量监测时被权限拦截。
