@@ -34,6 +34,13 @@ type repo struct {
 	// loadInnerDepends bool   `json:"load_inner_depends"` // 是否加载内部依赖
 }
 
+type RemoteHTTPError struct {
+	StatusCode int
+	Body       []byte
+}
+
+func (e *RemoteHTTPError) Error() string { return string(e.Body) }
+
 const (
 	ArtifactInstallConflictDomainMismatch    = "domain_mismatch"
 	ArtifactInstallConflictAppIdentifyExists = "app_identify_exists"
@@ -245,7 +252,7 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 		if conflictErr := parseArtifactInstallConflictError(resp.Body()); conflictErr != nil {
 			return nil, conflictErr
 		}
-		return nil, errors.New(resp.String())
+		return nil, &RemoteHTTPError{StatusCode: resp.StatusCode(), Body: resp.Body()}
 	}
 
 	body := resp.Body()
