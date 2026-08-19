@@ -143,14 +143,14 @@ func (q *QueryClient) Summary(ctx context.Context, params QueryParams) ([]map[st
 }
 
 func (q *QueryClient) Pods(ctx context.Context, params QueryParams) ([]map[string]any, error) {
-	query := buildFilter(params) + ` upstream_ip:!"" | stats by (upstream_ip, upstream_pod_name, upstream_service, upstream_namespace, status_code) count() as requests, sum(bytes_received) as bytes_received, sum(bytes_sent) as bytes_sent, avg(duration_ms) as avg_duration_ms, quantile(0.95, duration_ms) as p95_duration_ms | sort by (requests desc) | limit 1000`
+	query := buildFilter(params) + ` upstream_ip:!"" | stats by (upstream_ip, upstream_pod_name, upstream_service, workload_title, upstream_namespace, status_code) count() as requests, sum(bytes_received) as bytes_received, sum(bytes_sent) as bytes_sent, avg(duration_ms) as avg_duration_ms, quantile(0.95, duration_ms) as p95_duration_ms | sort by (requests desc) | limit 1000`
 	return q.query(ctx, query, params.Range)
 }
 
 // Apps returns only records that were enriched with a stable Kubernetes workload
 // identity at ingest time.  Old, pod-only records intentionally do not appear.
 func (q *QueryClient) Apps(ctx context.Context, params QueryParams) ([]map[string]any, error) {
-	query := buildFilter(params) + ` workload_name:!"" workload_kind:!"" | stats by (workload_name, workload_kind, workload_namespace, status_code) count() as requests, sum(bytes_received) as bytes_received, sum(bytes_sent) as bytes_sent, avg(duration_ms) as avg_duration_ms, quantile(0.95, duration_ms) as p95_duration_ms | sort by (requests desc) | limit 1000`
+	query := buildFilter(params) + ` workload_name:!"" workload_kind:!"" | stats by (workload_name, workload_kind, workload_title, workload_namespace, status_code) count() as requests, sum(bytes_received) as bytes_received, sum(bytes_sent) as bytes_sent, avg(duration_ms) as avg_duration_ms, quantile(0.95, duration_ms) as p95_duration_ms | sort by (requests desc) | limit 1000`
 	return q.query(ctx, query, params.Range)
 }
 

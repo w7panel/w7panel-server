@@ -58,7 +58,7 @@ func (self Metrics) TrafficPods(ctx *gin.Context) {
 		self.JsonResponseWithError(ctx, err, http.StatusInternalServerError)
 		return
 	}
-	rows = traffic.FoldRows(rows, "upstream_ip", "upstream_pod_name", "upstream_service", "upstream_namespace")
+	rows = traffic.FoldRows(rows, "upstream_ip", "upstream_pod_name", "upstream_service", "workload_title", "upstream_namespace")
 	traffic.SortRows(rows, params.Sort)
 	resolvePodNames(ctx, params.Namespace, rows)
 	rows = traffic.SearchRows(rows, params.Search, "pod_name", "upstream_pod_name", "upstream_ip", "upstream_service", "upstream_namespace")
@@ -76,7 +76,7 @@ func (self Metrics) TrafficApps(ctx *gin.Context) {
 		self.JsonResponseWithError(ctx, err, http.StatusInternalServerError)
 		return
 	}
-	rows = traffic.FoldRows(rows, "workload_name", "workload_kind", "workload_namespace")
+	rows = traffic.FoldRows(rows, "workload_name", "workload_kind", "workload_title", "workload_namespace")
 	traffic.SortRows(rows, params.Sort)
 	rows = traffic.SearchRows(rows, params.Search, "workload_name", "workload_kind", "workload_namespace")
 	list, total := traffic.Paginate(rows, params.Page, params.PageSize)
