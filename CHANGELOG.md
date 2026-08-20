@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-08-20
+
+- 调整 Longhorn 分区扩容成功判定：关联 Pod 删除请求执行成功后不再等待新 Pod Ready，Pod 重启超时不会再导致分区扩容任务失败；仍保留扩容容量与存储附件恢复校验。
+- 影响模块：Longhorn PVC 扩容控制器与回归测试。
+- 验证：`GOTMPDIR=/tmp/w7panel-go-tmp GOCACHE=/tmp/w7panel-go-cache go test ./common/service/k8s/longhorn -run 'TestPVCResize' -count=1` 通过。
+
 ## 2026-08-19
 
 - Apps 和 Pod 流量聚合增加 `workload_title` 展示字段；缺失该字段的旧日志仍回退使用原始 workload 名称。

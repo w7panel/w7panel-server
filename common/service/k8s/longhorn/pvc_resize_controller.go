@@ -58,10 +58,10 @@ type pvcResizeLonghornClient interface {
 }
 
 type pvcResizePodSnapshot struct {
-	Name          string `json:"name"`
-	UID           string `json:"uid,omitempty"`
-	ControllerUID string `json:"controllerUID,omitempty"`
-	WaitForRestart bool  `json:"waitForRestart,omitempty"`
+	Name           string `json:"name"`
+	UID            string `json:"uid,omitempty"`
+	ControllerUID  string `json:"controllerUID,omitempty"`
+	WaitForRestart bool   `json:"waitForRestart,omitempty"`
 }
 
 type PVCResizeReconciler struct {
@@ -282,31 +282,11 @@ func (r *PVCResizeReconciler) restartPods(ctx context.Context, pvc *corev1.Persi
 	}
 	if pvc.Annotations[PVCResizePodsRestartedAnnotation] != "true" {
 		if err := r.deleteCapturedPodsInNamespace(ctx, pvc.Namespace, pods); err != nil {
-			if r.stageTimedOut(pvc) {
-				return ctrl.Result{}, r.fail(ctx, pvc, fmt.Errorf("重启关联 Pod 超时: %w", err))
-			}
 			return ctrl.Result{}, err
 		}
 		if err := r.patchAnnotations(ctx, pvc, map[string]string{PVCResizePodsRestartedAnnotation: "true"}); err != nil {
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{RequeueAfter: resizePollInterval}, nil
-	}
-	ready, err := r.restartedPodsReady(ctx, pvc.Namespace, pods)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	if !ready && len(pods) > 0 {
-		ready, err = r.currentVolumeWorkloadsReady(ctx, pvc.Namespace, pvc.Spec.VolumeName)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-	if !ready {
-		if r.stageTimedOut(pvc) {
-			return ctrl.Result{}, r.fail(ctx, pvc, fmt.Errorf("等待关联 Pod 恢复超时"))
-		}
-		return ctrl.Result{RequeueAfter: resizePollInterval}, nil
 	}
 	if pvc.Annotations[PVCResizeOriginallyAttachedAnnotation] == "true" {
 		volume, err := r.longhorn.GetVolume(pvc.Spec.VolumeName)
