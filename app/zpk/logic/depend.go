@@ -159,7 +159,13 @@ func (d *DependEnv) LoadAppGroupEnv(identifie, namespace string) (*DependEnvResu
 		return result, err
 	}
 	appGroup, ok := lo.Find(appGroupList.Items, func(item typealpha1.AppGroup) bool {
-		return item.Status.DeployStatus == typealpha1.StatusDeployed && item.DeletionTimestamp == nil
+		if item.DeletionTimestamp != nil || item.Status.DeployStatus != typealpha1.StatusDeployed {
+			return false
+		}
+		// A parent AppGroup is synthetic and has no Helm release of its own.
+		// Selecting it here makes environment dependency detection call Helm.Info
+		// with a non-existent release name.
+		return item.Annotations["w7.cc/parent-root"] != "true"
 	})
 	if ok {
 		result.Installed = true
