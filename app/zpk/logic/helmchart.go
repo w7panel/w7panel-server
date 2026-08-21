@@ -17,7 +17,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
-	convert "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	helm "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	"helm.sh/helm/v3/pkg/chart"
@@ -330,12 +329,7 @@ func (h *HelmChart) convertManifestToChart() (*v1alpha1.AppGroup, *chart.Chart, 
 		Title:        root.GetTitle(),
 		Identifie:    root.Identifie,
 	}
-	parent := root.Parent
-	if parent == nil {
-		parent = root
-	}
-	// if !root.IsHelm() {
-	convertFiles, err := h.toBufferFiles(root, parent, true)
+	convertFiles, err := h.toBufferFiles(root)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -356,7 +350,7 @@ func (h *HelmChart) convertManifestToChart() (*v1alpha1.AppGroup, *chart.Chart, 
 				Title:        packageApp.GetTitle(),
 				Identifie:    packageApp.Identifie,
 			}
-			convertFiles, err := h.toBufferFiles(packageApp, root, false)
+			convertFiles, err := h.toBufferFiles(packageApp)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -401,7 +395,7 @@ func (h *HelmChart) appendResourceInfo(packageApp *zpktypes.PackageApp, obj runt
 	packageApp.AppGroupInstallResult.ResourceList = append(packageApp.AppGroupInstallResult.ResourceList, resourceInfo)
 }
 
-func (h2 *HelmChart) toBufferFiles(packageApp *zpktypes.PackageApp, root *zpktypes.PackageApp, isRoot bool) ([]*loader.BufferedFile, error) {
+func (h2 *HelmChart) toBufferFiles(packageApp *zpktypes.PackageApp) ([]*loader.BufferedFile, error) {
 
 	var files []*loader.BufferedFile
 
@@ -410,86 +404,6 @@ func (h2 *HelmChart) toBufferFiles(packageApp *zpktypes.PackageApp, root *zpktyp
 	}
 	if h2.ShellType == zpktypes.ShellUpgrade {
 		packageApp.InstallOption.IsUpgrade = true
-	}
-
-	// if packageApp.IsHelm() && false { //暂不支持普通应用 包含helm 子应用
-	if packageApp.IsHelm() && false {
-		//暂不支持普通应用 包含helm 子应用 //如果helm安装了 appgroup新建后 helm安装命令又把这个appgroup 删除了 因为helm和appgroup同名
-		// 如果不同名，还得做一层关联关系
-
-		// if isRoot {
-		// 	return []*loader.BufferedFile{}, nil
-		// }
-		cloneApp := packageApp
-
-		shellType := h2.ShellType
-
-		//helm shell job
-		shell := cloneApp.GetShellByType(string(shellType))
-		var shellJob *batchv1.Job
-		if shell != nil {
-			shellJob = convert.ToShellJob2(cloneApp, cloneApp, string(shellType))
-			if shellJob != nil {
-				h2.appendResourceInfo(cloneApp, shellJob, "")
-			}
-			file, err := h2.convertToYaml(shellJob, cloneApp.Identifie+"-"+string(shellType)+"-job.yaml")
-			if err != nil {
-				return nil, err
-			}
-			files = append(files, file)
-			h2.appendResourceInfo(cloneApp, shellJob, "")
-		}
-		//安装helm job
-		job := toHelmInstallJob(cloneApp, []*types.PackageApp{})
-		file, err := h2.convertToYaml(job, cloneApp.Identifie+"-helm-job.yaml")
-		if err != nil {
-			return nil, err
-		}
-		files = append(files, file)
-		h2.appendResourceInfo(cloneApp, job, "") //必须是packageApp 不能用clone 对象 因为clone对象在后续会被修改 导致后续生成的appgroup 资源列表不对
-
-		info := v1alpha1.ResourceInfo{
-			Name:         job.Name,
-			Namespace:    cloneApp.GetNamespace(),
-			Kind:         "Job",
-			ApiVersion:   "batch/v1",
-			DeployStatus: v1alpha1.StatusDeploying,
-			DeployTitle:  "helm安装",
-		}
-
-		installResult := v1alpha1.DeployItem{
-			Identifie:    cloneApp.GetIdentifie(),
-			Title:        cloneApp.GetTitle(),
-			ResourceList: []v1alpha1.ResourceInfo{info},
-			DeployStatus: v1alpha1.StatusDeploying,
-		}
-		if shellJob != nil {
-			shellInfo := v1alpha1.ResourceInfo{
-				Name:         shellJob.Name,
-				Namespace:    cloneApp.GetNamespace(),
-				Kind:         "Job",
-				ApiVersion:   "batch/v1",
-				DeployStatus: v1alpha1.StatusDeploying,
-				DeployTitle:  shell.GetTitle(),
-			}
-			installResult.ResourceList = append(installResult.ResourceList, shellInfo)
-		}
-		// 如果是root
-		if isRoot {
-			return files, nil
-		}
-		group := helm.ToAppGroup(cloneApp, []v1alpha1.DeployItem{installResult})
-		if !isRoot {
-			group.Labels["w7.cc/parent"] = root.GetName()
-		}
-
-		groupfile, err := h2.convertToYaml(group, cloneApp.Identifie+"-appgroup.yaml")
-		if err != nil {
-			return nil, err
-		}
-		files = append(files, groupfile)
-
-		return files, nil
 	}
 
 	shellfile, err := h2.convertJob(packageApp, h2.ShellType, true)

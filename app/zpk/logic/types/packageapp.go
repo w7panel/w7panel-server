@@ -332,11 +332,6 @@ func (p *PackageApp) GetLabels() map[string]string {
 		"w7.cc/suffix":                     p.GetSuffix(),
 		"w7.cc/manifest-version":           p.Manifest.Version.String(),
 	}
-	if p.Parent != nil {
-		result["w7.cc/parent"] = p.Parent.GetName()
-		// result["parent"] = p.Parent.GetName()
-		// result["parents"] = p.Parent.GetName()
-	}
 	shells := p.Manifest.Platform.Container.Shells
 	if p.RequireBuildImage() || len(shells) > 0 {
 		result["w7.cc/has-shell"] = "true"

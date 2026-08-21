@@ -112,14 +112,8 @@ func (z *Install) InstallUseJob(name, namespace string, shellType types.ShellTyp
 			slog.Error("create child helm job error", slog.String("error", err.Error()))
 			return err
 		}
-		for _, childJob := range childJobs {
-			childJob.Labels["w7.cc/parent"] = name
-		}
 		items = append(items, childItem)
 		jobs = append(jobs, childJobs...)
-		chidlGroup := convert.ToAppGroup(child, []v1alpha1.DeployItem{childItem})
-		chidlGroup.Labels["w7.cc/parent"] = name
-		groups = append(groups, chidlGroup)
 	}
 	rootGroup := convert.ToAppGroup(root, items)
 	rootGroup.Spec.UpgradingVersion = rootGroup.Spec.Version
@@ -266,10 +260,6 @@ func (z *Install) persistGroup(group *v1alpha1.AppGroup) error {
 	fetchGroup.Status.DeployItems = []v1alpha1.DeployItem{}
 	fetchGroup.Status.DeployStatus = v1alpha1.StatusDeploying
 	fetchGroup.Status.DeployItems = group.Status.DeployItems
-	parentName, ok := fetchGroup.Labels["w7.cc/parent"]
-	if ok {
-		fetchGroup.Labels["w7.cc/parent"] = parentName
-	}
 	_, err = z.groupApi.UpdateAppGroup(namespace, fetchGroup)
 	if err != nil {
 		slog.Error("update group error", slog.String("error", err.Error()))
