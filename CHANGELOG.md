@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-08-21
+
+- 支付订单通知由 Server 接收后通过集群内 CKM Service 转发，新增 `CKM_ORDER_NOTIFY_URL` 配置覆盖默认地址。
+- 影响模块：K3k 订单回调。
+- 验证：`go test ./app/k3k/http/controller -count=1` 通过（该包暂无测试文件）。
+
 ## 2026-08-20
 
 - 调整 Longhorn 分区扩容成功判定：关联 Pod 删除请求执行成功后不再等待新 Pod Ready，Pod 重启超时不会再导致分区扩容任务失败；仍保留扩容容量与存储附件恢复校验。
