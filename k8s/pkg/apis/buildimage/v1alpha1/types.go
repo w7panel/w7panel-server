@@ -43,8 +43,11 @@ type BuildImageList struct {
 }
 
 type BuildImageStatus struct {
-	Status     string             `json:"status,omitempty"`
-	Reason     string             `json:"reason,omitempty"`
-	Contitions []metav1.Condition `json:"conditions,omitempty"`
-	JobName    string             `json:"jobName,omitempty"`
+	Status      string             `json:"status,omitempty"`
+	Reason      string             `json:"reason,omitempty"`
+	Contitions  []metav1.Condition `json:"conditions,omitempty"`
+	JobName     string             `json:"jobName,omitempty"`
+	CompletedAt *metav1.Time       `json:"completedAt,omitempty"`
+	RetryCount  int32              `json:"retryCount,omitempty"`
+	MaxRetries  int32              `json:"maxRetries,omitempty"`
 }

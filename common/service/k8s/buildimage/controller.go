@@ -94,6 +94,11 @@ func (r *BuildImageController) reconcile0(ctx context.Context, req ctrl.Request)
 		}
 		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 	}
+	// A terminal BuildImage is the durable record of the task. Its Job is
+	// removed by Kubernetes TTL, so never recreate it after completion.
+	if buildImage.Status.Status == "Succeeded" || buildImage.Status.Status == "Failed" {
+		return ctrl.Result{}, nil
+	}
 
 	// Convert spec to internal type
 	spec := BuildImageSpec{
@@ -153,7 +158,9 @@ func (r *BuildImageController) updateBuildImageStatus(ctx context.Context, build
 
 	// Determine status based on job condition
 	newStatus := buildimagev1alpha1.BuildImageStatus{
-		JobName: job.Name,
+		JobName:    job.Name,
+		RetryCount: job.Status.Failed,
+		MaxRetries: 3,
 	}
 
 	// Check job conditions for final status
@@ -170,6 +177,8 @@ func (r *BuildImageController) updateBuildImageStatus(ctx context.Context, build
 					Reason:             "JobSucceeded",
 					Message:            condition.Message,
 				})
+				completedAt := condition.LastTransitionTime
+				newStatus.CompletedAt = &completedAt
 			}
 		case batchv1.JobFailed:
 			if condition.Status == "True" {
@@ -182,6 +191,8 @@ func (r *BuildImageController) updateBuildImageStatus(ctx context.Context, build
 					Reason:             condition.Reason,
 					Message:            condition.Message,
 				})
+				completedAt := condition.LastTransitionTime
+				newStatus.CompletedAt = &completedAt
 			}
 		}
 	}
@@ -192,8 +203,10 @@ func (r *BuildImageController) updateBuildImageStatus(ctx context.Context, build
 			newStatus.Status = "Building"
 			newStatus.Reason = "JobRunning"
 		} else if job.Status.Failed > 0 {
-			newStatus.Status = "Failed"
-			newStatus.Reason = "JobFailed"
+			// Failed pods are retried by the Job controller until backoffLimit
+			// is reached. Only the JobFailed condition is terminal.
+			newStatus.Status = "Building"
+			newStatus.Reason = "JobRetrying"
 		} else if job.Status.Succeeded > 0 {
 			newStatus.Status = "Succeeded"
 			newStatus.Reason = "JobSucceeded"
@@ -204,7 +217,10 @@ func (r *BuildImageController) updateBuildImageStatus(ctx context.Context, build
 	}
 
 	// Check if status changed
-	if oldStatus.Status == newStatus.Status && oldStatus.Reason == newStatus.Reason {
+	if oldStatus.Status == newStatus.Status && oldStatus.Reason == newStatus.Reason &&
+		oldStatus.JobName == newStatus.JobName && oldStatus.RetryCount == newStatus.RetryCount &&
+		oldStatus.MaxRetries == newStatus.MaxRetries && ((oldStatus.CompletedAt == nil && newStatus.CompletedAt == nil) ||
+		(oldStatus.CompletedAt != nil && newStatus.CompletedAt != nil && oldStatus.CompletedAt.Equal(newStatus.CompletedAt))) {
 		return nil
 	}
 

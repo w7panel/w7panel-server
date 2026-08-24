@@ -137,6 +137,15 @@ spec:
                 type: array
               jobName:
                 type: string
+              completedAt:
+                format: date-time
+                type: string
+              retryCount:
+                format: int32
+                type: integer
+              maxRetries:
+                format: int32
+                type: integer
               reason:
                 type: string
               status:
