@@ -155,11 +155,17 @@ func (r *BuildImageController) createOrUpdateBuildJob(ctx context.Context, build
 
 func (r *BuildImageController) updateBuildImageStatus(ctx context.Context, buildImage *buildimagev1alpha1.BuildImage, job *batchv1.Job) error {
 	oldStatus := buildImage.Status
+	retryCount := job.Status.Failed
+	if retryCount > 0 {
+		// Job.Status.Failed includes the initial failed Pod. The remaining
+		// failures are the retries controlled by BackoffLimit.
+		retryCount--
+	}
 
 	// Determine status based on job condition
 	newStatus := buildimagev1alpha1.BuildImageStatus{
 		JobName:    job.Name,
-		RetryCount: job.Status.Failed,
+		RetryCount: retryCount,
 		MaxRetries: 3,
 	}
 
