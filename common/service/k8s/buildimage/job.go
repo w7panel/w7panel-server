@@ -44,6 +44,7 @@ func toBuildJob(ctx context.Context, spec *BuildImageSpec) (*batchv1.Job, error)
 		},
 		Spec: batchv1.JobSpec{
 			TTLSecondsAfterFinished: ptr.Int32(300),
+			BackoffLimit:            ptr.Int32(3),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{

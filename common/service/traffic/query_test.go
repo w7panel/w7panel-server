@@ -39,6 +39,13 @@ func TestBuildFilterEscapesAndScopesNamespace(t *testing.T) {
 	}
 }
 
+func TestBuildFilterScopesWorkload(t *testing.T) {
+	filter := buildFilter(QueryParams{Namespace: "default", WorkloadKind: "Deployment", WorkloadName: "checkout"})
+	if !strings.Contains(filter, `workload_kind:"Deployment"`) || !strings.Contains(filter, `workload_name:"checkout"`) {
+		t.Fatalf("missing workload scope: %s", filter)
+	}
+}
+
 func TestSearchRowsMatchesAnyFieldCaseInsensitively(t *testing.T) {
 	rows := []map[string]any{
 		{"pod_name": "Checkout-7d9", "upstream_ip": "10.42.0.8", "upstream_service": "checkout"},

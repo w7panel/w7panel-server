@@ -42,6 +42,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		traffic.GET("/summary", controller2.Metrics{}.TrafficSummary)
 		traffic.GET("/series", controller2.Metrics{}.TrafficSeries)
 		traffic.GET("/pods", controller2.Metrics{}.TrafficPods)
+		traffic.GET("/apps", controller2.Metrics{}.TrafficApps)
 		traffic.GET("/domains", controller2.Metrics{}.TrafficDomains)
 		traffic.GET("/urls", controller2.Metrics{}.TrafficURLs)
 	})
