@@ -3,6 +3,7 @@ package appgroup
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -150,6 +151,59 @@ func TestRemoveManagedAppGroupFinalizers(t *testing.T) {
 	require.True(t, removeManagedAppGroupFinalizers(group))
 	assert.Equal(t, []string{"other.example.com/finalizer"}, group.Finalizers)
 	require.False(t, removeManagedAppGroupFinalizers(group))
+}
+
+func TestNewAppGroupCleanupRetryError(t *testing.T) {
+	original := errors.New("helm uninstall failed")
+	err := newAppGroupCleanupRetryError(original)
+
+	var retryErr *appGroupCleanupRetryError
+	require.ErrorAs(t, err, &retryErr)
+	require.ErrorIs(t, err, original)
+}
+
+func TestShouldHandleAppGroupEvent(t *testing.T) {
+	now := metav1.Now()
+	tests := []struct {
+		name  string
+		group *appgroupv1alpha1.AppGroup
+		want  bool
+	}{
+		{
+			name:  "default namespace app group",
+			group: &appgroupv1alpha1.AppGroup{ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"}},
+			want:  true,
+		},
+		{
+			name:  "non-default deleting app group",
+			group: &appgroupv1alpha1.AppGroup{ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "apps", DeletionTimestamp: &now}},
+			want:  true,
+		},
+		{
+			name:  "non-default active app group",
+			group: &appgroupv1alpha1.AppGroup{ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "apps"}},
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, shouldHandleAppGroupEvent(tt.group))
+		})
+	}
+}
+
+func TestEventQueueKeepsRetryingAppGroupCleanup(t *testing.T) {
+	queue := NewDefaultEventQueue(func(key interface{}) error { return nil })
+	defer queue.queue.ShutDown()
+
+	key := "appgroup-cleanup"
+	err := newAppGroupCleanupRetryError(errors.New("helm uninstall failed"))
+	for range maxRetries + 1 {
+		queue.handleErr(err, key)
+	}
+
+	assert.Equal(t, maxRetries+1, queue.queue.NumRequeues(key))
 }
 
 // func TestIgnoreDeleteNotFound(t *testing.T) {

@@ -1,6 +1,7 @@
 package appgroup
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -87,6 +88,12 @@ func (c *EventQueue) processNextWorkItem() bool {
 func (c *EventQueue) handleErr(err error, key interface{}) {
 	if err == nil {
 		c.queue.Forget(key)
+		return
+	}
+
+	var cleanupErr *appGroupCleanupRetryError
+	if errors.As(err, &cleanupErr) {
+		c.queue.AddRateLimited(key)
 		return
 	}
 

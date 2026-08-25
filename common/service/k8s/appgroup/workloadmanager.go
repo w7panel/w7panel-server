@@ -35,6 +35,26 @@ const (
 	legacyAppGroupFinalizer = "w7panel.w7.com/finalizers"
 )
 
+type appGroupCleanupRetryError struct {
+	err error
+}
+
+func (e *appGroupCleanupRetryError) Error() string {
+	return e.err.Error()
+}
+
+func (e *appGroupCleanupRetryError) Unwrap() error {
+	return e.err
+}
+
+func newAppGroupCleanupRetryError(err error) error {
+	return &appGroupCleanupRetryError{err: err}
+}
+
+func shouldHandleAppGroupEvent(group *v1alpha1.AppGroup) bool {
+	return group.Namespace == "default" || group.DeletionTimestamp != nil
+}
+
 var oldAppGroupGVR = schema.GroupVersionResource{
 	Group:    "appgroup.w7.cc",
 	Version:  "v1alpha1",
@@ -204,6 +224,18 @@ func (d *WorkloadManager) HandleQueue(key interface{}) error {
 		return nil
 	}
 
+	if evt.Kind == "AppGroup" {
+		group, err := d.GetAppGroupFromRO(evt.Namespace, evt.Name)
+		if err != nil {
+			slog.Error("get from ro error", "error", err)
+			return nil
+		}
+		if !shouldHandleAppGroupEvent(group) {
+			return nil
+		}
+		return d.HandleAppGroup(group, false, evt.IsInit)
+	}
+
 	if evt.Namespace != "default" {
 		return nil
 	}
@@ -227,15 +259,6 @@ func (d *WorkloadManager) HandleQueue(key interface{}) error {
 		}()
 		return d.HandleSecret(secret, false)
 	}
-	if evt.Kind == "AppGroup" {
-		group, err := d.GetAppGroupFromRO(evt.Namespace, evt.Name)
-		if err != nil {
-			slog.Error("get from ro error", "error", err)
-			return nil
-		}
-		return d.HandleAppGroup(group, false, evt.IsInit)
-	}
-
 	if d.AppGroupItemResourceTracked.isAppGroupResourceTrackedKind(evt.Kind) {
 		err = d.handleAppGroupResourceTrackedEvent(evt, d.GetAppGroupResourceTrackedGroupWrappers(evt))
 		slog.Info("handleAppGroupResourceTrackedEvent complete", "error", err, "event", evt)
@@ -532,7 +555,9 @@ func (d *WorkloadManager) cleanGroupChildren(group *v1alpha1.AppGroup) error {
 func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, isInit bool) error {
 	if group.DeletionTimestamp != nil {
 		// d.deleteOldAppGroup(group)
-		d.cleanAppGroup(group)
+		if err := d.cleanAppGroup(group); err != nil {
+			return newAppGroupCleanupRetryError(err)
+		}
 		parentName, isChild := group.Labels["w7.cc/parent"]
 		if isChild {
 			if removeManagedAppGroupFinalizers(group) {
@@ -643,7 +668,7 @@ func (d *WorkloadManager) cleanHelm(group *v1alpha1.AppGroup) error {
 	return nil
 }
 
-func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) {
+func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) error {
 	defer helper.CleanStaticDir(group.Name)
 
 	if group.Spec.IsHelm {
@@ -651,7 +676,7 @@ func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) {
 		slog.Info("start delete helm ")
 		err := d.cleanHelm(group)
 		if err != nil {
-			slog.Error("cleanHelm err", "group", group, "err", err)
+			return err
 		}
 	}
 
@@ -703,7 +728,7 @@ func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) {
 	ingress, err := d.sdk.ClientSet.NetworkingV1().Ingresses(group.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: ingressLabel})
 	if err != nil {
 		slog.Error("failed to list ingress", slog.String("error", err.Error()))
-		return
+		return nil
 	}
 	for _, item := range ingress.Items {
 		slog.Info("delete ingress", slog.String("ingressName", item.Name))
@@ -713,7 +738,7 @@ func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) {
 	sigClient, err := d.sdk.ToSigClient()
 	if err != nil {
 		slog.Error("failed to get sig client", slog.String("error", err.Error()))
-		return
+		return nil
 	}
 	mc := &microapp.MicroApp{
 		ObjectMeta: metav1.ObjectMeta{
@@ -729,6 +754,7 @@ func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) {
 	if err != nil {
 		slog.Error("failed to delete microapp", slog.String("error", err.Error()))
 	}
+	return nil
 }
 
 func (d *WorkloadManager) deleteAppGroupStatusItemResource(namespace string, item appv1.AppGroupItemStatus) error {

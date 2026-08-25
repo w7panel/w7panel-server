@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-08-25
+
+- 修复 Console ZPK Helm 应用卸载：非 `default` 命名空间的删除中 AppGroup 会进入清理协调；Helm release 卸载失败时保留 finalizer 并持续限速重试，避免应用记录删除后遗留 Helm 资源。
+- 影响模块：AppGroup 删除控制器与事件队列。
+- 验证：新增 AppGroup 删除协调定向测试通过；完整 `go test ./common/service/k8s/appgroup -count=1` 在当前 30 秒执行窗口内未完成。
+
 ## 2026-08-24
 
 - 完善 BuildImage CRD 任务生命周期：Job 默认失败后重试 3 次，成功或最终失败后保留 CRD 并由 TTL 在 5 分钟后自动清理 Job，避免任务被清理后重复创建。
