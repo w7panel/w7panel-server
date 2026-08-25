@@ -329,6 +329,11 @@ func (self Zpk) Install(http *gin.Context) {
 	}
 
 	sa := client.GetServiceAccountName()
+	userName, err := k8sToken.GetUserName()
+	if err != nil {
+		slog.Warn("get user name err", "err", err)
+		userName = "guest"
+	}
 	packageApps.Root.ServiceAccountName = sa
 	packageApps.Root.K8sToken = k8sToken
 	packageApps.Root.IsChild = isChild
