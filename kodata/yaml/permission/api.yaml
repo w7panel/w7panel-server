@@ -10,6 +10,9 @@ spec:
   role: api
   menuRules: []
   apiRules:
+  - path: /panel-api/v1/auth/k8s-credentials/token
+    method:
+    - create
   - path: /panel-api/v1/auth/userinfo
     method:
     - get

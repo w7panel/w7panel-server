@@ -3,6 +3,7 @@ package middleware
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -25,6 +26,12 @@ type Auth struct {
 }
 
 func (self Auth) Process(ctx *gin.Context) {
+	// /panel-api authenticates a panel principal. Kubernetes credentials are
+	// intentionally accepted only at /k8s-proxy.
+	if strings.HasPrefix(ctx.Request.URL.Path, "/panel-api/") {
+		PanelAuth{}.Process(ctx)
+		return
+	}
 
 	// LOCAL_MOCK 模式下绕过认证（用于本地开发测试）
 	if os.Getenv("LOCAL_MOCK") == "true" || os.Getenv("LOCAL_MOCK") == "1" {

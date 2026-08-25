@@ -53,6 +53,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		{
 			localApiGroup.POST("/login", middleware.ConsoleSignature{}.Process, controller2.Auth{}.LoginBySign)
 			localApiGroup.POST("/api-token", controller2.APIToken{}.Exchange)
+			localApiGroup.POST("/k8s-credentials/token", middleware.PanelAuth{}.Process, controller2.K8sCredential{}.Token)
 			localApiGroup.POST("/register", controller2.Auth{}.Register)
 			localApiGroup.POST("/refresh-token2", controller2.Auth{}.RefreshToken2)
 			localApiGroup.POST("/init-user", controller2.Auth{}.InitUser)

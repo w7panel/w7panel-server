@@ -2,6 +2,13 @@
 
 ## 2026-08-25
 
+- 分离面板与 Kubernetes 鉴权：账号登录和 API 密钥交换改为签发面板 JWT，`/k8s-proxy` 仅接受专用 Kubernetes token；新增当前面板主体按权限获取短期主集群凭据的接口。
+- 新增 `/k8s-proxy/panel/v1/helm/releases*` 与 `/k8s-proxy/panel/v1/zpk/upgrade-info`，为 Helm/ZPK 集群操作提供统一 K8s 鉴权路径；子集群 token 使用 `X-W7Panel-K8s-Token`，不写入宿主 Secret。
+- 影响模块：认证中间件、API 密钥、Kubernetes 代理、Helm/ZPK 路由与权限边界。
+- 验证：`go test ./common/service/panelauth ./common/middleware ./common/service/k8s/apiclient` 通过；应用控制器完整测试受既有 `/tmp/test.txt` 与 Console 重定向环境依赖影响未通过。
+
+## 2026-08-25
+
 - 修复 Console ZPK Helm 应用卸载：非 `default` 命名空间的删除中 AppGroup 会进入清理协调；Helm release 卸载失败时保留 finalizer 并持续限速重试，避免应用记录删除后遗留 Helm 资源。
 - 影响模块：AppGroup 删除控制器与事件队列。
 - 验证：新增 AppGroup 删除协调定向测试通过；完整 `go test ./common/service/k8s/appgroup -count=1` 在当前 30 秒执行窗口内未完成。

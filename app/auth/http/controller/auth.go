@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	cloudservice "github.com/w7corp/sdk-open-cloud-go/service"
 	"github.com/w7panel/w7panel/common/helper"
+	commonmiddleware "github.com/w7panel/w7panel/common/middleware"
 	"github.com/w7panel/w7panel/common/service"
 	auditservice "github.com/w7panel/w7panel/common/service/audit"
 	"github.com/w7panel/w7panel/common/service/config"
@@ -17,6 +18,8 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/site"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
+	"github.com/w7panel/w7panel/common/service/panelauth"
 	userservice "github.com/w7panel/w7panel/common/service/user"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
@@ -201,29 +204,23 @@ func (self Auth) syncConsoleUser(ctx context.Context, sdk *k8s.Sdk, u *userservi
 
 func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Context, loginMethod string, ckmName string) {
 	seconds := facade.Config.GetInt64("app.login_seconds")
-	execSA, err := userservice.ExecutionServiceAccount(http.Request.Context(), sdk, u)
-	if err != nil {
-		auditservice.RecordLoginFailure(http, u.Name, loginMethod, err)
-		self.JsonResponseWithError(http, err, 500)
-		return
-	}
 	role := u.Spec.Role
 	if role == "" {
 		role = u.Spec.UserMode
 	}
-	// audiences := []string{u.Name, role, u.Spec.CloudId, ckmName, execSA, "https://kubernetes.default.svc.cluster.local", "k3s"}
-	// token, err := sdk.CreateTokenRequest(execSA, seconds, audiences)
-	// if err != nil {
-	// 	auditservice.RecordLoginFailure(http, u.Name, loginMethod, err)
-	// 	self.JsonResponseWithError(http, err, 500)
-	// 	return
-	// }
-	token, err := k3k.LoginByUser(sdk, u.ToTyped(), seconds, true, ckmName, execSA)
+	_, err := k3k.RefreshK3kUser(k3ktypes.NewK3kUser(u.ToTyped()), sdk, true)
 	if err != nil {
 		auditservice.RecordLoginFailure(http, u.Name, loginMethod, err)
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
+	token, err := panelauth.Issue(panelauth.Principal{Username: u.Name, PermissionName: u.Spec.PermissionName, Role: role, TokenUse: panelauth.TokenUsePanel}, time.Duration(seconds)*time.Second)
+	if err != nil {
+		auditservice.RecordLoginFailure(http, u.Name, loginMethod, err)
+		self.JsonResponseWithError(http, err, 500)
+		return
+	}
+	commonmiddleware.SetPanelSession(http, token, int(seconds))
 	rs := service.GetRefreshToken(u.Name, ckmName)
 	auditservice.RecordLoginSuccessUser(http, u.Name, loginMethod, u)
 	self.JsonResponseWithoutError(http, gin.H{

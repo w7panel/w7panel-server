@@ -25,7 +25,7 @@ func (self Cors) CorsHandle(ctx *gin.Context) {
 	if host, ok := self.isAllow(ctx); ok {
 		self.Clear(ctx)
 		ctx.Header("Access-Control-Allow-Origin", host)
-		ctx.Header("Access-Control-Allow-Headers", "Content-Type,AccessToken,X-CSRF-Token, Authorization, Accept, depth, Cache-Control, X-Requested-With")
+		ctx.Header("Access-Control-Allow-Headers", "Content-Type,AccessToken,X-CSRF-Token, Authorization, X-W7Panel-K8s-Token, Accept, depth, Cache-Control, X-Requested-With")
 		ctx.Header("Access-Control-Allow-Methods", "POST, GET, PUT, PATCH, DELETE, HEAD, OPTIONS, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, LINK, UNLINK")
 		ctx.Header("Access-Control-Expose-Headers", self.getAllowHeader())
 		ctx.Header("Access-Control-Allow-Credentials", "true")
@@ -62,6 +62,7 @@ func (self Cors) getAllowHeader() string {
 		"X-Auth-Token",
 		"Origin",
 		"Authorization",
+		"X-W7Panel-K8s-Token",
 		"X-Requested-With",
 		"x-requested-with",
 		"x-xsrf-token",

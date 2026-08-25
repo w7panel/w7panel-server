@@ -4,12 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
+	stdhttp "net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	zpkcontroller "github.com/w7panel/w7panel/app/zpk/http"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
@@ -39,6 +40,9 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 	}
 	if path == "" {
 		path = "/"
+	}
+	if self.proxyPanelAPI(http, path) {
+		return
 	}
 
 	// 修改请求路径
@@ -84,6 +88,42 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+}
+
+// proxyPanelAPI exposes panel's Kubernetes-backed operations below the same
+// credential boundary as the native Kubernetes proxy. New endpoints belong
+// here; /panel-api must not accept a caller supplied Kubernetes token.
+func (self Proxy) proxyPanelAPI(http *gin.Context, path string) bool {
+	if path == "/panel/v1/helm/releases" && http.Request.Method == stdhttp.MethodGet {
+		Helm{}.List(http)
+		return true
+	}
+	if strings.HasPrefix(path, "/panel/v1/helm/releases/") {
+		http.Params = append(http.Params, gin.Param{Key: "name", Value: strings.TrimPrefix(path, "/panel/v1/helm/releases/")})
+		switch http.Request.Method {
+		case stdhttp.MethodGet:
+			Helm{}.Info(http)
+		case stdhttp.MethodPost:
+			Helm{}.InstallUseRepo(http)
+		case stdhttp.MethodDelete:
+			Helm{}.UnInstall(http)
+		case stdhttp.MethodPut:
+			if strings.HasSuffix(path, "/reuse") {
+				http.Params[len(http.Params)-1].Value = strings.TrimSuffix(strings.TrimPrefix(path, "/panel/v1/helm/releases/"), "/reuse")
+				Helm{}.ReUseValues(http)
+				return true
+			}
+			return false
+		default:
+			return false
+		}
+		return true
+	}
+	if path == "/panel/v1/zpk/upgrade-info" && http.Request.Method == stdhttp.MethodGet {
+		zpkcontroller.Zpk{}.UpgradeInfo(http)
+		return true
+	}
+	return false
 }
 
 func (self Proxy) ProxyNoAuthService(gin *gin.Context) {
@@ -190,7 +230,7 @@ func (self Proxy) proxyUrl(gin *gin.Context, proxyUrl string, path string) {
 	gin.Abort()
 
 	proxy := httputil.NewSingleHostReverseProxy(remote)
-	proxy.Director = func(req *http.Request) {
+	proxy.Director = func(req *stdhttp.Request) {
 		req.Host = remote.Host
 		req.URL.Scheme = remote.Scheme
 		req.URL.Host = remote.Host
@@ -213,13 +253,13 @@ func (self Proxy) proxyUrl(gin *gin.Context, proxyUrl string, path string) {
 			}
 		}
 	}
-	proxy.ModifyResponse = func(res *http.Response) error {
+	proxy.ModifyResponse = func(res *stdhttp.Response) error {
 		res.Header.Del("Access-Control-Allow-Origin")
 		return nil
 	}
-	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+	proxy.ErrorHandler = func(w stdhttp.ResponseWriter, r *stdhttp.Request, err error) {
 		slog.Error("Proxy error", "error", err, "path", r.URL.Path)
-		w.WriteHeader(http.StatusBadGateway)
+		w.WriteHeader(stdhttp.StatusBadGateway)
 		w.Write([]byte(fmt.Sprintf(`{"code":502,"error":"%s"}`, err.Error())))
 	}
 

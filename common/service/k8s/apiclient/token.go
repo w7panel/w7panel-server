@@ -37,26 +37,12 @@ type ExchangeTokenResult struct {
 }
 
 func ExchangeToken(ctx context.Context, namespace, appID, appSecret string) (*ExchangeTokenResult, error) {
-	appID = strings.TrimSpace(appID)
-	if appID == "" || appSecret == "" {
-		return nil, ErrInvalidCredentials
-	}
-
-	sdk := k8s.NewK8sClient().Sdk
-	client, err := GetCachedApiClientByID(ctx, namespace, appID, loadApiClients)
+	client, err := Authenticate(ctx, namespace, appID, appSecret)
 	if err != nil {
 		return nil, err
 	}
-	if client == nil || client.Spec.ClientID != appID {
-		return nil, ErrInvalidCredentials
-	}
-	if client.Spec.Enabled != nil && !*client.Spec.Enabled {
-		return nil, ErrClientDisabled
-	}
-	if client.Spec.ClientSecret == "" || client.Spec.ClientSecret != appSecret {
-		return nil, ErrInvalidCredentials
-	}
 
+	sdk := k8s.NewK8sClient().Sdk
 	tokenType := NormalizeTokenType(client.Spec.TokenType)
 	switch tokenType {
 	case apiclientv1alpha1.TokenTypeTemporary:
@@ -77,6 +63,31 @@ func ExchangeToken(ctx context.Context, namespace, appID, appSecret string) (*Ex
 	default:
 		return nil, fmt.Errorf("unsupported token type %q", tokenType)
 	}
+}
+
+// Authenticate validates an API client without minting a Kubernetes token.
+func Authenticate(ctx context.Context, namespace, appID, appSecret string) (*apiclientv1alpha1.ApiClient, error) {
+	appID = strings.TrimSpace(appID)
+	if appID == "" || appSecret == "" {
+		return nil, ErrInvalidCredentials
+	}
+
+	client, err := GetCachedApiClientByID(ctx, namespace, appID, loadApiClients)
+	if err != nil {
+		return nil, err
+	}
+	if client == nil || client.Spec.ClientID != appID {
+		return nil, ErrInvalidCredentials
+	}
+	if client.Spec.Enabled != nil && !*client.Spec.Enabled {
+		return nil, ErrClientDisabled
+	}
+	if client.Spec.ClientSecret == "" || client.Spec.ClientSecret != appSecret {
+		return nil, ErrInvalidCredentials
+	}
+
+	MarkAccessed(client.Namespace, client.Name, time.Now())
+	return client, nil
 }
 
 func NormalizeTokenType(tokenType string) string {
