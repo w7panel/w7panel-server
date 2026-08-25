@@ -671,7 +671,11 @@ func (d *WorkloadManager) cleanHelm(group *v1alpha1.AppGroup) error {
 func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) error {
 	defer helper.CleanStaticDir(group.Name)
 
-	if group.Spec.IsHelm {
+	helmInfo, err := d.helm.Info(group.Name, group.Namespace)
+	if err != nil {
+		slog.Error("failed to get helm info", slog.String("error", err.Error()))
+	}
+	if helmInfo != nil { //如果云端应用也是helm 资源
 		// vm metrics opertor 会监听资源删除 如果helm uninstall 最后执行 会导致资源无法删除 helm清理不干净
 		slog.Info("start delete helm ")
 		err := d.cleanHelm(group)
