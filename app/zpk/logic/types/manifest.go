@@ -309,6 +309,7 @@ type StartParams struct {
 	Type        string `json:"type"`
 	ValuesText  string `json:"values_text"`
 	Lock        bool   `json:"lock"` // 是否锁定 更新时候锁定
+	Hidden      bool   `json:"hidden,omitempty"`
 }
 type Volumes struct {
 	MountPath string `json:"mountPath"`
@@ -409,13 +410,17 @@ func (s *Shell) GetImage() string {
 }
 
 type Depends struct {
-	Identifie    string `json:"identifie"`
-	Name         string `json:"name"`
-	Required     bool   `json:"required"`
-	From         string `json:"from"`
-	Type         string `json:"type"`
-	SubIdentifie string `json:"subidentifie"`
-	SubName      string `json:"subname"`
+	Identifie         string            `json:"identifie"`
+	Name              string            `json:"name"`
+	Required          bool              `json:"required"`
+	From              string            `json:"from"`
+	Type              string            `json:"type"`
+	SubIdentifie      string            `json:"subidentifie"`
+	SubName           string            `json:"subname"`
+	MultipleInstances bool              `json:"multipleInstances,omitempty"`
+	ReleaseName       string            `json:"releaseName,omitempty"`
+	ReleaseNameFixed  bool              `json:"releaseNameFixed"`
+	StartParams       map[string]string `json:"startParams,omitempty"`
 }
 
 type Helm struct {

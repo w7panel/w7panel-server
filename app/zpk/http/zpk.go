@@ -621,8 +621,9 @@ func (self Zpk) InstallTrandition(http *gin.Context) {
 */
 func (self Zpk) OutDependEnv(http *gin.Context) {
 	type ParamsValidate struct {
-		Namespace string `form:"namespace" binding:"required"`
-		Identifie string `form:"identifie" binding:"required"`
+		Namespace   string `form:"namespace" binding:"required"`
+		Identifie   string `form:"identifie" binding:"required"`
+		ReleaseName string `form:"releaseName"`
 	}
 	params := ParamsValidate{}
 	if !self.Validate(http, &params) {
@@ -640,7 +641,12 @@ func (self Zpk) OutDependEnv(http *gin.Context) {
 		return
 	}
 	depend := logic.NewDependEnv(client)
-	result2, err := depend.LoadEnv(params.Identifie, params.Namespace)
+	var result2 *logic.DependEnvResult
+	if strings.TrimSpace(params.ReleaseName) != "" {
+		result2, err = depend.LoadLastVersionEnv(strings.TrimSpace(params.ReleaseName), params.Namespace)
+	} else {
+		result2, err = depend.LoadEnv(params.Identifie, params.Namespace)
+	}
 	if err != nil {
 		self.JsonResponseWithoutError(http, result)
 		return

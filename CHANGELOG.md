@@ -133,3 +133,9 @@
 - 保留 OpenSSL 系统证书目录及用户显式配置的 `SSL_CERT_DIR`，并继续覆盖注解工作负载已有的 CA 文件变量，避免使用旧证书路径。
 - 影响模块：Kubernetes Pod Admission Webhook、根 CA 注入测试及后端使用说明。
 - 验证：`go test ./common/service/k8s/webhook` 通过。
+
+## 2026-08-25（依赖启动参数透传）
+
+- ZPK 制品依赖增加 `startParams` 透传字段，使传统应用指定的环境版本可以随依赖安装配置返回。
+- 影响模块：ZPK Manifest 解析与安装配置。
+- 验证：依赖字段格式检查通过；完整 logic 包测试受工作区既有 `repo_domain_test.go` 参数签名过期阻断。
