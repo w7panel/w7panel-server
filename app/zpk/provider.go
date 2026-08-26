@@ -45,6 +45,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/buildimage/job", middleware.Auth{}.Process, controller.Zpk{}.BuildImageJob)         // 构建镜像job
 			localApiGroup.POST("/buildimage/cronjob", middleware.Auth{}.Process, controller.Zpk{}.BuildImageCronJob) // 构建镜像定时job
 			localApiGroup.GET("/local-url", middleware.Auth{}.Process, controller.Zpk{}.LocalZpkUrl)                 // 构建镜像定时job
+			localApiGroup.GET("/domain-parse", middleware.Auth{}.Process, controller.Zpk{}.DomainParse)               // 主集群域名解析配置
 		}
 
 	})
