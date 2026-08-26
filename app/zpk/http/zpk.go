@@ -944,12 +944,7 @@ func (self Zpk) LocalZpkUrl(http *gin.Context) {
 
 // DomainParse 返回主集群的域名解析配置，子集群安装应用时也应使用此配置提示用户。
 func (self Zpk) DomainParse(http *gin.Context) {
-	token := http.MustGet("k8s_token").(string)
-	client, err := k8s.NewK8sClient().ChannelLocal(token, true)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
+	client := k8s.NewK8sClient()
 
 	config, err := client.GetConfigCRD(http.Request.Context(), k8s.DomainParseConfigGVR, k8s.DomainParseConfigName)
 	if err != nil {
