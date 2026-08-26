@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -466,13 +467,47 @@ func (d *WorkloadManager) cleanGroupChildren(group *v1alpha1.AppGroup) error {
 	return nil
 }
 
+// syncParentDomains applies the current child AppGroup's domain change to its
+// parent, keeping root-group consumers in sync without rescanning siblings.
+func (d *WorkloadManager) syncParentDomains(group *v1alpha1.AppGroup, deleting bool) (bool, error) {
+	if group == nil || group.Labels == nil {
+		return false, nil
+	}
+	parentName := strings.ToLower(strings.TrimSpace(group.Labels["w7.cc/parent"]))
+	if parentName == "" {
+		return false, nil
+	}
+	parent, err := d.groupApi.GetAppGroup(group.Namespace, parentName)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	merged := parent.GetDomains()
+	if deleting {
+		merged = helper.RemoveStrings(merged, group.GetDomains()...)
+	} else {
+		merged = helper.MergeStrings(merged, group.GetDomains()...)
+	}
+	if helper.EqualStrings(parent.GetDomains(), merged) {
+		return false, nil
+	}
+	parent.SetDomain(merged)
+	_, err = d.groupApi.UpdateAppGroup(parent.Namespace, parent)
+	return err == nil, err
+}
+
 func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, isInit bool) error {
 	if group.DeletionTimestamp != nil {
+		if _, err := d.syncParentDomains(group, true); err != nil {
+			return err
+		}
 		// d.deleteOldAppGroup(group)
 		if err := d.cleanAppGroup(group); err != nil {
 			return newAppGroupCleanupRetryError(err)
 		}
-		parentName, isChild := group.Labels["w7.cc/parent"]
+		_, isChild := group.Labels["w7.cc/parent"]
 		if isChild {
 			if removeManagedAppGroupFinalizers(group) {
 				_, err := d.groupApi.UpdateAppGroup(group.Namespace, group)
@@ -481,15 +516,9 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 					return err
 				}
 			}
-			parentGroup, err := d.GetAppGroupFromRO(group.Namespace, parentName)
-			if err != nil {
-				if k8serrors.IsNotFound(err) {
-					return nil
-				}
-				slog.Debug("cannot find parent group", slog.String("parentName", parentName), slog.String("error", err.Error()))
-				return err
-			}
-			return d.cleanGroupChildren(parentGroup)
+			// A child deletion must not cascade to sibling AppGroups. The parent
+			// branch below is responsible for deleting the complete group tree.
+			return nil
 		} else {
 			go func() {
 				if err := NotifyDeleted(group); err != nil {
@@ -499,6 +528,12 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 
 			return d.cleanGroupChildren(group)
 		}
+	}
+	if changed, err := d.syncParentDomains(group, false); err != nil {
+		slog.Error("sync parent domains error", "group", group.Name, "error", err)
+		return err
+	} else if changed {
+		slog.Debug("synced parent domains", "group", group.Name)
 	}
 
 	changed := false

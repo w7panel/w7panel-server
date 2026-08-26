@@ -1,8 +1,5 @@
 # CHANGELOG
 
-## 2026-08-17
-
-- 应用详情页打开已安装制品时，回源校验制品试用权益；试用到期返回 `ZPK_TRIAL_EXPIRED`，面板提示续费。
 ## 2026-08-25
 
 - 修复 Console ZPK Helm 应用卸载：非 `default` 命名空间的删除中 AppGroup 会进入清理协调；Helm release 卸载失败时保留 finalizer 并持续限速重试，避免应用记录删除后遗留 Helm 资源。

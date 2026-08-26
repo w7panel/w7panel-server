@@ -1047,6 +1047,46 @@ func RetryFullSuccess(fn func() error, retry int, sleep time.Duration) error {
 	return lasterr
 }
 
+// MergeStrings merges string slices in order, trimming whitespace and
+// discarding empty or duplicate values.
+func MergeStrings(existing []string, additional ...string) []string {
+	result := make([]string, 0, len(existing)+len(additional))
+	seen := make(map[string]struct{}, cap(result))
+	for _, values := range [][]string{existing, additional} {
+		for _, value := range values {
+			value = strings.TrimSpace(value)
+			if value == "" {
+				continue
+			}
+			if _, ok := seen[value]; ok {
+				continue
+			}
+			seen[value] = struct{}{}
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
+// RemoveStrings removes matching trimmed values while preserving order.
+func RemoveStrings(existing []string, remove ...string) []string {
+	set := make(map[string]struct{}, len(remove))
+	for _, value := range remove {
+		set[strings.TrimSpace(value)] = struct{}{}
+	}
+	result := make([]string, 0, len(existing))
+	for _, value := range existing {
+		if _, ok := set[value]; !ok {
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
+func EqualStrings(left, right []string) bool {
+	return slices.Equal(left, right)
+}
+
 func IsMockPay() bool {
 	return os.Getenv("MOCK_PAY") == "true"
 }
