@@ -415,7 +415,7 @@ func TestBuiltinFounderUsesGatewayTrafficMenu(t *testing.T) {
 	}
 }
 
-func TestBuiltinNormalPermissionHasNoPanelOrKubernetesPermission(t *testing.T) {
+func TestBuiltinNormalPermissionHasOnlyDomainParsePermission(t *testing.T) {
 	p := loadBuiltinPermission(t, "normal.yaml")
 	api := APIMap(p)
 
@@ -425,8 +425,11 @@ func TestBuiltinNormalPermissionHasNoPanelOrKubernetesPermission(t *testing.T) {
 	if len(p.Spec.RBACRules) != 0 {
 		t.Fatalf("normal rbacRules = %v, want empty", p.Spec.RBACRules)
 	}
-	if len(api) != 0 {
-		t.Fatalf("normal apiRules = %v, want empty", api)
+	if len(api) != 1 {
+		t.Fatalf("normal apiRules = %v, want one rule", api)
+	}
+	if !MatchAPI(api, "GET", "/panel-api/v1/zpk/domain-parse") {
+		t.Fatal("normal permission should allow GET /panel-api/v1/zpk/domain-parse")
 	}
 
 	denied := []struct {
@@ -440,6 +443,7 @@ func TestBuiltinNormalPermissionHasNoPanelOrKubernetesPermission(t *testing.T) {
 		{method: "GET", path: "/panel-api/v1/kubeconfig"},
 		{method: "GET", path: "/panel-api/v1/namespaces"},
 		{method: "GET", path: "/panel-api/v1/helm/releases"},
+		{method: "POST", path: "/panel-api/v1/zpk/domain-parse"},
 		{method: "GET", path: "/panel-api/v1/audit/list"},
 	}
 	for _, tt := range denied {
