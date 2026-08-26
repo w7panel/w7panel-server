@@ -2,6 +2,12 @@
 
 ## 2026-08-26
 
+- K3k Agent 升级脚本新增 `default-volume` PVC 检查，不存在时才创建，避免重复创建产生无效错误。
+- 影响模块：K3k Agent 升级流程。
+- 验证：脚本静态检查与 `git diff --check`。
+
+## 2026-08-26
+
 - 普通用户权限新增 `GET /panel-api/v1/zpk/domain-parse`，用于安装页读取主集群域名解析配置；其他 ZPK 接口仍不开放。
 - 影响模块：普通用户权限配置、权限匹配测试。
 - 验证：定向权限测试与 `git diff --check`。
