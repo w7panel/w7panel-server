@@ -411,6 +411,7 @@ func (s *Shell) GetImage() string {
 
 type Depends struct {
 	Identifie         string            `json:"identifie"`
+	OrderSn           string            `json:"order_sn,omitempty"`
 	Name              string            `json:"name"`
 	Required          bool              `json:"required"`
 	From              string            `json:"from"`
