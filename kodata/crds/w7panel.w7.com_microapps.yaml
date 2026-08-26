@@ -91,9 +91,9 @@ spec:
                   - name
                   - title
                   type: object
-                x-kubernetes-list-type: atomic
                 nullable: true
                 type: array
+                x-kubernetes-list-type: atomic
               config:
                 properties:
                   props:
