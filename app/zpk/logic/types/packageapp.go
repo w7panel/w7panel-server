@@ -445,7 +445,13 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 	if len(shells) > 0 {
 		shellsJson, _ = json.Marshal(shells)
 	}
-
+	createByUser := ""
+	if p.K8sToken != nil {
+		createByUser, err = p.K8sToken.GetUserName()
+		if err != nil {
+			createByUser = ""
+		}
+	}
 	result := map[string]string{
 		"w7.cc/zpk-url":      p.ZpkUrl,
 		"title":              p.Manifest.Application.Name,
@@ -474,6 +480,8 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 		"meta.helm.sh/release-name":      p.GetReleaseName(),
 		"meta.helm.sh/release-namespace": p.GetNamespace(),
 		"w7.cc/panel-install-url":        p.PanelUrl,
+		"w7.cc/sa-name":                  p.ServiceAccountName,
+		"w7.cc/create-by-user":           createByUser,
 	}
 	result[types.HELM_APPLICATION_TYPE] = p.Manifest.Application.Type
 	// if !p.IsUpgrade() {

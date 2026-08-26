@@ -18,16 +18,20 @@ limitations under the License.
 package v1alpha1
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
 // BuildImageStatusApplyConfiguration represents a declarative configuration of the BuildImageStatus type for use
 // with apply.
 type BuildImageStatusApplyConfiguration struct {
-	Status     *string                          `json:"status,omitempty"`
-	Reason     *string                          `json:"reason,omitempty"`
-	Contitions []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
-	JobName    *string                          `json:"jobName,omitempty"`
+	Status      *string                          `json:"status,omitempty"`
+	Reason      *string                          `json:"reason,omitempty"`
+	Contitions  []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
+	JobName     *string                          `json:"jobName,omitempty"`
+	CompletedAt *metav1.Time                     `json:"completedAt,omitempty"`
+	RetryCount  *int32                           `json:"retryCount,omitempty"`
+	MaxRetries  *int32                           `json:"maxRetries,omitempty"`
 }
 
 // BuildImageStatusApplyConfiguration constructs a declarative configuration of the BuildImageStatus type for use with
@@ -70,5 +74,18 @@ func (b *BuildImageStatusApplyConfiguration) WithContitions(values ...*v1.Condit
 // If called multiple times, the JobName field is set to the value of the last call.
 func (b *BuildImageStatusApplyConfiguration) WithJobName(value string) *BuildImageStatusApplyConfiguration {
 	b.JobName = &value
+	return b
+}
+
+func (b *BuildImageStatusApplyConfiguration) WithCompletedAt(value metav1.Time) *BuildImageStatusApplyConfiguration {
+	b.CompletedAt = &value
+	return b
+}
+func (b *BuildImageStatusApplyConfiguration) WithRetryCount(value int32) *BuildImageStatusApplyConfiguration {
+	b.RetryCount = &value
+	return b
+}
+func (b *BuildImageStatusApplyConfiguration) WithMaxRetries(value int32) *BuildImageStatusApplyConfiguration {
+	b.MaxRetries = &value
 	return b
 }

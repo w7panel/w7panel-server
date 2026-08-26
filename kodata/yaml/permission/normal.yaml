@@ -69,6 +69,10 @@ spec:
         -
             method:
                 - get
+            path: /panel-api/v1/traffic/apps
+        -
+            method:
+                - get
             path: /panel-api/v1/traffic/domains
         -
             method:

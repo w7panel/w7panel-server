@@ -2,6 +2,7 @@
 ./schema
 ./assets
 ./index.html
+/panel.html
 ./assets/**
 /assets
 /index.html

@@ -24,18 +24,20 @@ type TimeRange struct {
 }
 
 type QueryParams struct {
-	Namespace  string
-	Domain     string
-	UpstreamIP string
-	Method     string
-	Status     string
-	Keyword    string
-	Search     string
-	Sort       string
-	Page       int
-	PageSize   int
-	Step       string
-	Range      TimeRange
+	Namespace    string
+	Domain       string
+	UpstreamIP   string
+	WorkloadName string
+	WorkloadKind string
+	Method       string
+	Status       string
+	Keyword      string
+	Search       string
+	Sort         string
+	Page         int
+	PageSize     int
+	Step         string
+	Range        TimeRange
 }
 
 type QueryClient struct {
@@ -141,7 +143,14 @@ func (q *QueryClient) Summary(ctx context.Context, params QueryParams) ([]map[st
 }
 
 func (q *QueryClient) Pods(ctx context.Context, params QueryParams) ([]map[string]any, error) {
-	query := buildFilter(params) + ` upstream_ip:!"" | stats by (upstream_ip, upstream_service, upstream_namespace, status_code) count() as requests, sum(bytes_received) as bytes_received, sum(bytes_sent) as bytes_sent, avg(duration_ms) as avg_duration_ms, quantile(0.95, duration_ms) as p95_duration_ms | sort by (requests desc) | limit 1000`
+	query := buildFilter(params) + ` upstream_ip:!"" | stats by (upstream_ip, upstream_pod_name, upstream_service, workload_title, upstream_namespace, status_code) count() as requests, sum(bytes_received) as bytes_received, sum(bytes_sent) as bytes_sent, avg(duration_ms) as avg_duration_ms, quantile(0.95, duration_ms) as p95_duration_ms | sort by (requests desc) | limit 1000`
+	return q.query(ctx, query, params.Range)
+}
+
+// Apps returns only records that were enriched with a stable Kubernetes workload
+// identity at ingest time.  Old, pod-only records intentionally do not appear.
+func (q *QueryClient) Apps(ctx context.Context, params QueryParams) ([]map[string]any, error) {
+	query := buildFilter(params) + ` workload_name:!"" workload_kind:!"" | stats by (workload_name, workload_kind, workload_title, workload_namespace, status_code) count() as requests, sum(bytes_received) as bytes_received, sum(bytes_sent) as bytes_sent, avg(duration_ms) as avg_duration_ms, quantile(0.95, duration_ms) as p95_duration_ms | sort by (requests desc) | limit 1000`
 	return q.query(ctx, query, params.Range)
 }
 
@@ -282,6 +291,12 @@ func buildFilter(params QueryParams) string {
 	}
 	if params.UpstreamIP != "" {
 		parts = append(parts, fmt.Sprintf(`upstream_ip:%q`, params.UpstreamIP))
+	}
+	if params.WorkloadName != "" {
+		parts = append(parts, fmt.Sprintf(`workload_name:%q`, params.WorkloadName))
+	}
+	if params.WorkloadKind != "" {
+		parts = append(parts, fmt.Sprintf(`workload_kind:%q`, params.WorkloadKind))
 	}
 	if params.Method != "" {
 		parts = append(parts, fmt.Sprintf(`method:%q`, strings.ToUpper(params.Method)))

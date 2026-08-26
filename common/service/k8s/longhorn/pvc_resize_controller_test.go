@@ -115,7 +115,7 @@ func TestPVCResizePrepareCapturesNodeAndPods(t *testing.T) {
 	}
 }
 
-func TestPVCResizeRestartWaitsForReplacementPodAndKeepsCSITicket(t *testing.T) {
+func TestPVCResizeRestartCompletesAfterPodDeleteAndKeepsCSITicket(t *testing.T) {
 	pvc := resizeControllerTestPVC(PVCResizeStateRestarting)
 	pvc.Annotations[PVCResizePodsAnnotation] = `[{"name":"mysql-0","uid":"old-uid","waitForRestart":true}]`
 	pvc.Annotations[PVCResizeOriginallyAttachedAnnotation] = "true"
@@ -137,20 +137,7 @@ func TestPVCResizeRestartWaitsForReplacementPodAndKeepsCSITicket(t *testing.T) {
 	if _, err := r.restartPods(context.Background(), pvc); err != nil {
 		t.Fatal(err)
 	}
-	replacement := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "mysql-0", Namespace: "default", UID: "new-uid"},
-		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}},
-	}
-	if err := cl.Create(context.Background(), replacement); err != nil {
-		t.Fatal(err)
-	}
 	got := &corev1.PersistentVolumeClaim{}
-	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(pvc), got); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := r.restartPods(context.Background(), got); err != nil {
-		t.Fatal(err)
-	}
 	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(pvc), got); err != nil {
 		t.Fatal(err)
 	}
@@ -159,6 +146,29 @@ func TestPVCResizeRestartWaitsForReplacementPodAndKeepsCSITicket(t *testing.T) {
 	}
 	if got.Annotations[PVCResizePodsRestartedAnnotation] != "" {
 		t.Fatal("expected pod restart marker to be cleared")
+	}
+}
+
+func TestPVCResizeRestartAcceptsReadyDeploymentReplacementWithNewName(t *testing.T) {
+	pvc := resizeControllerTestPVC(PVCResizeStateRestarting)
+	pvc.Annotations[PVCResizePodsAnnotation] = `[{"name":"app-7b9c8d6f4f-old","uid":"old-pod","controllerUID":"replica-set","waitForRestart":true}]`
+	pvc.Annotations[PVCResizePodsRestartedAnnotation] = "true"
+	old := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "app-7b9c8d6f4f-old", Namespace: "default", UID: "old-pod"}}
+	controller := true
+	replacement := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "app-7b9c8d6f4f-new", Namespace: "default", UID: "new-pod", OwnerReferences: []metav1.OwnerReference{{UID: "replica-set", Controller: &controller}}},
+		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}},
+	}
+	r, cl := newResizeTestReconciler(t, pvc, old, replacement)
+	if err := cl.Delete(context.Background(), old); err != nil {
+		t.Fatal(err)
+	}
+	ready, err := r.restartedPodsReady(context.Background(), "default", []pvcResizePodSnapshot{{Name: old.Name, UID: string(old.UID), ControllerUID: "replica-set", WaitForRestart: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ready {
+		t.Fatal("expected ready replacement Pod with a new Deployment name")
 	}
 }
 

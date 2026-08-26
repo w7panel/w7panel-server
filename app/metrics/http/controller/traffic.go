@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -57,10 +58,27 @@ func (self Metrics) TrafficPods(ctx *gin.Context) {
 		self.JsonResponseWithError(ctx, err, http.StatusInternalServerError)
 		return
 	}
-	rows = traffic.FoldRows(rows, "upstream_ip", "upstream_service", "upstream_namespace")
+	rows = traffic.FoldRows(rows, "upstream_ip", "upstream_pod_name", "upstream_service", "workload_title", "upstream_namespace")
 	traffic.SortRows(rows, params.Sort)
 	resolvePodNames(ctx, params.Namespace, rows)
-	rows = traffic.SearchRows(rows, params.Search, "pod_name", "upstream_ip", "upstream_service", "upstream_namespace")
+	rows = traffic.SearchRows(rows, params.Search, "pod_name", "upstream_pod_name", "upstream_ip", "upstream_service", "upstream_namespace")
+	list, total := traffic.Paginate(rows, params.Page, params.PageSize)
+	self.JsonResponseWithoutError(ctx, gin.H{"list": list, "total": total, "page": params.Page, "pageSize": params.PageSize})
+}
+
+func (self Metrics) TrafficApps(ctx *gin.Context) {
+	params, ok := parseTrafficParams(ctx)
+	if !ok {
+		return
+	}
+	rows, err := traffic.NewQueryClient().Apps(ctx.Request.Context(), params)
+	if err != nil {
+		self.JsonResponseWithError(ctx, err, http.StatusInternalServerError)
+		return
+	}
+	rows = traffic.FoldRows(rows, "workload_name", "workload_kind", "workload_title", "workload_namespace")
+	traffic.SortRows(rows, params.Sort)
+	rows = traffic.SearchRows(rows, params.Search, "workload_name", "workload_kind", "workload_namespace")
 	list, total := traffic.Paginate(rows, params.Page, params.PageSize)
 	self.JsonResponseWithoutError(ctx, gin.H{"list": list, "total": total, "page": params.Page, "pageSize": params.PageSize})
 }
@@ -133,7 +151,7 @@ func parseTrafficParams(ctx *gin.Context) (traffic.QueryParams, bool) {
 	}
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "20"))
-	params := traffic.QueryParams{Namespace: namespace, Domain: strings.TrimSpace(ctx.Query("domain")), UpstreamIP: strings.TrimSpace(ctx.Query("upstreamIp")), Method: strings.TrimSpace(ctx.Query("method")), Status: strings.TrimSpace(ctx.Query("status")), Keyword: strings.TrimSpace(ctx.Query("keyword")), Search: strings.TrimSpace(ctx.Query("search")), Sort: strings.TrimSpace(ctx.Query("sort")), Step: strings.TrimSpace(ctx.Query("step")), Page: page, PageSize: pageSize, Range: rangeValue}
+	params := traffic.QueryParams{Namespace: namespace, Domain: strings.TrimSpace(ctx.Query("domain")), UpstreamIP: strings.TrimSpace(ctx.Query("upstreamIp")), WorkloadName: strings.TrimSpace(ctx.Query("workloadName")), WorkloadKind: strings.TrimSpace(ctx.Query("workloadKind")), Method: strings.TrimSpace(ctx.Query("method")), Status: strings.TrimSpace(ctx.Query("status")), Keyword: strings.TrimSpace(ctx.Query("keyword")), Search: strings.TrimSpace(ctx.Query("search")), Sort: strings.TrimSpace(ctx.Query("sort")), Step: strings.TrimSpace(ctx.Query("step")), Page: page, PageSize: pageSize, Range: rangeValue}
 	traffic.NormalizeParams(&params)
 	return params, true
 }
@@ -155,7 +173,10 @@ func resolvePodNames(ctx *gin.Context, namespace string, rows []map[string]any) 
 	}
 	for _, row := range rows {
 		ip, _ := row["upstream_ip"].(string)
-		if pod, exists := byIP[ip]; exists {
+		if name := strings.TrimSpace(fmt.Sprint(row["upstream_pod_name"])); name != "" && name != "<nil>" {
+			row["pod_name"] = name
+			row["namespace"] = row["upstream_namespace"]
+		} else if pod, exists := byIP[ip]; exists {
 			row["pod_name"] = pod[0]
 			row["namespace"] = pod[1]
 		} else {

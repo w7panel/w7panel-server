@@ -218,14 +218,9 @@ func (self Zpk) Install(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
 	k8sToken := k8s.NewK8sToken(token)
 	// 普通用户curl 安装主集群问题
-	if !k8sToken.IsFounder() && !helper.IsChildAgent() {
+	if !k8sToken.IsFounder() && !k8sToken.IsK3kCluster() { // ckm 未升级导致判断 有误
 		self.JsonResponseWithServerError(http, errors.New("only founder can install"))
 		return
-	}
-	userName, err := k8sToken.GetUserName()
-	if err != nil {
-		userName = ""
-		slog.Warn("get user name error", "err", err)
 	}
 	client, err := k8s.NewK8sClient().Channel(token)
 	if err != nil {
@@ -334,6 +329,11 @@ func (self Zpk) Install(http *gin.Context) {
 	}
 
 	sa := client.GetServiceAccountName()
+	userName, err := k8sToken.GetUserName()
+	if err != nil {
+		slog.Warn("get user name err", "err", err)
+		userName = "guest"
+	}
 	packageApps.Root.ServiceAccountName = sa
 	packageApps.Root.K8sToken = k8sToken
 	packageApps.Root.IsChild = isChild
