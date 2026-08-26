@@ -73,6 +73,7 @@ type MicroAppSpec struct {
 	// +k8s:optional
 	// +optional
 	// +nullable
+	// +listType=atomic
 	// +patchStrategy=merge
 	Bindings []Bindings `json:"bindings,omitempty" patchStrategy:"merge" protobuf:"bytes,6,rep,name=bindings"`
 }
