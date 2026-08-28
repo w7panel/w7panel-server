@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -21,7 +22,8 @@ func (K8sCredential) Token(ctx *gin.Context) {
 		return
 	}
 	p := principal.(panelauth.Principal)
-	token, expiresAt, err := credential.IssueForPrincipal(ctx.Request.Context(), p.Username, p.PermissionName, 10*time.Minute)
+	sourceToken := strings.TrimSpace(ctx.GetHeader("X-W7Panel-K8s-Token"))
+	token, expiresAt, err := credential.IssueForPrincipalFromToken(ctx.Request.Context(), p.Username, p.PermissionName, sourceToken, 10*time.Minute)
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"code": http.StatusInternalServerError, "msg": "生成 Kubernetes 凭据失败"})
 		return
