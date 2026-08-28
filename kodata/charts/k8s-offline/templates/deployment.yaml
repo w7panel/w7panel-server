@@ -59,6 +59,8 @@ spec:
             value: {{ .Values.controller.appWatch | quote }}  
           - name: HIGRESS_WATCH
             value: "true"     
+          - name: W7PANEL_AUTH_MODE
+            value: "w7panel"  
           - name: GPUSTACK_WATCH
             value: {{ .Values.gpustack.watch | quote }}      
           - name: MOCK_UPGRADE
