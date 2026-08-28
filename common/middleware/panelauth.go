@@ -92,7 +92,7 @@ func panelToken(req *http.Request) string {
 }
 
 func requiresLegacyK8sCredential(path string) bool {
-	return !strings.HasPrefix(path, "/panel-api/v1/auth/") &&
+	return path != "/panel-api/v1/auth/k8s-credentials/token" &&
 		!strings.HasPrefix(path, "/panel-api/v1/oidc/") &&
 		!strings.HasPrefix(path, "/panel-api/v1/noauth/")
 }

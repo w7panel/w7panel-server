@@ -58,4 +58,12 @@ build.sh
 /.agents
 /skills-lock.json
 .go-build-cache
-.go-build-cache/** 
+.go-build-cache/**
+.w7-go-cache
+.w7-go-cache/**
+.w7-go-modcache
+.w7-go-modcache/**
+.w7-gopath
+.w7-gopath/**
+.w7-go-tmp
+.w7-go-tmp/**
