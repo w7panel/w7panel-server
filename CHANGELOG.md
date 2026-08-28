@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-08-28
+
+- 新增 `skills/w7panel-local-ui-test`，记录使用 218 kubeconfig 启动服务端、运行 UI 与通过 CDP 验证页面的本地测试流程。
+
 ## 2026-08-25
 
 - 分离面板与 Kubernetes 鉴权：账号登录和 API 密钥交换改为签发面板 JWT，`/k8s-proxy` 仅接受专用 Kubernetes token；新增当前面板主体按权限获取短期主集群凭据的接口。
