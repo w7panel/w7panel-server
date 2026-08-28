@@ -11,18 +11,18 @@ description: 在本地用 w7panel-server 和 w7panel-ui 验证 W7Panel 页面；
 
 ## 启动服务端
 
-优先直接运行源码（无需每次构建镜像）：
+优先使用 Makefile 的源码启动目标（无需每次构建镜像）：
 
 ```bash
 cd /home/afan/workspace/ai/w7panel-server
-GOSUMDB=off \
-GOPATH=/home/afan/workspace/ai/.w7-gopath \
-GOMODCACHE=/home/afan/workspace/ai/.w7-go-modcache \
-GOCACHE=/home/afan/workspace/ai/.w7-go-cache \
-KUBECONFIG=/home/afan/.kube/218.config \
-W7PANEL_HTTP_SERVER_PORT=18000 \
-go run . server:start
+make local-run \
+  KUBECONFIG_FILE=/home/afan/.kube/218.config \
+  LOCAL_PORT=18000
 ```
+
+该目标通过 `LOCAL_GOPATH`、`LOCAL_GO_MODCACHE`、`LOCAL_GO_CACHE` 和 `LOCAL_GO_TMP` 使用项目目录下的 Go 缓存与构建临时目录，均可按需覆盖；不要把 kubeconfig、token 或 Secret 写入 Skill、日志或提交内容。
+
+Makefile 会优先使用本机已安装的 Go 1.26 工具链，也可以通过 `GO_TOOLCHAIN_ROOT` 和 `GO_BIN` 覆盖工具链路径。
 
 如果必须验证镜像入口，使用仓库 Makefile，并显式传入 kubeconfig：
 

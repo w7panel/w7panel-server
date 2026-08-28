@@ -10,9 +10,16 @@ HOST_PORT ?= 18000
 CONTAINER_PORT ?= 18000
 KUBECONFIG_FILE ?= $(HOME)/.kube/config
 OIDC_ISSUER ?= http://172.16.1.18:18000/panel-api/v1/oidc
+LOCAL_PORT ?= 18000
+LOCAL_GO_CACHE ?= $(CURDIR)/.w7-go-cache
+LOCAL_GO_MODCACHE ?= $(CURDIR)/.w7-go-modcache
+LOCAL_GOPATH ?= $(CURDIR)/.w7-gopath
+LOCAL_GO_TMP ?= $(CURDIR)/.w7-go-tmp
+GO_TOOLCHAIN_ROOT ?= /home/afan/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.0.linux-amd64
+GO_BIN ?= $(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT)/bin/go,go)
 DOCKER_RUN_ARGS ?=
 
-.PHONY: help frontend image ko-build docker-run
+.PHONY: help frontend image ko-build docker-run local-run
 
 help:
 	@echo "本地镜像构建："
@@ -22,6 +29,8 @@ help:
 	@echo "本地容器运行："
 	@echo "  make docker-run"
 	@echo "  make docker-run HOST_PORT=18000 OIDC_ISSUER=http://172.16.1.18:18000/panel-api/v1/oidc"
+	@echo "本地源码运行："
+	@echo "  make local-run KUBECONFIG_FILE=/home/afan/.kube/218.config"
 
 # 调用相邻 w7panel-ui 的构建脚本，将前端产物放入 ko 自动打包的 kodata 目录。
 frontend:
@@ -65,3 +74,17 @@ docker-run:
 		"$(LOCAL_IMAGE):$(IMAGE_TAG)" \
 		server:start
 	@echo "容器已启动：$(CONTAINER_NAME)，访问 http://127.0.0.1:$(HOST_PORT)"
+
+# 直接运行源码，适合本地联调，避免每次构建镜像。
+local-run:
+	@test -f "$(KUBECONFIG_FILE)" || { echo "Kubeconfig 不存在：$(KUBECONFIG_FILE)"; exit 1; }
+	@mkdir -p "$(LOCAL_GO_TMP)"
+	GOSUMDB=off \
+	GOPATH="$(LOCAL_GOPATH)" \
+	GOMODCACHE="$(LOCAL_GO_MODCACHE)" \
+	GOCACHE="$(LOCAL_GO_CACHE)" \
+	GOTMPDIR="$(LOCAL_GO_TMP)" \
+	GOROOT="$(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT),)" \
+	KUBECONFIG="$(KUBECONFIG_FILE)" \
+	W7PANEL_HTTP_SERVER_PORT="$(LOCAL_PORT)" \
+	"$(GO_BIN)" run . server:start

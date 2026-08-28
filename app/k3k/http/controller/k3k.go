@@ -5,8 +5,11 @@ import (
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
+	userservice "github.com/w7panel/w7panel/common/service/user"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 
@@ -18,6 +21,17 @@ type K3k struct {
 *
  */
 func (self K3k) Info(http *gin.Context) {
+	// PanelAuth mints a regular Kubernetes credential for panel API handlers.
+	// It has no K3K audience tuple, so build the response from the authenticated
+	// panel principal instead of parsing the Kubernetes default audience.
+	if username := http.GetString("username"); username != "" {
+		if sdk := k8s.NewK8sClient().Sdk; sdk != nil {
+			if u, err := userservice.Get(http.Request.Context(), sdk, username); err == nil {
+				self.JsonResponseWithoutError(http, k3ktypes.NewK3kUser(u.ToTyped()).ToArray())
+				return
+			}
+		}
+	}
 	// if username := http.GetString("username"); username != "" {
 	// 	sdk := k8s.NewK8sClient().Sdk
 	// 	if u, err := userservice.Get(http.Request.Context(), sdk, username); err == nil {
