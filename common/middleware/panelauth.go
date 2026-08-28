@@ -75,6 +75,11 @@ func SetPanelSession(ctx *gin.Context, token string, maxAge int) {
 }
 
 func panelToken(req *http.Request) string {
+	if panelTokenHeaderEnabled() {
+		if token := strings.TrimSpace(req.Header.Get("X-W7Panel-Token")); token != "" {
+			return token
+		}
+	}
 	if auth := req.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
 		return strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
 	}
