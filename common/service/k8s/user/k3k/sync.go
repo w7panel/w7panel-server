@@ -202,7 +202,7 @@ func SyncIngress(params *K3kSync) error {
 				slog.Error("delete ingress error", "err", err)
 				return err
 			}
-			_ = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Delete(root.Ctx, helper.SafeConcatName(63, hostIngressName+"-https"), metav1.DeleteOptions{})
+			_ = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Delete(root.Ctx, getHttpsIngressName(hostIngressName), metav1.DeleteOptions{})
 		}
 		slog.Error("get virtual ingress error", "err", err)
 		return err
@@ -335,7 +335,7 @@ func SyncIngress(params *K3kSync) error {
 	}
 	if sslEnabled {
 		httpsIngress := ingress.DeepCopy()
-		httpsName := helper.SafeConcatName(63, hostIngressName+"-https")
+		httpsName := getHttpsIngressName(hostIngressName)
 		if len(httpsIngress.Spec.Rules) > 1 {
 			httpsIngress.Spec.Rules = httpsIngress.Spec.Rules[1:2]
 		}
@@ -344,6 +344,10 @@ func SyncIngress(params *K3kSync) error {
 		}
 	}
 	return nil
+}
+
+func getHttpsIngressName(base string) string {
+	return helper.SafeConcatName(63, base, "https")
 }
 
 func SyncIngressHttp(ingress *networkingv1.Ingress) error {
