@@ -142,3 +142,6 @@
 # 2026-08-26
 - 修正 MicroApp 两个 API Group 的 CRD 定义，明确 `spec.bindings` 使用 atomic 列表语义，避免 Helm/Server-Side Apply 更新时残留旧绑定项。
 - 在 `MicroAppSpec.Bindings` Go 类型声明中补充 `+listType=atomic`，确保重新生成 `w7panel.w7.com` CRD 时保留该替换语义。
+# 变更
+
+- K3K 子集群资源同步客户端支持直接调用 CKM 控制器内部同步 API；配置 `CKM_SYNC_ENDPOINT` 后使用专用 Header Token，旧 Server 同步地址保留兼容。

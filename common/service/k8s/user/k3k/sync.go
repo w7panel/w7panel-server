@@ -135,6 +135,30 @@ func SyncHttp(obj SyncObjectInterface, path string) error {
 	if helper.IsLocalMock() {
 		postUrl = "http://172.16.1.162:9090/panel-api/v1/k3k/sync-ingress"
 	}
+	// New CKM deployments expose an internal sync API on the CKM controller
+	// service. Keep the legacy Server endpoint as a fallback for old agents.
+	if endpoint := os.Getenv("CKM_SYNC_ENDPOINT"); endpoint != "" {
+		postUrl = strings.TrimRight(endpoint, "/") + "/" + path
+		payload := map[string]string{}
+		for key, values := range urlvalues {
+			if len(values) > 0 {
+				payload[key] = values[0]
+			}
+		}
+		client := helper.RetryHttpClient()
+		req := client.R().SetBody(payload)
+		if token := os.Getenv("CKM_SYNC_TOKEN"); token != "" {
+			req.SetHeader("X-W7Panel-CKM-Sync-Token", token)
+		}
+		resp, err := req.Post(postUrl)
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode() != 200 {
+			return fmt.Errorf("sync error, status code: %d: %s", resp.StatusCode(), resp.String())
+		}
+		return nil
+	}
 	client := helper.RetryHttpClient()
 	resp, err := client.R().SetFormDataFromValues(urlvalues).Post(postUrl)
 	if err != nil {
