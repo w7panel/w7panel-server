@@ -16,6 +16,13 @@ EOF
   echo "longhorn-volumes-config 已存在"
 fi
 
+echo "创建默认pvc"
+if kubectl get pvc default-volume -n default >/dev/null 2>&1; then
+  echo "default-volume 已存在"
+else
+  kubectl create -f "$KO_DATA_PATH/yaml/default-volume.yaml"
+fi
+
 echo "配置k3sconfigs/config crd..."
 kubectl apply -f - <<'EOF' || echo "k3sconfigs/config 已更新"
 kind: K3sConfig

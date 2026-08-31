@@ -155,17 +155,18 @@ func (u *k3kUser) GetRole() string {
 	// if u.IsClusterUser() { //子集群用户默认是founder fix站点管理
 	// 	return "founder"
 	// }
-	role, ok := u.Annotations[W7_ROLE]
-	if ok {
-		return role
-	}
-	if u.Labels[W7_USER_MODE] == "founder" {
-		return "founder"
-	}
-	if u.Labels[W7_USER_MODE] == "normal" {
-		return "normal"
-	}
-	return "normal"
+	return u.Spec.Role
+	// role, ok := u.Annotations[W7_ROLE]
+	// if ok {
+	// 	return role
+	// }
+	// if u.Labels[W7_USER_MODE] == "founder" {
+	// 	return "founder"
+	// }
+	// if u.Labels[W7_USER_MODE] == "normal" {
+	// 	return "normal"
+	// }
+	// return "normal"
 }
 
 func (u *k3kUser) GetTokenAud(cvmName string) []string {
@@ -262,7 +263,10 @@ func (u *k3kUser) GetCkmName() string {
 }
 
 func (u *k3kUser) ToArray() map[string]string {
-
+	role := u.GetRole()
+	if u.IsCkmReqUser() {
+		role = "founder"
+	}
 	result := map[string]string{
 		K3K_USER_MODE:    u.Spec.UserMode,
 		"w7.cc/username": u.Name,
@@ -277,7 +281,7 @@ func (u *k3kUser) ToArray() map[string]string {
 		// "w7.cc/api":          mustJSON(permissionservice.APIRulesToMap(u.Spec.APIRules)),
 		W7_DOMAIN_WHITE_LIST: mustJSON(u.Spec.DomainWhiteList),
 		W7_DEMO_USER:         boolString(u.Spec.DemoUser),
-		W7_ROLE:              u.Spec.Role,
+		W7_ROLE:              role,
 		"w7.cc/has-password": boolString(u.Spec.PasswordHash != ""),
 	}
 	if u.IsCkmReqUser() {

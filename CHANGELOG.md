@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-08-31
+
+- 新增 `CKM_SYNC_ENABLED` 开关：设置为 `true` 时使用 CKM 内部同步接口，否则继续使用旧 Server 同步方式；CKM endpoint 缺失时自动回退旧方式。
+- CKM 同步客户端兼容 `CKM_SYNC_PORT` 配置，默认端口由 CKM Agent 注入为 `8001`。
+- 修复 CKM 同步接口路径重复 `sync-` 前缀导致 404：客户端现在将 `sync-ingress` 等旧路径正确映射为 CKM 的 `ingress`、`configmap` 等接口。
+- K3K Ingress 同步时按 TLS 状态补充同一 Ingress 的 443 Rule，并为主集群 HTTPS Ingress 设置 SSL Passthrough；非 HTTPS 仅清理重复的 443 Rule，保留多 Host 配置。
+
 ## 2026-08-28
 
 - 新增 `skills/w7panel-local-ui-test`，记录使用 218 kubeconfig 启动服务端、运行 UI 与通过 CDP 验证页面的本地测试流程。
@@ -10,6 +17,17 @@
 - 新增 `/k8s-proxy/panel/v1/helm/releases*` 与 `/k8s-proxy/panel/v1/zpk/upgrade-info`，为 Helm/ZPK 集群操作提供统一 K8s 鉴权路径；子集群 token 使用 `X-W7Panel-K8s-Token`，不写入宿主 Secret。
 - 影响模块：认证中间件、API 密钥、Kubernetes 代理、Helm/ZPK 路由与权限边界。
 - 验证：`go test ./common/service/panelauth ./common/middleware ./common/service/k8s/apiclient` 通过；应用控制器完整测试受既有 `/tmp/test.txt` 与 Console 重定向环境依赖影响未通过。
+## 2026-08-26
+
+- K3k Agent 升级脚本新增 `default-volume` PVC 检查，不存在时才创建，避免重复创建产生无效错误。
+- 影响模块：K3k Agent 升级流程。
+- 验证：脚本静态检查与 `git diff --check`。
+
+## 2026-08-26
+
+- 普通用户权限新增 `GET /panel-api/v1/zpk/domain-parse`，用于安装页读取主集群域名解析配置；其他 ZPK 接口仍不开放。
+- 影响模块：普通用户权限配置、权限匹配测试。
+- 验证：定向权限测试与 `git diff --check`。
 
 ## 2026-08-25
 
@@ -138,3 +156,9 @@
 - 控制台每次 OAuth 登录同步 User CRD 的 `spec.cloud` 用户信息及兼容字段，并保留 User 元数据。
 - 影响模块：控制台认证、User CRD。
 - 验证：运行 User 服务定向 Go 测试。
+# 2026-08-26
+- 修正 MicroApp 两个 API Group 的 CRD 定义，明确 `spec.bindings` 使用 atomic 列表语义，避免 Helm/Server-Side Apply 更新时残留旧绑定项。
+- 在 `MicroAppSpec.Bindings` Go 类型声明中补充 `+listType=atomic`，确保重新生成 `w7panel.w7.com` CRD 时保留该替换语义。
+# 变更
+
+- K3K 子集群资源同步客户端支持直接调用 CKM 控制器内部同步 API；配置 `CKM_SYNC_ENDPOINT` 后使用专用 Header Token，旧 Server 同步地址保留兼容。

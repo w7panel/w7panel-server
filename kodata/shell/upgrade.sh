@@ -100,7 +100,7 @@ echo "higress config"
 kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
 
 echo "安装/升级制品版域名和限流插件"
-helm upgrade --namespace "${NAMESPACE:-default}" w7panel-pluginwhitedomain $KO_DATA_PATH/charts/w7panel-pluginwhitedomain --install --timeout 600s
+# helm upgrade --namespace "${NAMESPACE:-default}" w7panel-pluginwhitedomain $KO_DATA_PATH/charts/w7panel-pluginwhitedomain --install --timeout 600s
 helm upgrade --namespace "${NAMESPACE:-default}" w7panel-pluginratelimit $KO_DATA_PATH/charts/w7panel-pluginratelimit --install --timeout 600s
 DOMAIN_TARGET_GROUP=w7panel-pluginwhitedomain \
 RATE_LIMIT_TARGET_GROUP=w7panel-pluginratelimit \
