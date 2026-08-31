@@ -137,27 +137,32 @@ func SyncHttp(obj SyncObjectInterface, path string) error {
 	}
 	// New CKM deployments expose an internal sync API on the CKM controller
 	// service. Keep the legacy Server endpoint as a fallback for old agents.
-	if endpoint := os.Getenv("CKM_SYNC_ENDPOINT"); endpoint != "" {
-		postUrl = strings.TrimRight(endpoint, "/") + "/" + path
-		payload := map[string]string{}
-		for key, values := range urlvalues {
-			if len(values) > 0 {
-				payload[key] = values[0]
+	if strings.EqualFold(os.Getenv("CKM_SYNC_ENABLED"), "true") {
+		endpoint := os.Getenv("CKM_SYNC_ENDPOINT")
+		if endpoint == "" {
+			slog.Warn("CKM sync enabled but endpoint is empty, falling back to legacy sync")
+		} else {
+			postUrl = strings.TrimRight(endpoint, "/") + "/" + path
+			payload := map[string]string{}
+			for key, values := range urlvalues {
+				if len(values) > 0 {
+					payload[key] = values[0]
+				}
 			}
+			client := helper.RetryHttpClient()
+			req := client.R().SetBody(payload)
+			if token := os.Getenv("CKM_SYNC_TOKEN"); token != "" {
+				req.SetHeader("X-W7Panel-CKM-Sync-Token", token)
+			}
+			resp, err := req.Post(postUrl)
+			if err != nil {
+				return err
+			}
+			if resp.StatusCode() != 200 {
+				return fmt.Errorf("sync error, status code: %d: %s", resp.StatusCode(), resp.String())
+			}
+			return nil
 		}
-		client := helper.RetryHttpClient()
-		req := client.R().SetBody(payload)
-		if token := os.Getenv("CKM_SYNC_TOKEN"); token != "" {
-			req.SetHeader("X-W7Panel-CKM-Sync-Token", token)
-		}
-		resp, err := req.Post(postUrl)
-		if err != nil {
-			return err
-		}
-		if resp.StatusCode() != 200 {
-			return fmt.Errorf("sync error, status code: %d: %s", resp.StatusCode(), resp.String())
-		}
-		return nil
 	}
 	client := helper.RetryHttpClient()
 	resp, err := client.R().SetFormDataFromValues(urlvalues).Post(postUrl)
