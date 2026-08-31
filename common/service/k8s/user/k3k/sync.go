@@ -202,6 +202,7 @@ func SyncIngress(params *K3kSync) error {
 				slog.Error("delete ingress error", "err", err)
 				return err
 			}
+			_ = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Delete(root.Ctx, helper.SafeConcatName(63, hostIngressName+"-https"), metav1.DeleteOptions{})
 		}
 		slog.Error("get virtual ingress error", "err", err)
 		return err
@@ -278,26 +279,6 @@ func SyncIngress(params *K3kSync) error {
 
 		}
 	}
-	if !sslEnabled && len(ingress.Spec.Rules) > 1 {
-		filtered := ingress.Spec.Rules[:0]
-		for _, rule := range ingress.Spec.Rules {
-			onlyTLS := true
-			if rule.HTTP == nil || len(rule.HTTP.Paths) == 0 {
-				onlyTLS = false
-			}
-			if onlyTLS {
-				for _, p := range rule.HTTP.Paths {
-					if p.Backend.Service == nil || p.Backend.Service.Port.Number != 443 {
-						onlyTLS = false
-					}
-				}
-			}
-			if !onlyTLS {
-				filtered = append(filtered, rule)
-			}
-		}
-		ingress.Spec.Rules = filtered
-	}
 	for _, secretName := range secretNames {
 		_, err = clientsdk.ClientSet.CoreV1().Secrets(params.VirtualNamespace).Get(root.Ctx, secretName, metav1.GetOptions{})
 		if err != nil {
@@ -329,23 +310,38 @@ func SyncIngress(params *K3kSync) error {
 			continue
 		}
 	}
-	// ingress.Spec.Rules
-	_, err = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Get(root.Ctx, hostIngressName, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			_, err = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Create(root.Ctx, ingress, metav1.CreateOptions{})
-			if err != nil {
-				slog.Warn("create ingress error", "err", err)
-				return err
-			}
-			return nil
+	upsert := func(obj *networkingv1.Ingress, name string) error {
+		obj.Name = name
+		current, e := root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Get(root.Ctx, name, metav1.GetOptions{})
+		if errors.IsNotFound(e) {
+			_, e = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Create(root.Ctx, obj, metav1.CreateOptions{})
+			return e
 		}
+		if e != nil {
+			return e
+		}
+		obj.ResourceVersion = current.ResourceVersion
+		_, e = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Update(root.Ctx, obj, metav1.UpdateOptions{})
+		return e
+	}
+	httpIngress := ingress.DeepCopy()
+	httpIngress.Spec.TLS = nil
+	delete(httpIngress.Annotations, "nginx.ingress.kubernetes.io/ssl-passthrough")
+	if len(httpIngress.Spec.Rules) > 1 {
+		httpIngress.Spec.Rules = httpIngress.Spec.Rules[:1]
+	}
+	if err = upsert(httpIngress, hostIngressName); err != nil {
 		return err
 	}
-	_, err = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Update(root.Ctx, ingress, metav1.UpdateOptions{})
-	if err != nil {
-		slog.Warn("update ingress error", "err", err)
-		return err
+	if sslEnabled {
+		httpsIngress := ingress.DeepCopy()
+		httpsName := helper.SafeConcatName(63, hostIngressName+"-https")
+		if len(httpsIngress.Spec.Rules) > 1 {
+			httpsIngress.Spec.Rules = httpsIngress.Spec.Rules[1:2]
+		}
+		if err = upsert(httpsIngress, httpsName); err != nil {
+			return err
+		}
 	}
 	return nil
 }
