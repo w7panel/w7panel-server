@@ -4,6 +4,7 @@
 
 - 新增 `CKM_SYNC_ENABLED` 开关：设置为 `true` 时使用 CKM 内部同步接口，否则继续使用旧 Server 同步方式；CKM endpoint 缺失时自动回退旧方式。
 - CKM 同步客户端兼容 `CKM_SYNC_PORT` 配置，默认端口由 CKM Agent 注入为 `8001`。
+- 修复 CKM 同步接口路径重复 `sync-` 前缀导致 404：客户端现在将 `sync-ingress` 等旧路径正确映射为 CKM 的 `ingress`、`configmap` 等接口。
 - K3K Ingress 同步时按 TLS 状态补充同一 Ingress 的 443 Rule，并为主集群 HTTPS Ingress 设置 SSL Passthrough；非 HTTPS 仅清理重复的 443 Rule，保留多 Host 配置。
 
 ## 2026-08-26

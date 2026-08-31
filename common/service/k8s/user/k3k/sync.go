@@ -142,7 +142,8 @@ func SyncHttp(obj SyncObjectInterface, path string) error {
 		if endpoint == "" {
 			slog.Warn("CKM sync enabled but endpoint is empty, falling back to legacy sync")
 		} else {
-			postUrl = strings.TrimRight(endpoint, "/") + "/" + path
+			ckmPath := strings.TrimPrefix(path, "sync-")
+			postUrl = strings.TrimRight(endpoint, "/") + "/" + ckmPath
 			payload := map[string]string{}
 			for key, values := range urlvalues {
 				if len(values) > 0 {
