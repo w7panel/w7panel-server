@@ -59,3 +59,6 @@ build.sh
 /skills-lock.json
 .go-build-cache
 .go-build-cache/** 
+.w7-go-cache/**
+.w7-go-modcache/**
+.w7-go-tmp/**
