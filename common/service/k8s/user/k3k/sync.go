@@ -202,7 +202,6 @@ func SyncIngress(params *K3kSync) error {
 				slog.Error("delete ingress error", "err", err)
 				return err
 			}
-			_ = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Delete(root.Ctx, getHttpsIngressName(hostIngressName), metav1.DeleteOptions{})
 		}
 		slog.Error("get virtual ingress error", "err", err)
 		return err
@@ -310,44 +309,16 @@ func SyncIngress(params *K3kSync) error {
 			continue
 		}
 	}
-	upsert := func(obj *networkingv1.Ingress, name string) error {
-		obj.Name = name
-		current, e := root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Get(root.Ctx, name, metav1.GetOptions{})
-		if errors.IsNotFound(e) {
-			_, e = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Create(root.Ctx, obj, metav1.CreateOptions{})
-			return e
-		}
-		if e != nil {
-			return e
-		}
-		obj.ResourceVersion = current.ResourceVersion
-		_, e = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Update(root.Ctx, obj, metav1.UpdateOptions{})
-		return e
+	_, err = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Get(root.Ctx, hostIngressName, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		_, err = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Create(root.Ctx, ingress, metav1.CreateOptions{})
+	} else if err == nil {
+		_, err = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Update(root.Ctx, ingress, metav1.UpdateOptions{})
 	}
-	httpIngress := ingress.DeepCopy()
-	httpIngress.Spec.TLS = nil
-	delete(httpIngress.Annotations, "nginx.ingress.kubernetes.io/ssl-passthrough")
-	if len(httpIngress.Spec.Rules) > 1 {
-		httpIngress.Spec.Rules = httpIngress.Spec.Rules[:1]
-	}
-	if err = upsert(httpIngress, hostIngressName); err != nil {
+	if err != nil {
 		return err
 	}
-	if sslEnabled {
-		httpsIngress := ingress.DeepCopy()
-		httpsName := getHttpsIngressName(hostIngressName)
-		if len(httpsIngress.Spec.Rules) > 1 {
-			httpsIngress.Spec.Rules = httpsIngress.Spec.Rules[1:2]
-		}
-		if err = upsert(httpsIngress, httpsName); err != nil {
-			return err
-		}
-	}
 	return nil
-}
-
-func getHttpsIngressName(base string) string {
-	return helper.SafeConcatName(63, base, "https")
 }
 
 func SyncIngressHttp(ingress *networkingv1.Ingress) error {

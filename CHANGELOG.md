@@ -2,6 +2,7 @@
 
 ## 2026-08-31
 
+- K3K Ingress 同步恢复为单个 Ingress 对应单个 Host，80/443 规则继续写入同一对象。
 - K3K Ingress 同步改为分别创建 80 与 443 两个 Ingress，HTTPS 使用 `-https` 后缀并限制名称不超过 63 字符。
 - 新增 `CKM_SYNC_ENABLED` 开关：设置为 `true` 时使用 CKM 内部同步接口，否则继续使用旧 Server 同步方式；CKM endpoint 缺失时自动回退旧方式。
 - CKM 同步客户端兼容 `CKM_SYNC_PORT` 配置，默认端口由 CKM Agent 注入为 `8001`。
