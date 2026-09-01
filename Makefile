@@ -18,6 +18,7 @@ LOCAL_GO_TMP ?= $(CURDIR)/.w7-go-tmp
 GO_TOOLCHAIN_ROOT ?= /home/afan/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.0.linux-amd64
 GO_BIN ?= $(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT)/bin/go,go)
 DOCKER_RUN_ARGS ?=
+W7PANEL_AUTH_MODE ?= panel
 
 .PHONY: help frontend image ko-build docker-run local-run
 
@@ -68,6 +69,7 @@ docker-run:
 		-p "$(HOST_PORT):$(CONTAINER_PORT)" \
 		-e "KUBECONFIG=/root/.kube/config" \
 		-e "OIDC_ISSUER=$(OIDC_ISSUER)" \
+		-e "W7PANEL_AUTH_MODE=$(W7PANEL_AUTH_MODE)" \
 		-e "W7PANEL_HTTP_SERVER_PORT=$(CONTAINER_PORT)" \
 		-v "$(KUBECONFIG_FILE):/root/.kube/config:ro" \
 		$(DOCKER_RUN_ARGS) \
