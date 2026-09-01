@@ -2,6 +2,7 @@
 
 ## 2026-08-31
 
+- 本地 `make docker-run` 默认设置 `W7PANEL_AUTH_MODE=panel`，登录后的面板 Token 可直接访问 `/k8s-proxy`；生产运行模式默认值不变。
 - K3K Ingress 同步改为分别创建 80 与 443 两个 Ingress，HTTPS 使用 `-https` 后缀并限制名称不超过 63 字符。
 - 新增 `CKM_SYNC_ENABLED` 开关：设置为 `true` 时使用 CKM 内部同步接口，否则继续使用旧 Server 同步方式；CKM endpoint 缺失时自动回退旧方式。
 - CKM 同步客户端兼容 `CKM_SYNC_PORT` 配置，默认端口由 CKM Agent 注入为 `8001`。
@@ -163,3 +164,8 @@
 # 变更
 
 - K3K 子集群资源同步客户端支持直接调用 CKM 控制器内部同步 API；配置 `CKM_SYNC_ENDPOINT` 后使用专用 Header Token，旧 Server 同步地址保留兼容。
+
+## 2026-09-01
+
+- 修正 `static_path` 配置层级，使容器模式正确读取 `app.static_path` 并提供首页及静态资源，影响 HTTP 静态路由。
+- 验证：确认现有容器根路径及 `/assets` 的 500 均由该配置缺失触发；检查配置层级及 `git diff --check` 通过。需重新构建镜像后生效。
