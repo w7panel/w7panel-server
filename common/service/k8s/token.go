@@ -209,7 +209,7 @@ func (t *K8sToken) IsK3kCluster() bool {
 	if err != nil {
 		return false
 	}
-	return len(s) >= 7 && s[3] != ""
+	return len(s) == 7 && s[3] != ""
 }
 
 func (t *K8sToken) GetCvmName() string {
@@ -217,7 +217,7 @@ func (t *K8sToken) GetCvmName() string {
 	if err != nil {
 		return ""
 	}
-	if len(s) >= 4 {
+	if len(s) == 7 {
 		return s[3]
 	}
 	return ""

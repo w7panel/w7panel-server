@@ -173,3 +173,9 @@
 
 - 修正 `static_path` 配置层级，使容器模式正确读取 `app.static_path` 并提供首页及静态资源，影响 HTTP 静态路由。
 - 验证：确认现有容器根路径及 `/assets` 的 500 均由该配置缺失触发；检查配置层级及 `git diff --check` 通过。需重新构建镜像后生效。
+
+## 2026-09-02
+
+- 恢复 K3K Token audience 的 `dev-v1` 登录判定：仅识别登录签发的七项 audience，并仅在该结构下读取 CVM 名称。
+- 影响模块：`common/service/k8s` Token 解析与 K3K 集群识别。
+- 验证：新增 audience 结构回归测试。
