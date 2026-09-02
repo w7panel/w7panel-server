@@ -25,6 +25,7 @@ spec:
     higress-core.controller.resources.limits.cpu: 0
     higress-core.controller.resources.limits.memory: 0
     higress-core.pilot.replicaCount: 1
+    higress-core.pilot.env.PILOT_ENABLE_ALPHA_GATEWAY_API: "true"
     higress-core.pilot.resources.requests.cpu: 0
     higress-core.pilot.resources.requests.memory: 0
     higress-core.downstream.connectionBufferLimits: 3276800

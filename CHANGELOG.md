@@ -1,5 +1,7 @@
 # CHANGELOG
 
+- Higress 升级至 2.2.3，启用 Gateway API Alpha 支持并安装 Gateway API CRD/全局 Gateway。
+
 ## 2026-08-31
 
 - 本地 `make docker-run` 默认设置 `W7PANEL_AUTH_MODE=panel`，登录后的面板 Token 可直接访问 `/k8s-proxy`；生产运行模式默认值不变。

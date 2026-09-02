@@ -36,10 +36,12 @@ EOF
 
 
 echo "更新higress"
-helm upgrade higress $KO_DATA_PATH/charts/higress-2.1.6.tgz \
+echo "安装 Gateway API CRD"
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml
+helm upgrade higress $KO_DATA_PATH/charts/higress-2.2.3.tgz \
      --namespace higress-system \
      --create-namespace \
-     --version v2.1.6 \
+     --version v2.2.3 \
      --set global.ingressClass=higress \
      --set higress-core.gateway.replicas=1 \
      --set higress-core.gateway.resources.limits.cpu=0 \
@@ -52,11 +54,14 @@ helm upgrade higress $KO_DATA_PATH/charts/higress-2.1.6.tgz \
      --set higress-core.controller.resources.limits.cpu=0 \
      --set higress-core.controller.resources.limits.memory=0 \
      --set higress-core.pilot.replicaCount=1 \
+     --set higress-core.pilot.env.PILOT_ENABLE_ALPHA_GATEWAY_API=true \
      --set higress-core.pilot.resources.requests.cpu=0 \
      --set higress-core.pilot.resources.requests.memory=0 \
      --set higress-console.replicaCount=0 \
      --set higress-console.resources.requests.cpu=0 \
      --set higress-console.resources.requests.memory=0 --install
+
+kubectl apply -f "$KO_DATA_PATH/yaml/higress-gateway.yaml"
 
 echo "更新cert-manager"
 helm get notes cert-manager -n cert-manager || helm upgrade cert-manager $KO_DATA_PATH/charts/cert-manager-v1.19.2.tgz \
