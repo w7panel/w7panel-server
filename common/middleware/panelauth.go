@@ -92,7 +92,14 @@ func panelToken(req *http.Request) string {
 }
 
 func requiresLegacyK8sCredential(path string) bool {
-	return path != "/panel-api/v1/auth/k8s-credentials/token" &&
-		!strings.HasPrefix(path, "/panel-api/v1/oidc/") &&
-		!strings.HasPrefix(path, "/panel-api/v1/noauth/")
+	if path == "/panel-api/v1/auth/k8s-credentials/token" || strings.HasPrefix(path, "/panel-api/v1/noauth/") {
+		return false
+	}
+	// These compatibility endpoints consume ctx["k8s_token"] in their
+	// controllers, so they must receive a server-minted Kubernetes credential.
+	if path == "/panel-api/v1/oidc/js-code" || path == "/panel-api/v1/oidc/redirect-uri" {
+		return true
+	}
+	// OIDC protocol endpoints authenticate through the OIDC server itself.
+	return !strings.HasPrefix(path, "/panel-api/v1/oidc/")
 }

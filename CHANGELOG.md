@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-09-02
+
+- 修复面板认证模式下 `/panel-api/v1/oidc/js-code` 和 `redirect-uri` 缺少内部 Kubernetes 凭据导致 500 的问题。
+- 面板登录及 API Token 的 audience 改为与 `dev-v1` 一致的 7 项 audience tuple；解析时校验固定 Kubernetes/K3S audience，携带 K3K Token 转换凭据时保留其 CVM 名称。验证：运行相关 Go 单元测试。
+
 - Higress 升级至 2.2.3，启用 Gateway API Alpha 支持并安装 Gateway API CRD/全局 Gateway。
 
 ## 2026-08-31

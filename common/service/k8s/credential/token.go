@@ -21,20 +21,21 @@ func IssueForPrincipal(ctx context.Context, username, permissionName string, ttl
 // IssueForPrincipalFromToken preserves the CKM audience tuple when replacing
 // an existing K3K credential with a short-lived ServiceAccount token.
 func IssueForPrincipalFromToken(ctx context.Context, username, permissionName, sourceToken string, ttl time.Duration) (string, int64, error) {
-	if strings.TrimSpace(sourceToken) == "" {
-		return IssueForPrincipal(ctx, username, permissionName, ttl)
-	}
 	sdk := k8s.NewK8sClient().Sdk
 	user, err := userservice.Get(ctx, sdk, username)
 	if err != nil {
 		return "", 0, err
 	}
-	ktoken := k8s.NewK8sToken(sourceToken)
-	if !ktoken.IsK3kCluster() {
-		return IssueForPrincipal(ctx, username, permissionName, ttl)
-	}
 	k3kUser := k3ktypes.NewK3kUser(user.ToTyped())
-	return IssueForPrincipalWithAudiences(ctx, username, permissionName, ttl, k3kUser.GetTokenAud(ktoken.GetCvmName()))
+	// Keep the audience tuple used by dev-v1 for every panel-to-Kubernetes
+	// conversion. When the caller supplies an existing K3K token, preserve its
+	// CVM name; otherwise the tuple contains an empty CVM slot, matching the
+	// legacy host-cluster login token shape.
+	cvmName := ""
+	if strings.TrimSpace(sourceToken) != "" {
+		cvmName = k8s.NewK8sToken(sourceToken).GetCvmName()
+	}
+	return IssueForPrincipalWithAudiences(ctx, username, permissionName, ttl, k3kUser.GetTokenAud(cvmName))
 }
 
 // IssueForPrincipalWithAudiences creates a short-lived ServiceAccount token

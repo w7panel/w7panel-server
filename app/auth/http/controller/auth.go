@@ -208,13 +208,13 @@ func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Contex
 	if role == "" {
 		role = u.Spec.UserMode
 	}
-	_, err := k3k.RefreshK3kUser(k3ktypes.NewK3kUser(u.ToTyped()), sdk, true)
+	k3kUser, err := k3k.RefreshK3kUser(k3ktypes.NewK3kUser(u.ToTyped()), sdk, true)
 	if err != nil {
 		auditservice.RecordLoginFailure(http, u.Name, loginMethod, err)
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	token, err := panelauth.Issue(panelauth.Principal{Username: u.Name, PermissionName: u.Spec.PermissionName, Role: role, TokenUse: panelauth.TokenUsePanel}, time.Duration(seconds)*time.Second)
+	token, err := panelauth.Issue(panelauth.Principal{Username: u.Name, PermissionName: u.Spec.PermissionName, Role: role, ConsoleID: k3kUser.GetConsoleId(), CVMName: ckmName, K3KNamespace: k3kUser.GetK3kNamespace(), TokenUse: panelauth.TokenUsePanel}, time.Duration(seconds)*time.Second)
 	if err != nil {
 		auditservice.RecordLoginFailure(http, u.Name, loginMethod, err)
 		self.JsonResponseWithError(http, err, 500)

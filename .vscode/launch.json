@@ -35,6 +35,7 @@
                 "K3S_REGISTRY_ENABLED": "true",
                 "BUILDIMGAGE_ENABLED": "true",
                 "MOCK_LONGHORN_LOCK" : "false",
+                "W7PANEL_AUTH_MODE": "panel",
                 // "SITE_ENABLED" : "true",
                 // "KUBECONFIG": "/home/workspace/k8s-offline/k3k-k8-k8-kubeconfig.yaml"
             },

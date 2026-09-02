@@ -25,6 +25,9 @@ type Claims struct {
 	PermissionName string `json:"permissionName"`
 	Role           string `json:"role"`
 	TokenUse       string `json:"tokenUse"`
+	ConsoleID      string `json:"consoleId,omitempty"`
+	CVMName        string `json:"cvmName,omitempty"`
+	K3KNamespace   string `json:"k3kNamespace,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -33,6 +36,13 @@ type Principal struct {
 	PermissionName string
 	Role           string
 	TokenUse       string
+	ConsoleID      string
+	CVMName        string
+	K3KNamespace   string
+}
+
+func audience(p Principal) []string {
+	return []string{p.Username, p.Role, p.ConsoleID, p.CVMName, p.K3KNamespace, "https://kubernetes.default.svc.cluster.local", "k3s"}
 }
 
 func Issue(principal Principal, ttl time.Duration) (string, error) {
@@ -48,10 +58,13 @@ func Issue(principal Principal, ttl time.Duration) (string, error) {
 		PermissionName: principal.PermissionName,
 		Role:           principal.Role,
 		TokenUse:       principal.TokenUse,
+		ConsoleID:      principal.ConsoleID,
+		CVMName:        principal.CVMName,
+		K3KNamespace:   principal.K3KNamespace,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    Issuer,
 			Subject:   principal.Username,
-			Audience:  []string{"panel-api"},
+			Audience:  audience(principal),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 		},
@@ -66,14 +79,17 @@ func Parse(raw string) (*Principal, error) {
 			return nil, ErrInvalidToken
 		}
 		return signingKey(), nil
-	}, jwt.WithIssuer(Issuer), jwt.WithAudience("panel-api"))
+	}, jwt.WithIssuer(Issuer))
 	if err != nil || token == nil || !token.Valid || claims.Subject == "" || claims.Subject != claims.Username {
+		return nil, ErrInvalidToken
+	}
+	if len(claims.Audience) != 7 || claims.Audience[0] != claims.Username || claims.Audience[5] != "https://kubernetes.default.svc.cluster.local" || claims.Audience[6] != "k3s" {
 		return nil, ErrInvalidToken
 	}
 	if claims.TokenUse != TokenUsePanel && claims.TokenUse != TokenUseExternalAPI {
 		return nil, ErrInvalidToken
 	}
-	return &Principal{Username: claims.Username, PermissionName: claims.PermissionName, Role: claims.Role, TokenUse: claims.TokenUse}, nil
+	return &Principal{Username: claims.Username, PermissionName: claims.PermissionName, Role: claims.Role, TokenUse: claims.TokenUse, ConsoleID: claims.ConsoleID, CVMName: claims.CVMName, K3KNamespace: claims.K3KNamespace}, nil
 }
 
 func signingKey() []byte {
