@@ -96,21 +96,11 @@ kubectl apply -f $KO_DATA_PATH/yaml/longhorn/default-data-locality.yaml || echo 
 
 
 echo "higress config"
-echo "安装 Gateway API CRD"
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml
-kubectl apply -f "$KO_DATA_PATH/yaml/higress-gateway.yaml"
+# echo "安装 Gateway API CRD"
+# kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml
+# kubectl apply -f "$KO_DATA_PATH/yaml/higress-gateway.yaml"
 # higress 可能未启动成功 导致crd未创建 job设置重试3次
 kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
-
-echo "安装/升级制品版域名和限流插件"
-# helm upgrade --namespace "${NAMESPACE:-default}" w7panel-pluginwhitedomain $KO_DATA_PATH/charts/w7panel-pluginwhitedomain --install --timeout 600s
-helm upgrade --namespace "${NAMESPACE:-default}" w7panel-pluginratelimit $KO_DATA_PATH/charts/w7panel-pluginratelimit --install --timeout 600s
-DOMAIN_TARGET_GROUP=w7panel-pluginwhitedomain \
-RATE_LIMIT_TARGET_GROUP=w7panel-pluginratelimit \
-TARGET_WAIT_SECONDS=600 \
-DELETE_LEGACY=true \
-sh $KO_DATA_PATH/shell/upgrade-wasm-plugins.sh all
-
 
 
 # kubectl create secret generic k3k.addon --from-file=manifests.yaml=$KO_DATA_PATH/yaml/k3k/k3k.addon.yaml --dry-run=client -o yaml | kubectl apply -f - || echo "已存在k3k.addon"
@@ -162,8 +152,6 @@ w7panel domain-config
 echo "longhorn 升级到面板中"
 w7panel longhornupgrade
 
-echo "安装/升级cloudnoauth"
-helm upgrade --namespace "${NAMESPACE:-default}" w7panel-cloudnoauth $KO_DATA_PATH/charts/w7panel-cloudnoauth --install --timeout 600s
 # echo "安装/升级higress"
 # helm upgrade --namespace "${NAMESPACE:-default}" w7panel-higress $KO_DATA_PATH/charts/w7panel-higress --install --timeout 600s
 

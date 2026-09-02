@@ -5,11 +5,13 @@
 ## 2026-08-31
 
 - 本地 `make docker-run` 默认设置 `W7PANEL_AUTH_MODE=panel`，登录后的面板 Token 可直接访问 `/k8s-proxy`；生产运行模式默认值不变。
+- K3K Ingress 同步恢复为单个 Ingress 对应单个 Host，80/443 规则继续写入同一对象。
 - K3K Ingress 同步改为分别创建 80 与 443 两个 Ingress，HTTPS 使用 `-https` 后缀并限制名称不超过 63 字符。
 - 新增 `CKM_SYNC_ENABLED` 开关：设置为 `true` 时使用 CKM 内部同步接口，否则继续使用旧 Server 同步方式；CKM endpoint 缺失时自动回退旧方式。
 - CKM 同步客户端兼容 `CKM_SYNC_PORT` 配置，默认端口由 CKM Agent 注入为 `8001`。
 - 修复 CKM 同步接口路径重复 `sync-` 前缀导致 404：客户端现在将 `sync-ingress` 等旧路径正确映射为 CKM 的 `ingress`、`configmap` 等接口。
 - K3K Ingress 同步时按 TLS 状态补充同一 Ingress 的 443 Rule，并为主集群 HTTPS Ingress 设置 SSL Passthrough；非 HTTPS 仅清理重复的 443 Rule，保留多 Host 配置。
+- 修复长名称 HTTPS Ingress 后缀被截断导致 80/443 同名覆盖，改用带哈希的稳定名称。
 
 ## 2026-08-28
 
