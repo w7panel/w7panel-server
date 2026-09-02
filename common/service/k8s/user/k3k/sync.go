@@ -135,6 +135,37 @@ func SyncHttp(obj SyncObjectInterface, path string) error {
 	if helper.IsLocalMock() {
 		postUrl = "http://172.16.1.162:9090/panel-api/v1/k3k/sync-ingress"
 	}
+	// CKM_SYNC_ENABLED explicitly selects the CKM internal sync API. When it
+	// is disabled or CKM_SYNC_ENDPOINT is unavailable, retain the legacy
+	// Server sync path for backwards compatibility.
+	if strings.EqualFold(os.Getenv("CKM_SYNC_ENABLED"), "true") {
+		endpoint := os.Getenv("CKM_SYNC_ENDPOINT")
+		if endpoint == "" {
+			slog.Warn("CKM sync enabled but endpoint is empty, falling back to legacy sync")
+		} else {
+			ckmPath := strings.TrimPrefix(path, "sync-")
+			postUrl = strings.TrimRight(endpoint, "/") + "/" + ckmPath
+			payload := map[string]string{}
+			for key, values := range urlvalues {
+				if len(values) > 0 {
+					payload[key] = values[0]
+				}
+			}
+			client := helper.RetryHttpClient()
+			req := client.R().SetBody(payload)
+			if token := os.Getenv("CKM_SYNC_TOKEN"); token != "" {
+				req.SetHeader("X-W7Panel-CKM-Sync-Token", token)
+			}
+			resp, err := req.Post(postUrl)
+			if err != nil {
+				return err
+			}
+			if resp.StatusCode() != 200 {
+				return fmt.Errorf("sync error, status code: %d: %s", resp.StatusCode(), resp.String())
+			}
+			return nil
+		}
+	}
 
 	client := helper.RetryHttpClient()
 	resp, err := client.R().SetFormDataFromValues(urlvalues).Post(postUrl)
