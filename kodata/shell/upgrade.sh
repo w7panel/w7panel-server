@@ -98,8 +98,9 @@ kubectl apply -f $KO_DATA_PATH/yaml/longhorn/default-data-locality.yaml || echo 
 echo "higress config"
 # higress 可能未启动成功 导致crd未创建 job设置重试3次
 kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
-#kubectl apply -f https://gh-proxy.org/https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/experimental-install.yaml --server-side
-#kubectl apply -f https://gh-proxy.org/https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/standdard-install.yaml --server-side
+kubectl apply -f https://gh-proxy.org/https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/experimental-install.yaml --server-side
+kubectl apply -f https://gh-proxy.org/https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/standdard-install.yaml --server-side
+kubectl apply -f $KO_DATA_PATH/yaml/higress/gateway.yaml --server-side || echo "已存在higress gateway"
 
 # kubectl create secret generic k3k.addon --from-file=manifests.yaml=$KO_DATA_PATH/yaml/k3k/k3k.addon.yaml --dry-run=client -o yaml | kubectl apply -f - || echo "已存在k3k.addon"
 
