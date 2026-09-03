@@ -14,6 +14,7 @@ spec:
     higress-core.gateway.service.loadBalancerClass: "io.cilium/node"
     global.ingressClass: "higress"
     global.onlyPushRouteCluster: "false"
+    global.enableGatewayAPI: "true"
     higress-core.gateway.replicas: 1
     higress-core.gateway.resources.limits.cpu: 0
     higress-core.gateway.resources.limits.memory: 0
