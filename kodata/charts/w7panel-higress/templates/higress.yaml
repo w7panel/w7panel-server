@@ -15,6 +15,7 @@ spec:
     global.ingressClass: "higress"
     global.onlyPushRouteCluster: "false"
     global.enableGatewayAPI: "true"
+    global.enableAlphaGatewayAPI: "true"
     higress-core.gateway.replicas: 1
     higress-core.gateway.resources.limits.cpu: 0
     higress-core.gateway.resources.limits.memory: 0
