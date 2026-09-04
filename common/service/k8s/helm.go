@@ -180,6 +180,7 @@ func (self *Helm) Upgrade(context context.Context, chart *chart.Chart, vals map[
 	action.Atomic = self.atomic
 	action.Timeout = time.Duration(300 * time.Second)
 	action.Labels = labels
+	action.MaxHistory = 3
 	result, err := action.RunWithContext(context, releaseName, chart, vals)
 	if err != nil {
 		return nil, err
