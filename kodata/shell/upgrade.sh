@@ -102,6 +102,30 @@ kubectl apply -f https://gh-proxy.org/https://github.com/kubernetes-sigs/gateway
 kubectl apply -f https://gh-proxy.org/https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/standdard-install.yaml --server-side
 kubectl apply -f $KO_DATA_PATH/yaml/higress/gateway.yaml --server-side || echo "已存在higress gateway"
 
+# Higress controller 需要管理 Gateway API 实验资源；HelmChart 异步创建角色，角色不存在时跳过本次升级
+if kubectl get clusterrole higress-controller-higress-system >/dev/null 2>&1; then
+  kubectl auth reconcile -f - <<'EOF'
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: higress-controller-higress-system
+rules:
+  - apiGroups:
+      - gateway.networking.x-k8s.io
+    resources:
+      - xbackendtrafficpolicies
+      - xmeshes
+    verbs:
+      - get
+      - watch
+      - list
+      - update
+      - patch
+      - create
+      - delete
+EOF
+fi
+
 # kubectl create secret generic k3k.addon --from-file=manifests.yaml=$KO_DATA_PATH/yaml/k3k/k3k.addon.yaml --dry-run=client -o yaml | kubectl apply -f - || echo "已存在k3k.addon"
 
 # kubectl apply -f $KO_DATA_PATH/yaml/k3k/virtualclusterpolicy.yaml

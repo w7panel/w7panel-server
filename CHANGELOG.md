@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-09-04
+
+- 升级脚本为 `higress-controller-higress-system` ClusterRole 补充 Gateway API 实验资源 `xbackendtrafficpolicies` 与 `xmeshes` 的完整管理权限。
+- 影响模块：Higress 升级与 RBAC 配置。
+- 验证：`sh -n kodata/shell/upgrade.sh` 与 `git diff --check`（环境未安装 ShellCheck）。
+
 ## 2026-08-31
 
 - K3K Ingress 同步恢复为单个 Ingress 对应单个 Host，80/443 规则继续写入同一对象。
