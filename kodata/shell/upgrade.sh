@@ -98,8 +98,8 @@ kubectl apply -f $KO_DATA_PATH/yaml/longhorn/default-data-locality.yaml || echo 
 echo "higress config"
 # higress 可能未启动成功 导致crd未创建 job设置重试3次
 kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
-kubectl apply -f https://gh-proxy.org/https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/experimental-install.yaml --server-side
-kubectl apply -f https://gh-proxy.org/https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/standdard-install.yaml --server-side
+kubectl apply -f $KO_DATA_PATH/yaml/higress/v1.5.0/experimental-install.yaml --server-side
+kubectl apply -f $KO_DATA_PATH/yaml/higress/v1.5.0/standdard-install.yaml --server-side
 kubectl apply -f $KO_DATA_PATH/yaml/higress/gateway.yaml --server-side || echo "已存在higress gateway"
 
 # Higress controller 需要管理 Gateway API 实验资源；HelmChart 异步创建角色，角色不存在时跳过本次升级
