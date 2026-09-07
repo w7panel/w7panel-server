@@ -1,16 +1,10 @@
 # CHANGELOG
 
-## 2026-09-07
-
-- ZPK 配置接口直接下发规范化后的启动参数及其 `dependencySource`；`PVC_NAME` 的依赖标记在公式参数规范化时保留为隐藏、锁定参数，供安装页解析。
-- 影响模块：ZPK 配置读取和启动参数转换。
-- 验证：新增普通参数与 `PVC_NAME` 依赖信息透传单测。
-
 ## 2026-09-04
 
-- ZPK 安装兼容 `PVC_NAME` 启动参数：加载制品配置时自动启用 `requirepvc`，并移除该内部标记参数，保留旧制品的 `requirepvc` 行为。
-- 影响模块：ZPK 制品安装配置。
-- 验证：新增 PVC 启动参数归一化单测。
+- 升级脚本为 `higress-controller-higress-system` ClusterRole 补充 Gateway API 实验资源 `xbackendtrafficpolicies` 与 `xmeshes` 的完整管理权限。
+- 影响模块：Higress 升级与 RBAC 配置。
+- 验证：`sh -n kodata/shell/upgrade.sh` 与 `git diff --check`（环境未安装 ShellCheck）。
 
 ## 2026-08-31
 
@@ -167,3 +161,9 @@
 # 变更
 
 - K3K 子集群资源同步客户端支持直接调用 CKM 控制器内部同步 API；配置 `CKM_SYNC_ENDPOINT` 后使用专用 Header Token，旧 Server 同步地址保留兼容。
+
+# 2026-09-07
+- 移除云端集群注册 HTTP 接口、CLI 命令、专用客户端及普通用户注册权限，保留账号绑定、授权和历史集群配置。
+- Helm 安装 Job 改用 `auth:register`，仅在启用且用户名、密码齐备时初始化本地用户；清理云端注册参数，同时去掉用户初始化日志中的密码。
+- 更新权限回归测试，验证账号绑定接口保留、集群注册接口不再授权；删除会实际向云端注册集群的旧测试。
+- 验证：认证与控制台模块 Go 编译、权限和配置定向测试、Helm lint 及四种初始化配置渲染通过。

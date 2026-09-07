@@ -135,8 +135,9 @@ func SyncHttp(obj SyncObjectInterface, path string) error {
 	if helper.IsLocalMock() {
 		postUrl = "http://172.16.1.162:9090/panel-api/v1/k3k/sync-ingress"
 	}
-	// New CKM deployments expose an internal sync API on the CKM controller
-	// service. Keep the legacy Server endpoint as a fallback for old agents.
+	// CKM_SYNC_ENABLED explicitly selects the CKM internal sync API. When it
+	// is disabled or CKM_SYNC_ENDPOINT is unavailable, retain the legacy
+	// Server sync path for backwards compatibility.
 	if strings.EqualFold(os.Getenv("CKM_SYNC_ENABLED"), "true") {
 		endpoint := os.Getenv("CKM_SYNC_ENDPOINT")
 		if endpoint == "" {
@@ -165,6 +166,7 @@ func SyncHttp(obj SyncObjectInterface, path string) error {
 			return nil
 		}
 	}
+
 	client := helper.RetryHttpClient()
 	resp, err := client.R().SetFormDataFromValues(urlvalues).Post(postUrl)
 	if err != nil {
@@ -208,24 +210,6 @@ func SyncIngress(params *K3kSync) error {
 	}
 	ingress = ingress.DeepCopy()
 	trans.TranslateTo(ingress)
-	sslEnabled := len(ingress.Spec.TLS) > 0 || ingress.Annotations["cert-manager.io/cluster-issuer"] != ""
-	if ingress.Annotations == nil {
-		ingress.Annotations = map[string]string{}
-	}
-	if sslEnabled {
-		ingress.Annotations["nginx.ingress.kubernetes.io/ssl-passthrough"] = "true"
-	} else {
-		delete(ingress.Annotations, "nginx.ingress.kubernetes.io/ssl-passthrough")
-	}
-	if sslEnabled && len(ingress.Spec.Rules) == 1 {
-		rule := *ingress.Spec.Rules[0].DeepCopy()
-		for i := range rule.HTTP.Paths {
-			if rule.HTTP.Paths[i].Backend.Service != nil {
-				rule.HTTP.Paths[i].Backend.Service.Port.Number = 443
-			}
-		}
-		ingress.Spec.Rules = append(ingress.Spec.Rules, rule)
-	}
 	ingress.Annotations["kubernetes.io/ingress.class"] = "higress"
 	if params.K3kMode == "virtual" {
 		newAnnations := make(map[string]string)
@@ -235,7 +219,6 @@ func SyncIngress(params *K3kSync) error {
 				k == "higress.io/resource-definer" ||
 				// k == "cert-manager.io/renew-before" ||
 				k == "higress.io/ssl-redirect" ||
-				k == "nginx.ingress.kubernetes.io/ssl-passthrough" ||
 				k == "w7.cc/ssl-redirect" || k == "w7.cc/filecache" || k == "k3k.io/name" || k == "k3k.io/namespace" {
 				newAnnations[k] = v
 			}
@@ -263,9 +246,6 @@ func SyncIngress(params *K3kSync) error {
 				rules[k].HTTP.Paths[k1].Backend.Service.Name = k3kConfig.GetVirtualIngressServiceName()
 				rules[k].HTTP.Paths[k1].Backend.Service.Port = networkingv1.ServiceBackendPort{
 					Number: 80,
-				}
-				if sslEnabled && k > 0 {
-					rules[k].HTTP.Paths[k1].Backend.Service.Port.Number = 443
 				}
 				continue
 			}
@@ -309,13 +289,22 @@ func SyncIngress(params *K3kSync) error {
 			continue
 		}
 	}
+	// ingress.Spec.Rules
 	_, err = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Get(root.Ctx, hostIngressName, metav1.GetOptions{})
-	if errors.IsNotFound(err) {
-		_, err = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Create(root.Ctx, ingress, metav1.CreateOptions{})
-	} else if err == nil {
-		_, err = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Update(root.Ctx, ingress, metav1.UpdateOptions{})
-	}
 	if err != nil {
+		if errors.IsNotFound(err) {
+			_, err = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Create(root.Ctx, ingress, metav1.CreateOptions{})
+			if err != nil {
+				slog.Warn("create ingress error", "err", err)
+				return err
+			}
+			return nil
+		}
+		return err
+	}
+	_, err = root.ClientSet.NetworkingV1().Ingresses(params.K3kNamespace).Update(root.Ctx, ingress, metav1.UpdateOptions{})
+	if err != nil {
+		slog.Warn("update ingress error", "err", err)
 		return err
 	}
 	return nil

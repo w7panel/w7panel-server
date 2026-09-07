@@ -130,7 +130,7 @@ func (self *repo) SetReinstall(reinstall bool) {
 }
 
 func (self *repo) getConsoleUrl() string {
-	return self.baseConsoleUrl + "config?url=" + self.repoUrl
+	return self.baseConsoleUrl + "config2?url=" + self.repoUrl
 }
 
 func (self *repo) loadPackageFromConsole() (*types.ManifestPackage, error) {
@@ -184,12 +184,12 @@ func (self *repo) loadPackageByHelmMemory(uri string) (*types.ManifestPackage, e
 	return p, nil
 }
 
-func (self *repo) PreInstall(clusterId string) (*console.PreInstall, error) {
+func (self *repo) PreInstall() (*console.PreInstall, error) {
 	if !self.IsConsole {
 		return nil, errors.New("not console url")
 	}
 	consoleClient := console.NewConsoleCdClient(self.token)
-	return consoleClient.PreInstall(self.repoUrl, clusterId)
+	return consoleClient.PreInstall(self.repoUrl)
 
 }
 
