@@ -44,6 +44,7 @@ func (e *RemoteHTTPError) Error() string { return string(e.Body) }
 const (
 	ArtifactInstallConflictDomainMismatch    = "domain_mismatch"
 	ArtifactInstallConflictAppIdentifyExists = "app_identify_exists"
+	pvcNameStartParamName                    = "PVC_NAME"
 )
 
 type ArtifactInstallConflictError struct {
@@ -142,7 +143,7 @@ func (self *repo) SetReinstall(reinstall bool) {
 }
 
 func (self *repo) getConsoleUrl() string {
-	return self.baseConsoleUrl + "config?url=" + self.repoUrl
+	return self.baseConsoleUrl + "config2?url=" + self.repoUrl
 }
 
 func (self *repo) loadPackageFromConsole(ctx context.Context) (*types.ManifestPackage, error) {
@@ -200,12 +201,12 @@ func (self *repo) loadPackageByHelmMemory(uri string) (*types.ManifestPackage, e
 	return p, nil
 }
 
-func (self *repo) PreInstall(clusterId string) (*console.PreInstall, error) {
+func (self *repo) PreInstall() (*console.PreInstall, error) {
 	if !self.IsConsole {
 		return nil, errors.New("not console url")
 	}
 	consoleClient := console.NewConsoleCdClient(self.token)
-	return consoleClient.PreInstall(self.repoUrl, clusterId)
+	return consoleClient.PreInstall(self.repoUrl)
 
 }
 
@@ -350,12 +351,13 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 	p.Children = make(map[string]*types.ManifestPackage)
 	// LoadDependsByPackage 接口权限问题 改为使用InstallFormulas 全部返回 所以需要mock 子应用manifest
 	for _, formula := range p.InstallFormulas {
+		requirePvc, startParams := normalizeInstallFormulaStartParams(formula)
 		if formula.Name == p.Manifest.Application.Identifie {
 			p.Manifest.Application.Identifie = formula.Name
 			p.Manifest.Application.Name = formula.Title
 			p.RequireInstall = formula.Required
-			p.Manifest.Platform.Container.RequirePvc = formula.RequirePvc
-			p.Manifest.Platform.Container.StartParams = formula.StartParams
+			p.Manifest.Platform.Container.RequirePvc = requirePvc
+			p.Manifest.Platform.Container.StartParams = startParams
 			p.Manifest.Platform.Container.Volumes = formula.Volumes
 			continue
 		}
@@ -367,14 +369,36 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 		copyPkg.Manifest.Application.Identifie = formula.Name
 		copyPkg.Manifest.Application.Name = formula.Title
 		copyPkg.RequireInstall = formula.Required
-		copyPkg.Manifest.Platform.Container.RequirePvc = formula.RequirePvc
-		copyPkg.Manifest.Platform.Container.StartParams = formula.StartParams
+		copyPkg.Manifest.Platform.Container.RequirePvc = requirePvc
+		copyPkg.Manifest.Platform.Container.StartParams = startParams
 		copyPkg.Manifest.Platform.Container.Volumes = formula.Volumes
 
 		p.Children[formula.Name] = copyPkg
 	}
 
 	return p, nil
+}
+
+// normalizeInstallFormulaStartParams keeps requirepvc compatible with older
+// artifacts while allowing newer ZPKs to declare PVC usage with a PVC_NAME
+// start parameter. PVC_NAME is an installation selector; only its dependency
+// marker is retained for the installation form and remains hidden from users.
+func normalizeInstallFormulaStartParams(formula types.InstallFormula) (bool, []types.StartParams) {
+	requirePvc := formula.RequirePvc
+	startParams := make([]types.StartParams, 0, len(formula.StartParams))
+	for _, param := range formula.StartParams {
+		if strings.EqualFold(strings.TrimSpace(param.Name), pvcNameStartParamName) {
+			requirePvc = true
+			if param.DependencySource != nil {
+				param.Hidden = true
+				param.Lock = true
+				startParams = append(startParams, param)
+			}
+			continue
+		}
+		startParams = append(startParams, param)
+	}
+	return requirePvc, startParams
 }
 
 func (self repo) LoadDependsByPackage(ctx context.Context, p *types.ManifestPackage) error {

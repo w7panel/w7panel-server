@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2026-09-04
+
+- 升级脚本为 `higress-controller-higress-system` ClusterRole 补充 Gateway API 实验资源 `xbackendtrafficpolicies` 与 `xmeshes` 的完整管理权限。
+- 影响模块：Higress 升级与 RBAC 配置。
+- 验证：`sh -n kodata/shell/upgrade.sh` 与 `git diff --check`（环境未安装 ShellCheck）。
+
+## 2026-08-31
+
+- K3K Ingress 同步恢复为单个 Ingress 对应单个 Host，80/443 规则继续写入同一对象。
+- K3K Ingress 同步改为分别创建 80 与 443 两个 Ingress，HTTPS 使用 `-https` 后缀并限制名称不超过 63 字符。
+- 新增 `CKM_SYNC_ENABLED` 开关：设置为 `true` 时使用 CKM 内部同步接口，否则继续使用旧 Server 同步方式；CKM endpoint 缺失时自动回退旧方式。
+- CKM 同步客户端兼容 `CKM_SYNC_PORT` 配置，默认端口由 CKM Agent 注入为 `8001`。
+- 修复 CKM 同步接口路径重复 `sync-` 前缀导致 404：客户端现在将 `sync-ingress` 等旧路径正确映射为 CKM 的 `ingress`、`configmap` 等接口。
+- K3K Ingress 同步时按 TLS 状态补充同一 Ingress 的 443 Rule，并为主集群 HTTPS Ingress 设置 SSL Passthrough；非 HTTPS 仅清理重复的 443 Rule，保留多 Host 配置。
+- 修复长名称 HTTPS Ingress 后缀被截断导致 80/443 同名覆盖，改用带哈希的稳定名称。
+
 ## 2026-08-26
 
 - K3k Agent 升级脚本新增 `default-volume` PVC 检查，不存在时才创建，避免重复创建产生无效错误。
@@ -12,9 +28,6 @@
 - 影响模块：普通用户权限配置、权限匹配测试。
 - 验证：定向权限测试与 `git diff --check`。
 
-## 2026-08-17
-
-- 应用详情页打开已安装制品时，回源校验制品试用权益；试用到期返回 `ZPK_TRIAL_EXPIRED`，面板提示续费。
 ## 2026-08-25
 
 - 修复 Console ZPK Helm 应用卸载：非 `default` 命名空间的删除中 AppGroup 会进入清理协调；Helm release 卸载失败时保留 finalizer 并持续限速重试，避免应用记录删除后遗留 Helm 资源。
@@ -118,14 +131,6 @@
 - 删除 AppGroup 外部服务字段及其 ZPK 响应映射、安装转换、生成客户端和测试代码，服务中心入口统一由 MicroApp Binding 提供。
 - 影响模块：AppGroup CRD、ZPK 安装与 ManifestPackage、Kubernetes 生成代码、后端文档。
 - 验证：`go build ./...`、AppGroup 生成客户端相关包测试及 `TestSyncAppGroupZpkURL` 通过。
-## 2026-08-05（BootstrapInstallation）
-
-- 移除无实际协调作用的 `BootstrapInstallation.spec.revision`，Operation ID 改为基于资源 UID 稳定生成。
-- 为内置 BootstrapInstallation 增加专用标签，并在升级脚本中通过标签和资源类型 allowlist 安全清理已从清单移除的声明。
-- 影响模块：BootstrapInstallation API、CRD、内置清单、升级脚本、测试与开发文档。
-- 验证：API/CRD/内置清单回归测试、Bootstrap 核心测试（排除工作区中既有的未完成 Token 测试）、升级脚本语法检查及两套 Helm Chart lint 均通过；完整 Bootstrap 包测试仍被既有 `clusterTokenFromRESTConfig` 缺失阻断。
-- 修复 Longhorn PVC 扩容完成后删除临时 ticket 导致卷未重新绑定的问题；恢复原 CSI attachment ticket，并等待关联 Pod 重启就绪后再标记成功。
-- 验证：定向 Go 测试和后端构建通过，`data-test-postgresql-0` 完成在线扩容并恢复 CSI 绑定，关联 Pod 重建后正常运行。
 
 ## 2026-08-06
 
@@ -150,69 +155,15 @@
 - 控制台每次 OAuth 登录同步 User CRD 的 `spec.cloud` 用户信息及兼容字段，并保留 User 元数据。
 - 影响模块：控制台认证、User CRD。
 - 验证：运行 User 服务定向 Go 测试。
+# 2026-08-26
+- 修正 MicroApp 两个 API Group 的 CRD 定义，明确 `spec.bindings` 使用 atomic 列表语义，避免 Helm/Server-Side Apply 更新时残留旧绑定项。
+- 在 `MicroAppSpec.Bindings` Go 类型声明中补充 `+listType=atomic`，确保重新生成 `w7panel.w7.com` CRD 时保留该替换语义。
+# 变更
 
-## 2026-08-11（BootstrapInstallation 更新）
+- K3K 子集群资源同步客户端支持直接调用 CKM 控制器内部同步 API；配置 `CKM_SYNC_ENDPOINT` 后使用专用 Header Token，旧 Server 同步地址保留兼容。
 
-- 使用 `metadata.generation` 与新增的 `status.observedGeneration` 协调更新：Generation 变化时直接按 `spec.artifact.version` 请求固定版本或 `latest`，不再读取 AppGroup 版本比较。
-- 新增 `spec.revision` 手动触发器，可在制品版本不变时通过修改 revision 再次更新；更新过程复用安装并发槽、超时和重试策略，仅允许更新当前 BootstrapInstallation UID 所有的 AppGroup。
-- 影响模块：BootstrapInstallation Controller、ZPK 执行器、API/CRD、测试和使用文档。
-- 验证：Bootstrap Controller 定向测试通过，覆盖 Generation 去重、Generation 变化直接更新、`latest` 更新及完成状态收口场景。
-
-## 2026-08-11（BootstrapInstallation 版本检测更新）
-
-- 将更新触发方式调整为周期查询 ZPK `check_upgrade` 接口并比较 AppGroup 当前版本，移除 `spec.revision`；空版本或 `latest` 自动跟踪更高版本，固定版本在不一致时执行更新或回退。
-- Ready 状态每 10 分钟检查一次，检测失败 1 分钟后重试；更新仍复用并发槽、超时和重试策略，并按检测到的目标版本区分执行与重试周期。
-- 影响模块：BootstrapInstallation Controller、ZPK 执行器、API/CRD、测试和使用文档。
-- 验证：BootstrapInstallation API/CRD 测试通过；Controller 定向测试覆盖周期检测、同版本去重、固定版本与最新版更新，完整包测试仍受工作区既有未完成的 `clusterTokenFromRESTConfig` 测试阻断。
-
-## 2026-08-11（BootstrapInstallation 状态精简）
-
-- 移除 `status.observedGeneration`、`status.operationGeneration` 和 `status.operationVersion`，更新完成判断改为使用执行阶段及 AppGroup 实际状态，ZPK 执行 ID 直接结合制品实际版本生成。
-- 更新重试达到上限后按版本检测周期冷却，再开启新的重试周期，无需在资源状态中持久化 Generation 或目标版本。
-- 影响模块：BootstrapInstallation Controller、API/CRD、测试和使用文档。
-- 验证：运行 Bootstrap Controller 与 BootstrapInstallation API/CRD 定向测试。
-
-## 2026-08-11（BootstrapInstallation 更新检查触发）
-
-- 取消 Ready 状态的定期版本轮询；仅在资源创建、spec 变更、Controller 启动扫描等实际协调事件发生时查询 ZPK 版本，无更新后不再主动入队。
-- ZPK 查询失败仍保留 1 分钟错误重试，已达到更新重试上限的资源不安排周期任务。
-- 影响模块：BootstrapInstallation Controller、测试和使用文档。
-- 验证：运行 Bootstrap Controller 定向测试，覆盖协调时检查和无更新不重排队。
-
-## 2026-08-11（BootstrapInstallation ZPK 查询参数）
-
-- 根据 ZPK 服务端当前实现移除无效的 `check_upgrade` 请求参数，版本查询仅使用实际生效的 `is_upgrade=1` 和 `cur_version`，并继续比较接口返回版本。
-- 影响模块：BootstrapInstallation ZPK 执行器、测试和使用文档。
-- 验证：ZPK HTTP 模拟测试覆盖无 `check_upgrade` 参数及有效升级参数。
-
-## 2026-08-11（BootstrapInstallation 固定版本预检）
-
-- 固定 `spec.artifact.version` 在请求 ZPK 前先与 AppGroup 已安装版本比较；版本一致时直接结束，只有不一致时才查询并加载指定制品。
-- 空版本和 `latest` 仍请求 ZPK 以获取远端可用版本。
-- 影响模块：BootstrapInstallation ZPK 执行器、测试和使用文档。
-- 验证：HTTP 模拟测试覆盖语义版本相同场景不产生 ZPK 请求。
-
-## 2026-08-11（BootstrapInstallation 版本职责拆分）
-
-- 将固定版本是否需要查询的判断从 ZPK installer 移至通用版本模型，并由 Controller 在调用 installer 前决策；installer 仅负责 ZPK 请求、解析与执行。
-- 影响模块：BootstrapInstallation Controller、版本模型、ZPK 执行器和测试。
-- 验证：通用版本策略表驱动测试及 Controller 同版本不调用 installer 测试通过。
-
-## 2026-08-11（BootstrapInstallation 候选制品解析）
-
-- 进一步将远端候选版本比较移出 ZPK installer：installer 只解析并返回候选制品，Controller 使用通用版本模型决定升级、回退或忽略。
-- 影响模块：BootstrapInstallation Controller、版本模型、ZPK 执行器和测试。
-- 验证：候选制品 HTTP 测试和升级决策表驱动测试通过。
-
-## 2026-08-12（工作负载根 CA 多运行时兼容）
-
-- 扩展 `w7.cc/inject-root-ca` Webhook 注入，为 curl、Python requests、Node.js、Git、AWS SDK/CLI 和 gRPC 补充各自的 CA 环境变量，PHP 容器内 curl 无需修改代码即可信任集群自建 CA。
-- 保留 OpenSSL 系统证书目录及用户显式配置的 `SSL_CERT_DIR`，并继续覆盖注解工作负载已有的 CA 文件变量，避免使用旧证书路径。
-- 影响模块：Kubernetes Pod Admission Webhook、根 CA 注入测试及后端使用说明。
-- 验证：`go test ./common/service/k8s/webhook` 通过。
-
-## 2026-08-25（依赖启动参数透传）
-
-- ZPK 制品依赖增加 `startParams` 透传字段，使传统应用指定的环境版本可以随依赖安装配置返回。
-- 影响模块：ZPK Manifest 解析与安装配置。
-- 验证：依赖字段格式检查通过；完整 logic 包测试受工作区既有 `repo_domain_test.go` 参数签名过期阻断。
+# 2026-09-07
+- 移除云端集群注册 HTTP 接口、CLI 命令、专用客户端及普通用户注册权限，保留账号绑定、授权和历史集群配置。
+- Helm 安装 Job 改用 `auth:register`，仅在启用且用户名、密码齐备时初始化本地用户；清理云端注册参数，同时去掉用户初始化日志中的密码。
+- 更新权限回归测试，验证账号绑定接口保留、集群注册接口不再授权；删除会实际向云端注册集群的旧测试。
+- 验证：认证与控制台模块 Go 编译、权限和配置定向测试、Helm lint 及四种初始化配置渲染通过。

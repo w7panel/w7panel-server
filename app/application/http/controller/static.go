@@ -42,9 +42,9 @@ func (self Static) StaticInfo(http *gin.Context) {
 	zpkUrl := ""
 	ticket := ""
 	proxyUrl := "/ui/microapp/" + identifie + "/" + version + "/index.html"
-	if releaseName != "" && releaseName != "default" {
-		sdk := k8s.NewK8sClient().Sdk
-		group, err := appgroup.GetAppgroupUseSdk(releaseName, "default", sdk)
+	if releaseName != "" && releaseName != "default" && client != nil {
+		// sdk := k8s.NewK8sClient().Channel()
+		group, err := appgroup.GetAppgroupUseSdk(releaseName, "default", client)
 		if err == nil {
 			// 保留完整地址供制品 info 请求使用，不能丢弃订单等查询参数。
 			respoUrl = group.Spec.ZpkUrl
