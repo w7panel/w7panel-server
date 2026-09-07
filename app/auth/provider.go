@@ -16,7 +16,6 @@ type Provider struct {
 
 func (p Provider) Register(httpServer *httpserver.Server, console console.Console) {
 	console.RegisterCommand(new(app.Register))
-	console.RegisterCommand(new(app.Cluster))
 	console.RegisterCommand(new(app.Site))
 	console.RegisterCommand(new(app.SiteZpkHttp))
 	console.RegisterCommand(new(app.SiteZpk))
@@ -78,7 +77,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 				})
 			})
 
-			localApiGroup.POST("/console/register-to-console", middleware.Auth{}.Process, controller2.Console{}.RegisterToConsole) //不能proxy 需要root kubeconfig
 			//不能proxy 需要root kubeconfig
 			localApiGroup.POST("/console/import-cert", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.ImportCert)
 			localApiGroup.POST("/console/verify-cert", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.VerifyCert)

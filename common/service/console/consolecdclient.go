@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
-	"time"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/w7panel/w7panel/common/helper"
@@ -76,7 +75,6 @@ var (
 	ConsoleCDPanelResourceApiSdk       = consoleApi + "/api/thirdparty-cd/sdk/k8s-offline/panel/resource"
 	ConsoleCDPanelOpenidConvertApi     = consoleApi + "/api/thirdparty-cd/k8s-offline/openid-to-cd-token"
 	ConsoleCDPanelOpenidConvertPassApi = consoleApi + "/api/thirdparty-cd/k8s-offline/openid-to-pass-access-token" //passport token
-	ClusterApi                         = ConsoleCDBaseApi + "/cluster/"
 	ConsoleApiAccessTokenToCDToken     = consoleApi + "/register"
 	ConfigSercret                      = "w7-config"
 	AccessToken                        = "AccessToken" //oauth token
@@ -96,7 +94,6 @@ func SetConsoleApi(api string) {
 	ConsoleCDPanelResourceApiSdk = consoleApi + "/api/thirdparty-cd/sdk/k8s-offline/panel/resource"
 	ConsoleCDPanelOpenidConvertApi = consoleApi + "/api/thirdparty-cd/k8s-offline/openid-to-cd-token"              // 转换openid到cd token接口
 	ConsoleCDPanelOpenidConvertPassApi = consoleApi + "/api/thirdparty-cd/k8s-offline/openid-to-pass-access-token" //passport token
-	ClusterApi = ConsoleCDBaseApi + "/cluster/"
 	ConsoleApiAccessTokenToCDToken = consoleApi + "/register"
 	ConfigSercret = "w7-config"
 	AccessToken = "AccessToken" //oauth token
@@ -105,12 +102,6 @@ func SetConsoleApi(api string) {
 type ConsoleCdClient struct {
 	token  string
 	client *resty.Client
-}
-
-type Cluster struct {
-	Name      string `json:"name"`
-	Id        int    `json:"id"`
-	Namespace string `json:"namespace"`
 }
 
 type CDToken struct {
@@ -129,79 +120,6 @@ func (c *ConsoleCdClient) SetToken(token string) {
 	c.token = token
 	// c.client.AddHeader("Authorization", "Bearer "+token)
 }
-func (c *ConsoleCdClient) GetCluster(id string) (*Cluster, error) {
-	cluster := &Cluster{}
-	_, err := c.client.R().SetAuthToken(c.token).SetResult(cluster).Get(ClusterApi + "/" + id)
-	if err != nil {
-		return nil, err
-	}
-	if (cluster.Id == 0) && (cluster.Name == "") {
-		return nil, errors.New("集群不存在")
-	}
-	return cluster, nil
-}
-
-func (c *ConsoleCdClient) CreateCluster(kubeconfig []byte, offlineUrl string, isK3k bool, k3kUserName string) (*Cluster, error) {
-	cluster := &Cluster{}
-	isK3kStr := "0"
-	if isK3k {
-		isK3kStr = "1"
-	}
-	urlvalues := url.Values{}
-	urlvalues.Add("kube_config", string(kubeconfig))
-	urlvalues.Add("title", "离线版"+time.Now().Format("2006-01-02"))
-	urlvalues.Add("is_offline", "1")
-	urlvalues.Add("offline_url", offlineUrl)
-	urlvalues.Add("is_k3k", isK3kStr)
-	urlvalues.Add("k3k_username", k3kUserName)
-	response, err := c.client.R().SetAuthToken(c.token).SetFormDataFromValues(urlvalues).SetResult(cluster).Post(ClusterApi)
-
-	if err != nil {
-		return nil, err
-	}
-	if response.StatusCode() >= 299 {
-		slog.Warn("创建集群失败", "kubeconfig", kubeconfig, "err", err)
-		return nil, errors.New("创建集群失败" + response.String())
-	}
-	return cluster, nil
-}
-func (c *ConsoleCdClient) DeleteCluster(id string) error {
-	_, err := c.client.R().SetAuthToken(c.token).Delete(ClusterApi + id)
-	return err
-}
-
-func (c *ConsoleCdClient) UpdateCluster(kubeconfig []byte, id string, offlineUrl string) (*Cluster, error) {
-	cluster := &Cluster{}
-	urlvalues := url.Values{}
-	urlvalues.Add("kube_config", string(kubeconfig))
-	urlvalues.Add("title", "离线版"+time.Now().Format("2006-01-02"))
-	urlvalues.Add("offline_url", offlineUrl)
-	updateUrl := ClusterApi + id
-	response, err := c.client.R().SetAuthToken(c.token).SetFormDataFromValues(urlvalues).SetResult(cluster).Put(updateUrl)
-	if err != nil {
-		return nil, err
-	}
-	if response.StatusCode() > 299 {
-		return nil, errors.New("更新集群失败" + updateUrl)
-	}
-	slog.Info("更新集群" + response.String())
-	return cluster, err
-}
-
-func (c *ConsoleCdClient) CreateOrUpdateCluster(kubeconfig []byte, id string, offlineUrl string, isK3k bool, k3kUserName string) (*Cluster, error) {
-
-	if id != "" && id != "0" {
-		_, err := c.GetCluster(id)
-		if err != nil {
-			slog.Error("获取集群失败", "err", err)
-			return c.CreateCluster(kubeconfig, offlineUrl, isK3k, k3kUserName)
-		}
-		return c.UpdateCluster(kubeconfig, id, offlineUrl)
-	}
-
-	return c.CreateCluster(kubeconfig, offlineUrl, isK3k, k3kUserName)
-}
-
 func (c *ConsoleCdClient) CreateSite(domainUrl string, releaseName string) (*AppSecret, error) {
 	secret := &AppSecret{}
 	consoleErr := &ConsoleError{}
@@ -405,8 +323,6 @@ func OpenIdToCdToken(openId string) (*ThirdPartyCDToken, error) {
 	}
 	return result, nil
 }
-
-
 
 func VerifyCert(cert *x509.Certificate) (*CertVerify, error) {
 

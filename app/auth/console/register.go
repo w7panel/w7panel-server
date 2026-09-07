@@ -50,7 +50,7 @@ func (c Register) Handle(cmd *cobra.Command, args []string) {
 	if ro.Namespace == "" {
 		ro.Namespace = k8sAuth.GetNamespace()
 	}
-	slog.Info("register", "username", ro.Username, "password", ro.Password)
+	slog.Info("register", "username", ro.Username)
 	err := k8sAuth.Register(ro.Username, ro.Password, ro.Namespace, ro.RoleName, ro.IsClusterRole, ro.UserMode)
 	if err != nil {
 		slog.Error("err register", "err", err)

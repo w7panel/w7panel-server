@@ -86,12 +86,8 @@ servicelb:
   type: LoadBalancer
 
 register:
-  create: true
-  apiServerUrl: ""
-  thirdPartyCDToken: ""
   username: "admin"
   password: ""
-  offlineUrl: ""
   consoleBaseUrl: "https://console.w7.cc"
   userAgent: ""
   needInitUser: false # 是否需要初始化用户 需要就创建configmap
@@ -252,4 +248,3 @@ cronjob:
   volumes: []
   volumeMounts: []
   annotations: {}
-
