@@ -27,6 +27,10 @@ func (PanelAuth) Process(ctx *gin.Context) {
 	}
 
 	sdk := k8s.NewK8sClient().Sdk
+	if principal.TokenUse == panelauth.TokenUseCKMPanel {
+		processCKMPanel(ctx, *principal)
+		return
+	}
 	var permissionName = principal.PermissionName
 	if principal.TokenUse == panelauth.TokenUseExternalAPI {
 		permissionName = permissionservice.APIPermissionName
@@ -76,6 +80,13 @@ func SetPanelSession(ctx *gin.Context, token string, maxAge int) {
 }
 
 func panelToken(req *http.Request) string {
+	if strings.EqualFold(req.Header.Get("Upgrade"), "websocket") {
+		for _, protocol := range strings.Split(req.Header.Get("Sec-WebSocket-Protocol"), ",") {
+			if raw, ok := strings.CutPrefix(strings.TrimSpace(protocol), "w7panel-bearer."); ok {
+				return raw
+			}
+		}
+	}
 	if panelTokenHeaderEnabled() {
 		if token := strings.TrimSpace(req.Header.Get("X-W7Panel-Token")); token != "" {
 			return token
@@ -92,6 +103,9 @@ func panelToken(req *http.Request) string {
 }
 
 func requiresLegacyK8sCredential(path string) bool {
+	if path == "/panel-api/v1/auth/ckm-session" {
+		return false
+	}
 	if path == "/panel-api/v1/auth/k8s-credentials/token" || strings.HasPrefix(path, "/panel-api/v1/noauth/") {
 		return false
 	}

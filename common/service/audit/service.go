@@ -94,20 +94,23 @@ func RecordOperation(ctx *gin.Context, start time.Time) {
 	}
 	status := ctx.Writer.Status()
 	log := OperationLog{
-		Time:       start,
-		AuditType:  TypeOperation,
-		Tenant:     user.Tenant,
-		Username:   user.Username,
-		UserMode:   user.UserMode,
-		Method:     ctx.Request.Method,
-		Path:       ctx.Request.URL.Path,
-		Route:      ctx.FullPath(),
-		Params:     sanitizeParams(ctx.Params),
-		StatusCode: status,
-		Success:    status < 400,
-		DurationMs: time.Since(start).Milliseconds(),
-		IP:         clientIP(ctx),
-		UserAgent:  ctx.Request.UserAgent(),
+		Actor:        ctx.GetString("actor"),
+		CKMName:      ctx.GetString("ckm_name"),
+		CKMNamespace: ctx.GetString("ckm_namespace"),
+		Time:         start,
+		AuditType:    TypeOperation,
+		Tenant:       user.Tenant,
+		Username:     user.Username,
+		UserMode:     user.UserMode,
+		Method:       ctx.Request.Method,
+		Path:         ctx.Request.URL.Path,
+		Route:        ctx.FullPath(),
+		Params:       sanitizeParams(ctx.Params),
+		StatusCode:   status,
+		Success:      status < 400,
+		DurationMs:   time.Since(start).Milliseconds(),
+		IP:           clientIP(ctx),
+		UserAgent:    ctx.Request.UserAgent(),
 	}
 	go safeWriteOperation(log)
 }

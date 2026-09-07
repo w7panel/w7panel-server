@@ -26,6 +26,10 @@ type Auth struct {
 }
 
 func (self Auth) Process(ctx *gin.Context) {
+	if strings.HasPrefix(ctx.Request.URL.Path, "/panel-api/") && helper.IsChildAgent() && ckmAuthMode() == K8sAuthMode {
+		processChildPanel(ctx)
+		return
+	}
 	// /panel-api authenticates a panel principal. Kubernetes credentials are
 	// intentionally accepted only at /k8s-proxy.
 	if strings.HasPrefix(ctx.Request.URL.Path, "/panel-api/") {

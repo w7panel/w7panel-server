@@ -9,6 +9,10 @@ spec:
         -
             method:
                 - create
+            path: /panel-api/v1/auth/ckm-session
+        -
+            method:
+                - create
             path: /panel-api/v1/auth/k8s-credentials/token
         -
             method:

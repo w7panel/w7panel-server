@@ -179,7 +179,6 @@
 
 - K3K 子集群资源同步客户端支持直接调用 CKM 控制器内部同步 API；配置 `CKM_SYNC_ENDPOINT` 后使用专用 Header Token，旧 Server 同步地址保留兼容。
 
-<<<<<<< HEAD
 ## 2026-09-01
 
 - 修正 `static_path` 配置层级，使容器模式正确读取 `app.static_path` 并提供首页及静态资源，影响 HTTP 静态路由。
@@ -190,10 +189,15 @@
 - 恢复 K3K Token audience 的 `dev-v1` 登录判定：仅识别登录签发的七项 audience，并仅在该结构下读取 CVM 名称。
 - 影响模块：`common/service/k8s` Token 解析与 K3K 集群识别。
 - 验证：新增 audience 结构回归测试。
-=======
 # 2026-09-07
 - 移除云端集群注册 HTTP 接口、CLI 命令、专用客户端及普通用户注册权限，保留账号绑定、授权和历史集群配置。
 - Helm 安装 Job 改用 `auth:register`，仅在启用且用户名、密码齐备时初始化本地用户；清理云端注册参数，同时去掉用户初始化日志中的密码。
 - 更新权限回归测试，验证账号绑定接口保留、集群注册接口不再授权；删除会实际向云端注册集群的旧测试。
 - 验证：认证与控制台模块 Go 编译、权限和配置定向测试、Helm lint 及四种初始化配置渲染通过。
->>>>>>> dev-v1
+
+## 2026-09-07
+
+- 新增 `/panel-api/v1/auth/ckm-session`，将经过 TokenReview 和 CKM 访问校验的登录凭据交换为 normal 权限子面板会话，绑定操作者、目标及 UID，禁止目标替换、主集群 local 访问和嵌套会话签发。
+- 子会话 Kubernetes 凭据由服务端按签名目标生成；集群业务请求转发对应 agent。child agent 使用严格 TokenReview 校验本集群执行账号，主面板仍拒绝 Kubernetes token 登录。
+- 补充子面板用户信息、操作者/目标审计字段和终端 WebSocket 子协议认证，不覆盖主面板 Cookie。
+- 验证：会话签发/解析、凭据身份与期限、目标加载、越权拒绝和 WebSocket 认证定向测试通过；相关控制器编译通过。未部署或对真实集群执行变更。

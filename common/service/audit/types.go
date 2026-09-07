@@ -31,20 +31,23 @@ type LoginLog struct {
 }
 
 type OperationLog struct {
-	Time       time.Time `json:"time"`
-	AuditType  string    `json:"audit_type"`
-	Tenant     string    `json:"tenant"`
-	Username   string    `json:"username"`
-	UserMode   string    `json:"user_mode"`
-	Method     string    `json:"method"`
-	Path       string    `json:"path"`
-	Route      string    `json:"route"`
-	Params     string    `json:"params,omitempty"`
-	StatusCode int       `json:"status_code"`
-	Success    bool      `json:"success"`
-	DurationMs int64     `json:"duration_ms"`
-	IP         string    `json:"ip"`
-	UserAgent  string    `json:"user_agent"`
+	Actor        string    `json:"actor,omitempty"`
+	CKMName      string    `json:"ckm_name,omitempty"`
+	CKMNamespace string    `json:"ckm_namespace,omitempty"`
+	Time         time.Time `json:"time"`
+	AuditType    string    `json:"audit_type"`
+	Tenant       string    `json:"tenant"`
+	Username     string    `json:"username"`
+	UserMode     string    `json:"user_mode"`
+	Method       string    `json:"method"`
+	Path         string    `json:"path"`
+	Route        string    `json:"route"`
+	Params       string    `json:"params,omitempty"`
+	StatusCode   int       `json:"status_code"`
+	Success      bool      `json:"success"`
+	DurationMs   int64     `json:"duration_ms"`
+	IP           string    `json:"ip"`
+	UserAgent    string    `json:"user_agent"`
 }
 
 type QueryParams struct {

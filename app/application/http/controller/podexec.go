@@ -29,6 +29,7 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
+	Subprotocols:    []string{"w7panel-ckm"},
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {

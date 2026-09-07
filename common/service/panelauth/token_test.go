@@ -1,9 +1,43 @@
 package panelauth
 
 import (
+	jwt "github.com/golang-jwt/jwt/v5"
 	"testing"
 	"time"
 )
+
+func TestCKMPanelScope(t *testing.T) {
+	t.Setenv("PANEL_AUTH_SIGNING_KEY", "test")
+	p := Principal{Username: "alice", Actor: "admin", CKMUID: "uid-a", CVMName: "a", K3KNamespace: "k3k-alice", Role: "normal", PermissionName: "normal", TokenUse: TokenUseCKMPanel}
+	raw, err := Issue(p, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Parse(raw)
+	if err != nil || got.Actor != "admin" || got.CKMUID != "uid-a" || got.CVMName != "a" {
+		t.Fatalf("%#v/%v", got, err)
+	}
+	for _, change := range []func(*Principal){func(p *Principal) { p.Role = "founder" }, func(p *Principal) { p.PermissionName = "founder" }, func(p *Principal) { p.Actor = "" }, func(p *Principal) { p.CKMUID = "" }, func(p *Principal) { p.K3KNamespace = "k3k-bob" }} {
+		bad := p
+		change(&bad)
+		if _, err := Issue(bad, time.Minute); err == nil {
+			t.Fatal("issued invalid scope")
+		}
+	}
+	claims := &Claims{}
+	jwt.NewParser().ParseUnverified(raw, claims)
+	claims.CVMName = "b"
+	forged, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(signingKey())
+	if _, err := Parse(forged); err == nil {
+		t.Fatal("accepted inconsistent signed target and audience")
+	}
+	claims.CVMName = "a"
+	claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(-time.Minute))
+	expired, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(signingKey())
+	if _, err := Parse(expired); err == nil {
+		t.Fatal("accepted expired CKM session")
+	}
+}
 
 func TestIssueAndParse(t *testing.T) {
 	t.Setenv("PANEL_AUTH_SIGNING_KEY", "test-signing-key")

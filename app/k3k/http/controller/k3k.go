@@ -24,7 +24,7 @@ func (self K3k) Info(http *gin.Context) {
 	// PanelAuth mints a regular Kubernetes credential for panel API handlers.
 	// It has no K3K audience tuple, so build the response from the authenticated
 	// panel principal instead of parsing the Kubernetes default audience.
-	if username := http.GetString("username"); username != "" {
+	if username := http.GetString("username"); username != "" && http.GetString("ckm_name") == "" {
 		if sdk := k8s.NewK8sClient().Sdk; sdk != nil {
 			if u, err := userservice.Get(http.Request.Context(), sdk, username); err == nil {
 				self.JsonResponseWithoutError(http, k3ktypes.NewK3kUser(u.ToTyped()).ToArray())
@@ -81,6 +81,19 @@ func (self K3k) Info(http *gin.Context) {
 		return
 	}
 	result := user.ToArray()
+	if http.GetString("ckm_name") != "" {
+		menus := make([]string, 0)
+		for _, menu := range k3ktypes.K3K_MENU_FOUNDER_RULES {
+			if menu != "zpk" && menu != "cluster/nodes" && menu != "cluster/nodes-image-list" {
+				menus = append(menus, menu)
+			}
+		}
+		encoded, _ := json.Marshal(menus)
+		result["w7.cc/menu"] = string(encoded)
+		result["w7.cc/role"] = "normal"
+		result["w7.cc/user-mode"] = "cluster"
+		result["w7.cc/username"] = http.GetString("username")
+	}
 	self.JsonResponseWithoutError(http, result)
 
 }
