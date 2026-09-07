@@ -60,7 +60,7 @@ func (self Static) StaticInfo(http *gin.Context) {
 				parsedUrl.Fragment = ""
 				zpkUrl = parsedUrl.String()
 			} else {
-				zpkUrl = respoUrl
+				zpkUrl = group.Spec.ZpkUrl
 			}
 			if group.Annotations != nil {
 				ticket = group.Annotations["w7.cc/ticket"]
