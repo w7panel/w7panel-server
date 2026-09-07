@@ -103,6 +103,7 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 - **制品订单通知** - 安装时将应用域名和规范化应用标识写入制品 ticket，并在安装完成后通过 ticket 传给市场订单链路
 - **制品安装冲突处理** - 配置读取和安装接口统一解析仓库返回的订单绑定冲突；域名冲突返回原绑定域名，应用引用冲突返回原面板地址及原应用标识，支持跳转原面板定位应用或在用户确认后以受控 `reinstall` 覆盖旧绑定；升级始终校验应用标识
 - **制品跨应用更新** - 新制品标识与原应用不同时，配置接口仍返回已有 AppGroup 名称，供安装界面读取原实例保存的参数
+- **子应用启动参数依赖** - ZPK 配置接口保留启动参数的 `dependencySource`，包括仅用于安装选择的 `PVC_NAME` 依赖标记，交由安装页解析
 - **应用资源跟踪** - AppGroup Controller 自动为已归组的 workload 补齐 `w7.cc/group-name`，由 informer 持续同步 Deployment、StatefulSet、DaemonSet 等资源状态
 - **集群管理** - 节点、资源对象管理
 - **网关插件权限** - 为创始人默认权限注册网关插件查看、新建、编辑和删除菜单权限
@@ -162,4 +163,3 @@ bash compress.sh
 - [部署文档](../docs/deployment/README.md)
 - [开发指南](../docs/development/README.md)
 - [测试文档](../docs/testing/README.md)
-
