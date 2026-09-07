@@ -415,7 +415,7 @@ func TestBuiltinFounderUsesGatewayTrafficMenu(t *testing.T) {
 	}
 }
 
-func TestBuiltinNormalPermissionHasOnlyDomainParsePermission(t *testing.T) {
+func TestBuiltinNormalPermissionAllowsAccountBindingWithoutClusterRegistration(t *testing.T) {
 	p := loadBuiltinPermission(t, "normal.yaml")
 	api := APIMap(p)
 
@@ -425,11 +425,13 @@ func TestBuiltinNormalPermissionHasOnlyDomainParsePermission(t *testing.T) {
 	if len(p.Spec.RBACRules) != 0 {
 		t.Fatalf("normal rbacRules = %v, want empty", p.Spec.RBACRules)
 	}
-	if len(api) != 1 {
-		t.Fatalf("normal apiRules = %v, want one rule", api)
-	}
 	if !MatchAPI(api, "GET", "/panel-api/v1/zpk/domain-parse") {
 		t.Fatal("normal permission should allow GET /panel-api/v1/zpk/domain-parse")
+	}
+	for _, path := range []string{"/panel-api/v1/auth/console/bind", "/panel-api/v1/auth/console/info", "/panel-api/v1/app-info"} {
+		if !MatchAPI(api, "GET", path) {
+			t.Fatalf("normal permission should allow GET %s", path)
+		}
 	}
 
 	denied := []struct {
@@ -439,7 +441,7 @@ func TestBuiltinNormalPermissionHasOnlyDomainParsePermission(t *testing.T) {
 		{method: "GET", path: "/panel-api/v1/menu"},
 		{method: "GET", path: "/panel-api/v1/auth/permissions/routes"},
 		{method: "POST", path: "/panel-api/v1/auth/reset-password-current"},
-		{method: "GET", path: "/panel-api/v1/app-info"},
+		{method: "POST", path: "/panel-api/v1/auth/console/register-to-console"},
 		{method: "GET", path: "/panel-api/v1/kubeconfig"},
 		{method: "GET", path: "/panel-api/v1/namespaces"},
 		{method: "GET", path: "/panel-api/v1/helm/releases"},
@@ -527,8 +529,8 @@ func TestBuiltinSuperPermissionExcludesTenantAndSystemManagement(t *testing.T) {
 			t.Fatalf("super permission should deny %s %s", tt.method, tt.path)
 		}
 	}
-	if !MatchAPI(api, "POST", "/panel-api/v1/auth/console/register-to-console") {
-		t.Fatal("super permission should keep cloud registration APIs")
+	if !MatchAPI(api, "GET", "/panel-api/v1/auth/console/bind") {
+		t.Fatal("super permission should keep cloud account binding APIs")
 	}
 }
 

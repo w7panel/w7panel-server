@@ -25,3 +25,18 @@ func TestRefreshUseCdToken(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestAccessTokenToCdToken(t *testing.T) {
+
+	SetConsoleApi("http://172.16.1.18:9004")
+	atoken, err := OpenIdToCloudAccessToken("N0mGBDIKIWtflauISqnHeQ")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	cdToken, err := AccessTokenToCDToken(atoken.Token)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(cdToken)
+}

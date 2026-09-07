@@ -6,6 +6,11 @@
 - 面板登录及 API Token 的 audience 改为与 `dev-v1` 一致的 7 项 audience tuple；解析时校验固定 Kubernetes/K3S audience，携带 K3K Token 转换凭据时保留其 CVM 名称。验证：运行相关 Go 单元测试。
 
 - Higress 升级至 2.2.3，启用 Gateway API Alpha 支持并安装 Gateway API CRD/全局 Gateway。
+## 2026-09-04
+
+- 升级脚本为 `higress-controller-higress-system` ClusterRole 补充 Gateway API 实验资源 `xbackendtrafficpolicies` 与 `xmeshes` 的完整管理权限。
+- 影响模块：Higress 升级与 RBAC 配置。
+- 验证：`sh -n kodata/shell/upgrade.sh` 与 `git diff --check`（环境未安装 ShellCheck）。
 
 ## 2026-08-31
 
@@ -174,6 +179,7 @@
 
 - K3K 子集群资源同步客户端支持直接调用 CKM 控制器内部同步 API；配置 `CKM_SYNC_ENDPOINT` 后使用专用 Header Token，旧 Server 同步地址保留兼容。
 
+<<<<<<< HEAD
 ## 2026-09-01
 
 - 修正 `static_path` 配置层级，使容器模式正确读取 `app.static_path` 并提供首页及静态资源，影响 HTTP 静态路由。
@@ -184,3 +190,10 @@
 - 恢复 K3K Token audience 的 `dev-v1` 登录判定：仅识别登录签发的七项 audience，并仅在该结构下读取 CVM 名称。
 - 影响模块：`common/service/k8s` Token 解析与 K3K 集群识别。
 - 验证：新增 audience 结构回归测试。
+=======
+# 2026-09-07
+- 移除云端集群注册 HTTP 接口、CLI 命令、专用客户端及普通用户注册权限，保留账号绑定、授权和历史集群配置。
+- Helm 安装 Job 改用 `auth:register`，仅在启用且用户名、密码齐备时初始化本地用户；清理云端注册参数，同时去掉用户初始化日志中的密码。
+- 更新权限回归测试，验证账号绑定接口保留、集群注册接口不再授权；删除会实际向云端注册集群的旧测试。
+- 验证：认证与控制台模块 Go 编译、权限和配置定向测试、Helm lint 及四种初始化配置渲染通过。
+>>>>>>> dev-v1

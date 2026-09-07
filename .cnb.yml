@@ -49,9 +49,9 @@ v1.1.*:
       docker:
         # 通过此参数控制使用的 Dockerfile 构建镜像必须公开
         image: ccr.ccs.tencentyun.com/afan-public/ubuntu:go-build
-        volumes: 
-          - /home/workspace/.cache:read-write
-          - /root/.cache:read-write
+        # volumes: 
+        #   - /home/workspace/.cache:read-write
+        #   - /root/.cache:read-write
       stages:
        
         - name: build-ui
