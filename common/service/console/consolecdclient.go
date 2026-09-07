@@ -137,14 +137,14 @@ func (c *ConsoleCdClient) CreateSite(domainUrl string, releaseName string) (*App
 	return secret, err
 }
 
-func (c *ConsoleCdClient) PreInstall(consoleurl string, clusterId string) (*PreInstall, error) {
+func (c *ConsoleCdClient) PreInstall(consoleurl string) (*PreInstall, error) {
 	result := &PreInstall{}
 	errorResult := &ConsoleError{}
 	urlvalues := url.Values{}
 	urlvalues.Add("url", consoleurl)
-	urlvalues.Add("cluster_id", clusterId)
+	// urlvalues.Add("cluster_id", clusterId)
 	updateUrl := ConsoleCDK8sOfflineApi + "/pre-install"
-	slog.Info("pre install", "url", updateUrl, "clusterId", clusterId)
+	// slog.Info("pre install", "url", updateUrl, "clusterId", clusterId)
 	response, err := c.client.R().SetAuthToken(c.token).SetFormDataFromValues(urlvalues).SetResult(result).SetError(errorResult).Post(updateUrl)
 	if err != nil {
 		return nil, err
