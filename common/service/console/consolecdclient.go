@@ -63,9 +63,9 @@ type GoodsProduct struct {
 
 var (
 	// ConsoleApi                     = "http://172.16.1.126:9004"
-	ConsoleCDBaseApi                   = consoleApi + "/api/thirdparty-cd"
-	ConsoleCDK8sOfflineApi             = consoleApi + "/api/thirdparty-cd/k8s-offline"
-	ConsoleCDTokenConvert              = consoleApi + "/api/thirdparty-cd/token-convert"                    // 转换token接口
+	ConsoleCDBaseApi       = consoleApi + "/api/thirdparty-cd"
+	ConsoleCDK8sOfflineApi = consoleApi + "/api/thirdparty-cd/k8s-offline"
+	// ConsoleCDTokenConvert              = consoleApi + "/api/thirdparty-cd/token-convert"                    // 转换token接口 废弃 旧版面板
 	ConsoleCDTokenRefresh              = consoleApi + "/api/thirdparty-cd/token/refresh"                    // 刷新token接口
 	ConsoleCDPanelOrderApi             = consoleApi + "/api/thirdparty-cd/k8s-offline/order"                // 站点授权订单接口
 	ConsoleCDPanelPrepareProductApi    = consoleApi + "/api/thirdparty-cd/k8s-offline/prepare"              // 站点授权准备产品接口
@@ -75,6 +75,7 @@ var (
 	ConsoleCDPanelResourceApiSdk       = consoleApi + "/api/thirdparty-cd/sdk/k8s-offline/panel/resource"
 	ConsoleCDPanelOpenidConvertApi     = consoleApi + "/api/thirdparty-cd/k8s-offline/openid-to-cd-token"
 	ConsoleCDPanelOpenidConvertPassApi = consoleApi + "/api/thirdparty-cd/k8s-offline/openid-to-pass-access-token" //passport token
+	ConsoleCDTokenConvert2             = consoleApi + "/api/thirdparty-cd/k8s-offline/access-token-to-cd-token"
 	ConsoleApiAccessTokenToCDToken     = consoleApi + "/register"
 	ConfigSercret                      = "w7-config"
 	AccessToken                        = "AccessToken" //oauth token
@@ -83,7 +84,7 @@ var (
 func SetConsoleApi(api string) {
 	consoleApi = api
 	ConsoleCDBaseApi = consoleApi + "/api/thirdparty-cd"
-	ConsoleCDTokenConvert = consoleApi + "/api/thirdparty-cd/token-convert"
+	// ConsoleCDTokenConvert = consoleApi + "/api/thirdparty-cd/token-convert"
 	ConsoleCDTokenRefresh = consoleApi + "/api/thirdparty-cd/token/refresh"
 	ConsoleCDK8sOfflineApi = consoleApi + "/api/thirdparty-cd/k8s-offline"
 	ConsoleCDPanelOrderApi = consoleApi + "/api/thirdparty-cd/k8s-offline/order"
@@ -94,6 +95,7 @@ func SetConsoleApi(api string) {
 	ConsoleCDPanelResourceApiSdk = consoleApi + "/api/thirdparty-cd/sdk/k8s-offline/panel/resource"
 	ConsoleCDPanelOpenidConvertApi = consoleApi + "/api/thirdparty-cd/k8s-offline/openid-to-cd-token"              // 转换openid到cd token接口
 	ConsoleCDPanelOpenidConvertPassApi = consoleApi + "/api/thirdparty-cd/k8s-offline/openid-to-pass-access-token" //passport token
+	ConsoleCDTokenConvert2 = consoleApi + "/api/thirdparty-cd/k8s-offline/access-token-to-cd-token"
 	ConsoleApiAccessTokenToCDToken = consoleApi + "/register"
 	ConfigSercret = "w7-config"
 	AccessToken = "AccessToken" //oauth token
@@ -126,7 +128,7 @@ func (c *ConsoleCdClient) CreateSite(domainUrl string, releaseName string) (*App
 	urlvalues := url.Values{}
 	urlvalues.Add("appName", releaseName)
 	urlvalues.Add("domain_host", domainUrl)
-	updateUrl := ConsoleCDK8sOfflineApi + "/create-site"
+	updateUrl := ConsoleCDK8sOfflineApi + "/create-site2"
 	response, err := c.client.R().SetAuthToken(c.token).SetFormDataFromValues(urlvalues).SetResult(secret).SetError(consoleErr).Post(updateUrl)
 	if err != nil {
 		return nil, err
@@ -143,7 +145,7 @@ func (c *ConsoleCdClient) PreInstall(consoleurl string) (*PreInstall, error) {
 	urlvalues := url.Values{}
 	urlvalues.Add("url", consoleurl)
 	// urlvalues.Add("cluster_id", clusterId)
-	updateUrl := ConsoleCDK8sOfflineApi + "/pre-install"
+	updateUrl := ConsoleCDK8sOfflineApi + "/pre-install2"
 	// slog.Info("pre install", "url", updateUrl, "clusterId", clusterId)
 	response, err := c.client.R().SetAuthToken(c.token).SetFormDataFromValues(urlvalues).SetResult(result).SetError(errorResult).Post(updateUrl)
 	if err != nil {
@@ -283,7 +285,7 @@ func AccessTokenToCDToken(token string) (*CDToken, error) {
 	urlvalues := url.Values{}
 	urlvalues.Add("accesstoken", token)
 	result := &CDToken{}
-	response, err := helper.RetryHttpClient().R().SetHeader("Accept", "application/json").SetQueryParamsFromValues(urlvalues).SetResult(result).Get(ConsoleCDTokenConvert)
+	response, err := helper.RetryHttpClient().R().SetHeader("Accept", "application/json").SetQueryParamsFromValues(urlvalues).SetResult(result).Get(ConsoleCDTokenConvert2)
 	if err != nil {
 		return nil, err
 	}

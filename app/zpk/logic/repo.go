@@ -129,7 +129,7 @@ func (self *repo) SetReinstall(reinstall bool) {
 }
 
 func (self *repo) getConsoleUrl() string {
-	return self.baseConsoleUrl + "config?url=" + self.repoUrl
+	return self.baseConsoleUrl + "config2?url=" + self.repoUrl
 }
 
 func (self *repo) loadPackageFromConsole() (*types.ManifestPackage, error) {

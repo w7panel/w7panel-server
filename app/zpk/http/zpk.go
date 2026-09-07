@@ -259,7 +259,7 @@ func (self Zpk) Install(http *gin.Context) {
 		// if (params.ClusterId == "") {
 		// 	params.ClusterId = config.MainW7Config.ClusterId
 		// }
-		preinstall, err := repo.PreInstall(params.ClusterId)
+		preinstall, err := repo.PreInstall()
 		if err != nil {
 			self.JsonResponseWithServerError(http, err)
 			return
