@@ -3,8 +3,8 @@ package types_test
 import (
 	"testing"
 
-	"github.com/w7panel/w7panel/app/zpk/logic"
-	"github.com/w7panel/w7panel/app/zpk/logic/types"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 )
 
 func TestNewPackageApps(t *testing.T) {

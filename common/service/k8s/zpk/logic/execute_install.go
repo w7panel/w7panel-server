@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/w7panel/w7panel/app/zpk/logic/types"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	bi "github.com/w7panel/w7panel/common/service/k8s/buildimage"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 )
 
 type InstallRequest struct {

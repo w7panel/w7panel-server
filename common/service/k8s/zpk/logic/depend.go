@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
-	"github.com/w7panel/w7panel/app/zpk/logic/types"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/types"
 	typealpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	"helm.sh/helm/v3/pkg/release"

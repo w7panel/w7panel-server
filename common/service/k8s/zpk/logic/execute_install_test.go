@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/w7panel/w7panel/app/zpk/logic/types"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 	"k8s.io/client-go/rest"
 )
 

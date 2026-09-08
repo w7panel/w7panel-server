@@ -3,7 +3,7 @@ package installcontroller
 import (
 	"context"
 	"errors"
-	"github.com/w7panel/w7panel/app/zpk/logic"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic"
 	api "github.com/w7panel/w7panel/k8s/pkg/apis/zpkinstall/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

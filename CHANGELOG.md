@@ -173,3 +173,9 @@
 - 新增 ZpkInstall（w7panel.w7.com/v1alpha1）一次性安装 CRD 和 Controller，复用提取的 ZPK 安装服务；原 HTTP install 鉴权、参数及结果格式保持兼容。任务在本集群使用 Server 身份执行，制品凭据通过同命名空间 Secret 引用提供，普通用户和内置 super/api 不增加写权限。
 - 任务通过持久化状态原子领取，30 秒心跳、120 秒失联标记 Unknown，终态不自动重跑，执行 ID 和 UID 防止旧执行者覆盖结果；spec 不可变，删除任务不卸载应用。Succeeded 表示安装动作提交成功，后续就绪情况仍看 AppGroup/Job。
 - 新增 CRD schema/deepcopy、权限边界及执行测试，文档见 docs/zpk-install-crd.md。验证包含模拟 ZPK/Helm 参数转换、任务竞争、状态写入失败、终态幂等、Secret 隔离和 Kubernetes 原生 schema 校验；相关包编译通过。未对真实集群执行安装或部署。
+
+## 2026-09-08
+
+- 将 app/zpk/logic（含 types 和测试）及 app/zpk/installcontroller 迁移至 common/service/k8s/zpk 对应子目录，统一更新 HTTP、控制台命令、控制器注册和测试导入路径；保留原包边界和业务行为。
+- 影响模块：ZPK 安装服务、安装控制器、HTTP 和控制台入口。
+- 验证：安装控制器测试、安装请求/执行准备及 Manifest 版本定向测试、所有相关包编译、go build -buildvcs=false ./... 和 git diff --check 通过；迁移文件核对仅含路径替换与导入排序。完整测试未通过：已有 ZIP 加载测试缺少 testdata/demo.zip，依赖固定集群资源的测试返回 not found 后空指针，在线制品测试出现空指针；默认构建的 VCS 状态读取失败，编译验证关闭 VCS 信息嵌入。

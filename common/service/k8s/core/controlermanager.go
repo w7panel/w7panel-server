@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/go-logr/logr"
-	"github.com/w7panel/w7panel/app/zpk/installcontroller"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/buildimage"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
@@ -16,6 +15,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/site"
 	"github.com/w7panel/w7panel/common/service/k8s/user"
 	webhooklocal "github.com/w7panel/w7panel/common/service/k8s/webhook"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/installcontroller"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"

@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	"github.com/barkimedes/go-deepcopy"
-	"github.com/w7panel/w7panel/app/zpk/logic/types"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
