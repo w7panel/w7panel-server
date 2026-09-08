@@ -1,5 +1,7 @@
 # CHANGELOG
 
+- ZpkInstall controller supports `ZPKINSTALL_CONTROLLER_ENABLED`; it is enabled by default and can be disabled with `false` or `0`. Installation executor failures now include task context and the underlying error in controller logs while CRD status stays redacted.
+
 ## 2026-09-04
 
 - 升级脚本为 `higress-controller-higress-system` ClusterRole 补充 Gateway API 实验资源 `xbackendtrafficpolicies` 与 `xmeshes` 的完整管理权限。

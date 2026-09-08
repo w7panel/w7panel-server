@@ -82,8 +82,12 @@ func StartControlManager() error {
 	if err != nil {
 		return err
 	}
-	if err := installcontroller.Setup(mgr, sdk); err != nil {
-		return err
+	if installcontroller.Enabled() {
+		if err := installcontroller.Setup(mgr, sdk); err != nil {
+			return err
+		}
+	} else {
+		slog.Info("ZpkInstall controller disabled", "env", installcontroller.EnabledEnv)
 	}
 	err = permissionservice.SetupPermissionController(mgr, sdk)
 	if err != nil {

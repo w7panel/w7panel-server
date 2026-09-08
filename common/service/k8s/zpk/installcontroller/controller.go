@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/w7panel/w7panel/common/helper"
@@ -25,6 +28,23 @@ import (
 const heartbeatInterval = 30 * time.Second
 const heartbeatTimeout = 120 * time.Second
 const retryInterval = 30 * time.Second
+
+const EnabledEnv = "ZPKINSTALL_CONTROLLER_ENABLED"
+
+// Enabled reports whether the ZpkInstall controller should be registered.
+// It is enabled by default so existing deployments retain their behavior.
+func Enabled() bool {
+	value, found := os.LookupEnv(EnabledEnv)
+	if !found || strings.TrimSpace(value) == "" {
+		return true
+	}
+	enabled, err := strconv.ParseBool(value)
+	if err != nil {
+		slog.Warn("invalid ZpkInstall controller enabled value; defaulting to enabled", "env", EnabledEnv, "value", value)
+		return true
+	}
+	return enabled
+}
 
 type Executor func(context.Context, *api.ZpkInstall) (logic.InstallResult, error)
 
@@ -115,6 +135,16 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{RequeueAfter: heartbeatInterval}, nil
 	}
 	cancel()
+	if execErr != nil {
+		slog.Error("ZpkInstall installation failed",
+			"namespace", task.Namespace,
+			"name", task.Name,
+			"executionId", task.Status.ExecutionID,
+			"installId", task.Status.InstallID,
+			"releaseName", task.Spec.ReleaseName,
+			"repoUrl", task.Spec.RepoURL,
+			"error", execErr)
+	}
 	err := r.updateOwned(ctx, task, func(current *api.ZpkInstall) {
 		now := metav1.NewTime(r.Now())
 		current.Status.CompletedAt = &now

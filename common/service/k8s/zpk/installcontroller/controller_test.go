@@ -21,6 +21,27 @@ import (
 	"time"
 )
 
+func TestEnabled(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		value string
+		want  bool
+	}{
+		{name: "unset defaults enabled", want: true},
+		{name: "false disables", value: "false", want: false},
+		{name: "zero disables", value: "0", want: false},
+		{name: "true enables", value: "true", want: true},
+		{name: "invalid defaults enabled", value: "not-a-bool", want: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Setenv(EnabledEnv, test.value)
+			if got := Enabled(); got != test.want {
+				t.Fatalf("Enabled() = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
 func TestZpkInstallClaimConflictHasNoEffects(t *testing.T) {
 	r, req := fixture(t, func(context.Context, *api.ZpkInstall) (logic.InstallResult, error) {
 		t.Fatal("executed without durable claim")
