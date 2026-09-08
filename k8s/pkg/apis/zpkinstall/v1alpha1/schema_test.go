@@ -52,6 +52,13 @@ func TestZpkInstallCRDSchema(t *testing.T) {
 	if len(spec.XValidations) != 1 || spec.XValidations[0].Rule != "self == oldSelf" {
 		t.Fatal("immutable spec validation is missing")
 	}
+	if retries := spec.Properties["maxRetries"]; retries.Type != "integer" || retries.Format != "int32" || retries.Minimum == nil || *retries.Minimum != 0 {
+		t.Fatalf("maxRetries schema is missing or invalid: %#v", retries)
+	}
+	status := crd.Spec.Versions[0].Schema.OpenAPIV3Schema.Properties["status"]
+	if retries := status.Properties["retryCount"]; retries.Type != "integer" || retries.Format != "int32" || retries.Minimum == nil || *retries.Minimum != 0 {
+		t.Fatalf("retryCount schema is missing or invalid: %#v", retries)
+	}
 	option := spec.Properties["installOptions"].Items.Schema
 	for _, field := range []string{"K8sToken", "RealToken", "IsChild", "serviceAccountName", "buildImageSuccessUrl", "installId"} {
 		if _, ok := option.Properties[field]; ok {

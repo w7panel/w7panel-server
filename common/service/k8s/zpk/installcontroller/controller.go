@@ -24,6 +24,7 @@ import (
 
 const heartbeatInterval = 30 * time.Second
 const heartbeatTimeout = 120 * time.Second
+const retryInterval = 30 * time.Second
 
 type Executor func(context.Context, *api.ZpkInstall) (logic.InstallResult, error)
 
@@ -69,8 +70,13 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, fmt.Errorf("unsupported installation phase")
 	}
 	now := metav1.NewTime(r.Now())
-	task.Status = api.ZpkInstallStatus{Phase: "Running", ExecutionID: string(task.UID) + "-" + helper.RandomString(16),
-		InstallID: helper.RandomString(5), StartedAt: &now, HeartbeatAt: &now}
+	// Preserve retryCount across attempts. A retry creates a fresh durable claim,
+	// execution ID and install ID, so a result from an earlier attempt cannot win.
+	task.Status.Phase = "Running"
+	task.Status.ExecutionID = string(task.UID) + "-" + helper.RandomString(16)
+	task.Status.InstallID = helper.RandomString(5)
+	task.Status.StartedAt, task.Status.HeartbeatAt, task.Status.CompletedAt = &now, &now, nil
+	task.Status.Reason, task.Status.Message = "", ""
 	// This durable claim MUST succeed before any external installation effect.
 	if err := r.Status().Update(ctx, task); err != nil {
 		if apierrors.IsConflict(err) {
@@ -113,6 +119,13 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		now := metav1.NewTime(r.Now())
 		current.Status.CompletedAt = &now
 		if execErr != nil {
+			if current.Status.RetryCount < current.Spec.MaxRetries {
+				current.Status.RetryCount++
+				current.Status.Phase, current.Status.Reason = "Pending", "RetryScheduled"
+				current.Status.Message = fmt.Sprintf("Installation attempt failed; retry %d of %d is scheduled.", current.Status.RetryCount, current.Spec.MaxRetries)
+				current.Status.ExecutionID, current.Status.HeartbeatAt, current.Status.CompletedAt = "", nil, nil
+				return
+			}
 			current.Status.Phase, current.Status.Reason = "Failed", "InstallationFailed"
 			var credentialErr *credentialError
 			if errors.As(execErr, &credentialErr) {
@@ -130,7 +143,13 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			current.Status.ReleaseName, current.Status.Namespace, current.Status.InstallID = result.ReleaseName, result.Namespace, result.InstallID
 		}
 	})
-	return ctrl.Result{}, err
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if execErr != nil && task.Status.RetryCount < task.Spec.MaxRetries {
+		return ctrl.Result{RequeueAfter: retryInterval}, nil
+	}
+	return ctrl.Result{}, nil
 }
 
 func executeSafely(ctx context.Context, execute Executor, task *api.ZpkInstall) (result logic.InstallResult, err error) {

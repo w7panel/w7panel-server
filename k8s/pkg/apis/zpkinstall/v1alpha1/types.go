@@ -21,6 +21,9 @@ type ZpkInstall struct {
 // +kubebuilder:validation:XValidation:rule="self == oldSelf",message="spec is immutable; create a new installation task"
 type ZpkInstallSpec struct {
 	Namespace string `json:"namespace,omitempty"`
+	// MaxRetries is the number of additional attempts after the first failed attempt.
+	// +kubebuilder:validation:Minimum=0
+	MaxRetries int32 `json:"maxRetries,omitempty"`
 	// +kubebuilder:validation:MinLength=1
 	RepoURL string `json:"repoUrl"`
 	// +kubebuilder:validation:MinLength=1
@@ -83,6 +86,8 @@ type ZpkInstallStatus struct {
 	ReleaseName string       `json:"releaseName,omitempty"`
 	Namespace   string       `json:"namespace,omitempty"`
 	InstallID   string       `json:"installId,omitempty"`
+	// RetryCount is the number of retries that have already been started.
+	RetryCount int32 `json:"retryCount,omitempty"`
 }
 
 // +kubebuilder:object:root=true

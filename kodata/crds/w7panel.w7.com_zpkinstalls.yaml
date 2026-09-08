@@ -43,6 +43,11 @@ spec:
             type: object
           spec:
             properties:
+              maxRetries:
+                description: MaxRetries is the number of additional attempts after the first failed attempt.
+                format: int32
+                minimum: 0
+                type: integer
               ingressClass:
                 type: string
               ingressForceHttps:
@@ -2191,6 +2196,11 @@ spec:
                 type: string
               reason:
                 type: string
+              retryCount:
+                description: RetryCount is the number of retries that have already been started.
+                format: int32
+                minimum: 0
+                type: integer
               releaseName:
                 type: string
               startedAt:

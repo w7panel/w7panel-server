@@ -168,6 +168,57 @@ func TestZpkInstallFailureAndPanicAreTerminalAndRedacted(t *testing.T) {
 	}
 }
 
+func TestZpkInstallRetriesConfiguredAdditionalAttempts(t *testing.T) {
+	calls := 0
+	r, req := fixture(t, func(context.Context, *api.ZpkInstall) (logic.InstallResult, error) {
+		calls++
+		if calls < 3 {
+			return logic.InstallResult{}, errors.New("temporary repository failure")
+		}
+		return logic.InstallResult{ReleaseName: "app", Namespace: "default", InstallID: "done"}, nil
+	})
+	task := getTask(t, r, req)
+	task.Spec.MaxRetries = 2
+	if err := r.Update(context.Background(), task); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 3; i++ {
+		result, err := r.Reconcile(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if i < 2 && result.RequeueAfter != retryInterval {
+			t.Fatalf("retry %d was not scheduled: %+v", i+1, result)
+		}
+	}
+	status := getTask(t, r, req).Status
+	if calls != 3 || status.Phase != "Succeeded" || status.RetryCount != 2 {
+		t.Fatalf("expected initial attempt plus two retries, calls=%d status=%+v", calls, status)
+	}
+}
+
+func TestZpkInstallStopsAfterConfiguredRetries(t *testing.T) {
+	calls := 0
+	r, req := fixture(t, func(context.Context, *api.ZpkInstall) (logic.InstallResult, error) {
+		calls++
+		return logic.InstallResult{}, errors.New("temporary repository failure")
+	})
+	task := getTask(t, r, req)
+	task.Spec.MaxRetries = 1
+	if err := r.Update(context.Background(), task); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 3; i++ {
+		if _, err := r.Reconcile(context.Background(), req); err != nil {
+			t.Fatal(err)
+		}
+	}
+	status := getTask(t, r, req).Status
+	if calls != 2 || status.Phase != "Failed" || status.RetryCount != 1 {
+		t.Fatalf("expected one retry then a terminal failure, calls=%d status=%+v", calls, status)
+	}
+}
+
 func TestZpkInstallStaleClaimUnknownAndLateResultRejected(t *testing.T) {
 	r, req := fixture(t, func(context.Context, *api.ZpkInstall) (logic.InstallResult, error) {
 		t.Fatal("must not replay")
