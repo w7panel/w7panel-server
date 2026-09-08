@@ -201,3 +201,9 @@
 - 子会话 Kubernetes 凭据由服务端按签名目标生成；集群业务请求转发对应 agent。child agent 使用严格 TokenReview 校验本集群执行账号，主面板仍拒绝 Kubernetes token 登录。
 - 补充子面板用户信息、操作者/目标审计字段和终端 WebSocket 子协议认证，不覆盖主面板 Cookie。
 - 验证：会话签发/解析、凭据身份与期限、目标加载、越权拒绝和 WebSocket 认证定向测试通过；相关控制器编译通过。未部署或对真实集群执行变更。
+
+## 2026-09-08
+
+- 新增 ZpkInstall（w7panel.w7.com/v1alpha1）一次性安装 CRD 和 Controller，复用提取的 ZPK 安装服务；原 HTTP install 鉴权、参数及结果格式保持兼容。任务在本集群使用 Server 身份执行，制品凭据通过同命名空间 Secret 引用提供，普通用户和内置 super/api 不增加写权限。
+- 任务通过持久化状态原子领取，30 秒心跳、120 秒失联标记 Unknown，终态不自动重跑，执行 ID 和 UID 防止旧执行者覆盖结果；spec 不可变，删除任务不卸载应用。Succeeded 表示安装动作提交成功，后续就绪情况仍看 AppGroup/Job。
+- 新增 CRD schema/deepcopy、权限边界及执行测试，文档见 docs/zpk-install-crd.md。验证包含模拟 ZPK/Helm 参数转换、任务竞争、状态写入失败、终态幂等、Secret 隔离和 Kubernetes 原生 schema 校验；相关包编译通过。未对真实集群执行安装或部署。
