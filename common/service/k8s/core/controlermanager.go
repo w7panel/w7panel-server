@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/go-logr/logr"
-	"github.com/w7panel/w7panel/app/zpk/installcontroller"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/buildimage"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
@@ -80,9 +79,6 @@ func StartControlManager() error {
 
 	err = service.SvcSetupManager(mgr)
 	if err != nil {
-		return err
-	}
-	if err := installcontroller.Setup(mgr, sdk); err != nil {
 		return err
 	}
 	err = permissionservice.SetupPermissionController(mgr, sdk)

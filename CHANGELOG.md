@@ -207,3 +207,8 @@
 - 新增 ZpkInstall（w7panel.w7.com/v1alpha1）一次性安装 CRD 和 Controller，复用提取的 ZPK 安装服务；原 HTTP install 鉴权、参数及结果格式保持兼容。任务在本集群使用 Server 身份执行，制品凭据通过同命名空间 Secret 引用提供，普通用户和内置 super/api 不增加写权限。
 - 任务通过持久化状态原子领取，30 秒心跳、120 秒失联标记 Unknown，终态不自动重跑，执行 ID 和 UID 防止旧执行者覆盖结果；spec 不可变，删除任务不卸载应用。Succeeded 表示安装动作提交成功，后续就绪情况仍看 AppGroup/Job。
 - 新增 CRD schema/deepcopy、权限边界及执行测试，文档见 docs/zpk-install-crd.md。验证包含模拟 ZPK/Helm 参数转换、任务竞争、状态写入失败、终态幂等、Secret 隔离和 Kubernetes 原生 schema 校验；相关包编译通过。未对真实集群执行安装或部署。
+
+## 2026-09-08
+
+- 撤销 dev-v1-token 分支误提交的 ZpkInstall CRD 安装功能（6fb09ca），恢复该分支原安装流程；功能保留在 dev-v1 的 9d41f0e，不影响已有 CKM 会话功能。
+- 验证：除追加的历史说明外，代码与回退前基线 ad8a860 一致，git diff --check 通过。

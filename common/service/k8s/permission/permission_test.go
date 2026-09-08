@@ -546,7 +546,6 @@ func TestBuiltinSuperRBACRestrictsSensitiveResourcesToReadOnly(t *testing.T) {
 		{group: "", resource: "serviceaccounts"},
 		{group: "w7panel.w7.com", resource: "users"},
 		{group: "w7panel.w7.com", resource: "permissions"},
-		{group: "w7panel.w7.com", resource: "zpkinstalls"},
 	}
 	for _, item := range sensitive {
 		if !rbacAllows(p.Spec.RBACRules, item.group, item.resource, "get") {
@@ -564,26 +563,6 @@ func TestBuiltinSuperRBACRestrictsSensitiveResourcesToReadOnly(t *testing.T) {
 	}
 	if !rbacAllows(p.Spec.RBACRules, "", "pods", "delete") {
 		t.Fatal("super rbac should allow regular core resources")
-	}
-}
-
-func TestZpkInstallRBACIsPrivileged(t *testing.T) {
-	for _, name := range []string{"normal.yaml", "super.yaml", "api.yaml"} {
-		p := loadBuiltinPermission(t, name)
-		for _, resource := range []string{"zpkinstalls", "zpkinstalls/status"} {
-			for _, verb := range []string{"create", "update", "patch", "delete"} {
-				if rbacAllows(p.Spec.RBACRules, "w7panel.w7.com", resource, verb) {
-					t.Fatalf("%s unexpectedly grants %s on %s", name, verb, resource)
-				}
-			}
-		}
-	}
-	p := loadBuiltinPermission(t, "founder.yaml")
-	EnsureBuiltinDefaults(p)
-	for _, resource := range []string{"zpkinstalls", "zpkinstalls/status"} {
-		if !rbacAllows(p.Spec.RBACRules, "w7panel.w7.com", resource, "update") {
-			t.Fatalf("founder cannot manage %s", resource)
-		}
 	}
 }
 
