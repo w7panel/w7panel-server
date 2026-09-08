@@ -273,7 +273,13 @@ func (r *Controller) localExecutor(sdk *k8s.Sdk) Executor {
 			}
 			config.BearerToken = string(token)
 		}
-		identity := k8s.NewK8sToken(strings.TrimSpace(config.BearerToken))
+		// The local Kubernetes credential authenticates this controller to the
+		// API server; it is not a W7Panel user token. Only an explicitly supplied
+		// panel token may be used for user labels and Helm panel-token settings.
+		var identity *k8s.K8sToken
+		if strings.TrimSpace(panelToken) != "" {
+			identity = k8s.NewK8sToken(panelToken)
+		}
 		local, err := k8s.NewForRestConfig(config, request.Namespace)
 		if err != nil {
 			return logic.InstallResult{}, err
