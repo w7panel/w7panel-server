@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -184,8 +185,8 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 func executeSafely(ctx context.Context, execute Executor, task *api.ZpkInstall) (result logic.InstallResult, err error) {
 	defer func() {
-		if recover() != nil {
-			err = errors.New("installation panic")
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("installation panic: %v\n%s", recovered, debug.Stack())
 		}
 	}()
 	return execute(ctx, task)
@@ -272,12 +273,13 @@ func (r *Controller) localExecutor(sdk *k8s.Sdk) Executor {
 			}
 			config.BearerToken = string(token)
 		}
+		identity := k8s.NewK8sToken(strings.TrimSpace(config.BearerToken))
 		local, err := k8s.NewForRestConfig(config, request.Namespace)
 		if err != nil {
 			return logic.InstallResult{}, err
 		}
 		local.Ctx = ctx
-		return logic.ExecuteInstall(request, logic.InstallExecution{SDK: local, PanelToken: panelToken,
+		return logic.ExecuteInstall(request, logic.InstallExecution{SDK: local, Identity: identity, PanelToken: panelToken,
 			IsChild: helper.IsChildAgent(), InstallID: task.Status.InstallID})
 	}
 }

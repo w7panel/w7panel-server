@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-09-08
+
+- ZpkInstall controller now passes its local Kubernetes identity to installation jobs, preventing a nil token panic during Helm job generation. Panic logs include the recovered value and call stack while CRD status remains redacted.
+
 - ZpkInstall controller supports `ZPKINSTALL_CONTROLLER_ENABLED`; it is enabled by default and can be disabled with `false` or `0`. Installation executor failures now include task context and the underlying error in controller logs while CRD status stays redacted.
 
 ## 2026-09-04
