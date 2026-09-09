@@ -854,6 +854,14 @@ func (p *PackageApp) GetRoutesByName(name string) []helm.ManifestRouteInterface 
 }
 
 func (p *PackageApp) GetDockerRegisty() types.DockerRegistry {
+	if p.DockerRegistry.Host == "" && p.DockerRegistrySecretName == "registry.local.w7.cc" {
+		return types.DockerRegistry{
+			Host:      "registry.local.w7.cc",
+			Username:  "admin",
+			Password:  "w7-secret",
+			Namespace: p.Namespace,
+		}
+	}
 	return p.DockerRegistry
 }
 
