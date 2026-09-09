@@ -10,14 +10,14 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
-	"github.com/w7panel/w7panel/app/zpk/logic/types"
-	zpktypes "github.com/w7panel/w7panel/app/zpk/logic/types"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	convert "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	helm "github.com/w7panel/w7panel/common/service/k8s/zpk"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
+	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -159,11 +159,15 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 	repo, version := helper.SelfImageInfo()
 	// anno := packageApp.GetAnnotations()
 	panelAccessToken := ""
-	replace, err := microapp.NewMicroAppReplace(packageApp.K8sToken.GetToken())
-	if err == nil {
-		accessToken, err := replace.GetAccessToken(context.Background())
+	panelToken := ""
+	if packageApp.K8sToken != nil {
+		panelToken = packageApp.K8sToken.GetToken()
+		replace, err := microapp.NewMicroAppReplace(panelToken)
 		if err == nil {
-			panelAccessToken = accessToken
+			accessToken, err := replace.GetAccessToken(context.Background())
+			if err == nil {
+				panelAccessToken = accessToken
+			}
 		}
 	}
 	shellCmd := "/ko-app/w7panel helmgo --chartName=" + helmConfig.ChartName + " --namespace=" + packageApp.Namespace + " --repository=" + helmConfig.Repository + " --zipUrl=" + packageApp.ZipUrl + " --releaseName=" + releaseName + ""
@@ -172,7 +176,7 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 	shellCmd += " --set " + "global.panel.installId=" + packageApp.InstallId
 	shellCmd += " --set " + "global.panel.panelAccessToken=" + panelAccessToken
 	shellCmd += " --set " + "global.panel.innerUrl=" + helper.PanelInnerUrl()
-	shellCmd += " --set " + "global.panel.panelToken=" + packageApp.K8sToken.GetToken()
+	shellCmd += " --set " + "global.panel.panelToken=" + panelToken
 	shellCmd += " --set " + "global.panel.panelRealToken=" + packageApp.RealToken              //子集群内网访问 需要
 	shellCmd += " --set " + "global.panel.serviceAccountName=" + packageApp.ServiceAccountName //用户名
 	shellCmd += " --set " + "global.panel.imageRepo=" + repo                                   //镜像仓库地址

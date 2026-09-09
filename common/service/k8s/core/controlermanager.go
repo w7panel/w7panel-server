@@ -15,6 +15,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/site"
 	"github.com/w7panel/w7panel/common/service/k8s/user"
 	webhooklocal "github.com/w7panel/w7panel/common/service/k8s/webhook"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/installcontroller"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -80,6 +81,13 @@ func StartControlManager() error {
 	err = service.SvcSetupManager(mgr)
 	if err != nil {
 		return err
+	}
+	if installcontroller.Enabled() {
+		if err := installcontroller.Setup(mgr, sdk); err != nil {
+			return err
+		}
+	} else {
+		slog.Info("ZpkInstall controller disabled", "env", installcontroller.EnabledEnv)
 	}
 	err = permissionservice.SetupPermissionController(mgr, sdk)
 	if err != nil {
