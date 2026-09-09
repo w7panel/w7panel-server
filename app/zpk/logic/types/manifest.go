@@ -301,23 +301,15 @@ type SecurityContext struct {
 }
 
 type StartParams struct {
-	Description      string                `json:"description"`
-	ModuleName       string                `json:"module_name"`
-	Name             string                `json:"name"`
-	Required         bool                  `json:"required"`
-	Title            string                `json:"title"`
-	Type             string                `json:"type"`
-	ValuesText       string                `json:"values_text"`
-	Lock             bool                  `json:"lock"` // 是否锁定 更新时候锁定
-	Hidden           bool                  `json:"hidden,omitempty"`
-	DependencySource *StartParamDependency `json:"dependencySource,omitempty"`
-}
-
-// StartParamDependency identifies the start parameter that supplies the value
-// for a consuming application start parameter.
-type StartParamDependency struct {
-	Identifie string `json:"identifie"`
-	Name      string `json:"name"`
+	Description string `json:"description"`
+	ModuleName  string `json:"module_name"`
+	Name        string `json:"name"`
+	Required    bool   `json:"required"`
+	Title       string `json:"title"`
+	Type        string `json:"type"`
+	ValuesText  string `json:"values_text"`
+	Lock        bool   `json:"lock"` // 是否锁定 更新时候锁定
+	Hidden      bool   `json:"hidden,omitempty"`
 }
 type Volumes struct {
 	MountPath string `json:"mountPath"`

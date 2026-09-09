@@ -381,19 +381,21 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 
 // normalizeInstallFormulaStartParams keeps requirepvc compatible with older
 // artifacts while allowing newer ZPKs to declare PVC usage with a PVC_NAME
-// start parameter. PVC_NAME is an installation selector; only its dependency
-// marker is retained for the installation form and remains hidden from users.
+// start parameter. An unbound PVC_NAME enables the installation selector;
+// a module-bound parameter stays hidden and is resolved automatically.
 func normalizeInstallFormulaStartParams(formula types.InstallFormula) (bool, []types.StartParams) {
 	requirePvc := formula.RequirePvc
 	startParams := make([]types.StartParams, 0, len(formula.StartParams))
 	for _, param := range formula.StartParams {
 		if strings.EqualFold(strings.TrimSpace(param.Name), pvcNameStartParamName) {
-			requirePvc = true
-			if param.DependencySource != nil {
+			if strings.TrimSpace(param.ModuleName) != "" {
+				requirePvc = false
 				param.Hidden = true
 				param.Lock = true
 				startParams = append(startParams, param)
+				continue
 			}
+			requirePvc = true
 			continue
 		}
 		startParams = append(startParams, param)
