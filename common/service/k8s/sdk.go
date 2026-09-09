@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	zpkinstallv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/zpkinstall/v1alpha1"
 	"io"
 	"log/slog"
 	"net/http"
@@ -81,6 +82,7 @@ var (
 )
 
 func init() {
+	_ = zpkinstallv1alpha1.AddToScheme(scheme)
 	_ = clientgoscheme.AddToScheme(scheme)
 	// _ = k3kv1alpha.AddToScheme(scheme)
 	// _ = higressscheme.AddToScheme(scheme)
