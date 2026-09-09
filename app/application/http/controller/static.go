@@ -36,7 +36,11 @@ func (self Static) StaticInfo(http *gin.Context) {
 		releaseName = strings.ReplaceAll(releaseName, "-root", "")
 	}
 	status := appgroup.DownStaticStatus(identifie, version, releaseName)
-
+	token := http.MustGet("k8s_token").(string)
+	client, err := k8s.NewK8sClient().Channel(token)
+	if err != nil {
+		slog.Error("创建 k8s 客户端失败 static down", "error", err)
+	}
 	// 通过 releaseName 查找 AppGroup，获取完整制品地址、回源根地址和 ticket 信息
 	respoUrl := ""
 	zpkUrl := ""
@@ -56,7 +60,7 @@ func (self Static) StaticInfo(http *gin.Context) {
 				parsedUrl.Fragment = ""
 				zpkUrl = parsedUrl.String()
 			} else {
-				zpkUrl = respoUrl
+				zpkUrl = group.Spec.ZpkUrl
 			}
 			if group.Annotations != nil {
 				ticket = group.Annotations["w7.cc/ticket"]
