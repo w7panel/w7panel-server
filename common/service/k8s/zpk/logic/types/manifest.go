@@ -143,6 +143,9 @@ func (m *Manifest) RequireDomain() bool {
 		}
 	}
 	for _, param := range m.Platform.Container.StartParams {
+		if strings.TrimSpace(param.ModuleName) != "" {
+			continue
+		}
 		if param.ValuesText == "%DOMAIN_URL%" || param.ValuesText == "%DOMAIN_SSL_URL%" || param.ValuesText == "%DOMAIN_HOST%" {
 			return true
 		}
@@ -157,6 +160,9 @@ func (m *Manifest) RequireDomainForce() bool {
 		}
 	}
 	for _, param := range m.Platform.Container.StartParams {
+		if strings.TrimSpace(param.ModuleName) != "" {
+			continue
+		}
 		if (param.ValuesText == "%DOMAIN_URL%" || param.ValuesText == "%DOMAIN_SSL_URL%") && param.Required {
 			return true
 		}
@@ -181,6 +187,9 @@ func (m *Manifest) RequireDomainHttps() bool {
 		}
 	}
 	for _, param := range m.Platform.Container.StartParams {
+		if strings.TrimSpace(param.ModuleName) != "" {
+			continue
+		}
 		if param.ValuesText == "%DOMAIN_SSL_URL%" {
 			return true
 		}

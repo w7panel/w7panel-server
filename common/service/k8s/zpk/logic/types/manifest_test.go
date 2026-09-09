@@ -40,3 +40,60 @@ func TestManifestVersionUnmarshalJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestManifestDomainRequirementsIgnoreModuleStartParams(t *testing.T) {
+	tests := []struct {
+		name        string
+		application Application
+		startParams []StartParams
+		wantDomain  bool
+		wantForce   bool
+		wantHTTPS   bool
+	}{
+		{
+			name: "unbound domain remains configurable",
+			startParams: []StartParams{
+				{ValuesText: "%DOMAIN_SSL_URL%", Required: true},
+			},
+			wantDomain: true,
+			wantForce:  true,
+			wantHTTPS:  true,
+		},
+		{
+			name: "module domain is resolved from dependency",
+			startParams: []StartParams{
+				{ValuesText: "%DOMAIN_SSL_URL%", ModuleName: "test-environment", Required: true, Hidden: true},
+			},
+		},
+		{
+			name:        "console still requires domain",
+			application: Application{FrontType: []string{"console"}},
+			startParams: []StartParams{
+				{ValuesText: "%DOMAIN_SSL_URL%", ModuleName: "test-environment", Required: true, Hidden: true},
+			},
+			wantDomain: true,
+			wantForce:  true,
+			wantHTTPS:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			manifest := Manifest{
+				Application: tt.application,
+				Platform: Platform{Container: Container{
+					StartParams: tt.startParams,
+				}},
+			}
+			if got := manifest.RequireDomain(); got != tt.wantDomain {
+				t.Fatalf("RequireDomain() = %v, want %v", got, tt.wantDomain)
+			}
+			if got := manifest.RequireDomainForce(); got != tt.wantForce {
+				t.Fatalf("RequireDomainForce() = %v, want %v", got, tt.wantForce)
+			}
+			if got := manifest.RequireDomainHttps(); got != tt.wantHTTPS {
+				t.Fatalf("RequireDomainHttps() = %v, want %v", got, tt.wantHTTPS)
+			}
+		})
+	}
+}
