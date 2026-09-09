@@ -204,7 +204,12 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 	shellCmd += " --set " + "global.panel.imageRepo=" + repo                                   //镜像仓库地址
 	shellCmd += " --set " + "global.panel.version=" + version                                  //版本号
 	shellCmd += " --set " + "global.panel.panelUrl=" + packageApp.PanelUrl                     //面板地址
-	shellCmd += " --set " + "DOMAIN_URL=" + packageApp.IngressHost                             //添加DOMAIN_URL
+	domainURL := packageApp.IngressHost
+	domainParam := packageApp.GetKey("DOMAIN_URL")
+	if strings.TrimSpace(domainParam.ModuleName) != "" {
+		domainURL = domainParam.ValuesText
+	}
+	shellCmd += " --set " + "DOMAIN_URL=" + domainURL //添加DOMAIN_URL
 	atomic := false
 	set := fillHelmSet(packageApp, "", []string{"HELM_ATOMIC", "DOMAIN_URL"}, false) //pvc 站点管理 会新建一个名字出来
 
