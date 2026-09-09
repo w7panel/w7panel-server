@@ -86,6 +86,28 @@ func TestToUnstructuredWritesOnlyCloudFields(t *testing.T) {
 	}
 }
 
+func TestSetLoginTimePreservesCloudConfig(t *testing.T) {
+	obj := &unstructured.Unstructured{Object: map[string]interface{}{
+		"metadata": map[string]interface{}{"name": "cloud-user"},
+		"spec": map[string]interface{}{
+			"cloud": map[string]interface{}{
+				"thirdpartyCDToken": "refreshed-token",
+				"cdTokenExpireTime": int64(1234567890),
+			},
+		},
+	}}
+
+	if err := setLoginTime(obj, "2026-09-09 16:00:00"); err != nil {
+		t.Fatalf("setLoginTime() error = %v", err)
+	}
+	if got, _, _ := unstructured.NestedString(obj.Object, "spec", "loginTime"); got != "2026-09-09 16:00:00" {
+		t.Fatalf("spec.loginTime = %q", got)
+	}
+	if got, _, _ := unstructured.NestedString(obj.Object, "spec", "cloud", "thirdpartyCDToken"); got != "refreshed-token" {
+		t.Fatalf("spec.cloud.thirdpartyCDToken = %q, want refreshed-token", got)
+	}
+}
+
 func TestMigrateLegacyConsoleFieldsCopiesAndDeletesLegacyFields(t *testing.T) {
 	obj := &unstructured.Unstructured{Object: map[string]interface{}{
 		"metadata": map[string]interface{}{"name": "legacy-user"},

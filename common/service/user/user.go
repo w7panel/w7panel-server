@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -156,6 +157,27 @@ func UpdateSpec(ctx context.Context, sdk *k8s.Sdk, name string, spec Spec) (*Use
 		return nil, err
 	}
 	return FromUnstructured(updated)
+}
+
+// UpdateLoginTime updates only spec.loginTime.  Login also refreshes the
+// console token asynchronously, so using UpdateSpec with a stale UserSpec
+// here could overwrite spec.cloud.thirdpartyCDToken.
+func UpdateLoginTime(ctx context.Context, sdk *k8s.Sdk, name, loginTime string) error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		current, err := sdk.DynamicClient().Resource(GVR).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if err := setLoginTime(current, loginTime); err != nil {
+			return err
+		}
+		_, err = sdk.DynamicClient().Resource(GVR).Update(ctx, current, metav1.UpdateOptions{})
+		return err
+	})
+}
+
+func setLoginTime(obj *unstructured.Unstructured, loginTime string) error {
+	return unstructured.SetNestedField(obj.Object, loginTime, "spec", "loginTime")
 }
 
 func Login(ctx context.Context, sdk *k8s.Sdk, username, password string) (*User, error) {
