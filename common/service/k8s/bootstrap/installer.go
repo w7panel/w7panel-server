@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/w7panel/w7panel/app/zpk/logic"
-	zpktypes "github.com/w7panel/w7panel/app/zpk/logic/types"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic"
+	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 	appgroupv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	installationv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrapinstallation/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
