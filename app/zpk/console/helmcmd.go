@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/w7panel/w7panel/app/zpk/logic"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/cli/values"

@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/w7panel/w7panel/app/zpk/logic/types"
-	zpktypes "github.com/w7panel/w7panel/app/zpk/logic/types"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
+	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 )
 
 func TestZPKRequestDoesNotForwardPanelToken(t *testing.T) {

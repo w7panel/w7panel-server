@@ -11,13 +11,13 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
-	"github.com/w7panel/w7panel/app/zpk/logic/types"
-	zpktypes "github.com/w7panel/w7panel/app/zpk/logic/types"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	helm "github.com/w7panel/w7panel/common/service/k8s/zpk"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
+	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -178,8 +178,8 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 	labels := packageApp.GetLabels()
 	repo, version := helper.SelfImageInfo()
 	// anno := packageApp.GetAnnotations()
-	panelToken := ""
 	panelAccessToken := ""
+	panelToken := ""
 	if packageApp.K8sToken != nil {
 		panelToken = packageApp.K8sToken.GetToken()
 		replace, err := microapp.NewMicroAppReplace(panelToken)

@@ -4,11 +4,11 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/w7panel/w7panel/app/zpk/logic/types"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	convert "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	helm "github.com/w7panel/w7panel/common/service/k8s/zpk"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/types"
 	"github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	"helm.sh/helm/v3/pkg/chart"

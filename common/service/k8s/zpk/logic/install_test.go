@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/w7panel/w7panel/app/zpk/logic/types"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 	helmtypes "github.com/w7panel/w7panel/common/service/k8s/zpk/types"
 )
 
