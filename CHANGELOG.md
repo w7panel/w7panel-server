@@ -239,3 +239,9 @@
 
 - 撤销 dev-v1-token 分支误提交的 ZpkInstall CRD 安装功能（6fb09ca），恢复该分支原安装流程；功能保留在 dev-v1 的 9d41f0e，不影响已有 CKM 会话功能。
 - 验证：除追加的历史说明外，代码与回退前基线 ad8a860 一致，git diff --check 通过。
+
+## 2026-09-10
+
+- 新增 `make dev` 本地联调入口，默认以 `~/.kube/218.config` 启动 18000 端口服务；Go 缓存落在项目内 `.w7-go-*`。已用 `make -n dev` 验证命令展开。
+
+- 修复 `local-run` 未传递 `W7PANEL_AUTH_MODE`：默认 `panel` 模式下由服务端为已认证面板用户签发短期 Kubernetes 凭据，不再把面板 JWT 当作 Kubernetes token 校验。待本地 218 联调复测。

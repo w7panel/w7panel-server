@@ -8,7 +8,8 @@ UI_BUILD_SCRIPT ?= $(UI_DIR)/build.sh
 CONTAINER_NAME ?= w7panel-local
 HOST_PORT ?= 18000
 CONTAINER_PORT ?= 18000
-KUBECONFIG_FILE ?= $(HOME)/.kube/config
+# 本地联调默认接入 218 集群；可通过 make local-run KUBECONFIG_FILE=... 覆盖。
+KUBECONFIG_FILE ?= $(HOME)/.kube/218.config
 OIDC_ISSUER ?= http://172.16.1.18:18000/panel-api/v1/oidc
 LOCAL_PORT ?= 18000
 LOCAL_GO_CACHE ?= $(CURDIR)/.w7-go-cache
@@ -20,7 +21,7 @@ GO_BIN ?= $(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT)/bin/
 DOCKER_RUN_ARGS ?=
 W7PANEL_AUTH_MODE ?= panel
 
-.PHONY: help frontend image ko-build docker-run local-run
+.PHONY: help frontend image ko-build docker-run local-run dev
 
 help:
 	@echo "本地镜像构建："
@@ -31,7 +32,8 @@ help:
 	@echo "  make docker-run"
 	@echo "  make docker-run HOST_PORT=18000 OIDC_ISSUER=http://172.16.1.18:18000/panel-api/v1/oidc"
 	@echo "本地源码运行："
-	@echo "  make local-run KUBECONFIG_FILE=/home/afan/.kube/218.config"
+	@echo "  make dev"
+	@echo "  make local-run KUBECONFIG_FILE=/path/to/kubeconfig"
 
 # 调用相邻 w7panel-ui 的构建脚本，将前端产物放入 ko 自动打包的 kodata 目录。
 frontend:
@@ -88,5 +90,9 @@ local-run:
 	GOTMPDIR="$(LOCAL_GO_TMP)" \
 	GOROOT="$(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT),)" \
 	KUBECONFIG="$(KUBECONFIG_FILE)" \
+	W7PANEL_AUTH_MODE="$(W7PANEL_AUTH_MODE)" \
 	W7PANEL_HTTP_SERVER_PORT="$(LOCAL_PORT)" \
 	"$(GO_BIN)" run . server:start
+
+# 本地开发快捷入口，默认使用 ~/.kube/218.config 连接 218 集群。
+dev: local-run
