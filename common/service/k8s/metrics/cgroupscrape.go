@@ -9,9 +9,7 @@ import (
 	"time"
 
 	"github.com/containerd/cgroups/v3/cgroup2/stats"
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/cgroups"
-	"github.com/w7panel/w7panel/common/service/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,24 +22,6 @@ func init() {
 	storage = &cgroupStorage{}
 }
 func StartCroupMetrics() {
-	if helper.IsK3kVirtual() {
-		sdk := k8s.NewK8sClient()
-
-		metricsClient, err := sdk.ToSigClient()
-		if err != nil {
-			return
-		}
-		collectReport(metricsClient) // 首次执行
-		// 启动定时任务
-		ticker := time.NewTicker(30 * time.Second)
-		for {
-			if err := collectReport(metricsClient); err != nil {
-				// 记录错误但继续运行
-				continue
-			}
-			<-ticker.C
-		}
-	}
 }
 func collectReport(client sigclient.Client) error {
 	// slog.Error("collectReport start")

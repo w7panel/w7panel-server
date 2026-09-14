@@ -58,8 +58,7 @@ func (self Auth) Process(ctx *gin.Context) {
 	if k8sToken.IsCacheToken() {
 		if saName, err := k8sToken.GetUserName(); err == nil {
 			ctx.Set("username", saName)
-			// TODO 兼容非 k3k 集群，非k3k 集群不校验权限
-			if !k8sToken.IsK3kCluster() && !helper.IsChildAgent() && !self.authorizeUserOrServiceAccount(ctx, saName) {
+			if !self.authorizeUserOrServiceAccount(ctx, saName) {
 				return
 			}
 		}
@@ -81,8 +80,7 @@ func (self Auth) Process(ctx *gin.Context) {
 	userName, err := k8sToken.GetUserName()
 	if err == nil {
 		ctx.Set("username", userName)
-		// TODO 兼容非 k3k 集群，非k3k 集群不校验权限 //TODO 安全隐患
-		if !k8sToken.IsK3kCluster() && !helper.IsChildAgent() && !self.authorizeUserOrServiceAccount(ctx, userName) {
+		if !self.authorizeUserOrServiceAccount(ctx, userName) {
 			return
 		}
 	}

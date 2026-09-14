@@ -147,17 +147,6 @@ func (s *singleton) GetK3kClusterSdkByConfig0(k3kconfig *K3kConfig, createToken 
 
 	return result, err
 }
-func (s *singleton) GetK3kClusterSdk(k8stoken *K8sToken) (*Sdk, error) {
-
-	k3kconfig, err := k8stoken.GetK3kConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	result, err := s.GetK3kClusterSdkByConfig0(k3kconfig, true)
-	return result, err
-}
-
 func (s *singleton) Clear(k3kName string, cvmName string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

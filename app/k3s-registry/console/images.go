@@ -199,7 +199,7 @@ func parseLabels(values []string) (map[string]string, error) {
 }
 
 func importPath(path string) string {
-	if helper.IsAgent() || helper.IsK3kVirtual() {
+	if helper.IsAgent() {
 		return filepath.Join(facade.GetConfig().GetString("s3.base_dir"), path)
 	}
 	return path

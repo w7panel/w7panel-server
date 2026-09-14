@@ -9,30 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 )
-
-func TestShouldUseRootMetricsSDK(t *testing.T) {
-	tests := []struct {
-		name        string
-		isK3k       bool
-		clusterMode string
-		want        bool
-	}{
-		{name: "standalone", isK3k: false, want: true},
-		{name: "shared", isK3k: true, clusterMode: k3ktypes.K3K_CLUSTER_MODE_SHARED, want: true},
-		{name: "virtual", isK3k: true, clusterMode: k3ktypes.K3K_CLUSTER_MODE_VIRTUAL, want: false},
-		{name: "k3k defaults to child", isK3k: true, want: false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := shouldUseRootMetricsSDK(tt.isK3k, tt.clusterMode); got != tt.want {
-				t.Fatalf("shouldUseRootMetricsSDK(%v, %q) = %v, want %v", tt.isK3k, tt.clusterMode, got, tt.want)
-			}
-		})
-	}
-}
 
 func TestMetricsQueryRange(t *testing.T) {
 	originalResolver := resolveMetricsSDK

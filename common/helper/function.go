@@ -58,8 +58,6 @@ import (
 
 var clusterD = "cluster.local"
 
-const K3K_AGENT_PREFIX = "w7panel-k3k-agent"
-
 func ClusterDomain(name, namespace string) string {
 	return fmt.Sprintf("%s.%s.svc.%s", name, namespace, clusterD)
 }
@@ -597,17 +595,6 @@ func VerifyDataWithPublicKey(pubKey *rsa.PublicKey, data, signature []byte) erro
 	return nil
 }
 
-func GetK3kAgentName(name string) string {
-	return "w7panel-k3k-agent-" + name
-}
-
-func GetK3kServer0Name(name string) string {
-	return "k3k-" + name + "-server-0"
-}
-
-func GetK3kServer0ContainerName(name string) string {
-	return "k3k-" + name + "-server"
-}
 func GetVirtualIngressServiceName(ns, name string) string {
 	return ns + "-" + name + "-service-w7"
 }
