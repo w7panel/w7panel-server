@@ -62,3 +62,4 @@ build.sh
 .w7-go-cache/**
 .w7-go-modcache/**
 .w7-go-tmp/**
+.code-review-graph/**
