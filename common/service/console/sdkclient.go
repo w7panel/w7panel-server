@@ -477,61 +477,6 @@ func (c *SdkClient) UpdateCoupon(code string, status string, sn string) error {
 	return err
 }
 
-// 签名问题 需要用Post
-func (c *SdkClient) FindLastPaidOrder(clusterId string, k3kName string) (*LastPaidOrder, error) {
-	order := &LastPaidOrder{}
-	params := map[string]string{
-		"clusterId": clusterId,
-		"k3kName":   k3kName,
-	}
-	_, err := c.Post(order, "api/thirdparty-cd/k8s-offline/sdk/panel/lastpaidorder", params)
-	return order, err
-}
-
-// 返回数据不能用下划线 ????
-func (c *SdkClient) FindLastReturnOrder(clusterId string, k3kName string) (*LastReturnOrder, error) {
-	order := &LastReturnOrder{}
-	params := map[string]string{
-		"clusterId": clusterId,
-		"k3kName":   k3kName,
-	}
-	_, err := c.Post(order, "api/thirdparty-cd/k8s-offline/sdk/panel/lastreturnorder", params)
-	return order, err
-}
-
-func (c *SdkClient) FindLastReturnCvmOrder(clusterId string, k3kName string, cvmName string) (*LastReturnOrder, error) {
-	order := &LastReturnOrder{}
-	params := map[string]string{
-		"clusterId": clusterId,
-		"k3kName":   k3kName,
-		"cvmName":   cvmName,
-	}
-	_, err := c.Post(order, "api/thirdparty-cd/k8s-offline/sdk/panel/lastreturncvmorder", params)
-	return order, err
-}
-
-func (c *SdkClient) FindK3kOrder(k3kName string, orderSn string) (*K3kOrder, error) {
-	order := &K3kOrder{}
-	params := map[string]string{
-		// "clusterId": clusterId,
-		"k3kName": k3kName,
-		"orderSn": orderSn,
-	}
-	_, err := c.Post(order, "/api/thirdparty-cd/k8s-offline/sdk/panel/order", params)
-	return order, err
-}
-
-func (c *SdkClient) ReturnOrderFinish(k3kName string, sn string) (*LastReturnOrder, error) {
-	order := &LastReturnOrder{}
-	params := map[string]string{
-		// "clusterId": clusterId,
-		"k3kName": k3kName,
-		"orderSn": sn,
-	}
-	_, err := c.Put(order, "/api/thirdparty-cd/k8s-offline/sdk/panel/lastreturnorder", params)
-	return order, err
-}
-
 // 当前方法只支持创始人 创建站点 暂时不支持其他用户创建站点
 func (c *SdkClient) CreateSiteFromPanel(url, siteIdentifie string) (*License, error) {
 	return c.CreateSiteFromPanelWithName(url, siteIdentifie, "")
