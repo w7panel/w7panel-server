@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/procpath"
 	webdavapi "github.com/w7panel/w7panel/common/service/webdav"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
@@ -69,8 +68,5 @@ func (c Webdav) HandleTest(ctx *gin.Context) {
 }
 
 func newWebDAVIDMapper(pid, subpid string) webdavapi.IDMapper {
-	if helper.IsChildAgent() {
-		return nil
-	}
 	return procpath.NewIDMapper(pid, subpid)
 }

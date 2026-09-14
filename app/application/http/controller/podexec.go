@@ -20,7 +20,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/terminal"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 	remotecommand2 "k8s.io/client-go/tools/remotecommand"
@@ -233,8 +232,6 @@ func (p PodExec) NodeTty(http *gin.Context) {
 		return
 	}
 
-	token := http.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
 	session := terminal.NewTerminalSession(conn)
 	execTimeout := facade.GetConfig().GetInt("k8s.exec_timeout_seconds")
 	if execTimeout <= 0 {
@@ -252,33 +249,12 @@ func (p PodExec) NodeTty(http *gin.Context) {
 		session.CloseWithReason(reason)
 	}()
 	rootsdk := k8s.NewK8sClient().Sdk
-	var findPod *corev1.Pod
-	shells := []string{params.Shell}
-	if k8sToken.IsK3kCluster() {
-		// client, err := k8s.NewK8sClient().ChannelLocal(http.MustGet("k8s_token").(string), true)
-		k3kConfig, err := k8sToken.GetK3kConfig()
-		if err != nil {
-			p.JsonResponseWithServerError(http, err)
-			return
-		}
-		pods, err := rootsdk.ClientSet.CoreV1().Pods(k3kConfig.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: "cluster"})
-		if err != nil {
-			p.JsonResponseWithServerError(http, err)
-			return
-		}
-		for _, pod := range pods.Items {
-			if pod.Status.PodIP == params.HostIp {
-				findPod = &pod
-			}
-		}
-	} else {
-		findPod, err = rootsdk.GetDaemonsetAgentPod(rootsdk.GetNamespace(), params.HostIp)
-		if err != nil {
-			p.JsonResponseWithServerError(http, err)
-			return
-		}
-		shells = []string{"nsenter", "-t", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--", params.Shell}
+	findPod, err := rootsdk.GetDaemonsetAgentPod(rootsdk.GetNamespace(), params.HostIp)
+	if err != nil {
+		p.JsonResponseWithServerError(http, err)
+		return
 	}
+	shells := []string{"nsenter", "-t", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--", params.Shell}
 	if findPod == nil {
 		p.JsonResponseWithServerError(http, fmt.Errorf("not found agent pod for hostIp: %s", params.HostIp))
 		return
@@ -349,62 +325,21 @@ func (self PodExec) Tty(http *gin.Context) {
 		slog.Info("tty session closing", "reason", reason)
 		session.CloseWithReason(reason)
 	}()
-	token := http.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
-	if k8sToken.IsK3kCluster() {
-		// client, err := k8s.NewK8sClient().ChannelLocal(http.MustGet("k8s_token").(string), true)
-		client := k8s.NewK8sClient()
-
-		k3kConfig, err := k8sToken.GetK3kConfig()
-		if err != nil {
-			self.JsonResponseWithServerError(http, err)
-			return
+	err = remotecommand.NewLocalExecutor(cmd).StreamWithContext(session.Context(), remotecommand2.StreamOptions{
+		Stdin:             session,
+		Stdout:            session,
+		Stderr:            session,
+		Tty:               true,
+		TerminalSizeQueue: session,
+	})
+	if err != nil {
+		reason := "upstream_close"
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			reason = "timeout"
 		}
-		ckmName := k3kConfig.CvmName
-		podName := k3kConfig.GetK3kServer0Name()
-		pods, err := client.ClientSet.CoreV1().Pods(k3kConfig.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: "cluster=" + ckmName})
-		if err != nil {
-			slog.Error("tty k3k list pods error", "err", err)
-		} else {
-			for _, pod := range pods.Items {
-				podName = pod.Name
-			}
-		}
-
-		// clientsdk, err := client.Channel(token)
-		// if err != nil {
-		// 	self.JsonResponseWithServerError(http, err)
-		// 	return
-		// }
-		params.Shell = "/bin/sh" //k3k pod 只支持 /bin/sh
-		err = client.RunExec(session, k3kConfig.Namespace, podName, k3kConfig.GetK3kServer0ContainerName(), []string{params.Shell}, true)
-		if err != nil {
-			reason := "upstream_close"
-			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-				reason = "timeout"
-			}
-			session.CloseWithReason(reason)
-			slog.Warn("tty k3k run error", "reason", reason, "err", err)
-			self.JsonResponseWithServerError(http, err)
-			return
-		}
-	} else {
-		err = remotecommand.NewLocalExecutor(cmd).StreamWithContext(session.Context(), remotecommand2.StreamOptions{
-			Stdin:             session,
-			Stdout:            session,
-			Stderr:            session,
-			Tty:               true,
-			TerminalSizeQueue: session,
-		})
-		if err != nil {
-			reason := "upstream_close"
-			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-				reason = "timeout"
-			}
-			session.CloseWithReason(reason)
-			slog.Error("tty error", "reason", reason, "err", err)
-			return
-		}
+		session.CloseWithReason(reason)
+		slog.Error("tty error", "reason", reason, "err", err)
+		return
 	}
 
 }
@@ -434,16 +369,10 @@ func (self PodExec) KubectlCp(http *gin.Context) {
 		params.From = params.Podname + ":" + params.From
 	}
 
-	rootSdk := k8s.NewK8sClient().Sdk
-	token := http.MustGet("k8s_token").(string)
 	client, err := k8s.NewK8sClient().Channel(http.MustGet("k8s_token").(string))
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
-	}
-	k8stoken := k8s.NewK8sToken(token)
-	if k8stoken.IsK3kCluster() {
-		client = rootSdk
 	}
 	cmdutil.BehaviorOnFatal(func(errstr string, code int) {
 
@@ -469,14 +398,6 @@ func (self PodExec) KubectlCp(http *gin.Context) {
 // 根据pod获取pid
 func (self PodExec) GetNodePid(http *gin.Context) {
 
-	token := http.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
-	if !k8sToken.IsK3kCluster() {
-		self.JsonResponse(http, gin.H{
-			"pid": 1,
-		}, nil, 200)
-		return
-	}
 	type VParam struct {
 		Namespace     string `form:"namespace" binding:"required"`
 		PodName       string `form:"podName" binding:"required"`
@@ -489,7 +410,7 @@ func (self PodExec) GetNodePid(http *gin.Context) {
 	}
 
 	sdk := k8s.NewK8sClient().Sdk
-	pod, err := sdk.ClientSet.CoreV1().Pods(k8sToken.GetNamespace()).Get(context.TODO(), params.PodName, metav1.GetOptions{})
+	pod, err := sdk.ClientSet.CoreV1().Pods(params.Namespace).Get(context.TODO(), params.PodName, metav1.GetOptions{})
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return

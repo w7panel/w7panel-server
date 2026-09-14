@@ -17,8 +17,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/site"
-	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
-	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	"github.com/w7panel/w7panel/common/service/panelauth"
 	userservice "github.com/w7panel/w7panel/common/service/user"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
@@ -31,6 +29,31 @@ import (
 
 type Auth struct {
 	controller.Abstract
+}
+
+// UserInfo exposes the current cluster-local service-account metadata.  It
+// intentionally does not derive a remote cluster, CVM, or K3k namespace from
+// the bearer token.
+func (self Auth) UserInfo(http *gin.Context) {
+	username := http.GetString("username")
+	if username == "" {
+		self.JsonResponseWithoutError(http, map[string]string{})
+		return
+	}
+	sdk := k8s.NewK8sClient().Sdk
+	sa, err := sdk.ClientSet.CoreV1().ServiceAccounts(sdk.GetNamespace()).Get(http.Request.Context(), username, metav1.GetOptions{})
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	result := map[string]string{"w7.cc/username": sa.Name}
+	for key, value := range sa.GetLabels() {
+		result[key] = value
+	}
+	for key, value := range sa.GetAnnotations() {
+		result[key] = value
+	}
+	self.JsonResponseWithoutError(http, result)
 }
 
 func (self Auth) Login(http *gin.Context) {
@@ -208,13 +231,7 @@ func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Contex
 	if role == "" {
 		role = u.Spec.UserMode
 	}
-	k3kUser, err := k3k.RefreshK3kUser(k3ktypes.NewK3kUser(u.ToTyped()), sdk, true)
-	if err != nil {
-		auditservice.RecordLoginFailure(http, u.Name, loginMethod, err)
-		self.JsonResponseWithError(http, err, 500)
-		return
-	}
-	token, err := panelauth.Issue(panelauth.Principal{Username: u.Name, PermissionName: u.Spec.PermissionName, Role: role, ConsoleID: k3kUser.GetConsoleId(), CVMName: ckmName, K3KNamespace: k3kUser.GetK3kNamespace(), TokenUse: panelauth.TokenUsePanel}, time.Duration(seconds)*time.Second)
+	token, err := panelauth.Issue(panelauth.Principal{Username: u.Name, PermissionName: u.Spec.PermissionName, Role: role, ConsoleID: u.Spec.CloudId, TokenUse: panelauth.TokenUsePanel}, time.Duration(seconds)*time.Second)
 	if err != nil {
 		auditservice.RecordLoginFailure(http, u.Name, loginMethod, err)
 		self.JsonResponseWithError(http, err, 500)
@@ -226,8 +243,8 @@ func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Contex
 	self.JsonResponseWithoutError(http, gin.H{
 		"token":         token,
 		"expire":        time.Now().Add(time.Duration(seconds) * time.Second).Unix(),
-		"isK3kUser":     u.Spec.UserMode == "cluster",
-		"isClusterUser": u.Spec.UserMode == "cluster",
+		"isK3kUser":     false,
+		"isClusterUser": false,
 		"refreshToken":  rs.Token,
 	})
 }

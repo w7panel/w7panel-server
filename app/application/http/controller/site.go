@@ -96,15 +96,6 @@ func hasMicroAppFiling(spec microappsettingv1alpha1.FilingSettings) bool {
 		spec.ValueAddedTelecomBusinessLicense != ""
 }
 
-func (self Site) K3kConfig(http *gin.Context) {
-	sdk := k8s.NewK8sClient()
-	response := gin.H{}
-	if setting, err := getGlobalMicroAppSetting(http, sdk.Sdk); err == nil && setting.Spec.Login.IndexPage != "" {
-		response["indexpage"] = setting.Spec.Login.IndexPage
-	}
-	self.JsonResponseWithoutError(http, response)
-}
-
 func (self Site) InitUser(http *gin.Context) {
 	releaseName := facade.Config.GetString("app.helm_release_name")
 	sdk := k8s.NewK8sClient()

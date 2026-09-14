@@ -5,11 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os/exec"
 	"strconv"
 	"strings"
 
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/terminal"
 	corev1 "k8s.io/api/core/v1"
@@ -40,54 +38,25 @@ func LoadPid(pod *corev1.Pod) (int, error) {
 		return 0, fmt.Errorf("cluster pod container %s is not running", status.Name)
 	}
 	containerId := status.ContainerID
-	if helper.IsChildAgent() {
-		if helper.IsK3kVirtual() {
-			//os 执行命令
-			cmd := []string{"inspect", "--output", "go-template", fmt.Sprintf("--template='{{.info.pid}}'"), containerId}
-			output, err := exec.Command("crictl", cmd...).Output()
-			if err != nil {
-				slog.Error("run cmd err", "err", err)
-				return 0, err
-			}
-			pid, err := bytesToPid(output)
-			if err != nil {
-				slog.Error("bytesToPid", "err", err)
-				return 0, err
-			}
-
-			controllerutil.CreateOrPatch(sdk.Ctx, sigClient, pod, func() error {
-				if pod.Annotations == nil {
-					pod.Annotations = make(map[string]string)
-				}
-				return setAnnotationContainerPid(pod, status.Name, containerId, pid)
-			})
-			return pid, nil
-		}
-		if helper.IsK3kShared() {
-			// 使用的主集群pod 不需要处理
-		}
-	} else {
-		daemonsetPod, err := sdk.GetDaemonsetAgentPod(sdk.GetNamespace(), pod.Status.HostIP)
+	daemonsetPod, err := sdk.GetDaemonsetAgentPod(sdk.GetNamespace(), pod.Status.HostIP)
+	if err != nil {
+		slog.Error("get daemonset agent pod", "err", err)
+		return 0, err
+	}
+	if len(pod.Status.ContainerStatuses) > 0 && containerId != "" {
+		pid, err := GetPid(daemonsetPod, containerId, true, sdk.Sdk)
 		if err != nil {
-			slog.Error("get  daemonsetPod err", "err", err)
 			return 0, err
 		}
-		if (len(pod.Status.ContainerStatuses) > 0) && containerId != "" {
-			pid, err := GetPid(daemonsetPod, containerId, true, sdk.Sdk)
-			if err != nil {
-				return 0, err
+		controllerutil.CreateOrPatch(sdk.Ctx, sigClient, pod, func() error {
+			if pod.Annotations == nil {
+				pod.Annotations = make(map[string]string)
 			}
-			controllerutil.CreateOrPatch(sdk.Ctx, sigClient, pod, func() error {
-				if pod.Annotations == nil {
-					pod.Annotations = make(map[string]string)
-				}
-				return setAnnotationContainerPid(pod, status.Name, containerId, pid)
-			})
-			return pid, nil
-		}
+			return setAnnotationContainerPid(pod, status.Name, containerId, pid)
+		})
+		return pid, nil
 	}
 	return 0, errors.New("not found pid")
-	//如果是子集群 直接通过当前shell获取
 }
 func GetPid(findPod *corev1.Pod, containerId string, nscener bool, sdk *k8s.Sdk) (int, error) {
 	session := terminal.NewTerminalSession(nil)

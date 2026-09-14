@@ -18,7 +18,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/oidc"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
-	"github.com/zitadel/oidc/v3/pkg/op"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -334,69 +333,24 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 	path := gin.Param("path")
 
 	token := gin.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
-
-	role := k8sToken.GetRole()
+	role := k8s.NewK8sToken(token).GetRole()
 	microAppObj, err := microapp.ListInfo(token, name)
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
 	}
-	client, err := k8s.NewK8sClient().Channel(token)
+	proxy := microapp.NewMicroAppProxy(microAppObj, false, role)
+	if replace, err := microapp.NewMicroAppReplace(token); err == nil && replace != nil {
+		proxy.WithReplace(replace)
+	}
+	proxyCtx := gin.Request.Context()
+	if server, err := oidc.GetServer(); err == nil && server != nil {
+		proxyCtx = server.ContextWithIssuer(proxyCtx, gin.Request)
+	}
+	revert, err := proxy.Proxy(proxyCtx, path)
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
 	}
-
-	if microAppObj.IsFromRoot() || !k8sToken.IsK3kCluster() {
-		if helper.IsK3kVirtual() { //转发到子集群pod后 强制设置成founder
-			role = "founder"
-		}
-		proxy := microapp.NewMicroAppProxy(microAppObj, k8sToken.IsK3kCluster(), role)
-		replace, err := microapp.NewMicroAppReplace(token)
-		if err == nil && replace != nil {
-			proxy.WithReplace(replace) //替换掉原有请求
-		}
-		proxyCtx := gin.Request.Context()
-		if server, err := oidc.GetServer(); err == nil && server != nil {
-			proxyCtx = server.ContextWithIssuer(proxyCtx, gin.Request)
-
-			isser := op.IssuerFromContext(proxyCtx)
-			slog.Info("Issuer", "issuer", isser)
-
-		}
-		revert, err := proxy.Proxy(proxyCtx, path)
-		if err != nil {
-			self.JsonResponseWithServerError(gin, err)
-			return
-		}
-		revert.ServeHTTP(gin.Writer, gin.Request)
-		return
-	}
-	// --->panel--->sub-cluster--->microapp--->回到ZZZ 处
-	if k8sToken.IsK3kCluster() { //转发到子集群pod后 强制设置成founder
-
-		k8stoken := k8s.NewK8sToken(token)
-		config, err := k8stoken.GetK3kConfig()
-		if err != nil {
-			self.JsonResponseWithServerError(gin, err)
-			return
-		}
-		path := gin.Request.URL.String()
-		// agentHost := config.GetK3kAgentLbHost()
-		proxyUrl := "http://" + config.GetK3kAgentLbHost()
-		restConfig, err := client.ToRESTConfig()
-		if err != nil {
-			self.JsonResponseWithServerError(gin, err)
-			return
-		}
-		gin.Request.Header.Set("AuthorizationX", "Bearer "+restConfig.BearerToken)
-		proxy, err := helper.ProxyUrl(proxyUrl, path, "", nil, nil)
-		if err != nil {
-			self.JsonResponseWithServerError(gin, err)
-			return
-		}
-		proxy.ServeHTTP(gin.Writer, gin.Request)
-
-	}
+	revert.ServeHTTP(gin.Writer, gin.Request)
 }

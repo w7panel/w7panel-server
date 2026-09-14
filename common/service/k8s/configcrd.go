@@ -11,7 +11,6 @@ import (
 const (
 	ConfigCRDGroup        = "w7panel.w7.com"
 	ConfigCRDVersion      = "v1alpha1"
-	K3kConfigName         = "config"
 	K3sConfigName         = "config"
 	LicenseName           = "license"
 	OverSellingConfigName = "config"
@@ -20,7 +19,6 @@ const (
 )
 
 var (
-	K3kConfigGVR         = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "k3kconfigs"}
 	K3sConfigGVR         = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "k3sconfigs"}
 	LicenseGVR           = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "licenses"}
 	OverSellingConfigGVR = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "oversellingconfigs"}
