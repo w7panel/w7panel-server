@@ -245,3 +245,27 @@
 - 新增 `make dev` 本地联调入口，默认以 `~/.kube/218.config` 启动 18000 端口服务；Go 缓存落在项目内 `.w7-go-*`。已用 `make -n dev` 验证命令展开。
 
 - 修复 `local-run` 未传递 `W7PANEL_AUTH_MODE`：默认 `panel` 模式下由服务端为已认证面板用户签发短期 Kubernetes 凭据，不再把面板 JWT 当作 Kubernetes token 校验。待本地 218 联调复测。
+
+## 2026-09-09
+
+- 新增 mise.toml，指定开发工具 Go 1.26 和 Node.js 22；影响模块：本地开发环境配置。
+- 验证：TOML 解析及工具版本配置检查通过，git diff --check 通过。
+
+## 2026-09-14
+
+- 修复 `w7.cc/inject-root-ca` 将系统公共 CA 替换为面板 CA、导致公网 HTTPS 验证失败的问题；CA bundle initContainer 固定置于首位，先将公共 CA 与 `w7panel-root-ca-issuer` CA 合并，再启动原有 initContainer、原生 Sidecar 和业务容器。
+- CA bundle 默认复用运行 Webhook 的 w7panel 镜像，不再探测或依赖 `w7panel-cloudnoauth` Sidecar，并支持通过 `w7.cc/root-ca-bundle-image` annotation 覆盖。
+- CA bundle initContainer 不再强制 `runAsUser: 0`、`runAsGroup: 0` 或 `runAsNonRoot: false`，避免覆盖工作负载的用户策略或触发 Pod Security 限制；仍保留禁止提权、只读根文件系统和 capability drop，并移除仅供测试引用的冗余系统 CA 路径常量。
+- 影响模块：Pod Admission 通用根 CA 注入、使用透明 HTTPS Sidecar 及其他需要面板 CA 的工作负载。
+- 验证：补充 CA 源卷、合并卷、initContainer 顺序、通用镜像选择、annotation 镜像覆盖、环境变量覆盖及重复注入测试；`go test ./common/service/k8s/webhook -count=1` 和 `git diff --check` 通过。
+
+## 2026-09-14
+
+- 保留 .mcp.json 和 opencode.jsonc 的 code-review-graph MCP 接入配置，恢复 AGENTS.md 中优先使用代码图探索与审查的规则；影响模块：开发工具配置与协作规范。
+- 验证：MCP 图统计与代码查询调用成功，索引对应当前 HEAD；配置 JSON 解析及 git diff --check 通过。
+
+## 2026-09-14
+
+- 合并 dev-v1（3dead4f0）到 dev-v1-token，保留 token/CKM 会话、本地联调规则及双方变更历史；同步制品预装、安装服务和公共 CA 修复。
+- 按确认方案删除旧 w7panel-higress Chart，采用制品预装及远程 Chart 升级；子集群脚本保留 Gateway API 开关，主集群远程制品的开关配置未验证。
+- 验证：mise exec -- go build ./... 通过；CKM 会话、面板认证、中间件、用户凭据、协调租约、Webhook、BootstrapInstallation CRD 及 ZPK 凭据隔离/域名/默认仓库定向测试通过；Shell 语法和 git diff --check 通过。Bootstrap 控制器 3 项测试失败（就绪轮询及重试上限预期），对应源码和测试与 dev-v1 完全一致，本次合并不调整其状态机。未部署集群或验证远程 Higress 制品。

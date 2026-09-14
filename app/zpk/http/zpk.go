@@ -52,6 +52,19 @@ func writeArtifactInstallConflictResponse(http *gin.Context, err error) bool {
 	return true
 }
 
+func (self Zpk) relayRepoError(ctx *gin.Context, err error) bool {
+	var remoteErr *logic.RemoteHTTPError
+	if !errors.As(err, &remoteErr) || remoteErr.StatusCode != nethttp.StatusForbidden {
+		return false
+	}
+	var payload map[string]interface{}
+	if json.Unmarshal(remoteErr.Body, &payload) != nil || payload["code"] != "ZPK_TRIAL_EXPIRED" {
+		return false
+	}
+	ctx.JSON(nethttp.StatusForbidden, payload)
+	return true
+}
+
 func (self Zpk) GetConfig(http *gin.Context) {
 	type ParamsValidate struct {
 		RepoUrl           string `form:"repoUrl" binding:"required"`
@@ -110,6 +123,9 @@ func (self Zpk) GetConfig(http *gin.Context) {
 	mPackage, err := repo.Load()
 	if err != nil {
 		if writeArtifactInstallConflictResponse(http, err) {
+			return
+		}
+		if self.relayRepoError(http, err) {
 			return
 		}
 		self.JsonResponseWithServerError(http, err)
@@ -186,6 +202,9 @@ func (self Zpk) Install(http *gin.Context) {
 	})
 	if err != nil {
 		if writeArtifactInstallConflictResponse(http, err) {
+			return
+		}
+		if self.relayRepoError(http, err) {
 			return
 		}
 		self.JsonResponseWithServerError(http, err)
@@ -416,8 +435,9 @@ func (self Zpk) InstallTrandition(http *gin.Context) {
 */
 func (self Zpk) OutDependEnv(http *gin.Context) {
 	type ParamsValidate struct {
-		Namespace string `form:"namespace" binding:"required"`
-		Identifie string `form:"identifie" binding:"required"`
+		Namespace   string `form:"namespace" binding:"required"`
+		Identifie   string `form:"identifie" binding:"required"`
+		ReleaseName string `form:"releaseName"`
 	}
 	params := ParamsValidate{}
 	if !self.Validate(http, &params) {
@@ -435,7 +455,12 @@ func (self Zpk) OutDependEnv(http *gin.Context) {
 		return
 	}
 	depend := logic.NewDependEnv(client)
-	result2, err := depend.LoadEnv(params.Identifie, params.Namespace)
+	var result2 *logic.DependEnvResult
+	if strings.TrimSpace(params.ReleaseName) != "" {
+		result2, err = depend.LoadLastVersionEnv(strings.TrimSpace(params.ReleaseName), params.Namespace)
+	} else {
+		result2, err = depend.LoadEnv(params.Identifie, params.Namespace)
+	}
 	if err != nil {
 		self.JsonResponseWithoutError(http, result)
 		return

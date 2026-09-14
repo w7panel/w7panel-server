@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
-	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/types"
 	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	// "github.com/w7panel/w7panel/common/service/k8s/zpk"
@@ -317,13 +317,6 @@ func (d *WorkloadManager) HandleWorkload(ds WorkloadWrapperInterface, delete boo
 		return err
 	}
 	if itemStatus.Kind != "Job" {
-		if err := d.ensureWorkloadRootCAAnnotation(ds, group.Annotations[zpktypes.HELM_INJECT_ROOT_CA] == "true"); err != nil {
-			slog.Error("sync workload root CA annotation error", "error", err, "kind", ds.Kind(), "namespace", ds.Namespace(), "name", ds.Name())
-			return err
-		}
-	}
-
-	if itemStatus.Kind != "Job" {
 		notifyInstalledForReadyGroups(group)
 	}
 
@@ -363,84 +356,6 @@ func (d *WorkloadManager) ensureWorkloadGroupNameLabel(workload WorkloadWrapperI
 	}
 	if err != nil {
 		return fmt.Errorf("patch %s %s/%s group name label: %w", workload.Kind(), workload.Namespace(), workload.Name(), err)
-	}
-	return nil
-}
-
-func (d *WorkloadManager) ensureWorkloadRootCAAnnotation(workload WorkloadWrapperInterface, enabled bool) error {
-	if workload == nil {
-		return nil
-	}
-	template := workload.PodTemplate()
-	if template == nil {
-		return nil
-	}
-	current, exists := template.Annotations[zpktypes.HELM_INJECT_ROOT_CA]
-	if (enabled && current == "true") || (!enabled && !exists) {
-		return nil
-	}
-
-	var value interface{}
-	if enabled {
-		value = "true"
-	}
-	patch, err := json.Marshal(map[string]interface{}{
-		"spec": map[string]interface{}{
-			"template": map[string]interface{}{
-				"metadata": map[string]interface{}{
-					"annotations": map[string]interface{}{
-						zpktypes.HELM_INJECT_ROOT_CA: value,
-					},
-				},
-			},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("marshal workload root CA annotation patch: %w", err)
-	}
-
-	ctx := d.sdk.Ctx
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	patchOptions := metav1.PatchOptions{FieldManager: "w7panel-appgroup-controller"}
-	switch workload.Kind() {
-	case "Deployment":
-		_, err = d.sdk.ClientSet.AppsV1().Deployments(workload.Namespace()).Patch(ctx, workload.Name(), k8stypes.MergePatchType, patch, patchOptions)
-	case "StatefulSet":
-		_, err = d.sdk.ClientSet.AppsV1().StatefulSets(workload.Namespace()).Patch(ctx, workload.Name(), k8stypes.MergePatchType, patch, patchOptions)
-	case "DaemonSet":
-		_, err = d.sdk.ClientSet.AppsV1().DaemonSets(workload.Namespace()).Patch(ctx, workload.Name(), k8stypes.MergePatchType, patch, patchOptions)
-	default:
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("patch %s %s/%s root CA annotation: %w", workload.Kind(), workload.Namespace(), workload.Name(), err)
-	}
-	return nil
-}
-
-func (d *WorkloadManager) syncAppGroupRootCAAnnotation(group *v1alpha1.AppGroup) error {
-	if group == nil {
-		return nil
-	}
-	enabled := group.Annotations[zpktypes.HELM_INJECT_ROOT_CA] == "true"
-	for _, item := range group.Status.Items {
-		switch item.Kind {
-		case "Deployment", "StatefulSet", "DaemonSet":
-		default:
-			continue
-		}
-		workload, err := d.GetFromRO(item.Kind, group.Namespace, item.Name)
-		if err != nil {
-			if k8serrors.IsNotFound(err) {
-				continue
-			}
-			return fmt.Errorf("get %s %s/%s for root CA annotation sync: %w", item.Kind, group.Namespace, item.Name, err)
-		}
-		if err := d.ensureWorkloadRootCAAnnotation(workload, enabled); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -552,13 +467,47 @@ func (d *WorkloadManager) cleanGroupChildren(group *v1alpha1.AppGroup) error {
 	return nil
 }
 
+// syncParentDomains applies the current child AppGroup's domain change to its
+// parent, keeping root-group consumers in sync without rescanning siblings.
+func (d *WorkloadManager) syncParentDomains(group *v1alpha1.AppGroup, deleting bool) (bool, error) {
+	if group == nil || group.Labels == nil {
+		return false, nil
+	}
+	parentName := strings.ToLower(strings.TrimSpace(group.Labels["w7.cc/parent"]))
+	if parentName == "" {
+		return false, nil
+	}
+	parent, err := d.groupApi.GetAppGroup(group.Namespace, parentName)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	merged := parent.GetDomains()
+	if deleting {
+		merged = helper.RemoveStrings(merged, group.GetDomains()...)
+	} else {
+		merged = helper.MergeStrings(merged, group.GetDomains()...)
+	}
+	if helper.EqualStrings(parent.GetDomains(), merged) {
+		return false, nil
+	}
+	parent.SetDomain(merged)
+	_, err = d.groupApi.UpdateAppGroup(parent.Namespace, parent)
+	return err == nil, err
+}
+
 func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, isInit bool) error {
 	if group.DeletionTimestamp != nil {
+		if _, err := d.syncParentDomains(group, true); err != nil {
+			return err
+		}
 		// d.deleteOldAppGroup(group)
 		if err := d.cleanAppGroup(group); err != nil {
 			return newAppGroupCleanupRetryError(err)
 		}
-		parentName, isChild := group.Labels["w7.cc/parent"]
+		_, isChild := group.Labels["w7.cc/parent"]
 		if isChild {
 			if removeManagedAppGroupFinalizers(group) {
 				_, err := d.groupApi.UpdateAppGroup(group.Namespace, group)
@@ -567,15 +516,9 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 					return err
 				}
 			}
-			parentGroup, err := d.GetAppGroupFromRO(group.Namespace, parentName)
-			if err != nil {
-				if k8serrors.IsNotFound(err) {
-					return nil
-				}
-				slog.Debug("cannot find parent group", slog.String("parentName", parentName), slog.String("error", err.Error()))
-				return err
-			}
-			return d.cleanGroupChildren(parentGroup)
+			// A child deletion must not cascade to sibling AppGroups. The parent
+			// branch below is responsible for deleting the complete group tree.
+			return nil
 		} else {
 			go func() {
 				if err := NotifyDeleted(group); err != nil {
@@ -585,6 +528,12 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 
 			return d.cleanGroupChildren(group)
 		}
+	}
+	if changed, err := d.syncParentDomains(group, false); err != nil {
+		slog.Error("sync parent domains error", "group", group.Name, "error", err)
+		return err
+	} else if changed {
+		slog.Debug("synced parent domains", "group", group.Name)
 	}
 
 	changed := false
@@ -617,10 +566,6 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 		slog.Error("sync appgroup resource tracked derived state error", "error", err)
 	} else if wrapper.IsChange() {
 		changed = true
-	}
-	if err := d.syncAppGroupRootCAAnnotation(group); err != nil {
-		slog.Error("sync appgroup root CA annotation error", "namespace", group.Namespace, "name", group.Name, "error", err)
-		return err
 	}
 	if changed {
 		_, err := d.groupApi.UpdateAppGroup(group.Namespace, group)

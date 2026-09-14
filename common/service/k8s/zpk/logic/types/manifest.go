@@ -143,6 +143,9 @@ func (m *Manifest) RequireDomain() bool {
 		}
 	}
 	for _, param := range m.Platform.Container.StartParams {
+		if strings.TrimSpace(param.ModuleName) != "" {
+			continue
+		}
 		if param.ValuesText == "%DOMAIN_URL%" || param.ValuesText == "%DOMAIN_SSL_URL%" || param.ValuesText == "%DOMAIN_HOST%" {
 			return true
 		}
@@ -157,6 +160,9 @@ func (m *Manifest) RequireDomainForce() bool {
 		}
 	}
 	for _, param := range m.Platform.Container.StartParams {
+		if strings.TrimSpace(param.ModuleName) != "" {
+			continue
+		}
 		if (param.ValuesText == "%DOMAIN_URL%" || param.ValuesText == "%DOMAIN_SSL_URL%") && param.Required {
 			return true
 		}
@@ -181,6 +187,9 @@ func (m *Manifest) RequireDomainHttps() bool {
 		}
 	}
 	for _, param := range m.Platform.Container.StartParams {
+		if strings.TrimSpace(param.ModuleName) != "" {
+			continue
+		}
 		if param.ValuesText == "%DOMAIN_SSL_URL%" {
 			return true
 		}
@@ -301,23 +310,15 @@ type SecurityContext struct {
 }
 
 type StartParams struct {
-	Description      string                `json:"description"`
-	ModuleName       string                `json:"module_name"`
-	Name             string                `json:"name"`
-	Required         bool                  `json:"required"`
-	Title            string                `json:"title"`
-	Type             string                `json:"type"`
-	ValuesText       string                `json:"values_text"`
-	Lock             bool                  `json:"lock"` // 是否锁定 更新时候锁定
-	Hidden           bool                  `json:"hidden,omitempty"`
-	DependencySource *StartParamDependency `json:"dependencySource,omitempty"`
-}
-
-// StartParamDependency identifies the start parameter that supplies the value
-// for a consuming application start parameter.
-type StartParamDependency struct {
-	Identifie string `json:"identifie"`
-	Name      string `json:"name"`
+	Description string `json:"description"`
+	ModuleName  string `json:"module_name"`
+	Name        string `json:"name"`
+	Required    bool   `json:"required"`
+	Title       string `json:"title"`
+	Type        string `json:"type"`
+	ValuesText  string `json:"values_text"`
+	Lock        bool   `json:"lock"` // 是否锁定 更新时候锁定
+	Hidden      bool   `json:"hidden,omitempty"`
 }
 type Volumes struct {
 	MountPath string `json:"mountPath"`
@@ -418,13 +419,18 @@ func (s *Shell) GetImage() string {
 }
 
 type Depends struct {
-	Identifie    string `json:"identifie"`
-	Name         string `json:"name"`
-	Required     bool   `json:"required"`
-	From         string `json:"from"`
-	Type         string `json:"type"`
-	SubIdentifie string `json:"subidentifie"`
-	SubName      string `json:"subname"`
+	Identifie         string            `json:"identifie"`
+	OrderSn           string            `json:"order_sn,omitempty"`
+	Name              string            `json:"name"`
+	Required          bool              `json:"required"`
+	From              string            `json:"from"`
+	Type              string            `json:"type"`
+	SubIdentifie      string            `json:"subidentifie"`
+	SubName           string            `json:"subname"`
+	MultipleInstances bool              `json:"multipleInstances,omitempty"`
+	ReleaseName       string            `json:"releaseName,omitempty"`
+	ReleaseNameFixed  bool              `json:"releaseNameFixed"`
+	StartParams       map[string]string `json:"startParams,omitempty"`
 }
 
 type Helm struct {

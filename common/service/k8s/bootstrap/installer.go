@@ -1,0 +1,288 @@
+package bootstrap
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic"
+	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
+	appgroupv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
+	installationv1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrapinstallation/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+type artifactInstaller interface {
+	Lookup(context.Context, *installationv1.BootstrapInstallation) (*installedArtifact, error)
+	Install(context.Context, *installationv1.BootstrapInstallation) error
+	ResolveUpdate(context.Context, *installationv1.BootstrapInstallation, string) (*artifactUpdate, error)
+	Upgrade(context.Context, *installationv1.BootstrapInstallation, *artifactUpdate) error
+	Uninstall(context.Context, *installationv1.BootstrapInstallation) error
+}
+
+type artifactUpdate struct {
+	Version string
+	pack    *zpktypes.ManifestPackage
+}
+
+type installedArtifactState string
+
+const (
+	installedArtifactInstalling installedArtifactState = "Installing"
+	installedArtifactReady      installedArtifactState = "Ready"
+	installedArtifactFailed     installedArtifactState = "Failed"
+	installedArtifactDeleting   installedArtifactState = "Deleting"
+)
+
+var (
+	errArtifactAlreadyExists = errors.New("artifact already exists")
+	errArtifactDeleting      = errors.New("artifact is deleting")
+)
+
+type installedArtifact struct {
+	Name      string
+	Namespace string
+	Identifie string
+	Version   string
+	State     installedArtifactState
+	Owned     bool
+}
+
+type zpkArtifactInstaller struct {
+	sdk        *k8s.Sdk
+	panelToken string
+}
+
+func newZPKArtifactInstaller(sdk *k8s.Sdk) (*zpkArtifactInstaller, error) {
+	config, err := sdk.ToRESTConfig()
+	if err != nil {
+		return nil, fmt.Errorf("读取 Kubernetes REST 配置: %w", err)
+	}
+	return &zpkArtifactInstaller{sdk: sdk, panelToken: config.BearerToken}, nil
+}
+
+func (i *zpkArtifactInstaller) load(ctx context.Context, reference installationv1.ArtifactReference, currentVersion string) (*zpktypes.ManifestPackage, error) {
+	if strings.HasPrefix(reference.Source, "oci://") {
+		return nil, errors.New("当前 ZPK 加载器尚不支持 OCI BootstrapInstallation source")
+	}
+	reference.Version = strings.TrimSpace(reference.Version)
+	if reference.Version == "" || isLatestVersion(reference.Version) {
+		reference.Version = ""
+	}
+	repo := logic.NewRepo(reference.Source, "", "")
+	repo.SetPanelToken(i.panelToken)
+	if currentVersion != "" {
+		repo.SetUpgrade(true)
+		repo.SetCurVersion(currentVersion)
+	}
+	if reference.Version != "" {
+		repo.SetTargetVersion(reference.Version)
+	}
+	pack, err := repo.LoadContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("加载制品 %q: %w", reference.Source, err)
+	}
+	actualIdentifie := normalizeIdentifie(pack.Manifest.Application.Identifie)
+	if actualIdentifie != normalizeIdentifie(reference.Identifie) {
+		return nil, fmt.Errorf("制品 identifie 不匹配: 期望 %q，实际 %q", reference.Identifie, pack.Manifest.Application.Identifie)
+	}
+	if reference.Version != "" && compareVersions(pack.Version.Name, reference.Version) != 0 {
+		return nil, fmt.Errorf("制品库未返回指定版本: 期望 %q，实际 %q", reference.Version, pack.Version.Name)
+	}
+	return pack, nil
+}
+
+func (i *zpkArtifactInstaller) Lookup(ctx context.Context, installation *installationv1.BootstrapInstallation) (*installedArtifact, error) {
+	sigClient, err := i.sdk.ToSigClient()
+	if err != nil {
+		return nil, fmt.Errorf("创建 AppGroup 客户端: %w", err)
+	}
+	group := &appgroupv1.AppGroup{}
+	key := client.ObjectKey{Name: installation.Spec.Target.ReleaseName, Namespace: installation.Spec.Target.Namespace}
+	if err := sigClient.Get(ctx, key, group); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("查询 AppGroup %s/%s: %w", key.Namespace, key.Name, err)
+	}
+	state := appGroupArtifactState(group)
+	return &installedArtifact{
+		Name: group.Name, Namespace: group.Namespace,
+		Identifie: group.Spec.Identifie, Version: group.Spec.Version,
+		State: state,
+		Owned: isArtifactOwner(group.Annotations, installation),
+	}, nil
+}
+
+func appGroupArtifactState(group *appgroupv1.AppGroup) installedArtifactState {
+	switch {
+	case !group.DeletionTimestamp.IsZero():
+		return installedArtifactDeleting
+	case group.Status.DeployStatus == appgroupv1.StatusFailed || group.Status.ComputeDeployIsFailed():
+		return installedArtifactFailed
+	case group.Status.Ready && group.Status.DeployStatus == appgroupv1.StatusDeployed:
+		return installedArtifactReady
+	default:
+		return installedArtifactInstalling
+	}
+}
+
+func (i *zpkArtifactInstaller) Install(ctx context.Context, installation *installationv1.BootstrapInstallation) error {
+	if effectiveArtifactType(installation.Spec.Artifact.Type) != installationv1.ArtifactTypeZPK {
+		return fmt.Errorf("制品类型 %q 当前不支持", installation.Spec.Artifact.Type)
+	}
+	reference := installation.Spec.Artifact
+	pack, err := i.load(ctx, reference, "")
+	if err != nil {
+		return err
+	}
+
+	if _, err := i.sdk.ClientSet.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: installation.Spec.Target.Namespace}}, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
+		return fmt.Errorf("创建命名空间 %q: %w", installation.Spec.Target.Namespace, err)
+	}
+	current, err := i.Lookup(ctx, installation)
+	if err != nil {
+		return err
+	}
+	if current != nil {
+		if current.State == installedArtifactDeleting {
+			return errArtifactDeleting
+		}
+		return errArtifactAlreadyExists
+	}
+	return i.installOrUpgrade(ctx, installation, pack)
+}
+
+func (i *zpkArtifactInstaller) ResolveUpdate(ctx context.Context, installation *installationv1.BootstrapInstallation, currentVersion string) (*artifactUpdate, error) {
+	if effectiveArtifactType(installation.Spec.Artifact.Type) != installationv1.ArtifactTypeZPK {
+		return nil, fmt.Errorf("制品类型 %q 当前不支持", installation.Spec.Artifact.Type)
+	}
+	pack, err := i.load(ctx, installation.Spec.Artifact, currentVersion)
+	if err != nil {
+		return nil, err
+	}
+	availableVersion := strings.TrimSpace(pack.Version.Name)
+	if availableVersion == "" {
+		return nil, errors.New("制品库返回的版本为空")
+	}
+	return &artifactUpdate{Version: availableVersion, pack: pack}, nil
+}
+
+func (i *zpkArtifactInstaller) Upgrade(ctx context.Context, installation *installationv1.BootstrapInstallation, update *artifactUpdate) error {
+	if effectiveArtifactType(installation.Spec.Artifact.Type) != installationv1.ArtifactTypeZPK {
+		return fmt.Errorf("制品类型 %q 当前不支持", installation.Spec.Artifact.Type)
+	}
+	if update == nil || update.pack == nil {
+		return errors.New("待升级的 ZPK 制品为空")
+	}
+	current, err := i.Lookup(ctx, installation)
+	if err != nil {
+		return err
+	}
+	if current == nil {
+		return errors.New("待升级的 AppGroup 不存在")
+	}
+	if current.State == installedArtifactDeleting {
+		return errArtifactDeleting
+	}
+	if !current.Owned {
+		return errors.New("待升级的 AppGroup 不属于当前 BootstrapInstallation")
+	}
+
+	return i.installOrUpgrade(ctx, installation, update.pack)
+}
+
+func (i *zpkArtifactInstaller) installOrUpgrade(ctx context.Context, installation *installationv1.BootstrapInstallation, pack *zpktypes.ManifestPackage) error {
+	options := make([]zpktypes.InstallOption, 0, len(pack.Children)+1)
+	options = append(options, zpktypes.InstallOption{
+		Identifie:  pack.Manifest.Application.Identifie,
+		Replicas:   1,
+		HelmValues: cloneStringMap(installation.Spec.InstallOptions.HelmValues),
+		Annotations: map[string]string{
+			installationv1.AnnotationInstallationOwner: artifactOwner(installation),
+		},
+	})
+	for name, child := range pack.Children {
+		replicas := int32(0)
+		if child.RequireInstall {
+			replicas = 1
+		}
+		options = append(options, zpktypes.InstallOption{Identifie: name, Replicas: replicas})
+	}
+
+	installID := executionID(installation, pack.Version.Name)
+	packages := zpktypes.NewPackage(pack, options, installation.Spec.Target.ReleaseName, installID,
+		installation.Spec.Target.Namespace, "", "", "")
+	if packages.Root == nil {
+		return errors.New("制品未生成根安装项")
+	}
+	packages.Root.ServiceAccountName = i.sdk.GetServiceAccountName()
+	packages.Root.RealToken = i.panelToken
+	// Bootstrap 使用 Kubernetes ServiceAccount Token 执行安装，它不包含面板用户身份。
+	// K8sToken 会被 ZPK 解析为创建用户名和角色并写入 Label，因此必须保持为空。
+	packages.Root.K8sToken = nil
+	for _, child := range packages.Children {
+		child.ServiceAccountName = packages.Root.ServiceAccountName
+		child.RealToken = i.panelToken
+		child.K8sToken = nil
+	}
+	scopedSDK := *i.sdk
+	scopedSDK.Ctx = ctx
+	installer := logic.NewInstall(&scopedSDK, packages)
+	if installer == nil {
+		return errors.New("初始化 ZPK 安装器失败")
+	}
+	if err := installer.InstallOrUpgrade(installation.Spec.Target.ReleaseName, installation.Spec.Target.Namespace); err != nil {
+		return fmt.Errorf("执行 ZPK InstallOrUpgrade: %w", err)
+	}
+	return nil
+}
+
+func cloneStringMap(source map[string]string) map[string]string {
+	if len(source) == 0 {
+		return nil
+	}
+	result := make(map[string]string, len(source))
+	for key, value := range source {
+		result[key] = value
+	}
+	return result
+}
+
+func (i *zpkArtifactInstaller) Uninstall(ctx context.Context, installation *installationv1.BootstrapInstallation) error {
+	current, err := i.Lookup(ctx, installation)
+	if err != nil {
+		return err
+	}
+	if current == nil || current.State == installedArtifactDeleting || !current.Owned {
+		return nil
+	}
+	sigClient, err := i.sdk.ToSigClient()
+	if err != nil {
+		return fmt.Errorf("创建 AppGroup 客户端: %w", err)
+	}
+	group := &appgroupv1.AppGroup{}
+	group.Name = current.Name
+	group.Namespace = current.Namespace
+	if err := sigClient.Delete(ctx, group); err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("删除 AppGroup %s/%s: %w", current.Namespace, current.Name, err)
+	}
+	return nil
+}
+
+func artifactOwner(installation *installationv1.BootstrapInstallation) string {
+	return "bootstrapinstallation/" + string(installation.UID)
+}
+
+func isArtifactOwner(annotations map[string]string, installation *installationv1.BootstrapInstallation) bool {
+	return annotations[installationv1.AnnotationInstallationOwner] == artifactOwner(installation)
+}
+
+func normalizeIdentifie(value string) string {
+	return strings.ReplaceAll(strings.ToLower(strings.TrimSpace(value)), "_", "-")
+}

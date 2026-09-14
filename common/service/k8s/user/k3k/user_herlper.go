@@ -52,9 +52,7 @@ func LoginByUser(client *k8s.Sdk, crdUser *v1alpha1.User, seconds int64, updateK
 
 func SignLastLoginTime(sdk *k8s.Sdk, user *types.K3kUser) error {
 	user.SetLoginTime()
-	user.SyncSpecFromRuntime()
-	_, err := userservice.UpdateSpec(context.TODO(), sdk, user.Name, user.Spec)
-	return err
+	return userservice.UpdateLoginTime(context.TODO(), sdk, user.Name, user.Spec.LoginTime)
 }
 
 func TokenToK3kUser(token string) (*types.K3kUser, error) {

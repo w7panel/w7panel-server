@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -29,8 +30,16 @@ type repo struct {
 	domain         string `json:"domain"`
 	appIdentify    string `json:"app_identify"`
 	reinstall      bool   `json:"reinstall"`
+	targetVersion  string `json:"target_version"`
 	// loadInnerDepends bool   `json:"load_inner_depends"` // 是否加载内部依赖
 }
+
+type RemoteHTTPError struct {
+	StatusCode int
+	Body       []byte
+}
+
+func (e *RemoteHTTPError) Error() string { return string(e.Body) }
 
 const (
 	ArtifactInstallConflictDomainMismatch    = "domain_mismatch"
@@ -117,6 +126,10 @@ func (self *repo) SetCurVersion(version string) {
 	self.curVersion = version
 }
 
+func (self *repo) SetTargetVersion(version string) {
+	self.targetVersion = version
+}
+
 func (self *repo) SetDomain(domain string) {
 	self.domain = domain
 }
@@ -133,24 +146,28 @@ func (self *repo) getConsoleUrl() string {
 	return self.baseConsoleUrl + "config2?url=" + self.repoUrl
 }
 
-func (self *repo) loadPackageFromConsole() (*types.ManifestPackage, error) {
+func (self *repo) loadPackageFromConsole(ctx context.Context) (*types.ManifestPackage, error) {
 	self.IsConsole = true
 	consoleUrl := self.getConsoleUrl()
 	token := self.token
-	return self.loadPackageByHttp(consoleUrl, token, true)
+	return self.loadPackageByHttp(ctx, consoleUrl, token, true)
 }
 func (self *repo) Load() (*types.ManifestPackage, error) {
+	return self.LoadContext(context.Background())
+}
+
+func (self *repo) LoadContext(ctx context.Context) (*types.ManifestPackage, error) {
 	scheme := getSourceUri(self.repoUrl)
 	if scheme == "" {
 		return nil, errors.New("uri is not valid")
 	}
 
 	if scheme == "http" || scheme == "https" {
-		return self.loadPackageByHttp(self.repoUrl, self.token, true)
+		return self.loadPackageByHttp(ctx, self.repoUrl, self.token, true)
 	} else if scheme == "memory" {
 		return self.loadPackageByHelmMemory(self.repoUrl)
 	} else {
-		return self.loadPackageFromConsole()
+		return self.loadPackageFromConsole(ctx)
 	}
 
 }
@@ -193,12 +210,11 @@ func (self *repo) PreInstall() (*console.PreInstall, error) {
 
 }
 
-func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*types.ManifestPackage, error) {
+func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token string, isParent bool) (*types.ManifestPackage, error) {
 	// 发送http请求 从uri获取json 数据
 	requestURI := helper.RemoveQueryParam(uri, "reinstall")
-	req := helper.RetryHttpClient().R().SetAuthToken(token)
+	req := helper.RetryHttpClient().R().SetContext(ctx).SetAuthToken(token)
 	if self.panelToken != "" {
-		req.SetHeader("X-W7Panel-Token", self.panelToken)
 		replace, err := microapp.NewMicroAppReplace(self.panelToken)
 		if err == nil && replace.GetConsoleOpenId() != "" {
 			cloudAccessToken, err := microapp.GetCloudAccessToken(replace.GetConsoleOpenId())
@@ -215,6 +231,9 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 	}
 	if self.curVersion != "" {
 		req.SetQueryParam("cur_version", self.curVersion)
+	}
+	if self.targetVersion != "" {
+		req.SetQueryParam("version", self.targetVersion)
 	}
 	if self.domain != "" {
 		req.SetQueryParam("domain", self.domain)
@@ -234,7 +253,7 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 		if conflictErr := parseArtifactInstallConflictError(resp.Body()); conflictErr != nil {
 			return nil, conflictErr
 		}
-		return nil, errors.New(resp.String())
+		return nil, &RemoteHTTPError{StatusCode: resp.StatusCode(), Body: resp.Body()}
 	}
 
 	body := resp.Body()
@@ -307,7 +326,7 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 			if isNewZpk {
 				ldurl = uri2.Scheme + "://" + uri2.Host + "/zpk/respo/info/" + rootIdentifie
 			}
-			parent, err := self.loadPackageByHttp(ldurl, self.token, false)
+			parent, err := self.loadPackageByHttp(ctx, ldurl, self.token, false)
 			if err != nil {
 				slog.Error("LoadParentErr", "err", err)
 			}
@@ -327,7 +346,7 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 		p.RequireInstall = true
 	}
 	if isParent && p.HelmUrl == "" { //旧版才加载子应用
-		_ = self.LoadDependsByPackage(p)
+		_ = self.LoadDependsByPackage(ctx, p)
 	}
 	p.Children = make(map[string]*types.ManifestPackage)
 	// LoadDependsByPackage 接口权限问题 改为使用InstallFormulas 全部返回 所以需要mock 子应用manifest
@@ -362,19 +381,21 @@ func (self *repo) loadPackageByHttp(uri string, token string, isParent bool) (*t
 
 // normalizeInstallFormulaStartParams keeps requirepvc compatible with older
 // artifacts while allowing newer ZPKs to declare PVC usage with a PVC_NAME
-// start parameter. PVC_NAME is an installation selector; only its dependency
-// marker is retained for the installation form and remains hidden from users.
+// start parameter. An unbound PVC_NAME enables the installation selector;
+// a module-bound parameter stays hidden and is resolved automatically.
 func normalizeInstallFormulaStartParams(formula types.InstallFormula) (bool, []types.StartParams) {
 	requirePvc := formula.RequirePvc
 	startParams := make([]types.StartParams, 0, len(formula.StartParams))
 	for _, param := range formula.StartParams {
 		if strings.EqualFold(strings.TrimSpace(param.Name), pvcNameStartParamName) {
-			requirePvc = true
-			if param.DependencySource != nil {
+			if strings.TrimSpace(param.ModuleName) != "" {
+				requirePvc = false
 				param.Hidden = true
 				param.Lock = true
 				startParams = append(startParams, param)
+				continue
 			}
+			requirePvc = true
 			continue
 		}
 		startParams = append(startParams, param)
@@ -382,18 +403,7 @@ func normalizeInstallFormulaStartParams(formula types.InstallFormula) (bool, []t
 	return requirePvc, startParams
 }
 
-func parseArtifactInstallConflictError(body []byte) *ArtifactInstallConflictError {
-	var conflictResponse artifactInstallConflictResponse
-	if err := json.Unmarshal(body, &conflictResponse); err != nil || conflictResponse.Data == nil || conflictResponse.Data.Reason == "" {
-		return nil
-	}
-	if conflictResponse.Code != http.StatusConflict && conflictResponse.Error != "制品安装绑定冲突" {
-		return nil
-	}
-	return conflictResponse.Data
-}
-
-func (self repo) LoadDependsByPackage(p *types.ManifestPackage) error {
+func (self repo) LoadDependsByPackage(ctx context.Context, p *types.ManifestPackage) error {
 	p.RequireInstall = true
 	// 初始化依赖列表
 	p.Children = make(map[string]*types.ManifestPackage)
@@ -405,7 +415,7 @@ func (self repo) LoadDependsByPackage(p *types.ManifestPackage) error {
 		}
 		// 下载依赖
 		uri := depend.GetLoadUrl(p)
-		child, err := self.loadPackageByHttp(uri, self.token, false)
+		child, err := self.loadPackageByHttp(ctx, uri, self.token, false)
 		if err != nil {
 			slog.Warn("LoadDependsByPackage", "err", err)
 			continue
@@ -437,4 +447,15 @@ func getSourceHost(uri string) (string, error) {
 func parseUri(uri string) (*url.URL, error) {
 	parsedURL, err := url.Parse(uri)
 	return parsedURL, err
+}
+
+func parseArtifactInstallConflictError(body []byte) *ArtifactInstallConflictError {
+	var conflictResponse artifactInstallConflictResponse
+	if err := json.Unmarshal(body, &conflictResponse); err != nil || conflictResponse.Data == nil || conflictResponse.Data.Reason == "" {
+		return nil
+	}
+	if conflictResponse.Code != http.StatusConflict && conflictResponse.Error != "制品安装绑定冲突" {
+		return nil
+	}
+	return conflictResponse.Data
 }

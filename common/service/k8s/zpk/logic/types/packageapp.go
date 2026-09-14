@@ -69,7 +69,9 @@ type InstallOption struct {
 	IsChildApp               bool                 `json:"isChild"`              //是否IsChildApp
 	IsUpgrade                bool                 `json:"isUpgrade"`            //是否更新模式
 	Annotations              map[string]string    `json:"annotations"`          //注解
+	HelmValues               map[string]string    `json:"helmValues,omitempty"` //首次安装使用的 Helm 默认参数
 	ServiceAccountName       string               `json:"serviceAccountName"`   //ServiceAccountName
+	UserName                 string               `json:"userName"`             //ServiceAccountName
 	BuildImageSuccessUrl     string               `json:"buildImageSuccessUrl"` //ServiceAccountName
 	ParentReleaseName        string               `json:"parentReleaseName"`    // 父节点发布名
 	PreSubPath               map[string]string    `json:"preSubPath"`           // 上次安装的子路径
@@ -329,11 +331,6 @@ func (p *PackageApp) GetLabels() map[string]string {
 		"w7.cc/install-id":                 p.InstallId,
 		"w7.cc/suffix":                     p.GetSuffix(),
 		"w7.cc/manifest-version":           p.Manifest.Version.String(),
-	}
-	if p.Parent != nil {
-		result["w7.cc/parent"] = p.Parent.GetName()
-		// result["parent"] = p.Parent.GetName()
-		// result["parents"] = p.Parent.GetName()
 	}
 	shells := p.Manifest.Platform.Container.Shells
 	if p.RequireBuildImage() || len(shells) > 0 {
@@ -857,6 +854,14 @@ func (p *PackageApp) GetRoutesByName(name string) []helm.ManifestRouteInterface 
 }
 
 func (p *PackageApp) GetDockerRegisty() types.DockerRegistry {
+	if p.DockerRegistry.Host == "" && p.DockerRegistrySecretName == "registry.local.w7.cc" {
+		return types.DockerRegistry{
+			Host:      "registry.local.w7.cc",
+			Username:  "admin",
+			Password:  "w7-secret",
+			Namespace: p.Namespace,
+		}
+	}
 	return p.DockerRegistry
 }
 

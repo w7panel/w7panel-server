@@ -41,7 +41,8 @@ func (self Static) StaticInfo(http *gin.Context) {
 	if err != nil {
 		slog.Error("创建 k8s 客户端失败 static down", "error", err)
 	}
-	// 通过 releaseName 查找 AppGroup，获取 zpkUrl 和 ticket 信息，并缓存 ticket
+	// 通过 releaseName 查找 AppGroup，获取完整制品地址、回源根地址和 ticket 信息
+	respoUrl := ""
 	zpkUrl := ""
 	ticket := ""
 	proxyUrl := "/ui/microapp/" + identifie + "/" + version + "/index.html"
@@ -49,8 +50,10 @@ func (self Static) StaticInfo(http *gin.Context) {
 		// sdk := k8s.NewK8sClient().Channel()
 		group, err := appgroup.GetAppgroupUseSdk(releaseName, "default", client)
 		if err == nil {
+			// 保留完整地址供制品 info 请求使用，不能丢弃订单等查询参数。
+			respoUrl = group.Spec.ZpkUrl
 			// 去掉 path 部分，只保留 scheme://host
-			if parsedUrl, parseErr := url.Parse(group.Spec.ZpkUrl); parseErr == nil {
+			if parsedUrl, parseErr := url.Parse(respoUrl); parseErr == nil {
 				parsedUrl.Path = ""
 				parsedUrl.RawPath = ""
 				parsedUrl.RawQuery = ""
@@ -80,6 +83,7 @@ func (self Static) StaticInfo(http *gin.Context) {
 		"status":   status,
 		"proxyUrl": proxyUrl,
 		"zpkUrl":   zpkUrl,
+		"respoUrl": respoUrl,
 		// "ticket":   ticket,
 	})
 }

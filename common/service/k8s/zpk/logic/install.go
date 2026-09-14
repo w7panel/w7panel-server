@@ -2,8 +2,8 @@ package logic
 
 import (
 	"log/slog"
+	"strings"
 
-	"github.com/samber/lo"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	convert "github.com/w7panel/w7panel/common/service/k8s/zpk"
@@ -30,6 +30,76 @@ func NewInstall(sdk *k8s.Sdk, pk types.Package) *Install {
 		return nil
 	}
 	return &Install{sdk: sdk, pk: pk, groupApi: groupApi}
+}
+
+const appGroupParentLabel = "w7.cc/parent"
+
+func (z *Install) parentGroupName() string {
+	if z.pk.Root == nil || z.pk.Root.Manifest.Application.Annotation == nil {
+		return ""
+	}
+	return strings.TrimSpace(z.pk.Root.Manifest.Application.Annotation[appGroupParentLabel])
+}
+
+func (z *Install) ensureParentGroup(group *v1alpha1.AppGroup, parentName string) error {
+	parentName = strings.ToLower(strings.TrimSpace(parentName))
+	if parentName == "" || group == nil || parentName == group.Name {
+		return nil
+	}
+	if existing, err := z.groupApi.GetAppGroup(group.Namespace, parentName); err == nil {
+		// Normalize parents created by an earlier version that still looked like
+		// Helm AppGroups. Do not modify a real, user-created AppGroup with the
+		// same name unless it carries our synthetic-parent marker.
+		if existing.Annotations["w7.cc/parent-root"] == "true" && existing.Spec.IsHelm {
+			existing.Spec.Type = "custom"
+			existing.Spec.IsHelm = false
+			existing.Spec.HelmConfig = v1alpha1.HelmConfig{}
+			_, err = z.groupApi.UpdateAppGroup(group.Namespace, existing)
+			return err
+		}
+		return nil
+	} else if !errors.IsNotFound(err) {
+		return err
+	}
+	parent := group.DeepCopy()
+	parent.Name = parentName
+	parent.ResourceVersion = ""
+	parent.UID = ""
+	parent.CreationTimestamp = metav1.Time{}
+	parent.Labels = map[string]string{}
+	for key, value := range group.Labels {
+		parent.Labels[key] = value
+	}
+	delete(parent.Labels, appGroupParentLabel)
+	parent.Labels["w7.cc/group-name"] = parentName
+	parent.Labels["w7.cc/release-name"] = parentName
+	// The parent is only an aggregation object. It must not be treated as a
+	// real Helm release by upgrade/install flows.
+	parent.Spec.Type = "custom"
+	parent.Spec.IsHelm = false
+	parent.Spec.HelmConfig = v1alpha1.HelmConfig{}
+	parent.Status = v1alpha1.AppGroupStatus{DeployItems: []v1alpha1.DeployItem{}, Items: []v1alpha1.AppGroupItemStatus{}}
+	if parent.Annotations == nil {
+		parent.Annotations = map[string]string{}
+	}
+	// The synthetic root must not point to itself (or inherit the child's
+	// parent annotation); it is the grouping target for all instances.
+	delete(parent.Annotations, appGroupParentLabel)
+	parent.Annotations["w7.cc/parent-root"] = "true"
+	_, err := z.groupApi.CreateGroup(group.Namespace, parent)
+	return err
+}
+
+func (z *Install) applyParentGroup(group *v1alpha1.AppGroup) error {
+	parentName := z.parentGroupName()
+	if parentName == "" || group == nil {
+		return nil
+	}
+	if group.Labels == nil {
+		group.Labels = map[string]string{}
+	}
+	group.Labels[appGroupParentLabel] = parentName
+	return z.ensureParentGroup(group, parentName)
 }
 
 func (z *Install) InstallOrUpgrade(name, namespace string) error {
@@ -113,17 +183,14 @@ func (z *Install) InstallUseJob(name, namespace string, shellType types.ShellTyp
 			slog.Error("create child helm job error", slog.String("error", err.Error()))
 			return err
 		}
-		for _, childJob := range childJobs {
-			childJob.Labels["w7.cc/parent"] = name
-		}
 		items = append(items, childItem)
 		jobs = append(jobs, childJobs...)
-		chidlGroup := convert.ToAppGroup(child, []v1alpha1.DeployItem{childItem})
-		chidlGroup.Labels["w7.cc/parent"] = name
-		groups = append(groups, chidlGroup)
 	}
 	rootGroup := convert.ToAppGroup(root, items)
 	rootGroup.Spec.UpgradingVersion = rootGroup.Spec.Version
+	if err := z.applyParentGroup(rootGroup); err != nil {
+		return err
+	}
 
 	// if (root.Parent != nil)  { //package app getLabel 判断了Parent is nil 就不需要设置parent
 	// 	continue
@@ -160,6 +227,9 @@ func (z *Install) InstallUseJob(name, namespace string, shellType types.ShellTyp
 	for _, job := range jobs {
 		_, err = z.sdk.ClientSet.BatchV1().Jobs(root.GetNamespace()).Create(z.sdk.Ctx, job, metav1.CreateOptions{})
 		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				continue
+			}
 			slog.Error("create job error", slog.String("error", err.Error()))
 			return err
 		}
@@ -255,21 +325,7 @@ func (z *Install) persistGroup(group *v1alpha1.AppGroup) error {
 	}
 	oldVersion := fetchGroup.Spec.Version
 	fetchGroup.Spec = group.Spec
-	keepAnnoKey := []string{"w7.cc/domains", "w7.cc/ports", "w7.cc/default-domain", "w7.cc/create-svc"}
-	if fetchGroup.Annotations == nil {
-		fetchGroup.Annotations = map[string]string{}
-	}
-	keepAv := map[string]string{}
-	for k, v := range fetchGroup.Annotations {
-		if lo.Contains(keepAnnoKey, k) {
-			keepAv[k] = v
-		}
-	}
-	//更新中的版本
-	fetchGroup.Annotations = group.Annotations
-	for k, v := range keepAv {
-		fetchGroup.Annotations[k] = v
-	}
+	fetchGroup.Annotations = replaceAppGroupAnnotations(fetchGroup.Annotations, group.Annotations)
 	fetchGroup.Labels = group.Labels
 
 	fetchGroup.Spec.Version = oldVersion
@@ -278,10 +334,6 @@ func (z *Install) persistGroup(group *v1alpha1.AppGroup) error {
 	fetchGroup.Status.DeployItems = []v1alpha1.DeployItem{}
 	fetchGroup.Status.DeployStatus = v1alpha1.StatusDeploying
 	fetchGroup.Status.DeployItems = group.Status.DeployItems
-	parentName, ok := fetchGroup.Labels["w7.cc/parent"]
-	if ok {
-		fetchGroup.Labels["w7.cc/parent"] = parentName
-	}
 	_, err = z.groupApi.UpdateAppGroup(namespace, fetchGroup)
 	if err != nil {
 		slog.Error("update group error", slog.String("error", err.Error()))
@@ -294,6 +346,9 @@ func (z *Install) CreateOrUpdateGroup(namespace, name string, items []v1alpha1.D
 	group, err := z.groupApi.GetAppGroup(namespace, name)
 	if err != nil {
 		group2 := helm.ToAppGroup(z.pk.Root, items)
+		if err := z.applyParentGroup(group2); err != nil {
+			return err
+		}
 		// group2.Spec.IsHelm = z.pk.IsHelm()
 		_, err = z.groupApi.CreateGroup(namespace, group2)
 		if err != nil {
@@ -303,22 +358,10 @@ func (z *Install) CreateOrUpdateGroup(namespace, name string, items []v1alpha1.D
 	}
 	if group != nil {
 		group3 := helm.ToAppGroup(z.pk.Root, items)
-		keepAnnoKey := []string{"w7.cc/domains", "w7.cc/ports", "w7.cc/default-domain", "w7.cc/create-svc"}
-		// for k, v := range group3.Annotations {
-		// 	if !lo.Contains(keepAnnoKey, k) {
-		// 		group.Annotations[k] = v
-		// 	}
-		// }
-		keepAv := map[string]string{}
-		for k, v := range group.Annotations {
-			if lo.Contains(keepAnnoKey, k) {
-				keepAv[k] = v
-			}
+		if err := z.applyParentGroup(group3); err != nil {
+			return err
 		}
-		group.Annotations = group3.Annotations
-		for k, v := range keepAv {
-			group.Annotations[k] = v
-		}
+		group.Annotations = replaceAppGroupAnnotations(group.Annotations, group3.Annotations)
 		oldVersion := group.Spec.Version
 		group.Spec = group3.Spec
 		group.Spec.Version = oldVersion
@@ -337,7 +380,7 @@ func (z *Install) CreateOrUpdateGroup(namespace, name string, items []v1alpha1.D
 
 func (z *Install) UnInstall(name, namespace string) error {
 	helmApi := k8s.NewHelm(z.sdk)
-	_, err := helmApi.UnInstall(namespace, name)
+	_, err := helmApi.UnInstall(name, namespace)
 	if err != nil {
 		return err
 	}
@@ -376,4 +419,28 @@ func (z *Install) GetLabels() map[string]string {
 		zpktypes.HELM_INDENTIFIE:     z.pk.Root.GetIdentifie(),
 	}
 	return label
+}
+
+func replaceAppGroupAnnotations(current, desired map[string]string) map[string]string {
+	var preservedAppGroupAnnotationKeys = []string{
+		"w7.cc/bootstrap-owner",
+		"w7.cc/domains",
+		"w7.cc/ports",
+		"w7.cc/default-domain",
+		"w7.cc/create-svc",
+	}
+
+	result := make(map[string]string, len(desired)+len(preservedAppGroupAnnotationKeys))
+	for key, value := range desired {
+		result[key] = value
+	}
+	for _, key := range preservedAppGroupAnnotationKeys {
+		if value, ok := current[key]; ok {
+			result[key] = value
+		}
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }

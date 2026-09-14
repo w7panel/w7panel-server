@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
-	convert "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	helm "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
@@ -73,6 +73,14 @@ func (h *HelmChart) GetValues() (map[string]interface{}, error) {
 	for _, params := range h.Root.Manifest.Platform.Container.StartParams {
 		optValues.Values = append(optValues.Values, params.Name+"="+params.ValuesText)
 	}
+	keys := make([]string, 0, len(h.Root.HelmValues))
+	for key := range h.Root.HelmValues {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		optValues.Values = append(optValues.Values, key+"="+h.Root.HelmValues[key])
+	}
 	// for _, env := range h.Root.Manifest.Platform.Container.Env {
 	// 	optValues.Values = append(optValues.Values, env.Name+"="+env.Value)
 	// }
@@ -110,6 +118,14 @@ func fillHelmSet(packageApp *types.PackageApp, childName string, ignore []string
 	for _, env := range packageApp.Manifest.Platform.Container.Env {
 		set += " --set '" + childName + env.Name + "=" + env.Value + "'"
 	}
+	keys := make([]string, 0, len(packageApp.HelmValues))
+	for key := range packageApp.HelmValues {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		set += " --set " + shellQuote(childName+key+"="+packageApp.HelmValues[key])
+	}
 
 	if packageApp.PvcName != "" {
 		// set += " --set PVC_NAME=" + (packageApp.PvcName)
@@ -142,6 +158,10 @@ func fillHelmSet(packageApp *types.PackageApp, childName string, ignore []string
 	}
 	return set
 }
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
+}
 func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp) *batchv1.Job {
 	// releaseName := packageApp.GetReleaseName()
 	releaseName := packageApp.GetReleaseName()
@@ -170,6 +190,7 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 			}
 		}
 	}
+
 	shellCmd := "/ko-app/w7panel helmgo --chartName=" + helmConfig.ChartName + " --namespace=" + packageApp.Namespace + " --repository=" + helmConfig.Repository + " --zipUrl=" + packageApp.ZipUrl + " --releaseName=" + releaseName + ""
 	shellCmd += " --set " + "global.panel.image=" + helper.SelfImage()
 	shellCmd += " --set " + "global.panel.thirdPartyCDToken=" + packageApp.ThirdpartyCDToken
@@ -178,11 +199,17 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 	shellCmd += " --set " + "global.panel.innerUrl=" + helper.PanelInnerUrl()
 	shellCmd += " --set " + "global.panel.panelToken=" + panelToken
 	shellCmd += " --set " + "global.panel.panelRealToken=" + packageApp.RealToken              //子集群内网访问 需要
-	shellCmd += " --set " + "global.panel.serviceAccountName=" + packageApp.ServiceAccountName //用户名
+	shellCmd += " --set " + "global.panel.serviceAccountName=" + packageApp.ServiceAccountName //saName
+	shellCmd += " --set " + "global.panel.userName=" + packageApp.UserName                     //用户名
 	shellCmd += " --set " + "global.panel.imageRepo=" + repo                                   //镜像仓库地址
 	shellCmd += " --set " + "global.panel.version=" + version                                  //版本号
 	shellCmd += " --set " + "global.panel.panelUrl=" + packageApp.PanelUrl                     //面板地址
-	shellCmd += " --set " + "DOMAIN_URL=" + packageApp.IngressHost                             //添加DOMAIN_URL
+	domainURL := packageApp.IngressHost
+	domainParam := packageApp.GetKey("DOMAIN_URL")
+	if strings.TrimSpace(domainParam.ModuleName) != "" {
+		domainURL = domainParam.ValuesText
+	}
+	shellCmd += " --set " + "DOMAIN_URL=" + domainURL //添加DOMAIN_URL
 	atomic := false
 	set := fillHelmSet(packageApp, "", []string{"HELM_ATOMIC", "DOMAIN_URL"}, false) //pvc 站点管理 会新建一个名字出来
 
@@ -307,12 +334,7 @@ func (h *HelmChart) convertManifestToChart() (*v1alpha1.AppGroup, *chart.Chart, 
 		Title:        root.GetTitle(),
 		Identifie:    root.Identifie,
 	}
-	parent := root.Parent
-	if parent == nil {
-		parent = root
-	}
-	// if !root.IsHelm() {
-	convertFiles, err := h.toBufferFiles(root, parent, true)
+	convertFiles, err := h.toBufferFiles(root)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -333,7 +355,7 @@ func (h *HelmChart) convertManifestToChart() (*v1alpha1.AppGroup, *chart.Chart, 
 				Title:        packageApp.GetTitle(),
 				Identifie:    packageApp.Identifie,
 			}
-			convertFiles, err := h.toBufferFiles(packageApp, root, false)
+			convertFiles, err := h.toBufferFiles(packageApp)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -378,7 +400,7 @@ func (h *HelmChart) appendResourceInfo(packageApp *zpktypes.PackageApp, obj runt
 	packageApp.AppGroupInstallResult.ResourceList = append(packageApp.AppGroupInstallResult.ResourceList, resourceInfo)
 }
 
-func (h2 *HelmChart) toBufferFiles(packageApp *zpktypes.PackageApp, root *zpktypes.PackageApp, isRoot bool) ([]*loader.BufferedFile, error) {
+func (h2 *HelmChart) toBufferFiles(packageApp *zpktypes.PackageApp) ([]*loader.BufferedFile, error) {
 
 	var files []*loader.BufferedFile
 
@@ -387,86 +409,6 @@ func (h2 *HelmChart) toBufferFiles(packageApp *zpktypes.PackageApp, root *zpktyp
 	}
 	if h2.ShellType == zpktypes.ShellUpgrade {
 		packageApp.InstallOption.IsUpgrade = true
-	}
-
-	// if packageApp.IsHelm() && false { //暂不支持普通应用 包含helm 子应用
-	if packageApp.IsHelm() && false {
-		//暂不支持普通应用 包含helm 子应用 //如果helm安装了 appgroup新建后 helm安装命令又把这个appgroup 删除了 因为helm和appgroup同名
-		// 如果不同名，还得做一层关联关系
-
-		// if isRoot {
-		// 	return []*loader.BufferedFile{}, nil
-		// }
-		cloneApp := packageApp
-
-		shellType := h2.ShellType
-
-		//helm shell job
-		shell := cloneApp.GetShellByType(string(shellType))
-		var shellJob *batchv1.Job
-		if shell != nil {
-			shellJob = convert.ToShellJob2(cloneApp, cloneApp, string(shellType))
-			if shellJob != nil {
-				h2.appendResourceInfo(cloneApp, shellJob, "")
-			}
-			file, err := h2.convertToYaml(shellJob, cloneApp.Identifie+"-"+string(shellType)+"-job.yaml")
-			if err != nil {
-				return nil, err
-			}
-			files = append(files, file)
-			h2.appendResourceInfo(cloneApp, shellJob, "")
-		}
-		//安装helm job
-		job := toHelmInstallJob(cloneApp, []*types.PackageApp{})
-		file, err := h2.convertToYaml(job, cloneApp.Identifie+"-helm-job.yaml")
-		if err != nil {
-			return nil, err
-		}
-		files = append(files, file)
-		h2.appendResourceInfo(cloneApp, job, "") //必须是packageApp 不能用clone 对象 因为clone对象在后续会被修改 导致后续生成的appgroup 资源列表不对
-
-		info := v1alpha1.ResourceInfo{
-			Name:         job.Name,
-			Namespace:    cloneApp.GetNamespace(),
-			Kind:         "Job",
-			ApiVersion:   "batch/v1",
-			DeployStatus: v1alpha1.StatusDeploying,
-			DeployTitle:  "helm安装",
-		}
-
-		installResult := v1alpha1.DeployItem{
-			Identifie:    cloneApp.GetIdentifie(),
-			Title:        cloneApp.GetTitle(),
-			ResourceList: []v1alpha1.ResourceInfo{info},
-			DeployStatus: v1alpha1.StatusDeploying,
-		}
-		if shellJob != nil {
-			shellInfo := v1alpha1.ResourceInfo{
-				Name:         shellJob.Name,
-				Namespace:    cloneApp.GetNamespace(),
-				Kind:         "Job",
-				ApiVersion:   "batch/v1",
-				DeployStatus: v1alpha1.StatusDeploying,
-				DeployTitle:  shell.GetTitle(),
-			}
-			installResult.ResourceList = append(installResult.ResourceList, shellInfo)
-		}
-		// 如果是root
-		if isRoot {
-			return files, nil
-		}
-		group := helm.ToAppGroup(cloneApp, []v1alpha1.DeployItem{installResult})
-		if !isRoot {
-			group.Labels["w7.cc/parent"] = root.GetName()
-		}
-
-		groupfile, err := h2.convertToYaml(group, cloneApp.Identifie+"-appgroup.yaml")
-		if err != nil {
-			return nil, err
-		}
-		files = append(files, groupfile)
-
-		return files, nil
 	}
 
 	shellfile, err := h2.convertJob(packageApp, h2.ShellType, true)

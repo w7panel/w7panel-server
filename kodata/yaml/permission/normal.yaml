@@ -37,10 +37,6 @@ spec:
         -
             method:
                 - get
-            path: /panel-api/v1/zpk/domain-parse
-        -
-            method:
-                - get
             path: /panel-api/v1/microapp/*/frontprops
         -
             method:

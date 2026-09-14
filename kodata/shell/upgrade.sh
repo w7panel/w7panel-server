@@ -129,9 +129,13 @@ rules:
 EOF
 fi
 
-# kubectl create secret generic k3k.addon --from-file=manifests.yaml=$KO_DATA_PATH/yaml/k3k/k3k.addon.yaml --dry-run=client -o yaml | kubectl apply -f - || echo "已存在k3k.addon"
+echo "同步内置 BootstrapInstallation"
+kubectl apply -f "$KO_DATA_PATH/yaml/bootstrap-installations.yaml" \
+  --server-side \
+  --prune \
+  -l 'w7.cc/bootstrap-builtin=true' \
+  --prune-allowlist='w7panel.w7.com/v1alpha1/BootstrapInstallation'
 
-# kubectl apply -f $KO_DATA_PATH/yaml/k3k/virtualclusterpolicy.yaml
 
 # echo "卸载异常面板"
 # w7panel uninstall-store-panel

@@ -1,16 +1,44 @@
 package webhook
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	"github.com/w7panel/w7panel/common/helper"
+	corev1 "k8s.io/api/core/v1"
+)
 
 const (
-	rootCAInjectionAnnotation = "w7.cc/inject-root-ca"
-	rootCAVolumeName          = "w7panel-root-ca"
-	rootCAIssuerName          = "w7panel-root-ca-issuer"
-	rootCAMountDirectory      = "/var/run/w7panel-root-ca"
-	rootCAFileName            = "ca.crt"
-	rootCAMountPath           = rootCAMountDirectory + "/" + rootCAFileName
-	rootCASSLCertDir          = "/etc/ssl/certs:/etc/pki/tls/certs"
+	rootCAInjectionAnnotation     = "w7.cc/inject-root-ca"
+	rootCABundleImageAnnotation   = "w7.cc/root-ca-bundle-image"
+	rootCASourceVolumeName        = "w7panel-root-ca-source"
+	rootCABundleVolumeName        = "w7panel-root-ca"
+	rootCABundleInitContainerName = "w7panel-root-ca-bundle"
+	rootCAIssuerName              = "w7panel-root-ca-issuer"
+	rootCAFileName                = "ca.crt"
+	rootCASourceMountDirectory    = "/var/run/w7panel-root-ca-source"
+	rootCASourceMountPath         = rootCASourceMountDirectory + "/" + rootCAFileName
+	rootCAMountDirectory          = "/var/run/w7panel-root-ca"
+	rootCAMountPath               = rootCAMountDirectory + "/" + rootCAFileName
+	rootCASSLCertDir              = "/etc/ssl/certs:/etc/pki/tls/certs"
 )
+
+const rootCABundleCommand = `set -eu
+test -s /etc/ssl/certs/ca-certificates.crt
+test -s /var/run/w7panel-root-ca-source/ca.crt
+cat /etc/ssl/certs/ca-certificates.crt > /var/run/w7panel-root-ca/ca.crt
+printf '\n' >> /var/run/w7panel-root-ca/ca.crt
+cat /var/run/w7panel-root-ca-source/ca.crt >> /var/run/w7panel-root-ca/ca.crt
+chmod 0444 /var/run/w7panel-root-ca/ca.crt`
+
+// rootCAEnvironmentVariables covers the common PEM CA entry points used by
+// language runtimes and command-line HTTP clients.
+var rootCAEnvironmentVariables = []string{
+	"SSL_CERT_FILE",                    // Go, OpenSSL, PHP streams, Ruby and others
+	"CURL_CA_BUNDLE",                   // curl CLI
+	"REQUESTS_CA_BUNDLE",               // Python requests
+	"NODE_EXTRA_CA_CERTS",              // Node.js (adds to the built-in roots)
+	"GIT_SSL_CAINFO",                   // Git HTTPS
+	"AWS_CA_BUNDLE",                    // AWS CLI and SDKs
+	"GRPC_DEFAULT_SSL_ROOTS_FILE_PATH", // gRPC C-core based clients
+}
 
 func isRootCAInjectionEnabled(pod *corev1.Pod) bool {
 	return pod != nil && pod.Annotations[rootCAInjectionAnnotation] == "true"
@@ -21,10 +49,10 @@ func injectRootCA(pod *corev1.Pod) bool {
 		return false
 	}
 	modified := false
-	if !hasVolume(pod.Spec.Volumes, rootCAVolumeName) {
+	if !hasVolume(pod.Spec.Volumes, rootCASourceVolumeName) {
 		readOnly := true
 		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-			Name: rootCAVolumeName,
+			Name: rootCASourceVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				CSI: &corev1.CSIVolumeSource{
 					Driver:   "csi.cert-manager.io",
@@ -43,8 +71,28 @@ func injectRootCA(pod *corev1.Pod) bool {
 		})
 		modified = true
 	}
+	if !hasVolume(pod.Spec.Volumes, rootCABundleVolumeName) {
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+			Name: rootCABundleVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+		modified = true
+	}
+
+	if !hasContainer(pod.Spec.InitContainers, rootCABundleInitContainerName) {
+		bundleInitContainer := newRootCABundleInitContainer(rootCABundleImage(pod))
+		// The bundle must exist before regular init containers and native
+		// sidecars (init containers with restartPolicy: Always) start.
+		pod.Spec.InitContainers = append([]corev1.Container{bundleInitContainer}, pod.Spec.InitContainers...)
+		modified = true
+	}
 
 	for i := range pod.Spec.InitContainers {
+		if pod.Spec.InitContainers[i].Name == rootCABundleInitContainerName {
+			continue
+		}
 		modified = injectRootCAIntoContainer(&pod.Spec.InitContainers[i]) || modified
 	}
 	for i := range pod.Spec.Containers {
@@ -58,9 +106,9 @@ func injectRootCAIntoContainer(container *corev1.Container) bool {
 		return false
 	}
 	modified := false
-	if !hasVolumeMount(container.VolumeMounts, rootCAVolumeName, rootCAMountPath) {
+	if !hasVolumeMount(container.VolumeMounts, rootCABundleVolumeName, rootCAMountPath) {
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-			Name:      rootCAVolumeName,
+			Name:      rootCABundleVolumeName,
 			MountPath: rootCAMountPath,
 			SubPath:   rootCAFileName,
 			ReadOnly:  true,
@@ -68,9 +116,63 @@ func injectRootCAIntoContainer(container *corev1.Container) bool {
 		modified = true
 	}
 
-	modified = ensureContainerEnvValue(container, "SSL_CERT_FILE", rootCAMountPath, true) || modified
+	for _, name := range rootCAEnvironmentVariables {
+		modified = ensureContainerEnvValue(container, name, rootCAMountPath, true) || modified
+	}
+	// Preserve an explicitly configured OpenSSL certificate directory. The
+	// default covers Debian/Alpine and RHEL-family images and keeps their public
+	// CA directories available alongside the injected CA file.
 	modified = ensureContainerEnvValue(container, "SSL_CERT_DIR", rootCASSLCertDir, false) || modified
 	return modified
+}
+
+func rootCABundleImage(pod *corev1.Pod) string {
+	if pod != nil && pod.Annotations[rootCABundleImageAnnotation] != "" {
+		return pod.Annotations[rootCABundleImageAnnotation]
+	}
+	// The root CA injection annotation is a generic Pod capability. Use the
+	// panel image, whose shell and public CA bundle are known, instead of
+	// coupling injection to a particular sidecar or arbitrary workload image.
+	return helper.SelfImage()
+}
+
+func newRootCABundleInitContainer(image string) corev1.Container {
+	allowPrivilegeEscalation := false
+	readOnlyRootFilesystem := true
+	return corev1.Container{
+		Name:            rootCABundleInitContainerName,
+		Image:           image,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Command:         []string{"/bin/sh", "-ec", rootCABundleCommand},
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+			ReadOnlyRootFilesystem:   &readOnlyRootFilesystem,
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      rootCASourceVolumeName,
+				MountPath: rootCASourceMountPath,
+				SubPath:   rootCAFileName,
+				ReadOnly:  true,
+			},
+			{
+				Name:      rootCABundleVolumeName,
+				MountPath: rootCAMountDirectory,
+			},
+		},
+	}
+}
+
+func hasContainer(containers []corev1.Container, name string) bool {
+	for _, container := range containers {
+		if container.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 func ensureContainerEnvValue(container *corev1.Container, name, value string, overwrite bool) bool {

@@ -92,7 +92,29 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 | `CAPTCHA_ENABLED` | true | 验证码开关 |
 | `KO_DATA_PATH` | ./kodata | 静态资源路径 |
 | `KUBECONFIG` | ./kubeconfig.yaml | K8S 配置 |
-| `W7PANEL_OFFLINE_HTTP_SERVER_PORT` | 8080 | HTTP 端口 |
+| `W7PANEL_HTTP_SERVER_PORT` | 8000 | HTTP 端口 |
+| `BOOTSTRAP_ALLOWED_SOURCE_HOSTS` | - | 额外允许的预装制品源主机，多个值以逗号分隔；内置允许 `zpk.w7.cc` 和 `zpk.fan.b2.sz.w7.com` |
+
+### 工作负载根 CA 注入
+
+Pod 模板添加 `w7.cc/inject-root-ca: "true"` 注解后，Admission Webhook 会将集群
+`w7panel-root-ca-issuer` 的 CA 挂载到独立源目录，并通过最先执行的 initContainer 将
+公共 CA bundle 与面板 CA 合并为 `/var/run/w7panel-root-ca/ca.crt`。所有普通容器和
+原有 initContainer 只读挂载这个合并后的 bundle，并注入常见 TLS 客户端识别的环境变量：
+
+- Go、OpenSSL、PHP stream、Ruby：`SSL_CERT_FILE`
+- curl（包括 PHP 容器内的 curl CLI）：`CURL_CA_BUNDLE`
+- Python requests：`REQUESTS_CA_BUNDLE`
+- Node.js：`NODE_EXTRA_CA_CERTS`
+- Git、AWS SDK/CLI、gRPC C-core：对应的 CA 环境变量
+
+注入会将上述 CA 文件环境变量指向合并 bundle，使应用在信任面板 CA 的同时保留公网
+HTTPS 信任；已有的 `SSL_CERT_DIR` 会保留。该注解是通用 Pod 能力，不依赖
+`w7panel-cloudnoauth` 或其他 Sidecar。生成 bundle 的 initContainer 默认使用当前
+w7panel 镜像，也可通过 `w7.cc/root-ca-bundle-image` Pod annotation 指定镜像。该镜像必须包含
+`/bin/sh`、`cat`、`chmod` 和 `/etc/ssl/certs/ca-certificates.crt`。JVM 使用独立的 JKS/PKCS12 truststore，不属于此 PEM
+环境变量注入范围，需要应用镜像预装 truststore 或单独注入
+`JAVA_TOOL_OPTIONS`。
 
 ## 主要功能
 
@@ -100,15 +122,41 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 - **压缩/解压** - 支持 zip, tar, tar.gz, tar.xz
 - **权限管理** - chmod, chown 操作
 - **应用部署** - Helm, Docker Compose, YAML
+- **预装制品协调** - 通过自包含的 BootstrapInstallation 按版本、重试和并发策略复用 ZPK/AppGroup 安装
 - **制品订单通知** - 安装时将应用域名和规范化应用标识写入制品 ticket，并在安装完成后通过 ticket 传给市场订单链路
 - **制品安装冲突处理** - 配置读取和安装接口统一解析仓库返回的订单绑定冲突；域名冲突返回原绑定域名，应用引用冲突返回原面板地址及原应用标识，支持跳转原面板定位应用或在用户确认后以受控 `reinstall` 覆盖旧绑定；升级始终校验应用标识
 - **制品跨应用更新** - 新制品标识与原应用不同时，配置接口仍返回已有 AppGroup 名称，供安装界面读取原实例保存的参数
-- **子应用启动参数依赖** - ZPK 配置接口保留启动参数的 `dependencySource`，包括仅用于安装选择的 `PVC_NAME` 依赖标记，交由安装页解析
+- **应用启动参数依赖** - ZPK 配置接口保留启动参数的 `module_name`，安装页优先从当前安装列表解析对应应用参数，再查询已安装的外部依赖
+- **制品静态状态** - 静态状态接口同时返回回源根地址和完整 `respoUrl`，完整地址保留订单查询参数供制品授权检查使用
 - **应用资源跟踪** - AppGroup Controller 自动为已归组的 workload 补齐 `w7.cc/group-name`，由 informer 持续同步 Deployment、StatefulSet、DaemonSet 等资源状态
 - **集群管理** - 节点、资源对象管理
 - **网关插件权限** - 为创始人默认权限注册网关插件查看、新建、编辑和删除菜单权限
 - **插件微应用入口过滤** - 顶部微应用接口根据 MicroApp 的 `w7.cc/manifest-type=gateway-plugin` 注解排除插件，避免出现在顶部菜单和“应用直达”列表
 - **顶部微应用角色判定** - 顶部入口只统计 `founder`、`super`、`normal` 面板角色对应的 Binding，功能菜单分组不参与多角色判定
+
+### BootstrapInstallation 预装制品
+
+控制器在 `k8s.watch=true` 时随共享 Controller Manager 启动。每个 BootstrapInstallation 直接声明制品、目标和执行策略，不再依赖 BootstrapProfile。只有对应 AppGroup 同时满足 `status.ready=true` 和 `status.deployStatus=deployed` 时任务才进入 Ready；安装 Lease 会持有到真实部署完成、失败或超时。CRD 清单位于 `kodata/crds/w7panel.w7.com_bootstrapinstallations.yaml`，详细设计见 [BootstrapInstallation 预装制品方案](../docs/src/development/bootstrap-installation.md)。
+
+`spec.strategy.maxRetries` 未填写时默认重试 3 次；显式设置为 `0` 时不重试。由 Bootstrap 创建的 AppGroup 部署失败或超时时，Controller 会先请求删除失败实例，待 AppGroup 标准卸载流程完成后重新安装；非 Bootstrap 所有的同名 AppGroup 不会被自动删除。
+
+当前自动安装执行器仅支持 HTTPS ZPK 源。`type` 未填写时默认为 `ZPK`，其他类型会被 Installation 校验拒绝。ZPK 可通过 `installOptions.helmValues` 提供安装参数。Controller 在 BootstrapInstallation 被协调且 AppGroup Ready 时检查版本：固定 `artifact.version` 会先与 AppGroup 已安装版本进行本地比较，相同则不请求 ZPK；不一致以及版本留空或为 `latest` 时，才通过 ZPK 制品信息接口查询可用版本。请求使用有效的 `is_upgrade` 和 `cur_version` 参数，不再发送已废弃且服务端未使用的 `check_upgrade`。没有更新后不会安排定期检查，检测失败会在 1 分钟后重试。空版本或 `latest` 仅自动升级到更高版本，固定版本在不一致时收敛到该版本，也可用于回退。不需要 `revision` 手动触发。更新仅允许操作 `w7.cc/bootstrap-owner` 精确匹配当前 Installation UID 的 AppGroup，非 Bootstrap 管理的同名应用不会被更新。删除 BootstrapInstallation 只会卸载当前 Installation 所有的 AppGroup，再由 AppGroup Controller 完成 Helm 卸载；不兼容旧 BootstrapProfile 所有权格式。内置允许 `zpk.w7.cc` 和 `zpk.fan.b2.sz.w7.com`，其他 HTTPS 主机需显式配置：
+
+```yaml
+# 持续跟踪最新版（version 留空也具有相同行为）
+artifact:
+  version: latest
+
+# 收敛到指定版本（也可用于回退）
+artifact:
+  version: "1.2.3"
+```
+
+Bootstrap Controller 使用 ServiceAccount Token 作为 ZPK 安装的集群内 Kubernetes 访问凭证，但不会通过 `X-W7Panel-Token` 将该凭证发送给 ZPK 制品源，也不会将其作为面板用户身份写入 AppGroup 的 `w7.cc/create-username` 或 `w7.cc/create-role` Label。
+
+```bash
+export BOOTSTRAP_ALLOWED_SOURCE_HOSTS=zpk.example.com,registry.example.com
+```
 
 ## 维护命令
 
@@ -120,28 +168,26 @@ w7panel privatedns-upgrade
 w7panel privatedns-upgrade --overwrite
 ```
 
-### 迁移旧版 Higress 插件
+### 内置 BootstrapInstallation
 
-面板升级会通过内置 Helm Chart 自动安装或升级以下插件：
+升级脚本会应用 `kodata/yaml/bootstrap-installations.yaml`，安装以下内置应用：
 
-- `w7panel-pluginwhitedomain`：域名插件
-- `w7panel-pluginratelimit`：限流插件
+- `w7panel-higress`：Higress
+- `w7panel-cloudnoauth`：CloudNoAuth
 
-随后自动将历史内置 WasmPlugin 的用户配置迁移到制品资源。维护命令为：
+默认清单不再预装插件类型应用。维护命令为：
 
 ```bash
-# 自动安装或升级两个内置 Chart
-helm upgrade --namespace default w7panel-pluginwhitedomain "$KO_DATA_PATH/charts/w7panel-pluginwhitedomain" --install --timeout 600s
-helm upgrade --namespace default w7panel-pluginratelimit "$KO_DATA_PATH/charts/w7panel-pluginratelimit" --install --timeout 600s
+# 创建或更新内置预装清单
+kubectl apply -f "$KO_DATA_PATH/yaml/bootstrap-installations.yaml" --server-side --prune \
+  -l 'w7.cc/bootstrap-builtin=true' \
+  --prune-allowlist='w7panel.w7.com/v1alpha1/BootstrapInstallation'
 
-# 等待制品资源就绪并迁移旧配置
-DOMAIN_TARGET_GROUP=w7panel-pluginwhitedomain \
-RATE_LIMIT_TARGET_GROUP=w7panel-pluginratelimit \
-DELETE_LEGACY=true \
-sh "$KO_DATA_PATH/shell/upgrade-wasm-plugins.sh" all
+# 查看安装状态
+kubectl get bootstrapinstallation
 ```
 
-迁移脚本会备份旧资源、迁移全局及域名规则配置、切换插件并校验结果，失败时自动恢复旧插件。面板自动升级在校验成功后会删除旧资源；新集群没有旧资源时，只为制品插件补充稳定的逻辑标签。手工执行脚本未设置 `DELETE_LEGACY=true` 时，仍会保留已停用的旧资源，便于调试。
+BootstrapInstallation 的创建、spec 变更或 Controller 启动扫描会触发版本检查，Ready 后不做周期轮询。内置声明通过 `w7.cc/bootstrap-builtin=true` 标签限定清理范围；升级脚本会删除带该标签但已不在清单中的 Installation，用户自建声明不受影响。更新失败沿用 `maxRetries`；达到上限后停止主动协调，冷却 10 分钟后可由下一次外部协调事件重新尝试。
 
 ## API 接口
 
