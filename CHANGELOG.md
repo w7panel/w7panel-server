@@ -188,6 +188,11 @@
 - 验证：安装控制器测试、安装请求/执行准备及 Manifest 版本定向测试、所有相关包编译、go build -buildvcs=false ./... 和 git diff --check 通过；迁移文件核对仅含路径替换与导入排序。完整测试未通过：已有 ZIP 加载测试缺少 testdata/demo.zip，依赖固定集群资源的测试返回 not found 后空指针，在线制品测试出现空指针；默认构建的 VCS 状态读取失败，编译验证关闭 VCS 信息嵌入。
 2026-09-08: ZpkInstall 增加 `spec.maxRetries` 和 `status.retryCount`。安装失败后按配置次数自动重试，最终失败才进入 `Failed`；控制器与 CRD schema 测试已覆盖成功重试、次数耗尽和字段校验。
 
+## 2026-09-09
+
+- 新增 mise.toml，指定开发工具 Go 1.26 和 Node.js 22；影响模块：本地开发环境配置。
+- 验证：TOML 解析及工具版本配置检查通过，git diff --check 通过。
+
 ## 2026-09-14
 
 - 修复 `w7.cc/inject-root-ca` 将系统公共 CA 替换为面板 CA、导致公网 HTTPS 验证失败的问题；CA bundle initContainer 固定置于首位，先将公共 CA 与 `w7panel-root-ca-issuer` CA 合并，再启动原有 initContainer、原生 Sidecar 和业务容器。
