@@ -200,3 +200,8 @@
 - CA bundle initContainer 不再强制 `runAsUser: 0`、`runAsGroup: 0` 或 `runAsNonRoot: false`，避免覆盖工作负载的用户策略或触发 Pod Security 限制；仍保留禁止提权、只读根文件系统和 capability drop，并移除仅供测试引用的冗余系统 CA 路径常量。
 - 影响模块：Pod Admission 通用根 CA 注入、使用透明 HTTPS Sidecar 及其他需要面板 CA 的工作负载。
 - 验证：补充 CA 源卷、合并卷、initContainer 顺序、通用镜像选择、annotation 镜像覆盖、环境变量覆盖及重复注入测试；`go test ./common/service/k8s/webhook -count=1` 和 `git diff --check` 通过。
+
+## 2026-09-14
+
+- 保留 .mcp.json 和 opencode.jsonc 的 code-review-graph MCP 接入配置，恢复 AGENTS.md 中优先使用代码图探索与审查的规则；影响模块：开发工具配置与协作规范。
+- 验证：MCP 图统计与代码查询调用成功，索引对应当前 HEAD；配置 JSON 解析及 git diff --check 通过。
