@@ -54,7 +54,6 @@ type InstallOption struct {
 	IngressClassName         string               `json:"ingressClassName,omitempty"`    //ingressclassname
 	IngressForceHttps        bool                 `json:"ingressForceHttps,omitempty"`   //ingressclassname
 	Replicas                 int32                `json:"replicas,omitempty"`            // 可选安装的数量为0
-	IsChildApp               bool                 `json:"isChild,omitempty"`             //是否IsChildApp
 	IsUpgrade                bool                 `json:"isUpgrade,omitempty"`           //是否更新模式
 	Annotations              map[string]string    `json:"annotations,omitempty"`         //注解
 	ParentReleaseName        string               `json:"parentReleaseName,omitempty"`   // 父节点发布名

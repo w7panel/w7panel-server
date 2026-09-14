@@ -286,6 +286,6 @@ func (r *Controller) localExecutor(sdk *k8s.Sdk) Executor {
 		}
 		local.Ctx = ctx
 		return logic.ExecuteInstall(request, logic.InstallExecution{SDK: local, Identity: identity, PanelToken: panelToken,
-			IsChild: helper.IsChildAgent(), InstallID: task.Status.InstallID})
+			InstallID: task.Status.InstallID})
 	}
 }

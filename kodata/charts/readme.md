@@ -22,8 +22,6 @@ helm lint kodata/charts/k8s-offline
 
 | 文件 | 调用方或用途 |
 |------|--------------|
-| `cert-manager-v1.19.2.tgz` | `kodata/shell/k3k-agent-upgrade.sh` 安装子集群 cert-manager |
-| `higress-2.1.6.tgz` | `kodata/shell/k3k-agent-upgrade.sh` 安装子集群 Higress |
 | `higress-2.2.3.tgz` | 保留的 Higress 离线包；当前仓库没有直接调用方，删除前需确认外部部署流程 |
 | `victoria-metrics-operator-0.43.0.tgz` | `app/application/console/metricsinstall.go` 安装 VictoriaMetrics Operator |
 

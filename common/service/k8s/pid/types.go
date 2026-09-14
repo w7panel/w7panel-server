@@ -44,13 +44,13 @@ func (p *PidResult) ToArray() map[string]string {
 	// 	compressUrl = "/panel-api/v1/" + podIp + ":8000/proxy/panel-api/v1/files/compress-agent/" + pidstr + "/subagent/" + subpidstr
 	// 	permissionUrl = "/panel-api/v1/" + podIp + ":8000/proxy/panel-api/v1/files/permission-agent/" + pidstr + "/subagent/" + subpidstr
 	// }
-	//子集群直接走proxy.go middleware 转发请求
+	// Requests without an agent Pod IP are handled by the local agent endpoint.
 	webdavUrl := "/panel-api/v1/files/webdav-agent/" + pidstr + "/agent"
 	webdavBasePath := "panel-api/v1/files/webdav-agent/" + pidstr + "/agent" //前端根据这个过滤掉 当前目录?
 	compressUrl := "/panel-api/v1/files/compress-agent/" + pidstr
 	permissionUrl := "/panel-api/v1/files/permission-agent/" + pidstr
 
-	//主集群走agent ip
+	// An agent Pod IP allows direct forwarding to that node's daemonset agent.
 	if podIp != "" {
 		webdavUrl = "/panel-api/v1/" + podIp + ":8000/proxy/panel-api/v1/files/webdav-agent/" + pidstr + "/agent"
 		webdavBasePath = "panel-api/v1/files/webdav-agent/" + pidstr + "/agent" //前端根据这个过滤掉 当前目录?

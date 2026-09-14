@@ -406,12 +406,6 @@ func (d *WorkloadManager) HandleSecret(secret *corev1.Secret, delete bool) error
 	if secret == nil {
 		return fmt.Errorf("secret is nil")
 	}
-	// if helper.IsChildAgent() && helper.IsK3kVirtual() && secret.Type != "helm.sh/release.v1" {
-	// 	k3k.SyncSecretHttp(secret)
-	// }
-	// if !helper.IsChildAgent() {// 因为只watch default namespace 使用webhook 处理
-	// 	k3k.SyncToChildSecret(secret) // 主集群同步到子集群的secret
-	// }
 	if secret.Type != "helm.sh/release.v1" {
 		return nil
 	}

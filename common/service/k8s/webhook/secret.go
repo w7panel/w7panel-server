@@ -33,12 +33,5 @@ func (m *ResourceMutator) handleSecret(ctx context.Context, req admission.Reques
 		defer k3k.SyncHttpAfter(secret, "sync-secret") // 同步到主集群
 	}
 
-	// if !delete { //cert-manager 已经创建到子集群了，不需要再同步
-	// 	if !helper.IsChildAgent() {
-	// 		time.AfterFunc(time.Second*10, func() {
-	// 			k3k.SyncToChildSecret(secret.DeepCopy()) // 同步到子集群
-	// 		})
-	// 	}
-	// }
 	return admission.Allowed("处理 secret 请求")
 }

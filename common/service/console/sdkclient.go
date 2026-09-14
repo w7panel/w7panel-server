@@ -490,7 +490,7 @@ func (c *SdkClient) CreateSiteFromPanelWithName(url, siteIdentifie, siteName str
 	return order, err
 }
 
-// 支持openid 创建站点 支持其他用户创建站点 比如子集群
+// 支持openid 创建站点并支持其他用户创建站点。
 func (c *SdkClient) CreateSiteFromPanel2(url, siteIdentifie, openid string) (*License, error) {
 	return c.CreateSiteFromPanel2WithName(url, siteIdentifie, openid, "")
 }

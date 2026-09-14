@@ -41,54 +41,6 @@ func (self K3k) SyncConfigmap(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	if params.K3kMode == "virtual" && params.VirtualName == "registries" {
-		// 删除集群pod 重启集群
-		// time.AfterFunc(time.Second*10, func() {
-		// 	rootsdk := k8s.NewK8sClient().Sdk
-		// 	statefulsets, err := rootsdk.ClientSet.AppsV1().StatefulSets(params.K3kNamespace).List(context.Background(), metav1.ListOptions{LabelSelector: "cluster"})
-		// 	if err != nil {
-		// 		self.JsonResponseWithServerError(http, err)
-		// 		return
-		// 	}
-		// 	for _, statefulset := range statefulsets.Items {
-		// 		// 创建patch来更新Pod template annotations
-		// 		patchData := map[string]interface{}{
-		// 			"spec": map[string]interface{}{
-		// 				"template": map[string]interface{}{
-		// 					"metadata": map[string]interface{}{
-		// 						"annotations": map[string]interface{}{
-		// 							"kubectl.kubernetes.io/restartedAt": time.Now().Format(time.RFC3339),
-		// 						},
-		// 					},
-		// 				},
-		// 			},
-		// 		}
-
-		// 		// 将patch数据转换为JSON
-		// 		patchBytes, err := json.Marshal(patchData)
-		// 		if err != nil {
-		// 			slog.Error("Failed to marshal patch data", "error", err)
-		// 			continue
-		// 		}
-
-		// 		// 使用strategic merge patch更新StatefulSet
-		// 		_, err = rootsdk.ClientSet.AppsV1().StatefulSets(params.K3kNamespace).Patch(
-		// 			context.Background(),
-		// 			statefulset.Name,
-		// 			types.StrategicMergePatchType,
-		// 			patchBytes,
-		// 			metav1.PatchOptions{},
-		// 		)
-		// 		if err != nil {
-		// 			slog.Error("Failed to patch StatefulSet", "name", statefulset.Name, "error", err)
-		// 			continue
-		// 		}
-
-		// 		slog.Info("Successfully restarted StatefulSet", "name", statefulset.Name)
-		// 	}
-		// })
-
-	}
 	self.JsonSuccessResponse(http)
 	return
 }
@@ -138,15 +90,9 @@ func (self K3k) SyncDownStatic(http *gin.Context) {
 }
 
 func (self K3k) SyncMicroApp(http *gin.Context) {
-	// 无需再同步
-	// params := k3k.K3kSync{}
-	// if !self.Validate(http, &params) {
-	// 	return
-	// }
-	// // slog.Error("同步SyncMicroApp")
-	// microapp.Sync(params.K3kName, params.K3kNamespace, params.CkmName)
-	// self.JsonSuccessResponse(http)
-	// return
+	// Microapp data is now served independently; retain this callback as a
+	// successful no-op for existing CKM installations.
+	self.JsonSuccessResponse(http)
 }
 
 func (self K3k) SyncSite(http *gin.Context) {

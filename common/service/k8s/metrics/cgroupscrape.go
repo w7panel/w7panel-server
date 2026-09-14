@@ -44,7 +44,7 @@ func collectReport(client sigclient.Client) error {
 		"memory.file.mb":         strconv.FormatUint(stat.Memory.File/1048576, 10),
 		"memory.kernel.mb":       strconv.FormatUint(stat.Memory.GetKernelStack()/1048576, 10),
 	}
-	metricsName := "metrics" //子集群metricsName
+	metricsName := "metrics"
 	configmap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      metricsName,

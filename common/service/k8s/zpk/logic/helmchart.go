@@ -198,7 +198,7 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 	shellCmd += " --set " + "global.panel.panelAccessToken=" + panelAccessToken
 	shellCmd += " --set " + "global.panel.innerUrl=" + helper.PanelInnerUrl()
 	shellCmd += " --set " + "global.panel.panelToken=" + panelToken
-	shellCmd += " --set " + "global.panel.panelRealToken=" + packageApp.RealToken              //子集群内网访问 需要
+	shellCmd += " --set " + "global.panel.panelRealToken=" + packageApp.RealToken
 	shellCmd += " --set " + "global.panel.serviceAccountName=" + packageApp.ServiceAccountName //saName
 	shellCmd += " --set " + "global.panel.userName=" + packageApp.UserName                     //用户名
 	shellCmd += " --set " + "global.panel.imageRepo=" + repo                                   //镜像仓库地址

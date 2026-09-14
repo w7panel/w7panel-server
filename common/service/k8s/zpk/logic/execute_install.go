@@ -10,7 +10,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
-	bi "github.com/w7panel/w7panel/common/service/k8s/buildimage"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 )
 
@@ -39,7 +38,6 @@ type InstallExecution struct {
 	SDK          *k8s.Sdk
 	Identity     *k8s.K8sToken
 	PanelToken   string
-	IsChild      bool
 	InstallID    string
 	CallbackHost string
 	install      func(types.Package, string, string) error
@@ -138,9 +136,6 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 	packageApps := types.NewPackage(mPackage, params.InstallOptions, releaseName, installId, namespace,
 		params.IngressHost, params.IngressSeletorName, params.IngressClassName)
 	packageApps.ForceHttps(params.IngressForceHttps)
-	// packageApps.Root.K3kMode = k8sToken.K3kMode()
-	isChild := execution.IsChild
-
 	realToken := ""
 	config, err := client.ToRESTConfig()
 	if err != nil {
@@ -149,27 +144,13 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 	if config != nil {
 		realToken = config.BearerToken
 	}
-	if execution.IsChild {
-		registryHost, err := bi.PanelRegistryServerHostUseSdk(client)
-		if err != nil {
-			slog.Warn("get registry host err", "err", err)
-		} else {
-			packageApps.Root.PanelRegistryServerHost = registryHost
-		}
-	}
-
 	sa := client.GetServiceAccountName()
 	packageApps.Root.ServiceAccountName = sa
 	packageApps.Root.K8sToken = k8sToken
-	packageApps.Root.IsChild = isChild
 	packageApps.Root.RealToken = realToken
 	for _, child := range packageApps.Children {
 		child.ServiceAccountName = sa
-		if execution.IsChild {
-			child.IngressClassName = packageApps.Root.IngressClassName
-		}
 		child.K8sToken = k8sToken
-		child.IsChild = execution.IsChild
 		child.RealToken = realToken
 
 	}

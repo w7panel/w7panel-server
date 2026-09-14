@@ -41,7 +41,7 @@ func ContainerAddr() string {
 	if helper.IsLocalMock() || helper.IsDebug() {
 		return debugcontainerdAddr
 	}
-	if helper.IsChildAgent() || helper.IsAgent() {
+	if helper.IsAgent() {
 		return k3sContainerAddr
 	}
 

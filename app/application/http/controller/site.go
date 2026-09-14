@@ -183,7 +183,6 @@ func contactIndex(value int32, fallback int) int32 {
 	return int32(fallback + 1)
 }
 
-// TODO 子集群的configmap获取不到 未登录情况下无法获取到子集群的configmap
 func (self Site) NoAuthConfigMap(http *gin.Context) {
 	sdk := k8s.NewK8sClient()
 	name := http.Param("name")

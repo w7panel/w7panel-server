@@ -197,7 +197,7 @@ func (self Zpk) Install(http *gin.Context) {
 		return
 	}
 	result, err := logic.ExecuteInstall(params, logic.InstallExecution{
-		SDK: sdk, Identity: identity, PanelToken: token, IsChild: false, CallbackHost: http.Request.Host,
+		SDK: sdk, Identity: identity, PanelToken: token, CallbackHost: http.Request.Host,
 	})
 	if err != nil {
 		if writeArtifactInstallConflictResponse(http, err) {
@@ -777,7 +777,7 @@ func (self Zpk) LocalZpkUrl(http *gin.Context) {
 	})
 }
 
-// DomainParse 返回主集群的域名解析配置，子集群安装应用时也应使用此配置提示用户。
+// DomainParse returns the domain parsing configuration used during application installation.
 func (self Zpk) DomainParse(http *gin.Context) {
 	client := k8s.NewK8sClient()
 
