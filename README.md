@@ -98,8 +98,9 @@ KUBECONFIG=$BASE_DIR/kubeconfig.yaml \
 ### 工作负载根 CA 注入
 
 Pod 模板添加 `w7.cc/inject-root-ca: "true"` 注解后，Admission Webhook 会将集群
-`w7panel-root-ca-issuer` 的 CA 只读挂载到所有普通容器和 initContainer 的
-`/var/run/w7panel-root-ca/ca.crt`，并注入常见 TLS 客户端识别的环境变量：
+`w7panel-root-ca-issuer` 的 CA 挂载到独立源目录，并通过最先执行的 initContainer 将
+公共 CA bundle 与面板 CA 合并为 `/var/run/w7panel-root-ca/ca.crt`。所有普通容器和
+原有 initContainer 只读挂载这个合并后的 bundle，并注入常见 TLS 客户端识别的环境变量：
 
 - Go、OpenSSL、PHP stream、Ruby：`SSL_CERT_FILE`
 - curl（包括 PHP 容器内的 curl CLI）：`CURL_CA_BUNDLE`
@@ -107,8 +108,11 @@ Pod 模板添加 `w7.cc/inject-root-ca: "true"` 注解后，Admission Webhook �
 - Node.js：`NODE_EXTRA_CA_CERTS`
 - Git、AWS SDK/CLI、gRPC C-core：对应的 CA 环境变量
 
-注入会覆盖上述 CA 文件环境变量，确保应用实际使用集群 CA；已有的
-`SSL_CERT_DIR` 会保留。JVM 使用独立的 JKS/PKCS12 truststore，不属于此 PEM
+注入会将上述 CA 文件环境变量指向合并 bundle，使应用在信任面板 CA 的同时保留公网
+HTTPS 信任；已有的 `SSL_CERT_DIR` 会保留。该注解是通用 Pod 能力，不依赖
+`w7panel-cloudnoauth` 或其他 Sidecar。生成 bundle 的 initContainer 默认使用当前
+w7panel 镜像，也可通过 `w7.cc/root-ca-bundle-image` Pod annotation 指定镜像。该镜像必须包含
+`/bin/sh`、`cat`、`chmod` 和 `/etc/ssl/certs/ca-certificates.crt`。JVM 使用独立的 JKS/PKCS12 truststore，不属于此 PEM
 环境变量注入范围，需要应用镜像预装 truststore 或单独注入
 `JAVA_TOOL_OPTIONS`。
 

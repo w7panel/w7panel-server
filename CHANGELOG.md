@@ -187,3 +187,11 @@
 - 影响模块：ZPK 安装服务、安装控制器、HTTP 和控制台入口。
 - 验证：安装控制器测试、安装请求/执行准备及 Manifest 版本定向测试、所有相关包编译、go build -buildvcs=false ./... 和 git diff --check 通过；迁移文件核对仅含路径替换与导入排序。完整测试未通过：已有 ZIP 加载测试缺少 testdata/demo.zip，依赖固定集群资源的测试返回 not found 后空指针，在线制品测试出现空指针；默认构建的 VCS 状态读取失败，编译验证关闭 VCS 信息嵌入。
 2026-09-08: ZpkInstall 增加 `spec.maxRetries` 和 `status.retryCount`。安装失败后按配置次数自动重试，最终失败才进入 `Failed`；控制器与 CRD schema 测试已覆盖成功重试、次数耗尽和字段校验。
+
+## 2026-09-14
+
+- 修复 `w7.cc/inject-root-ca` 将系统公共 CA 替换为面板 CA、导致公网 HTTPS 验证失败的问题；CA bundle initContainer 固定置于首位，先将公共 CA 与 `w7panel-root-ca-issuer` CA 合并，再启动原有 initContainer、原生 Sidecar 和业务容器。
+- CA bundle 默认复用运行 Webhook 的 w7panel 镜像，不再探测或依赖 `w7panel-cloudnoauth` Sidecar，并支持通过 `w7.cc/root-ca-bundle-image` annotation 覆盖。
+- CA bundle initContainer 不再强制 `runAsUser: 0`、`runAsGroup: 0` 或 `runAsNonRoot: false`，避免覆盖工作负载的用户策略或触发 Pod Security 限制；仍保留禁止提权、只读根文件系统和 capability drop，并移除仅供测试引用的冗余系统 CA 路径常量。
+- 影响模块：Pod Admission 通用根 CA 注入、使用透明 HTTPS Sidecar 及其他需要面板 CA 的工作负载。
+- 验证：补充 CA 源卷、合并卷、initContainer 顺序、通用镜像选择、annotation 镜像覆盖、环境变量覆盖及重复注入测试；`go test ./common/service/k8s/webhook -count=1` 和 `git diff --check` 通过。
