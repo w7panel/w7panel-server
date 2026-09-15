@@ -290,3 +290,8 @@
 
 - `/k8s-proxy` 与 `/panel-api` 统一使用 `Auth` 内的 panel 鉴权分流：先校验 panel principal，再由服务端签发短期 Kubernetes 凭据供代理使用；子集群 k8s 模式的 `/panel-api` 直连 token 流程保持不变。
 - 影响模块：Kubernetes API 代理认证。验证：新增 Auth 路径分流和代理凭据签发条件单元测试；middleware 包测试因 `/tmp` 空间耗尽未能完成。
+
+## 2026-09-15
+
+- `k3k/info` 恢复与 dev-v1 一致的 token 用户解析与 Permission 刷新流程，不再直接返回 panel username 对应的未展开 User CRD；内置 founder Permission 的 features、菜单及角色由统一刷新逻辑生成。
+- 影响模块：K3K 登录用户信息。验证：代码差异与 Go 格式检查通过；完整 Go 测试受 `/tmp` 空间限制未执行。

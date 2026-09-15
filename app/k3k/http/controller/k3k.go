@@ -5,11 +5,8 @@ import (
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
-	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
-	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
-	userservice "github.com/w7panel/w7panel/common/service/user"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 
@@ -18,14 +15,6 @@ type K3k struct {
 }
 
 func (self K3k) Info(http *gin.Context) {
-	if username := http.GetString("username"); username != "" && http.GetString("ckm_name") == "" {
-		if sdk := k8s.NewK8sClient().Sdk; sdk != nil {
-			if u, err := userservice.Get(http.Request.Context(), sdk, username); err == nil {
-				self.JsonResponseWithoutError(http, k3ktypes.NewK3kUser(u.ToTyped()).ToArray())
-				return
-			}
-		}
-	}
 	user, err := k3k.TokenToK3kUser(http.MustGet("k8s_token").(string))
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
@@ -35,21 +24,7 @@ func (self K3k) Info(http *gin.Context) {
 		self.JsonResponseWithoutError(http, map[string]string{})
 		return
 	}
-	result := user.ToArray()
-	if http.GetString("ckm_name") != "" {
-		menus := make([]string, 0)
-		for _, menu := range k3ktypes.K3K_MENU_FOUNDER_RULES {
-			if menu != "zpk" && menu != "cluster/nodes" && menu != "cluster/nodes-image-list" {
-				menus = append(menus, menu)
-			}
-		}
-		encoded, _ := json.Marshal(menus)
-		result["w7.cc/menu"] = string(encoded)
-		result["w7.cc/role"] = "normal"
-		result["w7.cc/user-mode"] = "cluster"
-		result["w7.cc/username"] = http.GetString("username")
-	}
-	self.JsonResponseWithoutError(http, result)
+	self.JsonResponseWithoutError(http, user.ToArray())
 }
 
 func (self K3k) SyncIngress(http *gin.Context) {
