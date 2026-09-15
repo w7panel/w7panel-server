@@ -285,3 +285,8 @@
 - 修复顶部 MicroApp 列表在 panel 登录后为空：列表过滤改用鉴权中间件提供的 `user_mode`，仅为非 panel 旧调用回退解析 Kubernetes token；避免已无 K3K audience 的短期 Kubernetes 凭据被误判为 `normal` 角色。
 - MicroApp 列表查询失败改为返回服务端错误，不再伪装成空列表；影响模块：panel 顶部菜单。验证：MicroApp 角色解析单元测试及相关包测试通过。
 - 删除已移除的 MicroApp 同步实现遗留的 `sync_test.go`，避免该包测试因引用不存在的 `Sync` 函数而无法编译。
+
+## 2026-09-15
+
+- `/k8s-proxy` 与 `/panel-api` 统一使用 `Auth` 内的 panel 鉴权分流：先校验 panel principal，再由服务端签发短期 Kubernetes 凭据供代理使用；子集群 k8s 模式的 `/panel-api` 直连 token 流程保持不变。
+- 影响模块：Kubernetes API 代理认证。验证：新增 Auth 路径分流和代理凭据签发条件单元测试；middleware 包测试因 `/tmp` 空间耗尽未能完成。

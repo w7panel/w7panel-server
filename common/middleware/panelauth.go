@@ -60,9 +60,8 @@ func (PanelAuth) Process(ctx *gin.Context) {
 	ctx.Set("username", principal.Username)
 	ctx.Set("permission_name", permission.Name)
 	ctx.Set("user_mode", role)
-	// Compatibility for legacy cluster controllers still registered below
-	// /panel-api. The credential is minted server-side and never comes from the
-	// client request; migrated routes use K8sAuth under /k8s-proxy directly.
+	// Cluster-backed panel APIs and /k8s-proxy receive a credential minted
+	// server-side, never one supplied by the client.
 	if requiresLegacyK8sCredential(ctx.Request.URL.Path) {
 		aud := panelauth.GetAudience(*principal)
 		k8sToken, _, err := credential.IssueForPrincipalWithAudiences(ctx.Request.Context(), principal.Username, permission.Name, 10*time.Minute, aud)

@@ -26,13 +26,16 @@ type Auth struct {
 }
 
 func (self Auth) Process(ctx *gin.Context) {
-	if strings.HasPrefix(ctx.Request.URL.Path, "/panel-api/") && helper.IsChildAgent() && ckmAuthMode() == K8sAuthMode {
+	path := ctx.Request.URL.Path
+	if strings.HasPrefix(path, "/panel-api/") && helper.IsChildAgent() && ckmAuthMode() == K8sAuthMode {
 		processChildPanel(ctx)
 		return
 	}
-	// /panel-api authenticates a panel principal. Kubernetes credentials are
-	// intentionally accepted only at /k8s-proxy.
-	if strings.HasPrefix(ctx.Request.URL.Path, "/panel-api/") {
+	// Host panel APIs and the Kubernetes proxy share one panel authentication
+	// boundary. PanelAuth validates the panel principal and mints the short-lived
+	// Kubernetes credential consumed by ProxyK8s. Child panels in k8s mode keep
+	// their existing direct-token path above.
+	if usesPanelAuth(path) {
 		PanelAuth{}.Process(ctx)
 		return
 	}
@@ -102,6 +105,10 @@ func (self Auth) Process(ctx *gin.Context) {
 	ctx.Next()
 
 	// ctx.Writer.Header().Set("Content-Type", "application/json; charset=UTF-8")
+}
+
+func usesPanelAuth(path string) bool {
+	return strings.HasPrefix(path, "/panel-api/") || strings.HasPrefix(path, "/k8s-proxy/")
 }
 
 func (self Auth) authorizeUserOrServiceAccount(ctx *gin.Context, name string) bool {
