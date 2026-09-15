@@ -508,38 +508,42 @@ func (self *Sdk) Proxy(request *http.Request, response gin.ResponseWriter) (err 
 	return
 }
 
-func (self *Sdk) RunExec(ptyHandler PtyHandler, namespace string, podName string, containerName string, cmd []string, tty bool) (err error) {
-	ttystr := "false"
-	if tty {
-		ttystr = "true"
-	}
+func (self *Sdk) RunExec(ptyHandler PtyHandler, namespace string, podName string, containerName string, cmd []string, tty bool) error {
+	return self.runExec(ptyHandler.Context(), namespace, podName, containerName, cmd, remotecommand.StreamOptions{
+		Stdin: ptyHandler, Stdout: ptyHandler, Stderr: ptyHandler,
+		Tty: tty, TerminalSizeQueue: ptyHandler,
+	})
+}
+
+// RunExecOutput runs a non-interactive command without mixing diagnostics into stdout.
+func (self *Sdk) RunExecOutput(ctx context.Context, namespace, podName, containerName string, cmd []string) (stdout, stderr []byte, err error) {
+	var out, diagnostics bytes.Buffer
+	err = self.runExec(ctx, namespace, podName, containerName, cmd, remotecommand.StreamOptions{
+		Stdout: &out, Stderr: &diagnostics,
+	})
+	return out.Bytes(), diagnostics.Bytes(), err
+}
+
+func (self *Sdk) runExec(ctx context.Context, namespace, podName, containerName string, cmd []string, options remotecommand.StreamOptions) error {
 	request := self.ClientSet.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(podName).
 		Namespace(namespace).
 		SubResource("exec").
 		Param("container", containerName).
-		Param("stdin", "true").
-		Param("stdout", "true").
-		Param("stderr", "true").
-		Param("tty", ttystr)
+		Param("stdin", strconv.FormatBool(options.Stdin != nil)).
+		Param("stdout", strconv.FormatBool(options.Stdout != nil)).
+		Param("stderr", strconv.FormatBool(options.Stderr != nil)).
+		Param("tty", strconv.FormatBool(options.Tty))
 	for _, c := range cmd {
 		request = request.Param("command", c)
 	}
-	exec, err := remotecommand.NewSPDYExecutor(self.restConfig, "POST", request.URL())
+	executor, err := remotecommand.NewSPDYExecutor(self.restConfig, "POST", request.URL())
 	if err != nil {
 		slog.Error("Error while creating executor: %v", "err", err)
 		return err
 	}
-	err = exec.StreamWithContext(ptyHandler.Context(),
-		remotecommand.StreamOptions{
-			Stdin:             ptyHandler,
-			Stdout:            ptyHandler,
-			Stderr:            ptyHandler,
-			Tty:               tty,
-			TerminalSizeQueue: ptyHandler,
-		})
-
+	err = executor.StreamWithContext(ctx, options)
 	slog.Info("k8s exec done", "namespace", namespace, "podName", podName, "containerName", containerName, "cmd", cmd, "err", err)
 	return err
 }

@@ -11,7 +11,6 @@ import (
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/terminal"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -90,8 +89,6 @@ func LoadPid(pod *corev1.Pod) (int, error) {
 	//如果是子集群 直接通过当前shell获取
 }
 func GetPid(findPod *corev1.Pod, containerId string, nscener bool, sdk *k8s.Sdk) (int, error) {
-	session := terminal.NewTerminalSession(nil)
-	defer session.Close()
 	containerName := findPod.Spec.Containers[0].Name
 
 	containerId = normalizeContainerID(containerId)
@@ -100,31 +97,28 @@ func GetPid(findPod *corev1.Pod, containerId string, nscener bool, sdk *k8s.Sdk)
 		cmd = []string{"crictl", "inspect", "--output", "go-template", fmt.Sprintf("--template='{{.info.pid}}'"), containerId}
 	}
 
-	err := sdk.RunExec(session, findPod.Namespace, findPod.Name, containerName, cmd, false)
+	stdout, stderr, err := sdk.RunExecOutput(sdk.Ctx, findPod.Namespace, findPod.Name, containerName, cmd)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("inspect container %s: %w; stderr: %s", containerId, err, strings.TrimSpace(string(stderr)))
 	}
-	pid := string(session.GetWriterBytes())
-	pid = strings.Replace(pid, "\n", "", -1)
-	pid = strings.Replace(pid, "'", "", -1)
-	//pid string to int
-	pidInt, err := strconv.Atoi(pid)
+	pid, err := bytesToPid(stdout)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("inspect container %s: %w; stderr: %s", containerId, err, strings.TrimSpace(string(stderr)))
 	}
-	return pidInt, nil
+	return pid, nil
 }
 
 func bytesToPid(data []byte) (int, error) {
-	pid := string(data)
-	pid = strings.Replace(pid, "\n", "", -1)
-	pid = strings.Replace(pid, "'", "", -1)
-	//pid string to int
-	pidInt, err := strconv.Atoi(pid)
+	value := strings.TrimSpace(string(data))
+	value = strings.Trim(value, "'")
+	pid, err := strconv.Atoi(value)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("invalid container PID %q: %w", value, err)
 	}
-	return pidInt, nil
+	if pid <= 0 {
+		return 0, fmt.Errorf("invalid container PID %q: must be positive", value)
+	}
+	return pid, nil
 }
 
 func GetContainerPid(agentPod *corev1.Pod, pod *corev1.Pod, containerName, containerId string, nscener bool, sdk *k8s.Sdk) (int, string, error) {
