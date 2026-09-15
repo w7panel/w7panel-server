@@ -64,8 +64,8 @@ func (PanelAuth) Process(ctx *gin.Context) {
 	// /panel-api. The credential is minted server-side and never comes from the
 	// client request; migrated routes use K8sAuth under /k8s-proxy directly.
 	if requiresLegacyK8sCredential(ctx.Request.URL.Path) {
-		sourceToken := strings.TrimSpace(ctx.GetHeader("X-W7Panel-K8s-Token"))
-		k8sToken, _, err := credential.IssueForPrincipalFromToken(ctx.Request.Context(), principal.Username, permission.Name, sourceToken, 10*time.Minute)
+		aud := panelauth.GetAudience(*principal)
+		k8sToken, _, err := credential.IssueForPrincipalWithAudiences(ctx.Request.Context(), principal.Username, permission.Name, 10*time.Minute, aud)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"code": http.StatusInternalServerError, "msg": "生成 Kubernetes 凭据失败"})
 			return

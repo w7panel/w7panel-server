@@ -51,6 +51,10 @@ func audience(p Principal) []string {
 	return []string{p.Username, p.Role, p.ConsoleID, p.CVMName, p.K3KNamespace, "https://kubernetes.default.svc.cluster.local", "k3s"}
 }
 
+func GetAudience(p Principal) []string {
+	return audience(p)
+}
+
 func Issue(principal Principal, ttl time.Duration) (string, error) {
 	if principal.TokenUse == TokenUseCKMPanel && !validCKMPrincipal(principal) {
 		return "", ErrInvalidToken

@@ -12,15 +12,15 @@ import (
 
 // IssueForPrincipal creates a short-lived token on demand. It intentionally
 // does not persist child-cluster credentials in the host cluster.
-func IssueForPrincipal(ctx context.Context, username, permissionName string, ttl time.Duration) (string, int64, error) {
-	return IssueForPrincipalWithAudiences(ctx, username, permissionName, ttl, nil)
-}
+// func IssueForPrincipal(ctx context.Context, username, permissionName string, ttl time.Duration) (string, int64, error) {
+// 	return IssueForPrincipalWithAudiences(ctx, username, permissionName, ttl, nil)
+// }
 
-// IssueForPrincipalFromToken is kept for callers that provide an existing
-// credential, but credentials no longer carry a child-cluster audience.
-func IssueForPrincipalFromToken(ctx context.Context, username, permissionName, sourceToken string, ttl time.Duration) (string, int64, error) {
-	return IssueForPrincipal(ctx, username, permissionName, ttl)
-}
+// // IssueForPrincipalFromToken is kept for callers that provide an existing
+// // credential, but credentials no longer carry a child-cluster audience.
+// func IssueForPrincipalFromToken(ctx context.Context, username, permissionName, sourceToken string, ttl time.Duration) (string, int64, error) {
+// 	return IssueForPrincipal(ctx, username, permissionName, ttl)
+// }
 
 // IssueForPrincipalWithAudiences creates a short-lived ServiceAccount token
 // with the supplied Kubernetes audiences. CKM/K3K callers must provide the
