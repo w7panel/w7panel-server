@@ -12,11 +12,9 @@ import (
 	appgroupv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	sitev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/site/v1alpha1"
 
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -143,26 +141,6 @@ func (r *SiteController) handlePending(ctx context.Context, site *sitev1alpha1.S
 		site.Status.ObservedSiteIdentifier = site.Spec.SiteIdentifier
 	}
 
-	// Child agent: sync to root panel instead of processing locally
-	if helper.IsChildAgent() {
-		slog.Info("Child agent mode, syncing site to root panel", "name", site.GetName())
-		if err := k3k.SyncSiteHttp(site); err != nil {
-			slog.Error("Failed to sync site to root panel", "name", site.GetName(), "error", err)
-			r.setPhase(site, "Failed", "SyncFailed", metav1.ConditionFalse, fmt.Sprintf("sync site error: %s", err.Error()))
-			if err := r.Status().Update(ctx, site); err != nil {
-				slog.Error("Failed to update site status", "name", site.GetName(), "error", err)
-				return ctrl.Result{RequeueAfter: time.Minute}, nil
-			}
-			return ctrl.Result{}, nil
-		}
-		slog.Info("Site synced to root panel successfully", "name", site.GetName())
-		r.setPhase(site, "Completed", "Synced", metav1.ConditionTrue, "site synced to root panel")
-		if err := r.Status().Update(ctx, site); err != nil {
-			slog.Error("Failed to update site status", "name", site.GetName(), "error", err)
-			return ctrl.Result{RequeueAfter: time.Minute}, nil
-		}
-		return ctrl.Result{}, nil
-	}
 	slog.Info("Registering site via ZPK", "name", site.GetName())
 	var secret *console.AppSecret
 	var err error

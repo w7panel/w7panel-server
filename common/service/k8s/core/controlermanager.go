@@ -2,7 +2,6 @@ package core
 
 import (
 	"log/slog"
-	"os"
 
 	"github.com/go-logr/logr"
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -41,10 +40,6 @@ func webHookSetupManager(sdk *k8s.Sdk) (webhook.Server, error) {
 }
 
 func StartControlManager() error {
-	isAgent := os.Getenv("IS_AGENT") == "true"
-	if isAgent {
-		// return nil //higress 需要监听
-	}
 	// slog.Info("start control manager")
 	// 设置controller-runtime的日志记录器
 	// ctrl.SetLogger(logr.New(&slogr{logger: slog.Default()}))

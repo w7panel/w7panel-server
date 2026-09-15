@@ -293,5 +293,10 @@
 
 ## 2026-09-15
 
+- Site CRD controller 不再按 `IS_CHILD` 向根面板同步，所有面板均在当前集群完成 ZPK 注册及 Target patch；同时删除 controller manager 中未生效的 `IS_AGENT` 残留判断。影响模块：Site CRD 协调。
+- 验证：Go 格式检查与 `git diff --check` 通过；Site controller 包测试在依赖编译阶段因 `/tmp` 空间耗尽未完成。
+
+## 2026-09-15
+
 - `k3k/info` 恢复与 dev-v1 一致的 token 用户解析与 Permission 刷新流程，不再直接返回 panel username 对应的未展开 User CRD；内置 founder Permission 的 features、菜单及角色由统一刷新逻辑生成。
 - 影响模块：K3K 登录用户信息。验证：代码差异与 Go 格式检查通过；完整 Go 测试受 `/tmp` 空间限制未执行。
