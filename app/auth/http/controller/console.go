@@ -64,11 +64,6 @@ func (self Console) BindConsole(gin *gin.Context) {
 		self.JsonResponseWithError(gin, err, 500)
 		return
 	}
-	// sdk, err := k8s.NewK8sClient().Channel(tokenstr) // 子集群的sdk 需要使用root sdk
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(gin, err)
-	// 	return
-	// }
 	sdk := k8s.NewK8sClient().Sdk
 	respo := config.NewW7ConfigRepository(sdk)
 	client := console.DefaultClient(helper.IsDebug())

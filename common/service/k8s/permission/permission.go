@@ -517,7 +517,6 @@ func containsVerb(verbs []string, required string) bool {
 func isAlwaysAllowed(path string) bool {
 	return strings.HasPrefix(path, "/panel-api/v1/noauth/") ||
 		path == "/panel-api/v1/auth/userinfo" ||
-		path == "/panel-api/v1/k3k/info" ||
 		path == "/panel-api/v1/auth/refresh-token2"
 }
 

@@ -3,10 +3,8 @@ package buildimage
 import (
 	"context"
 	"log/slog"
-	"os"
 	"strings"
 
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"go.yaml.in/yaml/v4"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,9 +32,6 @@ func mirrorMapToStr(panelHost string) string {
 	return strings.Join(result, ";")
 }
 func readRegistryBytes() ([]byte, error) {
-	if helper.IsK3kVirtual() {
-		return os.ReadFile("/proc/1/root/etc/rancher/k3s/registries.yaml")
-	}
 	rootSdk := k8s.NewK8sClient()
 	cfg, err := rootSdk.ClientSet.CoreV1().ConfigMaps("default").Get(context.Background(), "registries", metav1.GetOptions{})
 	if err != nil {

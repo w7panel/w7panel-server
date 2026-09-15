@@ -36,33 +36,6 @@ func NewK3kConfig(name, namespace, apiServer, cvmName string) *K3kConfig {
 	}
 }
 
-func (t *K3kConfig) GetK3kAgentName() string {
-	return helper.GetK3kAgentName(t.Name)
-}
-
-func (t *K3kConfig) GetK3kAgentLbHost() string {
-	return t.GetVirtualIngressServiceName() + "." + t.Namespace + ".svc:8000"
-}
-
-func (t *K3kConfig) GetK3kServer0Name() string {
-	return helper.GetK3kServer0Name(t.CvmName)
-}
-
-func (t *K3kConfig) GetK3kServer0ContainerName() string {
-	return helper.GetK3kServer0ContainerName(t.CvmName)
-}
-
-func (t *K3kConfig) GetCacheKey() string {
-	return t.Name + "-" + t.Namespace
-}
-
-func (t *K3kConfig) ToAgentSvc() string {
-	if helper.IsLocalMock() {
-		return "http://v56.fan.b2.sz.w7.com"
-	}
-	return "http://" + t.GetK3kAgentName() + ":8000"
-}
-
 func (u *K3kConfig) GetVirtualIngressServiceName() string {
 	return helper.GetVirtualIngressServiceName(u.Namespace, u.CvmName)
 }
@@ -203,32 +176,7 @@ func (u *k3kUser) GetTokenAud(cvmName string) []string {
 	}
 }
 */
-// 判断是不是虚拟集群
-func (t *K8sToken) IsK3kCluster() bool {
-	s, err := t.GetAudience()
-	if err != nil {
-		return false
-	}
-	return len(s) == 7 && s[3] != ""
-}
-
-func (t *K8sToken) GetCvmName() string {
-	s, err := t.GetAudience()
-	if err != nil {
-		return ""
-	}
-	if len(s) == 7 {
-		return s[3]
-	}
-	return ""
-}
-
-// k3kuser.go 如果是集群用户返回founder 为了显示菜单
-// k8stoken.go 如果是集群用户返回普通用户角色，因为auth.go要根据role限制请求
 func (t *K8sToken) Role() string {
-	if t.IsK3kCluster() {
-		return "normal" //为了兼容站点管理 临时改为founder
-	}
 	s, err := t.GetAudience()
 	if err != nil {
 		return "normal"
@@ -236,53 +184,6 @@ func (t *K8sToken) Role() string {
 	return s[1]
 }
 
-func (t *K8sToken) GetPolicyName() string {
-	if t.IsK3kCluster() {
-		v, err := t.GetAudience()
-		if err == nil && len(v) > 7 {
-			return v[7]
-		}
-	}
-	return ""
-}
-
-func (t *K8sToken) GetLockVersion() string {
-	if t.IsK3kCluster() {
-		v, err := t.GetAudience()
-		if err == nil && len(v) > 8 {
-			return v[8]
-		}
-	}
-	return "1"
-}
-
-func (t *K8sToken) GetK3kPolicyVersion() string {
-	if t.IsK3kCluster() {
-		v, err := t.GetAudience()
-		if err == nil && len(v) > 9 {
-			return v[9]
-		}
-	}
-	return "1"
-}
-
-func (t *K8sToken) GetK3kConfig() (*K3kConfig, error) {
-	if !t.IsK3kCluster() {
-		return nil, errors.New("不是虚拟集群")
-	}
-
-	aud, err := t.GetAudience()
-	if err != nil {
-		return nil, err
-	}
-
-	return &K3kConfig{
-		Name:      aud[0],
-		Namespace: aud[4],
-		ApiServer: aud[5],
-		CvmName:   aud[3],
-	}, nil
-}
 func (t *K8sToken) GetRole() string {
 	aud, err := t.GetAudience()
 	if err != nil {

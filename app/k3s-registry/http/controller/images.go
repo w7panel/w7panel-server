@@ -141,7 +141,7 @@ func (self Images) Import(http *gin.Context) {
 		return
 	}
 	importPath := params.Path
-	if helper.IsAgent() || helper.IsK3kVirtual() {
+	if helper.IsAgent() {
 		// importPath = filepath.Join("/host", importPath)
 		baseDir := facade.GetConfig().GetString("s3.base_dir")
 		importPath = filepath.Join(baseDir, importPath)

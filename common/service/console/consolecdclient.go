@@ -39,7 +39,7 @@ type PayResult struct {
 	CvmNamespace string `json:"cvmNamespace"`
 }
 
-// declared 使用K3kOrder
+// OrderInfo is the order payload returned by the console service.
 type OrderInfo struct {
 	OrderStatus string `json:"ip_order_status"` // 控制台接口直接数据库返回的字段 paid return
 	OrderSn     string `json:"ip_order_sn"`     // 订单号

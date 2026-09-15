@@ -55,10 +55,9 @@ func (in *K3kConfigList) DeepCopyInto(out *K3kConfigList) {
 	out.TypeMeta = in.TypeMeta
 	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
-		in, out := &in.Items, &out.Items
-		*out = make([]K3kConfig, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
+		out.Items = make([]K3kConfig, len(in.Items))
+		for i := range in.Items {
+			in.Items[i].DeepCopyInto(&out.Items[i])
 		}
 	}
 }

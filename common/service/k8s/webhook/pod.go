@@ -8,7 +8,6 @@ import (
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s/pid"
-	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -22,7 +21,7 @@ func (m *ResourceMutator) handlePod(ctx context.Context, req admission.Request) 
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 	if pod.Annotations != nil {
-		val, ok := pod.Annotations[k3ktypes.W7_CREATE_POD]
+		val, ok := pod.Annotations["w7.cc/create-pod"]
 		if ok && val == "false" {
 			return admission.Denied("不允许创建pod")
 		}

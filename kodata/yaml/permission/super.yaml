@@ -65,21 +65,6 @@ spec:
   - path: /panel-api/v1/menu
     method:
     - get
-  - path: /panel-api/v1/k3k/info
-    method:
-    - get
-  - path: /panel-api/v1/k3k/cvm*
-    method:
-    - '*'
-  - path: /panel-api/v1/k3k/ckm*
-    method:
-    - '*'
-  - path: /panel-api/v1/k3k/overselling/*
-    method:
-    - '*'
-  - path: /panel-api/v1/k3k/order/license
-    method:
-    - create
   - path: /panel-api/v1/namespaces
     method:
     - get
@@ -202,13 +187,7 @@ spec:
     - create
   - path: /panel-api/v1/auth/init-user
     method: []
-  - path: /panel-api/v1/k3k/init
-    method: []
-  - path: /panel-api/v1/k3k/login
-    method: []
   - path: /panel-api/v1/k3k/sync-*
-    method: []
-  - path: /panel-api/v1/k3k/order/notify
     method: []
   - path: /panel-api/v1/idc-list
     method: []

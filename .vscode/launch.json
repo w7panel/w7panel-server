@@ -26,7 +26,6 @@
                 "MCP_WATCH": "true",
                 "SITE_ENABLED": "true",
                 "SDK_DEBUG": "false",
-                "K3K_WATCH": "true",
                 "K8S_WATCH": "true",
                 "DEBUG": "true",
                 "IMAGE_REPO": "ccr.ccs.tencentyun.com/afan-public/w7panel1",

@@ -5,101 +5,62 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	v1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
+	userservice "github.com/w7panel/w7panel/common/service/user"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type Ckm struct {
-	controller.Abstract
-}
+type Ckm struct{ controller.Abstract }
 
-/*
-*
- */
 func (self Ckm) Info(http *gin.Context) {
-	token := http.MustGet("k8s_token").(string)
-	name := http.Param("name")
-	namespace := http.Param("namespace")
-
-	cvm, err := k3k.TokenToCkm(http, token, namespace, name)
+	c, err := k3k.TokenToCkm(http, http.MustGet("k8s_token").(string), http.Param("namespace"), http.Param("name"))
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	cvm.ComputeStatus()
-	self.JsonResponseWithoutError(http, cvm)
-
+	c.ComputeStatus()
+	self.JsonResponseWithoutError(http, c)
 }
+
 func (self Ckm) List(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
-	ns := http.Query("namespace")
-	rootSdk := k8s.NewK8sClient()
-	sigClient, err := rootSdk.ToSigClient()
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	user, err := k3k.TokenToK3kUser(token)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
+	namespace := http.Query("namespace")
+	var user *k3ktypes.K3kUser
+	if username := http.GetString("username"); username != "" {
+		u, err := userservice.Get(http.Request.Context(), k8s.NewK8sClient().Sdk, username)
+		if err != nil {
+			self.JsonResponseWithServerError(http, err)
+			return
+		}
+		user = k3ktypes.NewK3kUser(u.ToTyped())
+	} else {
+		var err error
+		user, err = k3k.TokenToK3kUser(token)
+		if err != nil {
+			self.JsonResponseWithServerError(http, err)
+			return
+		}
 	}
 	if !user.IsFounder() {
-		ns = k8sToken.GetNamespace()
+		namespace = user.GetK3kNamespace()
+	}
+	sigClient, err := k8s.NewK8sClient().ToSigClient()
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
 	}
 	list := &v1alpha1.CkmList{}
 	options := &client.ListOptions{}
-	if ns != "" {
-		options.ApplyOptions([]client.ListOption{
-			client.InNamespace(ns),
-		})
+	if namespace != "" {
+		options.ApplyOptions([]client.ListOption{client.InNamespace(namespace)})
 	}
-	err = sigClient.List(http, list, options)
-	if err != nil {
+	if err = sigClient.List(http, list, options); err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	for _, cvm := range list.Items {
-		cvm.ComputeStatus()
+	for i := range list.Items {
+		list.Items[i].ComputeStatus()
 	}
 	self.JsonResponseWithoutError(http, list)
-}
-
-// 救援模式
-func (self Ckm) IdcResource(http *gin.Context) {
-	// sdk := k8s.NewK8sClient()
-	// client, err := sdk.ToSigClient()
-	// if err != nil {
-	// 	self.JsonSuccessResponse(http)
-	// 	return
-	// }
-	// list := &v1alpha1.CostList{}
-	// err = client.List(http, list)
-	// if err != nil {
-	// 	self.JsonResponseWithoutError(http, list)
-	// 	return
-	// }
-	// result := types.Params{}
-	// for _, v := range list.Items {
-	// 	if (v.Labels != nil) && (v.Labels["w7.cc/showInShop"] != "true") {
-	// 		continue
-	// 	}
-	// 	if v.Annotations == nil {
-	// 		continue
-	// 	}
-	// 	items := v.Annotations["w7.cc/package-items"]
-	// 	if items == "" {
-	// 		continue
-	// 	}
-	// 	params := types.Params{}
-	// 	err := json.Unmarshal([]byte(items), &params)
-	// 	if err != nil {
-	// 		continue
-	// 	}
-	// 	result = append(result, params...)
-	// }
-
-	// self.JsonResponseWithoutError(http, result)
-
 }

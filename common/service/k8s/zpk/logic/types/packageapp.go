@@ -66,7 +66,6 @@ type InstallOption struct {
 	IngressClassName         string               `json:"ingressClassName"`     //ingressclassname
 	IngressForceHttps        bool                 `json:"ingressForceHttps"`    //ingressclassname
 	Replicas                 int32                `json:"replicas"`             // 可选安装的数量为0
-	IsChildApp               bool                 `json:"isChild"`              //是否IsChildApp
 	IsUpgrade                bool                 `json:"isUpgrade"`            //是否更新模式
 	Annotations              map[string]string    `json:"annotations"`          //注解
 	HelmValues               map[string]string    `json:"helmValues,omitempty"` //首次安装使用的 Helm 默认参数
@@ -80,9 +79,7 @@ type InstallOption struct {
 	Volumes                  []corev1.Volume      `json:"volumes"`
 	VolumesMounts            []corev1.VolumeMount `json:"volumesMounts"`
 	K8sToken                 *k8s.K8sToken
-	IsChild                  bool
-	RealToken                string // 子集群token需要返回实际的token 内网访问面板代理 不会经过主集群面板
-	// K3kMode                  string               `json:"k3kMode"`              // 子集群模式
+	RealToken                string
 }
 
 // helm chart metadata 结构体

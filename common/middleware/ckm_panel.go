@@ -13,8 +13,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Child agents accept only the target cluster's own execution account. A host
-// panel JWT or a merely decodable Kubernetes token never passes this boundary.
+// A CKM-target panel accepts only its own execution account. A host panel JWT
+// or a merely decodable Kubernetes token never passes this boundary.
 func processChildPanel(ctx *gin.Context) {
 	raw := strings.TrimPrefix(ctx.GetHeader("Authorization"), "Bearer ")
 	name := os.Getenv("K3K_NAME")
@@ -34,7 +34,7 @@ func processChildPanel(ctx *gin.Context) {
 }
 
 func ckmLocalMetadata(path string) bool {
-	return path == "/panel-api/v1/auth/userinfo" || path == "/panel-api/v1/k3k/info" || path == "/panel-api/v1/auth/console/info"
+	return path == "/panel-api/v1/auth/userinfo" || path == "/panel-api/v1/auth/console/info"
 }
 
 func processCKMPanel(ctx *gin.Context, p panelauth.Principal) {

@@ -67,9 +67,6 @@ func TokenToK3kUser(token string) (*types.K3kUser, error) {
 		return nil, err
 	}
 	user := types.NewK3kUser(userCRD.ToTyped())
-	if ktoken.IsK3kCluster() {
-		user.SetCkmName(ktoken.GetCvmName())
-	}
 	return RefreshK3kUser(user, rootSdk, false)
 }
 

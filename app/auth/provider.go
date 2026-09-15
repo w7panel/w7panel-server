@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 	app "github.com/w7panel/w7panel/app/auth/console"
 	controller2 "github.com/w7panel/w7panel/app/auth/http/controller"
-	k3kController "github.com/w7panel/w7panel/app/k3k/http/controller"
 	"github.com/w7panel/w7panel/common/middleware"
 	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
@@ -66,7 +65,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.GET("/console/bind", middleware.Auth{}.Process, controller2.Console{}.BindConsole)
 			localApiGroup.GET("/console/info", middleware.Auth{}.Process, controller2.Console{}.Info)
 
-			localApiGroup.GET("/userinfo", middleware.Auth{}.Process, k3kController.K3k{}.Info)
+			localApiGroup.GET("/userinfo", middleware.Auth{}.Process, controller2.Auth{}.UserInfo)
 			// 不需要创始人权限
 			// localApiGroup.GET("/console/code/:code", middleware.Auth{}.Process, controller2.Console{}.ProxyCouponCode)
 			// localApiGroup.Any("/console/proxy/*path", middleware.Auth{}.Process, controller2.Console{}.Proxy)

@@ -86,8 +86,6 @@ spec:
                       type: string
                     ingressSelectorName:
                       type: string
-                    isChild:
-                      type: boolean
                     isUpgrade:
                       type: boolean
                     memory:

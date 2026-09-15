@@ -447,11 +447,6 @@ func toIngress(app K8sResourceIngressInterface, svcName string, port int32, path
 	ingressClassName := app.GetIngressClassName()
 	if ingressClassName == "" {
 		ingressClassName = "higress"
-		// 兼容k3s虚拟集群模式
-		// k3kMode, ok := os.LookupEnv("K3K_MODE")
-		// if ok && k3kMode == "virtual" {
-		// 	ingressClassName = "traefik"
-		// }
 	}
 	annotations["kubernetes.io/ingress.class"] = ingressClassName
 	annotations["w7.cc/ingress-selector-name"] = app.GetIngressSelectorName()

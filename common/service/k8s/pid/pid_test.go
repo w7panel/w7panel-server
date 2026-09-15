@@ -3,6 +3,7 @@ package pid
 import "testing"
 
 func TestHandle(t *testing.T) {
+	t.Skip("requires a live Kubernetes cluster and local container runtime")
 
 	containerId := "containerd://1db837210dfcfe3f069c5ca3ac44b26f90a7a704a8571ef69dc666332d68cc1e"
 	pidParams := PidParam{

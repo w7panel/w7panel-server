@@ -33,10 +33,6 @@ spec:
         -
             method:
                 - get
-            path: /panel-api/v1/k3k/info
-        -
-            method:
-                - get
             path: /panel-api/v1/microapp/*/frontprops
         -
             method:

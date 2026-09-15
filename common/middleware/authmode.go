@@ -11,7 +11,7 @@ const (
 )
 
 // ckmAuthMode selects how requests originating from CKM are authenticated.
-// Keep k8s as the default for backwards compatibility with child clusters.
+// Kubernetes credentials remain the default for CKM callback compatibility.
 func ckmAuthMode() string {
 	mode := strings.ToLower(strings.TrimSpace(os.Getenv("W7PANEL_AUTH_MODE")))
 	if mode != PanelAuthMode && mode != K8sAuthMode {

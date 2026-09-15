@@ -195,9 +195,6 @@ gpustack:
   watch: true
 log:
   level: "error"
-k3k:
-  watch: true
-  runtimedir: "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io"
 k8s:
   watch: true
 k3s:
@@ -205,29 +202,6 @@ k3s:
 
 privatedns:
   enabled: true
-# Example configuration for CronJob
-cronjob:
-  enabled: true
-  schedule: "0 0/1 * * *"
-  timezone: "Asia/Shanghai"
-  concurrencyPolicy: "Allow"
-  suspend: false
-  startingDeadlineSeconds: 300
-  command:
-    - /bin/sh
-    - -c
-  args:
-    - w7panel k3k-return-check
-  env: []
-  # resources:
-  #   limits:
-  #     cpu: 100m
-  #     memory: 128Mi
-  #   requests:
-  #     cpu: 100m
-  #     memory: 128Mi
-  restartPolicy: Never
-  # Job template specific options
   jobTemplate:
     backoffLimit: 4
   # Pod specific options

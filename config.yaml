@@ -41,8 +41,6 @@ buildimage:
 
 mcp:
   watch: ${MCP_WATCH-false}
-k3k:
-  watch: ${K3K_WATCH-false}
 cvm:
   enabled: ${CVM_ENABLED-false}   
 server:

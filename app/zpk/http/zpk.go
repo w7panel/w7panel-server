@@ -16,7 +16,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
-	bi "github.com/w7panel/w7panel/common/service/k8s/buildimage"
 	zpkk8s "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
@@ -188,7 +187,7 @@ func (self Zpk) Install(http *gin.Context) {
 	}
 	token := http.MustGet("k8s_token").(string)
 	identity := k8s.NewK8sToken(token)
-	if !identity.IsFounder() && !identity.IsK3kCluster() {
+	if !identity.IsFounder() {
 		self.JsonResponseWithServerError(http, errors.New("only founder can install"))
 		return
 	}
@@ -198,7 +197,7 @@ func (self Zpk) Install(http *gin.Context) {
 		return
 	}
 	result, err := logic.ExecuteInstall(params, logic.InstallExecution{
-		SDK: sdk, Identity: identity, PanelToken: token, IsChild: identity.IsK3kCluster(), CallbackHost: http.Request.Host,
+		SDK: sdk, Identity: identity, PanelToken: token, CallbackHost: http.Request.Host,
 	})
 	if err != nil {
 		if writeArtifactInstallConflictResponse(http, err) {
@@ -701,16 +700,6 @@ func (self Zpk) BuildImageJob(http *gin.Context) {
 		}
 	}
 
-	token := http.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
-	if k8sToken.IsK3kCluster() {
-		registryHost, err := bi.PanelRegistryServerHostUseSdk(client)
-		if err != nil {
-			slog.Warn("get registry host err", "err", err)
-		} else {
-			params.PanelRegistryHost = registryHost
-		}
-	}
 	job := zpkk8s.ToZpkBuildJob(&params)
 	if job == nil {
 		self.JsonResponseWithServerError(http, errors.New("create job failed"))
@@ -788,7 +777,7 @@ func (self Zpk) LocalZpkUrl(http *gin.Context) {
 	})
 }
 
-// DomainParse 返回主集群的域名解析配置，子集群安装应用时也应使用此配置提示用户。
+// DomainParse returns the domain parsing configuration used during application installation.
 func (self Zpk) DomainParse(http *gin.Context) {
 	client := k8s.NewK8sClient()
 

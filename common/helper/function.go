@@ -58,8 +58,6 @@ import (
 
 var clusterD = "cluster.local"
 
-const K3K_AGENT_PREFIX = "w7panel-k3k-agent"
-
 func ClusterDomain(name, namespace string) string {
 	return fmt.Sprintf("%s.%s.svc.%s", name, namespace, clusterD)
 }
@@ -597,17 +595,6 @@ func VerifyDataWithPublicKey(pubKey *rsa.PublicKey, data, signature []byte) erro
 	return nil
 }
 
-func GetK3kAgentName(name string) string {
-	return "w7panel-k3k-agent-" + name
-}
-
-func GetK3kServer0Name(name string) string {
-	return "k3k-" + name + "-server-0"
-}
-
-func GetK3kServer0ContainerName(name string) string {
-	return "k3k-" + name + "-server"
-}
 func GetVirtualIngressServiceName(ns, name string) string {
 	return ns + "-" + name + "-service-w7"
 }
@@ -1005,11 +992,6 @@ func HelmValflattenMap(config map[string]interface{}) map[string]string {
 }
 
 func PanelInnerUrl() string {
-	if IsChildAgent() {
-		svcName := os.Getenv("SVC_NAME")
-		return "http://" + svcName + ".default.svc:8000"
-
-	}
 	ns := os.Getenv("HELM_NAMESPACE")
 	if ns == "" {
 		ns = "default"
