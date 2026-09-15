@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"encoding/json"
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
