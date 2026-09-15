@@ -138,8 +138,7 @@ func main() {
 	httpServer.RegisterRouters(
 		func(engine *gin.Engine) {
 			engine.Any("/k8s-proxy/*path",
-				commonmiddleware.K8sAuth{}.Process,
-				commonmiddleware.K8sFilter{}.Process,
+				commonmiddleware.Auth{}.Process,
 				controller.Proxy{}.ProxyK8s)
 		},
 	)
