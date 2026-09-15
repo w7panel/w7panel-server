@@ -27,6 +27,57 @@ func (in *ConfigSpec) DeepCopy() *ConfigSpec {
 	return out
 }
 
+func (in *K3kConfig) DeepCopyInto(out *K3kConfig) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	in.Spec.DeepCopyInto(&out.Spec)
+}
+
+func (in *K3kConfig) DeepCopy() *K3kConfig {
+	if in == nil {
+		return nil
+	}
+	out := new(K3kConfig)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *K3kConfig) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+func (in *K3kConfigList) DeepCopyInto(out *K3kConfigList) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	if in.Items != nil {
+		out.Items = make([]K3kConfig, len(in.Items))
+		for i := range in.Items {
+			in.Items[i].DeepCopyInto(&out.Items[i])
+		}
+	}
+}
+
+func (in *K3kConfigList) DeepCopy() *K3kConfigList {
+	if in == nil {
+		return nil
+	}
+	out := new(K3kConfigList)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *K3kConfigList) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
 func (in *K3sConfig) DeepCopyInto(out *K3sConfig) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta

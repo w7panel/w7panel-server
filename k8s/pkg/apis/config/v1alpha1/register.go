@@ -24,6 +24,8 @@ func Resource(resource string) schema.GroupResource {
 
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
+		&K3kConfig{},
+		&K3kConfigList{},
 		&K3sConfig{},
 		&K3sConfigList{},
 		&OverSellingConfig{},

@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	controller2 "github.com/w7panel/w7panel/app/k3k/http/controller"
 	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/middleware"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
@@ -25,6 +26,11 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	server.RegisterRouters(func(engine *gin.Engine) {
 		k3kGroup := engine.Group("/panel-api/v1/k3k")
 		{
+			k3kGroup.GET("/info", middleware.Auth{}.Process, controller2.K3k{}.Info)
+			k3kGroup.GET("/cvm", middleware.Auth{}.Process, controller2.Ckm{}.List)
+			k3kGroup.GET("/cvm/v1/:namespace/info/:name", middleware.Auth{}.Process, controller2.Ckm{}.Info)
+			k3kGroup.GET("/ckm", middleware.Auth{}.Process, controller2.Ckm{}.List)
+			k3kGroup.GET("/ckm/v1/:namespace/info/:name", middleware.Auth{}.Process, controller2.Ckm{}.Info)
 			k3kGroup.POST("/sync-ingress", controller2.K3k{}.SyncIngress)
 			k3kGroup.POST("/sync-configmap", controller2.K3k{}.SyncConfigmap)
 			k3kGroup.POST("/sync-mcpbridge", controller2.K3k{}.SyncMcpBridge)

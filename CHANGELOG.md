@@ -269,3 +269,6 @@
 - 合并 dev-v1（3dead4f0）到 dev-v1-token，保留 token/CKM 会话、本地联调规则及双方变更历史；同步制品预装、安装服务和公共 CA 修复。
 - 按确认方案删除旧 w7panel-higress Chart，采用制品预装及远程 Chart 升级；子集群脚本保留 Gateway API 开关，主集群远程制品的开关配置未验证。
 - 验证：mise exec -- go build ./... 通过；CKM 会话、面板认证、中间件、用户凭据、协调租约、Webhook、BootstrapInstallation CRD 及 ZPK 凭据隔离/域名/默认仓库定向测试通过；Shell 语法和 git diff --check 通过。Bootstrap 控制器 3 项测试失败（就绪轮询及重试上限预期），对应源码和测试与 dev-v1 完全一致，本次合并不调整其状态机。未部署集群或验证远程 Higress 制品。
+## 2026-09-15
+
+- 独立子集群恢复 K3K 用户信息、CKM/CVM 只读查询、K3K 配置 CRD 和登录配置查询；不恢复订单、初始化或超卖接口。
