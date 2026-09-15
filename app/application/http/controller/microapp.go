@@ -1,13 +1,11 @@
 package controller
 
 import (
-
 	// "github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	"github.com/w7panel/w7panel/common/service/oidc"
-	microappv1 "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 
@@ -17,10 +15,9 @@ type MicroApp struct {
 
 func (self MicroApp) List(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
-	list, err := microapp.ListTop(token)
+	list, err := microapp.ListTop(token, http.GetString("user_mode"))
 	if err != nil {
-		newList := &microappv1.MicroAppList{}
-		self.JsonResponseWithoutError(http, newList)
+		self.JsonResponseWithServerError(http, err)
 		return
 	}
 	self.JsonResponseWithoutError(http, list)

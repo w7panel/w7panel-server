@@ -16,10 +16,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// 头部显示
-func ListTop(t string) (*microapp.MicroAppList, error) {
-	token := k8s.NewK8sToken(t)
-	role := token.GetRole()
+// ListTop returns the microapps visible to the authenticated panel role.
+//
+// Panel authentication stores that role separately from the short-lived
+// Kubernetes credential. The credential intentionally has no K3K audience,
+// so deriving the role from it would make every panel request look like the
+// legacy "normal" role. Keep the token lookup only for non-panel callers that
+// have not supplied an authenticated role yet.
+func ListTop(t string, authenticatedRole string) (*microapp.MicroAppList, error) {
+	role := listTopRole(t, authenticatedRole)
 	if role == "" {
 		return nil, errors.New("role is empty")
 	}
@@ -50,6 +55,13 @@ func ListTop(t string) (*microapp.MicroAppList, error) {
 	})
 
 	return newList, nil
+}
+
+func listTopRole(token, authenticatedRole string) string {
+	if role := strings.TrimSpace(authenticatedRole); role != "" {
+		return role
+	}
+	return k8s.NewK8sToken(token).GetRole()
 }
 
 func panelRoleBindingCount(item microapp.MicroApp) int {

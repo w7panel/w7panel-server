@@ -279,3 +279,9 @@
 
 - 独立子集群恢复 K3K 用户信息、CKM/CVM 只读查询、K3K 配置 CRD 和登录配置查询；不恢复订单、初始化或超卖接口。
 - CKM/CVM 列表兼容 panel 登录产生的 username 上下文，避免将非 K3K audience 凭据解析失败并返回 500。
+
+## 2026-09-15
+
+- 修复顶部 MicroApp 列表在 panel 登录后为空：列表过滤改用鉴权中间件提供的 `user_mode`，仅为非 panel 旧调用回退解析 Kubernetes token；避免已无 K3K audience 的短期 Kubernetes 凭据被误判为 `normal` 角色。
+- MicroApp 列表查询失败改为返回服务端错误，不再伪装成空列表；影响模块：panel 顶部菜单。验证：MicroApp 角色解析单元测试及相关包测试通过。
+- 删除已移除的 MicroApp 同步实现遗留的 `sync_test.go`，避免该包测试因引用不存在的 `Sync` 函数而无法编译。
