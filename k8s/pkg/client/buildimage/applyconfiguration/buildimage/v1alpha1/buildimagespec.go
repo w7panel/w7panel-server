@@ -20,11 +20,12 @@ package v1alpha1
 // BuildImageSpecApplyConfiguration represents a declarative configuration of the BuildImageSpec type for use
 // with apply.
 type BuildImageSpecApplyConfiguration struct {
-	TaskID      *string                        `json:"taskId,omitempty"`
-	Namespace   *string                        `json:"namespace,omitempty"`
-	Source      *SourceApplyConfiguration      `json:"source,omitempty"`
-	TargetImage *TargetImageApplyConfiguration `json:"targetImage,omitempty"`
-	NotifyURL   *string                        `json:"notifyUrl,omitempty"`
+	TaskID             *string                        `json:"taskId,omitempty"`
+	Namespace          *string                        `json:"namespace,omitempty"`
+	ServiceAccountName *string                        `json:"serviceAccountName,omitempty"`
+	Source             *SourceApplyConfiguration      `json:"source,omitempty"`
+	TargetImage        *TargetImageApplyConfiguration `json:"targetImage,omitempty"`
+	NotifyURL          *string                        `json:"notifyUrl,omitempty"`
 }
 
 // BuildImageSpecApplyConfiguration constructs a declarative configuration of the BuildImageSpec type for use with
@@ -46,6 +47,13 @@ func (b *BuildImageSpecApplyConfiguration) WithTaskID(value string) *BuildImageS
 // If called multiple times, the Namespace field is set to the value of the last call.
 func (b *BuildImageSpecApplyConfiguration) WithNamespace(value string) *BuildImageSpecApplyConfiguration {
 	b.Namespace = &value
+	return b
+}
+
+// WithServiceAccountName sets the ServiceAccountName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+func (b *BuildImageSpecApplyConfiguration) WithServiceAccountName(value string) *BuildImageSpecApplyConfiguration {
+	b.ServiceAccountName = &value
 	return b
 }
 

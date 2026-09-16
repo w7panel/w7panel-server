@@ -25,7 +25,7 @@ import (
 	// appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 )
 
-var buildimage = "ccr.ccs.tencentyun.com/afan-public/kaniko:w7console-new5-25"
+var buildimage = "ccr.ccs.tencentyun.com/afan-public/kaniko:w7console-new5-26"
 
 // convvst buildimage = "ccr.ccs.tencentyun.com/afan-public/kaniko:w7console-build-test1"
 func init() {
@@ -1027,7 +1027,7 @@ func ToMicroApp(p K8sResourceInterface) *microapp.MicroApp {
 }
 
 func toBuildPodSpec(option types.BuildImageOption) corev1.PodSpec {
-	return corev1.PodSpec{
+	podSpec := corev1.PodSpec{
 		//挂载hostPath
 		Volumes:       option.GetVolumes(),
 		DNSPolicy:     corev1.DNSClusterFirstWithHostNet,
@@ -1048,6 +1048,11 @@ func toBuildPodSpec(option types.BuildImageOption) corev1.PodSpec {
 			},
 		},
 	}
+	if strings.HasPrefix(option.GetPushImage(), "registry.local.w7.cc/") {
+		podSpec.ServiceAccountName = option.GetServiceAccountName()
+		podSpec.AutomountServiceAccountToken = ptr.Bool(true)
+	}
+	return podSpec
 }
 
 func ToZpkBuildJob(opt types.BuildImageInterface) *batchv1.Job {

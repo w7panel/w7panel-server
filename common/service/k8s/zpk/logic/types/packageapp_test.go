@@ -61,7 +61,7 @@ func TestGetDockerRegistryDefaultsForLocalRegistrySecret(t *testing.T) {
 		DockerRegistrySecretName: "registry.local.w7.cc",
 	}}
 	registry := app.GetDockerRegisty()
-	if registry.Host != "registry.local.w7.cc" || registry.Username != "admin" || registry.Password != "w7-secret" || registry.Namespace != "default" {
+	if registry.Host != "registry.local.w7.cc" || registry.Username != "" || registry.Password != "" || registry.Namespace != "default" {
 		t.Fatalf("unexpected local registry default: %#v", registry)
 	}
 }

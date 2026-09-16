@@ -71,5 +71,9 @@ func toBuildJob(ctx context.Context, spec *BuildImageSpec) (*batchv1.Job, error)
 			},
 		},
 	}
+	if spec.IsPushToDefault() {
+		job.Spec.Template.Spec.ServiceAccountName = spec.ServiceAccountName
+		job.Spec.Template.Spec.AutomountServiceAccountToken = ptr.Bool(true)
+	}
 	return job, nil
 }

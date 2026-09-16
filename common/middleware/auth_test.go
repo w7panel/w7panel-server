@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 )
@@ -62,5 +63,19 @@ func TestRegistryWriteUsesConfiguredAuthMode(t *testing.T) {
 	t.Setenv("W7PANEL_AUTH_MODE", K8sAuthMode)
 	if shouldUsePanelAuth(req) {
 		t.Fatal("registry write must use Kubernetes auth in k8s mode")
+	}
+}
+
+func TestRegistryServiceAccountToken(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPut, "/v2/demo/manifests/latest", nil)
+	req.SetBasicAuth(registryServiceAccountUsername, "service-account-jwt")
+	token, ok := registryServiceAccountToken(req)
+	if !ok || token != "service-account-jwt" {
+		t.Fatalf("registryServiceAccountToken() = (%q, %v)", token, ok)
+	}
+
+	req.SetBasicAuth("admin", "w7-secret")
+	if _, ok := registryServiceAccountToken(req); ok {
+		t.Fatal("ordinary Docker Basic credentials must not authenticate registry writes")
 	}
 }

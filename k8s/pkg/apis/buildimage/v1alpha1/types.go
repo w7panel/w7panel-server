@@ -27,11 +27,12 @@ type Auth struct {
 	Password string `json:"password"`
 }
 type BuildImageSpec struct {
-	TaskID      string      `json:"taskId,omitempty"`
-	Namespace   string      `json:"namespace,omitempty"`
-	Source      Source      `json:"source"`
-	TargetImage TargetImage `json:"targetImage"`
-	NotifyURL   string      `json:"notifyUrl,omitempty"`
+	TaskID             string      `json:"taskId,omitempty"`
+	Namespace          string      `json:"namespace,omitempty"`
+	ServiceAccountName string      `json:"serviceAccountName,omitempty"`
+	Source             Source      `json:"source"`
+	TargetImage        TargetImage `json:"targetImage"`
+	NotifyURL          string      `json:"notifyUrl,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

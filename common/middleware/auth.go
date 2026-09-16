@@ -108,6 +108,38 @@ func (self Auth) Process(ctx *gin.Context) {
 	// ctx.Writer.Header().Set("Content-Type", "application/json; charset=UTF-8")
 }
 
+// ProcessKubernetesToken authenticates a Kubernetes ServiceAccount token even
+// when this panel is configured for panel authentication. It is intentionally
+// used only by internal integrations that cannot send a panel bearer token.
+func (self Auth) ProcessKubernetesToken(ctx *gin.Context, token string) {
+	if token == "" {
+		self.abortUnauthorized(ctx, "请登录")
+		return
+	}
+	if err := k8s.NewK8sClient().TokenReview(token); err != nil {
+		self.abortUnauthorized(ctx, "请登录"+err.Error())
+		return
+	}
+	saName, _ := k8s.GetTokenSaName(token)
+	if saName == "" {
+		self.abortUnauthorized(ctx, "请登录")
+		return
+	}
+	ctx.Set("username", saName)
+	if !self.authorizeUserOrServiceAccount(ctx, saName) {
+		return
+	}
+	ctx.Set("k8s_token", token)
+	ctx.Next()
+}
+
+func (self Auth) abortUnauthorized(ctx *gin.Context, msg string) {
+	ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+		"code": http.StatusUnauthorized,
+		"msg":  msg,
+	})
+}
+
 func usesPanelAuth(path string) bool {
 	return strings.HasPrefix(path, "/panel-api/") || strings.HasPrefix(path, "/k8s-proxy/")
 }

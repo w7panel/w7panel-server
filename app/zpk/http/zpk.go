@@ -660,8 +660,6 @@ func (self Zpk) BuildImageJob(http *gin.Context) {
 	}
 	if params.DockerRegistry.Host == "registry.local.w7.cc" {
 		params.HostNetwork = true
-		params.DockerRegistry.Username = "admin"
-		params.DockerRegistry.Password = "w7-secret"
 	}
 	sdk := k8s.NewK8sClient()
 	client, err := sdk.Channel(http.MustGet("k8s_token").(string))
@@ -669,6 +667,7 @@ func (self Zpk) BuildImageJob(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	params.ServiceAccountName = client.GetServiceAccountName()
 	if params.DockerRegistrySecretName != "" {
 		dockerSecret, err := client.ClientSet.CoreV1().Secrets("default").Get(sdk.Ctx, params.DockerRegistrySecretName, metav1.GetOptions{})
 		if err != nil {
@@ -720,12 +719,13 @@ func (self Zpk) BuildImageCronJob(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
-	job := zpkk8s.ToZpkBuildCronJob(&params, params.Schedule)
 	client, err := k8s.NewK8sClient().Channel(http.MustGet("k8s_token").(string))
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	params.ServiceAccountName = client.GetServiceAccountName()
+	job := zpkk8s.ToZpkBuildCronJob(&params, params.Schedule)
 	job, err = client.ClientSet.BatchV1().CronJobs("default").Create(client.Ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
