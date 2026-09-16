@@ -61,6 +61,8 @@ spec:
             value: "true"     
           - name: W7PANEL_AUTH_MODE
             value: "panel"  
+          - name: PANEL_AUTH_SIGNING_KEY
+            value: {{ .Values.panelAuth.signingKey | quote }}
           - name: GPUSTACK_WATCH
             value: {{ .Values.gpustack.watch | quote }}      
           - name: MOCK_UPGRADE

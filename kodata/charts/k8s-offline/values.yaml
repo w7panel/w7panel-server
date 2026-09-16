@@ -7,6 +7,12 @@ replicaCount: 1
 apiServerUrl: ""
 tmpCdToken: ""
 
+# Shared HMAC key for panel JWTs. Set this to the same non-empty secret for
+# the panel Deployment and every Agent DaemonSet when panel authentication is
+# enabled. An empty value keeps the application's legacy app.aeskey fallback.
+panelAuth:
+  signingKey: ""
+
 # 控制台注册功能，默认不开启
 console:
   enabled: false
