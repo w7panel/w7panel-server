@@ -7,9 +7,9 @@ replicaCount: 1
 apiServerUrl: ""
 tmpCdToken: ""
 
-# Shared HMAC key for panel JWTs. Set this to the same non-empty secret for
-# the panel Deployment and every Agent DaemonSet when panel authentication is
-# enabled. An empty value keeps the application's legacy app.aeskey fallback.
+# Shared HMAC key for panel JWTs. When empty, the chart creates a random key
+# on first install and preserves it on upgrades. Set a non-empty value only
+# when an externally managed, deterministic key is required.
 panelAuth:
   signingKey: ""
 

@@ -71,7 +71,10 @@ spec:
           - name: IS_AGENT
             value: "true"
           - name: PANEL_AUTH_SIGNING_KEY
-            value: {{ .Values.panelAuth.signingKey | quote }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "helm.panelAuthSecretName" . }}
+                key: signing-key
           - name: K3S_RUNTIME_DIR     
             value: {{ .Values.k3s.runtimedir | quote }}
           - name: NODE_IP
