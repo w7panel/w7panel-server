@@ -213,79 +213,79 @@ func (self Zpk) Install(http *gin.Context) {
 }
 func (self Zpk) BuildImageSuccess(http *gin.Context) {
 
-	type ParamsValidate struct {
-		Namespace         string `form:"namespace" binding:"required"`
-		ReleaseName       string `form:"releaseName" binding:"required"`
-		DomainHost        string `form:"domainHost" binding:"required"`
-		DeploymentName    string `form:"deploymentName" binding:"required"` //deploymentName
-		ThirdpartyCDToken string `form:"thirdpartyCDToken"`                 // 控制台token zpk不需要这个token
-	}
-	params := ParamsValidate{}
-	if !self.Validate(http, &params) {
-		return
-	}
-	if true {
-		return
-	}
-	if params.ThirdpartyCDToken == "" {
-		self.JsonSuccessResponse(http)
-		return
-	}
-	client, err := k8s.NewK8sClient().Channel(http.MustGet("k8s_token").(string))
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	cdClient := console.NewConsoleCdClient(params.ThirdpartyCDToken)
-	appSecret, err := cdClient.CreateSite(params.DomainHost, params.ReleaseName)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	if appSecret.AppId == "" || appSecret.AppSecret == "" {
-		self.JsonResponseWithServerError(http, errors.New("app id or secret is empty"))
-		return
-	}
-	// appSecret := &console.AppSecret{
-	// 	AppId:     "123",
-	// 	AppSecret: "456",
+	// type ParamsValidate struct {
+	// 	Namespace         string `form:"namespace" binding:"required"`
+	// 	ReleaseName       string `form:"releaseName" binding:"required"`
+	// 	DomainHost        string `form:"domainHost" binding:"required"`
+	// 	DeploymentName    string `form:"deploymentName" binding:"required"` //deploymentName
+	// 	ThirdpartyCDToken string `form:"thirdpartyCDToken"`                 // 控制台token zpk不需要这个token
 	// }
+	// params := ParamsValidate{}
+	// if !self.Validate(http, &params) {
+	// 	return
+	// }
+	// if true {
+	// 	return
+	// }
+	// if params.ThirdpartyCDToken == "" {
+	// 	self.JsonSuccessResponse(http)
+	// 	return
+	// }
+	// client, err := k8s.NewK8sClient().Channel(http.MustGet("k8s_token").(string))
+	// if err != nil {
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
+	// cdClient := console.NewConsoleCdClient(params.ThirdpartyCDToken)
+	// appSecret, err := cdClient.CreateSite(params.DomainHost, params.ReleaseName)
+	// if err != nil {
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
+	// if appSecret.AppId == "" || appSecret.AppSecret == "" {
+	// 	self.JsonResponseWithServerError(http, errors.New("app id or secret is empty"))
+	// 	return
+	// }
+	// // appSecret := &console.AppSecret{
+	// // 	AppId:     "123",
+	// // 	AppSecret: "456",
+	// // }
 
-	patchData := `{
-		"spec": {
-			"template": {
-				"spec": {
-					"containers": [
-						{
-							"name": "%s",
-							"env": [
-								{
-									"name": "APP_ID",
-									"value": "%s"
-								},
-								{
-									"name": "APP_SECRET",
-									"value": "%s"
-								}
-							]
-						}
-					]
-				}
-			}
-		}
-	}`
-	patchData = fmt.Sprintf(patchData, params.DeploymentName, appSecret.AppId, appSecret.AppSecret)
-	//deployment 修改env
-	//patch deployment
+	// patchData := `{
+	// 	"spec": {
+	// 		"template": {
+	// 			"spec": {
+	// 				"containers": [
+	// 					{
+	// 						"name": "%s",
+	// 						"env": [
+	// 							{
+	// 								"name": "APP_ID",
+	// 								"value": "%s"
+	// 							},
+	// 							{
+	// 								"name": "APP_SECRET",
+	// 								"value": "%s"
+	// 							}
+	// 						]
+	// 					}
+	// 				]
+	// 			}
+	// 		}
+	// 	}
+	// }`
+	// patchData = fmt.Sprintf(patchData, params.DeploymentName, appSecret.AppId, appSecret.AppSecret)
+	// //deployment 修改env
+	// //patch deployment
 
-	_, err = client.ClientSet.
-		AppsV1().
-		Deployments(params.Namespace).
-		Patch(client.Ctx, params.DeploymentName, k8stypes.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
+	// _, err = client.ClientSet.
+	// 	AppsV1().
+	// 	Deployments(params.Namespace).
+	// 	Patch(client.Ctx, params.DeploymentName, k8stypes.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
+	// if err != nil {
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
 	self.JsonSuccessResponse(http)
 }
 
