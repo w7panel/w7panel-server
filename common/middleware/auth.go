@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,7 +36,7 @@ func (self Auth) Process(ctx *gin.Context) {
 	// boundary. PanelAuth validates the panel principal and mints the short-lived
 	// Kubernetes credential consumed by ProxyK8s. Child panels in k8s mode keep
 	// their existing direct-token path above.
-	if usesPanelAuth(path) {
+	if shouldUsePanelAuth(ctx.Request) {
 		PanelAuth{}.Process(ctx)
 		return
 	}
@@ -111,7 +112,14 @@ func usesPanelAuth(path string) bool {
 	return strings.HasPrefix(path, "/panel-api/") || strings.HasPrefix(path, "/k8s-proxy/")
 }
 
+func shouldUsePanelAuth(req *http.Request) bool {
+	return req != nil && (usesPanelAuth(req.URL.Path) || (ckmAuthMode() == PanelAuthMode && IsRegistryWriteRequest(req)))
+}
+
 func (self Auth) authorizeUserOrServiceAccount(ctx *gin.Context, name string) bool {
+	if !requiresRoutePermission(ctx.Request.Method, ctx.Request.URL.Path) {
+		return true
+	}
 	sdk := k8s.NewK8sClient().Sdk
 	u, err := userservice.Get(ctx.Request.Context(), sdk, name)
 	if err != nil {
@@ -122,7 +130,7 @@ func (self Auth) authorizeUserOrServiceAccount(ctx *gin.Context, name string) bo
 		ctx.AbortWithStatusJSON(403, gin.H{"code": 403, "msg": "没有权限: " + err.Error()})
 		return false
 	}
-	allowed, err := permissionservice.AuthorizePanelAPIWithPermission(ctx.Request.Context(), sdk, p, ctx.Request.Method, ctx.Request.URL.Path)
+	allowed, err := permissionservice.AuthorizeRouteWithPermission(p, ctx.Request.Method, ctx.Request.URL.Path)
 	if err != nil {
 		ctx.AbortWithStatusJSON(403, gin.H{"code": 403, "msg": "没有权限: " + err.Error()})
 		return false
@@ -141,7 +149,10 @@ func (self Auth) authorizeUserOrServiceAccount(ctx *gin.Context, name string) bo
 }
 
 func (self Auth) authorizePanelAPI(ctx *gin.Context, saName string) bool {
-	allowed, err := permissionservice.AuthorizePanelAPI(ctx.Request.Context(), k8s.NewK8sClient().Sdk, saName, ctx.Request.Method, ctx.Request.URL.Path)
+	if !requiresRoutePermission(ctx.Request.Method, ctx.Request.URL.Path) {
+		return true
+	}
+	allowed, err := permissionservice.AuthorizeRoute(ctx.Request.Context(), k8s.NewK8sClient().Sdk, saName, ctx.Request.Method, ctx.Request.URL.Path)
 	if err != nil {
 		ctx.AbortWithStatusJSON(403, gin.H{
 			"code": 403,

@@ -46,6 +46,12 @@ spec:
   - path: /panel-api/v1/registry/*
     method:
     - '*'
+  - path: /v2/*
+    method:
+    - create
+    - update
+    - patch
+    - delete
   - path: /panel-api/v1/tty
     method:
     - get

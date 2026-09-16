@@ -343,7 +343,7 @@ func AuthorizePanelAPI(ctx context.Context, sdk *k8s.Sdk, saName, method, path s
 	if err != nil {
 		return false, err
 	}
-	return MatchAPI(APIMap(p), method, path), nil
+	return AuthorizeRouteWithPermission(p, method, path)
 }
 
 func AuthorizePanelAPIWithPermission(ctx context.Context, sdk *k8s.Sdk, p *configv1alpha1.Permission, method, path string) (bool, error) {
@@ -353,6 +353,26 @@ func AuthorizePanelAPIWithPermission(ctx context.Context, sdk *k8s.Sdk, p *confi
 	if isAlwaysAllowed(path) {
 		return true, nil
 	}
+	return AuthorizeRouteWithPermission(p, method, path)
+}
+
+// AuthorizeRoute resolves a ServiceAccount's Permission CRD for a route that
+// is protected outside the panel API prefix.
+func AuthorizeRoute(ctx context.Context, sdk *k8s.Sdk, saName, method, path string) (bool, error) {
+	sa, err := sdk.GetServiceAccount(sdk.GetNamespace(), saName)
+	if err != nil {
+		return false, err
+	}
+	p, err := ResolveForServiceAccount(ctx, sdk, sa)
+	if err != nil {
+		return false, err
+	}
+	return AuthorizeRouteWithPermission(p, method, path)
+}
+
+// AuthorizeRouteWithPermission applies an already resolved Permission CRD to
+// any protected HTTP route, including Docker Registry V2 writes.
+func AuthorizeRouteWithPermission(p *configv1alpha1.Permission, method, path string) (bool, error) {
 	if p == nil {
 		return false, fmt.Errorf("用户未关联权限")
 	}

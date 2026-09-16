@@ -293,6 +293,11 @@
 
 ## 2026-09-15
 
+- 为独立子集群的本地 k3s-registry `/v2/*` 写操作增加认证与 Permission CRD 授权：`W7PANEL_AUTH_MODE=panel` 使用 panel JWT，`k8s` 模式使用 Kubernetes Bearer；读取与镜像拉取继续匿名。内置 super、api 权限新增 Registry V2 写规则，Founder 全量规则保持兼容。
+- 验证：middleware 包测试、Registry Permission 新增用例、Go 格式检查及 `git diff --check` 通过。Permission 包全量测试仍有既有失败：normal 权限缺少 `/panel-api/v1/zpk/domain-parse` 的预期规则，本次未改动该权限。
+
+## 2026-09-15
+
 - Site CRD controller 不再按 `IS_CHILD` 向根面板同步，所有面板均在当前集群完成 ZPK 注册及 Target patch；同时删除 controller manager 中未生效的 `IS_AGENT` 残留判断。影响模块：Site CRD 协调。
 - 验证：Go 格式检查与 `git diff --check` 通过；Site controller 包测试在依赖编译阶段因 `/tmp` 空间耗尽未完成。
 

@@ -28,7 +28,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		// Registry API - 镜像仓库
 		if facade.GetConfig().GetBool("registry.enabled") { //子用户 和 代理agent才开启
 			registryGroup := engine.Group("")
-			registryGroup.Use()
+			registryGroup.Use(middleware.RegistryWriteAuth{}.Process)
 			{
 				registryGroup.Any("/v2/*path", controller.Registry{}.Handler)
 			}

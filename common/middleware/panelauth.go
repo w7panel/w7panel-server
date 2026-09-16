@@ -47,7 +47,12 @@ func (PanelAuth) Process(ctx *gin.Context) {
 		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "msg": "没有权限"})
 		return
 	}
-	allowed, err := permissionservice.AuthorizePanelAPIWithPermission(ctx.Request.Context(), sdk, permission, ctx.Request.Method, ctx.Request.URL.Path)
+	var allowed bool
+	if requiresRoutePermission(ctx.Request.Method, ctx.Request.URL.Path) {
+		allowed, err = permissionservice.AuthorizeRouteWithPermission(permission, ctx.Request.Method, ctx.Request.URL.Path)
+	} else {
+		allowed, err = permissionservice.AuthorizePanelAPIWithPermission(ctx.Request.Context(), sdk, permission, ctx.Request.Method, ctx.Request.URL.Path)
+	}
 	if err != nil || !allowed {
 		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "msg": "没有权限"})
 		return
@@ -102,6 +107,9 @@ func panelToken(req *http.Request) string {
 }
 
 func requiresLegacyK8sCredential(path string) bool {
+	if strings.HasPrefix(path, "/v2/") {
+		return false
+	}
 	if path == "/panel-api/v1/auth/ckm-session" {
 		return false
 	}

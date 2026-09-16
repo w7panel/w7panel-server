@@ -110,6 +110,42 @@ func TestMatchAPI(t *testing.T) {
 	}
 }
 
+func TestAuthorizeRouteWithPermissionForRegistryWrites(t *testing.T) {
+	permission := &configv1alpha1.Permission{Spec: configv1alpha1.PermissionSpec{
+		APIRules: []configv1alpha1.PermissionAPIRule{{
+			Path:   "/v2/*",
+			Method: []string{"create", "update", "patch", "delete"},
+		}},
+	}}
+
+	for _, method := range []string{"POST", "PUT", "PATCH", "DELETE"} {
+		allowed, err := AuthorizeRouteWithPermission(permission, method, "/v2/demo/manifests/latest")
+		if err != nil || !allowed {
+			t.Fatalf("AuthorizeRouteWithPermission(%s) = (%v, %v), want (true, nil)", method, allowed, err)
+		}
+	}
+	allowed, err := AuthorizeRouteWithPermission(permission, "GET", "/v2/demo/manifests/latest")
+	if err != nil || allowed {
+		t.Fatalf("AuthorizeRouteWithPermission(GET) = (%v, %v), want (false, nil)", allowed, err)
+	}
+}
+
+func TestBuiltinRegistryWritePermissions(t *testing.T) {
+	for _, name := range []string{"founder.yaml", "super.yaml", "api.yaml"} {
+		p := loadBuiltinPermission(t, name)
+		allowed, err := AuthorizeRouteWithPermission(p, "PUT", "/v2/demo/manifests/latest")
+		if err != nil || !allowed {
+			t.Fatalf("%s registry write = (%v, %v), want (true, nil)", name, allowed, err)
+		}
+	}
+
+	normal := loadBuiltinPermission(t, "normal.yaml")
+	allowed, err := AuthorizeRouteWithPermission(normal, "PUT", "/v2/demo/manifests/latest")
+	if err != nil || allowed {
+		t.Fatalf("normal registry write = (%v, %v), want (false, nil)", allowed, err)
+	}
+}
+
 func TestResolveForServiceAccountRequiresPermissionName(t *testing.T) {
 	_, err := ResolveForServiceAccount(context.Background(), nil, &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{Name: "no-panel-permission"},
