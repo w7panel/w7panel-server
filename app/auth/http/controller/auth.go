@@ -240,6 +240,10 @@ func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Contex
 	commonmiddleware.SetPanelSession(http, token, int(seconds))
 	rs := service.GetRefreshToken(u.Name, ckmName)
 	auditservice.RecordLoginSuccessUser(http, u.Name, loginMethod, u)
+	if http.GetBool("oidcRedirect") {
+		http.Redirect(302, "/")
+		return
+	}
 	self.JsonResponseWithoutError(http, gin.H{
 		"token":         token,
 		"expire":        time.Now().Add(time.Duration(seconds) * time.Second).Unix(),

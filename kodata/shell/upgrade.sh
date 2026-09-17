@@ -35,6 +35,9 @@ echo "补齐 Ingress 应用分组"
 echo "导入yaml"
 kubectl apply -f $KO_DATA_PATH/yaml/nvidia.yaml
 
+echo "创建默认登录配置"
+kubectl get loginconfig default >/dev/null 2>&1 || kubectl create -f $KO_DATA_PATH/yaml/loginconfig/default.yaml
+
 # echo "卸载默认的vm-operator"
 # helm list -n w7-system --filter 'vm-operator' | grep -q 'vm-operator' && helm uninstall vm-operator -n w7-system
 
