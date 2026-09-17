@@ -36,11 +36,12 @@ func (self Static) StaticInfo(http *gin.Context) {
 		releaseName = strings.ReplaceAll(releaseName, "-root", "")
 	}
 	status := appgroup.DownStaticStatus(identifie, version, releaseName)
-	token := http.MustGet("k8s_token").(string)
-	client, err := k8s.NewK8sClient().Channel(token)
-	if err != nil {
-		slog.Error("创建 k8s 客户端失败 static down", "error", err)
-	}
+	// // token := http.MustGet("k8s_token").(string)
+	// client, err := k8s.NewK8sClient().Channel(token)
+	// if err != nil {
+	// 	slog.Error("创建 k8s 客户端失败 static down", "error", err)
+	// }
+	client := k8s.NewK8sClient().Sdk // 面板分开后不需要 token 认证
 	// 通过 releaseName 查找 AppGroup，获取完整制品地址、回源根地址和 ticket 信息
 	respoUrl := ""
 	zpkUrl := ""
