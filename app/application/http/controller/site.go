@@ -8,6 +8,7 @@ import (
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	loginconfig "github.com/w7panel/w7panel/common/service/k8s/loginconfig"
 	"github.com/w7panel/w7panel/common/service/k8s/site"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
@@ -128,6 +129,22 @@ func (self Site) InitUser(http *gin.Context) {
 		response["allowConsoleRegister"] = boolString(setting.Spec.Login.RegistrationEnabled)
 	}
 	self.JsonResponseWithoutError(http, response)
+}
+
+// LoginConfig only exposes the provider state needed before authentication. The
+// management UI reads the cluster-scoped CRD through the authenticated proxy.
+func (self Site) LoginConfig(http *gin.Context) {
+	if !helper.IsChildAgent() {
+		self.JsonResponseWithoutError(http, gin.H{"oidcEnabled": false, "childCluster": false})
+		return
+	}
+	config, err := loginconfig.Get(http.Request.Context(), k8s.NewK8sClient().Sdk)
+	if err != nil {
+		self.JsonResponseWithoutError(http, gin.H{"oidcEnabled": false, "childCluster": true})
+		return
+	}
+	oidc, ok := loginconfig.Provider(config, "oidc")
+	self.JsonResponseWithoutError(http, gin.H{"oidcEnabled": ok && oidc.Enabled, "childCluster": true})
 }
 
 func boolString(value bool) string {

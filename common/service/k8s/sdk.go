@@ -29,6 +29,7 @@ import (
 	bootstrapinstallationv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/bootstrapinstallation/v1alpha1"
 	buildimagev1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/buildimage/v1alpha1"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
+	loginconfigv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/loginconfig/v1alpha1"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	microappsettingv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/microappsetting/v1alpha1"
 	oidcv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/oidc/v1alpha1"
@@ -94,6 +95,7 @@ func init() {
 	_ = configv1alpha1.AddToScheme(scheme)
 	_ = microapp.AddToScheme(scheme)
 	_ = microappsettingv1alpha1.AddToScheme(scheme)
+	_ = loginconfigv1alpha1.AddToScheme(scheme)
 	_ = buildimagev1alpha1.AddToScheme(scheme)
 	_ = bootstrapinstallationv1alpha1.AddToScheme(scheme)
 	_ = cvmv1alpha1.AddToScheme(scheme)

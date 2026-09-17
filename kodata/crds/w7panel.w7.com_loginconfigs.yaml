@@ -1,0 +1,43 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: loginconfigs.w7panel.w7.com
+spec:
+  group: w7panel.w7.com
+  names:
+    kind: LoginConfig
+    listKind: LoginConfigList
+    plural: loginconfigs
+    singular: loginconfig
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        required: [spec]
+        properties:
+          apiVersion: {type: string}
+          kind: {type: string}
+          metadata: {type: object}
+          spec:
+            type: object
+            required: [providers]
+            properties:
+              providers:
+                type: array
+                items:
+                  type: object
+                  required: [type, enabled]
+                  properties:
+                    type: {type: string}
+                    enabled: {type: boolean}
+                    immutable: {type: boolean}
+                    discoveryUrl: {type: string}
+                    clientId: {type: string}
+                    scopes:
+                      type: array
+                      items: {type: string}

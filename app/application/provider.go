@@ -287,6 +287,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		engine.GET("/panel-api/v1/noauth/site/beian", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.Beian)
 		engine.GET("/panel-api/v1/noauth/site/beian2", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.Beian2)
 		engine.GET("/panel-api/v1/noauth/site/init-user", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.InitUser)
+		engine.GET("/panel-api/v1/noauth/site/login-config", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.LoginConfig)
 		engine.GET("/panel-api/v1/noauth/site/k3k-config", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.K3kConfig)
 		engine.GET("/panel-api/v1/noauth/site/lianxi", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.Lianxi)
 		// 镜像源配置文件

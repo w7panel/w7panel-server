@@ -60,6 +60,8 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/reset-password-current", middleware.Auth{}.Process, controller2.Auth{}.ResetPasswordCurrent) //设置当前登录用户密码
 
 			localApiGroup.GET("/console/oauth", controller2.Console{}.Redirect)
+			localApiGroup.GET("/oidc/start", controller2.LoginOIDC{}.Start)
+			localApiGroup.GET("/oidc/callback", controller2.LoginOIDC{}.Callback)
 
 			localApiGroup.GET("/console/login", controller2.Auth{}.ConsoleLogin)
 			localApiGroup.GET("/console/bind", middleware.Auth{}.Process, controller2.Console{}.BindConsole)
