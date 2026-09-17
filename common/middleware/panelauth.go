@@ -14,8 +14,6 @@ import (
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
 )
 
-const panelSessionCookie = "w7panel_session"
-
 type PanelAuth struct{ middleware.Abstract }
 
 func (PanelAuth) Process(ctx *gin.Context) {
@@ -79,10 +77,6 @@ func (PanelAuth) Process(ctx *gin.Context) {
 	ctx.Next()
 }
 
-func SetPanelSession(ctx *gin.Context, token string, maxAge int) {
-	ctx.SetCookie(panelSessionCookie, token, maxAge, "/", "", false, true)
-}
-
 func panelToken(req *http.Request) string {
 	if strings.EqualFold(req.Header.Get("Upgrade"), "websocket") {
 		for _, protocol := range strings.Split(req.Header.Get("Sec-WebSocket-Protocol"), ",") {
@@ -98,10 +92,6 @@ func panelToken(req *http.Request) string {
 	}
 	if auth := req.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
 		return strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
-	}
-	cookie, err := req.Cookie(panelSessionCookie)
-	if err == nil {
-		return cookie.Value
 	}
 	return ""
 }

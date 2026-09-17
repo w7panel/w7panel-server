@@ -81,9 +81,18 @@ func (LoginOIDC) Callback(ctx *gin.Context) {
 		oidcLoginError(ctx, errors.New("OIDC 登录仅支持子集群"))
 		return
 	}
+	params := struct {
+		Code  string `json:"code" binding:"required"`
+		State string `json:"state" binding:"required"`
+		Error string `json:"error"`
+	}{}
+	if err := ctx.ShouldBindJSON(&params); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "error": "OIDC 回调参数无效"})
+		return
+	}
 	state, err := ctx.Cookie(oidcLoginStateCookie)
-	if err != nil || state == "" || state != ctx.Query("state") {
-		oidcLoginError(ctx, errors.New("OIDC 登录状态无效或已过期"))
+	if err != nil || state == "" || state != params.State {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "error": "OIDC 登录状态无效或已过期"})
 		return
 	}
 	oidcLoginStates.Lock()
@@ -92,21 +101,21 @@ func (LoginOIDC) Callback(ctx *gin.Context) {
 	oidcLoginStates.Unlock()
 	ctx.SetCookie(oidcLoginStateCookie, "", -1, "/", "", oidcSecure(ctx), true)
 	if !ok || time.Now().After(loginState.expiresAt) {
-		oidcLoginError(ctx, errors.New("OIDC 登录状态无效或已过期"))
+		ctx.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "error": "OIDC 登录状态无效或已过期"})
 		return
 	}
-	if reason := ctx.Query("error"); reason != "" {
-		oidcLoginError(ctx, errors.New(reason))
+	if params.Error != "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "error": params.Error})
 		return
 	}
 	relyingParty, err := oidcLoginProvider(ctx, loginState.nonce)
 	if err != nil {
-		oidcLoginError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "error": err.Error()})
 		return
 	}
-	tokens, err := rp.CodeExchange[*zitadeloidc.IDTokenClaims](ctx.Request.Context(), ctx.Query("code"), relyingParty, rp.WithCodeVerifier(loginState.verifier))
+	tokens, err := rp.CodeExchange[*zitadeloidc.IDTokenClaims](ctx.Request.Context(), params.Code, relyingParty, rp.WithCodeVerifier(loginState.verifier))
 	if err != nil || tokens.IDTokenClaims == nil {
-		oidcLoginError(ctx, errors.New("OIDC 授权码或身份令牌校验失败"))
+		ctx.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "error": "OIDC 授权码或身份令牌校验失败"})
 		return
 	}
 	username := strings.TrimSpace(tokens.IDTokenClaims.PreferredUsername)
@@ -114,16 +123,15 @@ func (LoginOIDC) Callback(ctx *gin.Context) {
 		username = strings.TrimSpace(tokens.IDTokenClaims.Subject)
 	}
 	if username == "" {
-		oidcLoginError(ctx, errors.New("OIDC 身份令牌缺少用户标识"))
+		ctx.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "error": "OIDC 身份令牌缺少用户标识"})
 		return
 	}
 	sdk := k8s.NewK8sClient().Sdk
 	user, err := userservice.Get(ctx.Request.Context(), sdk, username)
 	if err != nil {
-		oidcLoginError(ctx, errors.New("OIDC 用户未在当前集群创建"))
+		ctx.JSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "error": "OIDC 用户未在当前集群创建"})
 		return
 	}
-	ctx.Set("oidcRedirect", true)
 	Auth{}.dologinUser(sdk, user, ctx, "oidc", "")
 }
 
@@ -157,7 +165,7 @@ func oidcCallbackURL(ctx *gin.Context) string {
 	if oidcSecure(ctx) {
 		scheme = "https"
 	}
-	return scheme + "://" + ctx.Request.Host + "/panel-api/v1/auth/oidc/callback"
+	return scheme + "://" + ctx.Request.Host + "/login/oidc/callback"
 }
 func oidcSecure(ctx *gin.Context) bool {
 	return ctx.Request.TLS != nil || strings.EqualFold(ctx.GetHeader("X-Forwarded-Proto"), "https")
