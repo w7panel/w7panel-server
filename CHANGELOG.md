@@ -2,6 +2,7 @@
 
 ## 2026-09-17
 
+- `cloud_accesstoken` 缓存改为按云端返回的 `expire_time` 提前一分钟失效，并让同一 OpenID 的并发首次请求合并为一次云端换取；缓存读取发现过期项会立即删除。此前固定缓存一小时会在短效 token 过期后继续返回旧值，并发未命中也会重复调用云端接口。
 - 子集群 Agent 初始化会读取 CKM 注入的 `OIDC_PANEL_LOGIN_*` 环境变量，并创建或更新 `LoginConfig/default` 的 OIDC provider；配置保留其他登录 provider，解决新子面板虽带有 OIDC 开关却仍使用默认关闭配置、无法从浏览器发起 OIDC 登录的问题。
 
 ## 2026-09-08

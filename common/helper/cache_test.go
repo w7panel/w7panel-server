@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -214,6 +215,70 @@ func TestMemoryCache_Remember_Error(t *testing.T) {
 	}
 	if _, ok := cache.Get("key1"); ok {
 		t.Fatal("expected failed callback result not to be cached")
+	}
+}
+
+func TestMemoryCache_Remember_ConcurrentMissLoadsOnce(t *testing.T) {
+	cache := NewMemoryCache()
+	var calls atomic.Int32
+	start := make(chan struct{})
+	entered := make(chan struct{}, 1)
+	release := make(chan struct{})
+	var wg sync.WaitGroup
+
+	for range 16 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			value, err := cache.Remember("key1", time.Minute, func() (interface{}, error) {
+				if calls.Add(1) == 1 {
+					entered <- struct{}{}
+				}
+				<-release
+				return "value1", nil
+			})
+			if err != nil || value != "value1" {
+				t.Errorf("Remember() = %v, %v; want value1, nil", value, err)
+			}
+		}()
+	}
+
+	close(start)
+	<-entered
+	close(release)
+	wg.Wait()
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("loader calls = %d, want 1", got)
+	}
+}
+
+func TestMemoryCache_RememberWithTTLDoesNotCacheZeroTTL(t *testing.T) {
+	cache := NewMemoryCache()
+	_, err := cache.RememberWithTTL("key1", func() (interface{}, time.Duration, error) {
+		return "value1", 0, nil
+	})
+	if err != nil {
+		t.Fatalf("RememberWithTTL() error = %v", err)
+	}
+	if _, ok := cache.Get("key1"); ok {
+		t.Fatal("zero TTL value must not be cached")
+	}
+}
+
+func TestMemoryCache_RememberExpiredValueReloadsAndRemovesIt(t *testing.T) {
+	cache := NewMemoryCache()
+	cache.Set("key1", "expired", time.Nanosecond)
+	time.Sleep(time.Millisecond)
+
+	value, err := cache.Remember("key1", time.Minute, func() (interface{}, error) {
+		return "fresh", nil
+	})
+	if err != nil || value != "fresh" {
+		t.Fatalf("Remember() = %v, %v; want fresh, nil", value, err)
+	}
+	if cached, ok := cache.Get("key1"); !ok || cached != "fresh" {
+		t.Fatalf("cached value = %v, found = %t; want fresh, true", cached, ok)
 	}
 }
 

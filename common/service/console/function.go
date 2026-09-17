@@ -188,12 +188,15 @@ func GetCachedCloudAccessToken(openId string) (string, error) {
 	if openId == "" {
 		return "", errors.New("openId is empty")
 	}
-	result, err := helper.Remember("cloud-access-token:"+openId, time.Hour, func() (interface{}, error) {
+	result, err := helper.RememberWithTTL("cloud-access-token:"+openId, func() (interface{}, time.Duration, error) {
 		token, err := OpenIdToCloudAccessToken(openId)
 		if err != nil {
-			return "", err
+			return "", 0, err
 		}
-		return token.Token, nil
+		if token == nil || token.Token == "" {
+			return "", 0, errors.New("cloud access token is empty")
+		}
+		return token.Token, cloudAccessTokenCacheTTL(token.ExpireTime), nil
 	})
 	if err != nil {
 		return "", err
@@ -203,6 +206,22 @@ func GetCachedCloudAccessToken(openId string) (string, error) {
 		return "", errors.New("invalid cached cloud access token")
 	}
 	return accessToken, nil
+}
+
+const cloudAccessTokenRefreshWindow = time.Minute
+
+// cloudAccessTokenCacheTTL expires cached values before the cloud token does.
+// The cloud API returns a Unix timestamp in seconds. Tokens that expire within
+// the safety window remain usable for this request but are not cached.
+func cloudAccessTokenCacheTTL(expireTime int64) time.Duration {
+	if expireTime <= 0 {
+		return time.Hour
+	}
+	ttl := time.Until(time.Unix(expireTime, 0)) - cloudAccessTokenRefreshWindow
+	if ttl <= 0 {
+		return 0
+	}
+	return ttl
 }
 
 func OpenIdToCloudCode(openId, componentAppid string) (*PassportCode, error) {
