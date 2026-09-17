@@ -9,15 +9,15 @@ spec:
         -
             method:
                 - create
-            path: /panel-api/v1/auth/ckm-session
-        -
-            method:
-                - create
             path: /panel-api/v1/auth/k8s-credentials/token
         -
             method:
                 - get
             path: /panel-api/v1/app-info
+        -
+            method:
+                - create
+            path: /panel-api/v1/auth/ckm-session
         -
             method:
                 - get
@@ -30,6 +30,14 @@ spec:
             method:
                 - get
             path: /panel-api/v1/auth/userinfo
+        -
+            method:
+                - create
+            path: /panel-api/v1/callback-url
+        -
+            method:
+                - get
+            path: /panel-api/v1/k3k/info
         -
             method:
                 - get
@@ -56,20 +64,16 @@ spec:
             path: /panel-api/v1/microapp/top
         -
             method:
-                - get
-            path: /panel-api/v1/traffic/health
+                - create
+            path: /panel-api/v1/oidc/js-code
+        -
+            method:
+                - create
+            path: /panel-api/v1/static/*/download/*
         -
             method:
                 - get
-            path: /panel-api/v1/traffic/summary
-        -
-            method:
-                - get
-            path: /panel-api/v1/traffic/series
-        -
-            method:
-                - get
-            path: /panel-api/v1/traffic/pods
+            path: /panel-api/v1/static/*/status
         -
             method:
                 - get
@@ -81,18 +85,23 @@ spec:
         -
             method:
                 - get
-            path: /panel-api/v1/traffic/urls
-                
-        -   method:
-                - create
-            path: /panel-api/v1/static/*/download/*    
+            path: /panel-api/v1/traffic/health
         -
             method:
                 - get
-            path: /panel-api/v1/static/*/status
-        -   method:
-                - create
-            path: /panel-api/v1/oidc/js-code      
+            path: /panel-api/v1/traffic/pods
+        -
+            method:
+                - get
+            path: /panel-api/v1/traffic/series
+        -
+            method:
+                - get
+            path: /panel-api/v1/traffic/summary
+        -
+            method:
+                - get
+            path: /panel-api/v1/traffic/urls
     domainWhiteList: []
     features:
         debug: false
