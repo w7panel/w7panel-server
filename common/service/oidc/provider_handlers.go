@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
@@ -141,18 +140,11 @@ func (s *Server) setUserinfo(userinfo *zitadeloidc.UserInfo, subject string, sco
 	// userinfo.AppendClaims("nick_name", k3kuser.GetNickName())
 	userinfo.AppendClaims("cloud_nickname", k3kuser.GetNickName())
 	if openId != "" {
-		// 获取 passport token
-		result, err := helper.Remember(openId, time.Hour, func() (any, error) {
-			token, err := console.OpenIdToCloudAccessToken(openId)
-			if err != nil {
-				return "", err
-			}
-			return token.Token, err
-		})
+		result, err := console.GetCachedCloudAccessToken(openId)
 		if err != nil {
 			slog.Warn("failed to get passport token")
 		} else {
-			userinfo.AppendClaims("cloud_accesstoken", result.(string))
+			userinfo.AppendClaims("cloud_accesstoken", result)
 		}
 
 	}

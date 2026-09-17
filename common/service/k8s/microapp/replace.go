@@ -2,7 +2,6 @@ package microapp
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"strings"
 
@@ -98,19 +97,5 @@ func (m *MicroAppReplace) GetAccessToken(ctx context.Context) (string, error) {
 }
 
 func GetCloudAccessToken(openId string) (string, error) {
-	if openId != "" {
-		// 获取 passport token
-		// result, err := helper.Remember(openId, time.Hour, func() (any, error) {
-		token, err := console.OpenIdToCloudAccessToken(openId)
-		if err != nil {
-			return "", err
-		}
-		return token.Token, err
-		// })
-		// if err != nil {
-		// 	return "", err
-		// }
-		// return result.(string), nil
-	}
-	return "", errors.New("openId is empty")
+	return console.GetCachedCloudAccessToken(openId)
 }

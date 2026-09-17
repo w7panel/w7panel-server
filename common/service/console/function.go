@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/k8s"
 )
@@ -178,6 +179,30 @@ func OpenIdToCloudAccessToken(openId string) (*PassportToken, error) {
 		return nil, err
 	}
 	return sdkclient.OpenIdToCloudAccessToken(openId)
+}
+
+// GetCachedCloudAccessToken returns the cloud access token for an OpenID. The
+// token is shared by several panel paths, so cache it to avoid repeatedly
+// calling the cloud API during a single token lifetime.
+func GetCachedCloudAccessToken(openId string) (string, error) {
+	if openId == "" {
+		return "", errors.New("openId is empty")
+	}
+	result, err := helper.Remember("cloud-access-token:"+openId, time.Hour, func() (interface{}, error) {
+		token, err := OpenIdToCloudAccessToken(openId)
+		if err != nil {
+			return "", err
+		}
+		return token.Token, nil
+	})
+	if err != nil {
+		return "", err
+	}
+	accessToken, ok := result.(string)
+	if !ok {
+		return "", errors.New("invalid cached cloud access token")
+	}
+	return accessToken, nil
 }
 
 func OpenIdToCloudCode(openId, componentAppid string) (*PassportCode, error) {
