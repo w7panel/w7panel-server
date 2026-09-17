@@ -94,20 +94,11 @@ func (self Static) Download(http *gin.Context) {
 	// token := http.MustGet("k8s_token").(string)
 
 	rootSdk := k8s.NewK8sClient().Sdk
-	// sdk, err := k8s.NewK8sClient().Channel(token)
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(http, err)
-	// 	return
-	// }
-	// useSdk := sdk
-	// hasRoot := strings.Contains(name, "-root")
-	// if hasRoot {
+
 	name = strings.ReplaceAll(name, "-root", "")
-	// 	useSdk = rootSdk
-	// }
+
 	appgroupObj, err := appgroup.GetAppgroupUseSdk(name, namespace, rootSdk)
 	if err != nil {
-		// 尝试从root集群获取
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
