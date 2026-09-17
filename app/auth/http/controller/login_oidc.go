@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -122,6 +123,14 @@ func (LoginOIDC) Callback(ctx *gin.Context) {
 	if username == "" {
 		username = strings.TrimSpace(tokens.IDTokenClaims.Subject)
 	}
+	// A founder authenticates with the root OIDC provider but is not copied to
+	// every child panel.  On a child panel the cluster itself is the delegated
+	// identity, so bind that login to the tenant user and its normal privilege.
+	if helper.IsChildAgent() && oidcFounder(tokens.IDTokenClaims.Claims) {
+		if target := strings.TrimSpace(os.Getenv("K3K_NAME")); target != "" {
+			username = target
+		}
+	}
 	if username == "" {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "error": "OIDC 身份令牌缺少用户标识"})
 		return
@@ -133,6 +142,15 @@ func (LoginOIDC) Callback(ctx *gin.Context) {
 		return
 	}
 	Auth{}.dologinUser(sdk, user, ctx, "oidc", "")
+}
+
+func oidcFounder(claims map[string]any) bool {
+	value, ok := claims["is_founder"]
+	if !ok {
+		return false
+	}
+	founder, ok := value.(bool)
+	return ok && founder
 }
 
 func oidcLoginProvider(ctx *gin.Context, nonce string) (rp.RelyingParty, error) {
