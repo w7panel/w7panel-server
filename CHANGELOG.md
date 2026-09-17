@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-09-17
+
+- 子集群 Agent 初始化会读取 CKM 注入的 `OIDC_PANEL_LOGIN_*` 环境变量，并创建或更新 `LoginConfig/default` 的 OIDC provider；配置保留其他登录 provider，解决新子面板虽带有 OIDC 开关却仍使用默认关闭配置、无法从浏览器发起 OIDC 登录的问题。
+
 ## 2026-09-08
 
 - ZpkInstall controller now passes its local Kubernetes identity to installation jobs, preventing a nil token panic during Helm job generation. Panic logs include the recovered value and call stack while CRD status remains redacted.

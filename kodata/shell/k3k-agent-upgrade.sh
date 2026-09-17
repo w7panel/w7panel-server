@@ -4,6 +4,64 @@
 kubectl apply -f $KO_DATA_PATH/crds --server-side
 sh $KO_DATA_PATH/shell/migrate-crd-groups.sh
 
+# CKM supplies these values only for child panel agents. Keep this separate
+# from the service OIDC provider configuration: it controls browser login to
+# the child panel and is written to the child cluster's LoginConfig CR.
+configure_panel_oidc_login() {
+  local enabled="${OIDC_PANEL_LOGIN_ENABLED:-true}"
+  local discovery_url="${OIDC_PANEL_LOGIN_DISCOVERY_URL:-}"
+  local client_id="${OIDC_PANEL_LOGIN_CLIENT_ID:-default}"
+  local scopes="${OIDC_PANEL_LOGIN_SCOPES:-openid,profile}"
+  local enabled_json scopes_json current
+
+  if [[ -z "$discovery_url" ]]; then
+    echo "OIDC_PANEL_LOGIN_DISCOVERY_URL is unset; skip child panel OIDC login configuration"
+    return 0
+  fi
+
+  enabled_json="$(jq -cn --arg value "$enabled" '$value | ascii_downcase | if . == "true" then true elif . == "false" then false else error("must be true or false") end')" || {
+    echo "OIDC_PANEL_LOGIN_ENABLED must be true or false" >&2
+    return 1
+  }
+  scopes_json="$(jq -cn --arg value "$scopes" '$value | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))')"
+  if [[ "$scopes_json" == "[]" ]]; then
+    echo "OIDC_PANEL_LOGIN_SCOPES must contain at least one scope" >&2
+    return 1
+  fi
+
+  if current="$(kubectl get loginconfig default -o json 2>/dev/null)"; then
+    printf '%s' "$current" | jq \
+      --arg discoveryURL "$discovery_url" \
+      --arg clientID "$client_id" \
+      --argjson enabled "$enabled_json" \
+      --argjson scopes "$scopes_json" '
+        .spec.providers = ((.spec.providers // []) | map(select(.type != "oidc")) + [{
+          type: "oidc",
+          enabled: $enabled,
+          discoveryUrl: $discoveryURL,
+          clientId: $clientID,
+          scopes: $scopes
+        }])
+      ' | kubectl replace -f -
+  else
+    jq -n \
+      --arg discoveryURL "$discovery_url" \
+      --arg clientID "$client_id" \
+      --argjson enabled "$enabled_json" \
+      --argjson scopes "$scopes_json" '{
+        apiVersion: "w7panel.w7.com/v1alpha1",
+        kind: "LoginConfig",
+        metadata: {name: "default"},
+        spec: {providers: [
+          {type: "we7-cloud", enabled: true, immutable: true},
+          {type: "oidc", enabled: $enabled, discoveryUrl: $discoveryURL, clientId: $clientID, scopes: $scopes}
+        ]}
+      }' | kubectl create -f -
+  fi
+}
+
+configure_panel_oidc_login || exit 1
+
 if ! kubectl create -f - <<'EOF'; then
 kind: ConfigMap
 apiVersion: v1
