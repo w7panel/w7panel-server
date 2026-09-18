@@ -28,6 +28,37 @@ type Static struct {
 
 const frontendSourceHeader = "X-Frontend-Source"
 
+type frontendSource struct {
+	ZpkURL          string
+	ParentIdentifie string
+	ParentVersion   string
+	Ticket          string
+}
+
+func frontendSourceCacheKey(identifie, version string) string {
+	return "frontend-source-" + identifie + "-" + version
+}
+
+func buildFrontendRemoteRequest(zpkURL, identifie, version, path string, source frontendSource) (string, string, url.Values) {
+	remotePath := fmt.Sprintf("/zpk/respo/attach/frontend/%s/%s%s", identifie, version, path)
+	remoteQuery := url.Values{}
+	if source.ParentIdentifie != "" {
+		remoteQuery.Set("parent_identifie", source.ParentIdentifie)
+	}
+	if source.ParentVersion != "" {
+		remoteQuery.Set("parent_version", source.ParentVersion)
+	}
+	if source.Ticket != "" {
+		remoteQuery.Set("ticket", source.Ticket)
+	}
+
+	remoteURL := strings.TrimRight(zpkURL, "/") + remotePath
+	if encodedQuery := remoteQuery.Encode(); encodedQuery != "" {
+		remoteURL += "?" + encodedQuery
+	}
+	return remotePath, remoteURL, remoteQuery
+}
+
 func (self Static) StaticInfo(http *gin.Context) {
 	identifie := http.Param("identifie")
 	version := http.Query("version")
@@ -65,13 +96,21 @@ func (self Static) StaticInfo(http *gin.Context) {
 			if group.Annotations != nil {
 				ticket = group.Annotations["w7.cc/ticket"]
 			}
-			// 缓存 ticket 供 FrontendProxy 使用
-			if ticket != "" {
-				helper.Set("frontend-ticket-"+identifie, ticket, time.Hour*2)
-			}
-			// 缓存 zpkUrl 供 FrontendProxy 使用
 			if zpkUrl != "" {
-				helper.Set("frontend-zpk-url-"+identifie, zpkUrl, time.Hour*2)
+				parentIdentifie := group.Spec.Identifie
+				if parentIdentifie == "" {
+					parentIdentifie = identifie
+				}
+				parentVersion := group.Spec.Version
+				if parentVersion == "" {
+					parentVersion = version
+				}
+				helper.Set(frontendSourceCacheKey(identifie, version), frontendSource{
+					ZpkURL:          zpkUrl,
+					ParentIdentifie: parentIdentifie,
+					ParentVersion:   parentVersion,
+					Ticket:          ticket,
+				}, time.Hour*2)
 			}
 		}
 	}
@@ -115,12 +154,18 @@ func (self Static) Download(http *gin.Context) {
 				return
 			}
 			appgroupObj = group
+			useSdk = rootSdk
 		} else {
 			self.JsonResponseWithServerError(http, err)
 			return
 		}
 	}
-	appgroup.DownStatic(appgroupObj)
+
+	sigClient, err := useSdk.ToSigClient()
+	if err != nil {
+		slog.Warn("创建 MicroApp 客户端失败，静态资源下载回退父应用版本", "appgroup", appgroupObj.Name, "error", err)
+	}
+	appgroup.DownStatic(appgroupObj, sigClient)
 
 }
 
@@ -187,41 +232,34 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 		return
 	}
 
-	// 从缓存获取 zpkUrl，兼容旧路径中携带 base64url zpkUrl 的方式
-	zpkUrl := ""
-	if val, ok := helper.Get("frontend-zpk-url-" + identifie); ok {
-		if cachedZpkUrl, ok := val.(string); ok {
-			zpkUrl = cachedZpkUrl
+	// 从缓存获取前端包所属的父制品；没有缓存时兼容旧路径中携带 base64url zpkUrl 的方式。
+	source := frontendSource{
+		ParentIdentifie: identifie,
+		ParentVersion:   version,
+	}
+	if val, ok := helper.Get(frontendSourceCacheKey(identifie, version)); ok {
+		if cachedSource, ok := val.(frontendSource); ok {
+			source = cachedSource
 		}
 	}
-	if zpkUrl == "" && zpkUrlEncoded != "" {
+	if source.ZpkURL == "" && zpkUrlEncoded != "" {
 		zpkUrlBytes, err := base64.RawURLEncoding.DecodeString(zpkUrlEncoded)
 		if err != nil {
 			slog.Error("解码zpkUrl失败", "zpkUrlEncoded", zpkUrlEncoded, "error", err)
 			self.JsonResponseWithServerError(ctx, err)
 			return
 		}
-		zpkUrl = string(zpkUrlBytes)
+		source.ZpkURL = string(zpkUrlBytes)
 	}
-	zpkUrl = strings.TrimRight(zpkUrl, "/")
+	zpkUrl := strings.TrimRight(source.ZpkURL, "/")
 	if zpkUrl == "" {
 		slog.Error("zpkUrl为空")
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "zpkUrl is empty"})
 		return
 	}
 
-	// 从缓存获取 ticket
-	ticket := ""
-	if val, ok := helper.Get("frontend-ticket-" + identifie); ok {
-		ticket = val.(string)
-	}
-
 	// 构造远程 URL
-	remotePath := fmt.Sprintf("/zpk/respo/attach/frontend/%s/%s%s", identifie, version, path)
-	remoteUrlStr := zpkUrl + remotePath
-	if ticket != "" {
-		remoteUrlStr += "?ticket=" + url.QueryEscape(ticket)
-	}
+	remotePath, remoteUrlStr, remoteQuery := buildFrontendRemoteRequest(zpkUrl, identifie, version, path, source)
 
 	remoteUrl, err := url.Parse(remoteUrlStr)
 	if err != nil {
@@ -253,11 +291,7 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 			req.Header.Add("Accept-Encoding", "gzip")
 		}
 
-		if ticket != "" {
-			req.URL.RawQuery = "ticket=" + url.QueryEscape(ticket)
-		} else {
-			req.URL.RawQuery = ""
-		}
+		req.URL.RawQuery = remoteQuery.Encode()
 	}
 	proxy.ModifyResponse = func(res *http.Response) error {
 		res.Header.Del("Access-Control-Allow-Origin")
