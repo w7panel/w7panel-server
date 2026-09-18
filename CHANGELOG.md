@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-09-18
+
+- WebShell Upgrade 新增 `w7panel-terminal` 协商子协议；认证 bearer 仍只由面板认证中间件解析，确保代理链路能返回完整 WebSocket Upgrade 响应。
+- 影响模块：`/panel-api/v1/exec`、`/tty`、`/nodetty`。
+- 验证：本地源码 Server 的真实 Pod Shell 握手返回 `101 Switching Protocols`，协商协议为 `w7panel-terminal`。
+
 ## 2026-09-17
 
 - `cloud_accesstoken` 缓存改为按云端返回的 `expire_time` 提前一分钟失效，并让同一 OpenID 的并发首次请求合并为一次云端换取；缓存读取发现过期项会立即删除。此前固定缓存一小时会在短效 token 过期后继续返回旧值，并发未命中也会重复调用云端接口。
