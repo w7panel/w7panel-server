@@ -331,6 +331,7 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 
 	name := gin.Param("name")
 	path := gin.Param("path")
+	clientHost := gin.Request.Host
 
 	token := gin.MustGet("k8s_token").(string)
 	role := k8s.NewK8sToken(token).GetRole()
@@ -351,6 +352,17 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
+	}
+	// The microapp proxy normally changes Host to the internal Service name.
+	// A WebSocket browser request keeps its public Origin, so that rewrite makes
+	// the target's default same-origin check reject the upgrade with 403. Keep
+	// the client Host only for upgrades; the transport still targets ServerUrl.
+	if strings.EqualFold(gin.GetHeader("Upgrade"), "websocket") && clientHost != "" {
+		director := revert.Director
+		revert.Director = func(req *stdhttp.Request) {
+			director(req)
+			req.Host = clientHost
+		}
 	}
 	revert.ServeHTTP(gin.Writer, gin.Request)
 }

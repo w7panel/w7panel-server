@@ -2,6 +2,7 @@
 
 ## 2026-09-18
 
+- 修复 CKM MicroApp WebTTY 经 `/panel-api/v1/microapp/:name/proxy` 转发时返回 403：WebSocket 上游保留浏览器原始 Host，避免代理改写为内部 Service Host 后与 Origin 不一致而被 CKM 的同源升级校验拒绝。
 - WebShell Upgrade 新增 `w7panel-terminal` 协商子协议；认证 bearer 仍只由面板认证中间件解析，确保代理链路能返回完整 WebSocket Upgrade 响应。
 - 影响模块：`/panel-api/v1/exec`、`/tty`、`/nodetty`。
 - 验证：本地源码 Server 的真实 Pod Shell 握手返回 `101 Switching Protocols`，协商协议为 `w7panel-terminal`。
