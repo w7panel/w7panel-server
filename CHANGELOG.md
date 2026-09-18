@@ -2,7 +2,10 @@
 
 ## 2026-09-18
 
-<<<<<<< HEAD
+- 移除已无路由引用的 `ProxyNoAuth` 中间件，防止后续误用恢复匿名 Service 代理入口。
+- 同步清理超级权限表和 GPUStack 示例中已下线的匿名代理路径。
+- 验证：静态路由与全项目旧代理入口检索。
+
 - 更正文件路径校验的实现说明：当前覆盖绝对路径、NUL 和 `..` 路径穿越；符号链接策略不在此辅助函数中隐含声明。
 
 - 收紧外部制品与内部代理边界：下线匿名 `/proxy-url`、`proxy-no`，Helm 索引改为经面板认证的 `/artifacts/helm-index`，仅允许 HTTPS 白名单制品域名且拒绝私网 DNS 解析与不安全重定向。
@@ -19,13 +22,12 @@
 
 - `cloud_accesstoken` 缓存改为按云端返回的 `expire_time` 提前一分钟失效，并让同一 OpenID 的并发首次请求合并为一次云端换取；缓存读取发现过期项会立即删除。此前固定缓存一小时会在短效 token 过期后继续返回旧值，并发未命中也会重复调用云端接口。
 - 子集群 Agent 初始化会读取 CKM 注入的 `OIDC_PANEL_LOGIN_*` 环境变量，并创建或更新 `LoginConfig/default` 的 OIDC provider；配置保留其他登录 provider，解决新子面板虽带有 OIDC 开关却仍使用默认关闭配置、无法从浏览器发起 OIDC 登录的问题。
-=======
+
 - 前端静态资源回源缓存增加父制品标识和版本，导入子应用可使用自身版本访问本地目录，同时从父制品读取对应前端包并沿用父制品 ticket。
 - AppGroup 前端包下载按同组 MicroApp 的 `w7.cc/identifie` 与 `w7.cc/version` 分别解压，版本不同的导入子应用不再误存到父应用版本目录；旧资源缺少版本标签时回退父版本。
 - MicroApp `frontprops` 的 `group/appgroup` 改为优先返回 `w7.cc/group-name`，避免导入子应用把资源名误当成父 AppGroup。
 - 影响模块：MicroApp 静态资源状态、AppGroup 前端包下载与远程回源代理。
 - 验证：静态资源控制器定向测试与异版本 MicroApp 下载目录测试通过，`git diff --check` 通过。
->>>>>>> dev-v1
 
 ## 2026-09-08
 

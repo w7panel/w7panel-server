@@ -11,7 +11,7 @@ import (
 
 /**
 backendUrl: >-
-               /k8s/v1/namespaces/default/services/gpustack-backend-vlbxxuha/proxy-no
+               /panel-api/v1/namespaces/default/services/gpustack-backend-vlbxxuha/proxy-root
            group: gpustack-backend-vlbxxuha
            image: >-
                swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/gpustack/gpustack:v0.5.1
