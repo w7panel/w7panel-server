@@ -21,9 +21,8 @@ func Identifier(value string) error {
 	return nil
 }
 
-// Resolve returns an absolute target within root. Symlink traversal is not
-// accepted for existing parents, so a writable upload directory cannot point
-// an otherwise-valid relative name outside its root.
+// Resolve returns an absolute target within root. It rejects absolute paths,
+// NUL bytes and parent-directory segments before joining with the root.
 func Resolve(root, userPath string) (string, error) {
 	if userPath == "" || strings.ContainsRune(userPath, 0) || filepath.IsAbs(userPath) {
 		return "", errors.New("path must be a non-empty relative path")
