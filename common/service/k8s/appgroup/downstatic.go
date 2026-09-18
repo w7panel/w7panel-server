@@ -2,6 +2,7 @@ package appgroup
 
 import (
 	"archive/zip"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +17,9 @@ import (
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
+	microappv1 "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	sig "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type ZpkInfo struct {
@@ -88,7 +91,7 @@ func DownStaticStatus(identifie, version, releaseName string) string {
 	}
 	return val.(string)
 }
-func DownStatic(appgroup *v1alpha1.AppGroup) {
+func DownStatic(appgroup *v1alpha1.AppGroup, microAppClient sig.Client) {
 	downEnv := os.Getenv("STATIC_DOWN_ENABLED")
 	if downEnv != "true" {
 		slog.Info("静态资源下载未开启")
@@ -101,14 +104,39 @@ func DownStatic(appgroup *v1alpha1.AppGroup) {
 	// if strings.Contains(frontTypeStr, "thirdparty_cd") {
 	// go k3k.SyncDownStatic(appgroup.Name, appgroup.Spec.ZpkUrl)
 	// 去掉front-type 判断
-	fetchWebZipAndDownload(appgroup.Spec.ZpkUrl, appgroup.Name, appgroup.Spec.Version)
+	frontendVersions := map[string]string{}
+	if microAppClient != nil {
+		namespace := appgroup.Namespace
+		if namespace == "" {
+			namespace = "default"
+		}
+		microApps := &microappv1.MicroAppList{}
+		err := microAppClient.List(
+			context.Background(),
+			microApps,
+			sig.InNamespace(namespace),
+			sig.MatchingLabels{"w7.cc/group-name": appgroup.Name},
+		)
+		if err != nil {
+			slog.Warn("查询 AppGroup MicroApp 失败，静态资源下载回退父应用版本", "appgroup", appgroup.Name, "error", err)
+		} else {
+			for _, microApp := range microApps.Items {
+				identifie := strings.ReplaceAll(microApp.Labels["w7.cc/identifie"], "_", "-")
+				version := strings.TrimSpace(microApp.Labels["w7.cc/version"])
+				if identifie != "" && version != "" {
+					frontendVersions[identifie] = version
+				}
+			}
+		}
+	}
+	fetchWebZipAndDownload(appgroup.Spec.ZpkUrl, appgroup.Name, appgroup.Spec.Version, frontendVersions)
 	// }
 }
 
 func DownStaticGo(zpkurl, name, version string) {
-	go fetchWebZipAndDownload(zpkurl, name, version)
+	go fetchWebZipAndDownload(zpkurl, name, version, nil)
 }
-func fetchWebZipAndDownload(zpkUrl string, releaseName, version string) error {
+func fetchWebZipAndDownload(zpkUrl string, releaseName, version string, frontendVersions map[string]string) error {
 	req := helper.RetryHttpClient().R()
 	if version != "" {
 		req.SetQueryParam("cur_version", version)
@@ -141,7 +169,7 @@ func fetchWebZipAndDownload(zpkUrl string, releaseName, version string) error {
 	webzipUrl := zpkInfo.Data.WebZipURL
 	microappPath := os.Getenv("MICROAPP_PATH") //facade.Config.GetString("static.microapp_path")
 	if len(webzipUrl) > 0 {
-		downStaticMap(webzipUrl, releaseName, microappPath, version)
+		downStaticMap(webzipUrl, frontendVersions, releaseName, microappPath, version)
 	}
 	return nil
 	// if zpkInfo.Data.Manifest.V <= 1 {
@@ -276,11 +304,16 @@ func secureZipPath(destDir, name string) (string, error) {
 	return target, nil
 }
 
-func downStaticMap(webzipUrl map[string]string, releaseName, microappPath, version string) error {
+func downStaticMap(webzipUrl, frontendVersions map[string]string, releaseName, microappPath, parentVersion string) error {
 	if len(webzipUrl) > 0 {
 		// 下载静态资源包
 		for k, url := range webzipUrl {
 			// os.Stat(microappPath + "/" + k)
+			kName := strings.ReplaceAll(k, "_", "-")
+			version := strings.TrimSpace(frontendVersions[kName])
+			if version == "" {
+				version = parentVersion
+			}
 			downAndUnzip(k, version, microappPath, releaseName, url)
 		}
 	}
