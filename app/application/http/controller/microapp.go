@@ -15,6 +15,16 @@ type MicroApp struct {
 	controller.Abstract
 }
 
+func microAppGroupName(item *microappv1.MicroApp) string {
+	if item == nil {
+		return ""
+	}
+	if groupName := item.Labels["w7.cc/group-name"]; groupName != "" {
+		return groupName
+	}
+	return item.Name
+}
+
 func (self MicroApp) List(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
 	list, err := microapp.ListTop(token)
@@ -87,9 +97,11 @@ func (self MicroApp) FrontProps(http *gin.Context) {
 		}
 	}
 
+	groupName := microAppGroupName(item)
 	self.JsonResponseWithoutError(http, map[string]string{
 		// "url":               item.RoleServerUrl(role),
-		"group":             item.Name,
+		"group":             groupName,
+		"appgroup":          groupName,
 		"userid":            replace.Name,
 		"role":              role,
 		"access_token":      accessToken,

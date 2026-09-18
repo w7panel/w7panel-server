@@ -4,6 +4,7 @@
 
 - 前端静态资源回源缓存增加父制品标识和版本，导入子应用可使用自身版本访问本地目录，同时从父制品读取对应前端包并沿用父制品 ticket。
 - AppGroup 前端包下载按同组 MicroApp 的 `w7.cc/identifie` 与 `w7.cc/version` 分别解压，版本不同的导入子应用不再误存到父应用版本目录；旧资源缺少版本标签时回退父版本。
+- MicroApp `frontprops` 的 `group/appgroup` 改为优先返回 `w7.cc/group-name`，避免导入子应用把资源名误当成父 AppGroup。
 - 影响模块：MicroApp 静态资源状态、AppGroup 前端包下载与远程回源代理。
 - 验证：静态资源控制器定向测试与异版本 MicroApp 下载目录测试通过，`git diff --check` 通过。
 
