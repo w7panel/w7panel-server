@@ -143,20 +143,6 @@ func (self Proxy) ProxyService(gin *gin.Context) {
 	if facade.GetConfig().GetBool("longhorn.mock") {
 		// proxyUrl = "http://218.23.2.55:9090/"
 	}
-	// token := gin.GetString("k8s_token")
-	// if token != "" { //proxy-no 不传递token
-	// 	k8sToken := k8s.NewK8sToken(token)
-	// 	if k8sToken.IsVirtual() {
-	// 		client, err := k8s.NewK8sClient().Channel(token)
-	// 		if err != nil {
-	// 			self.JsonResponseWithServerError(gin, err)
-	// 			return
-	// 		}
-	// 		client.Proxy(gin.Request, gin.Writer)
-	// 		return
-	// 	}
-	// }
-
 	self.proxyUrl(gin, proxyUrl, path)
 }
 

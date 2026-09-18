@@ -199,15 +199,11 @@ spec:
     method: []
   - path: /panel-api/v1/noauth/*
     method: []
-  - path: /panel-api/v1/namespaces/*/services/*/proxy-no/*
-    method: []
   - path: /panel-api/v1/files/webdav-test/*
     method: []
   - path: /panel-api/v1/app-info
     method: []
   - path: /panel-api/v1/test401
-    method: []
-  - path: /panel-api/v1/proxy-url/
     method: []
   - path: /panel-api/v1/captcha
     method: []

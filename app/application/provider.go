@@ -225,7 +225,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			// Helm repository metadata is fetched through a constrained,
 			// authenticated artifact endpoint. Do not restore the former
-			// arbitrary /proxy-url/ forwarder here.
+			// arbitrary unauthenticated URL forwarder here.
 			localApiGroup.GET("/artifacts/helm-index", middleware.Auth{}.Process, controller2.Proxy{}.HelmIndex)
 
 			localApiGroup.GET("/longhorn/need-delete-replica", middleware.Auth{}.Process, controller2.Longhorn{}.GetNeedDeleteReplicas)
