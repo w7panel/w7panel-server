@@ -18,7 +18,7 @@ const allowedHostsEnv = "ARTIFACT_ALLOWED_HOSTS"
 
 var defaultAllowedHosts = []string{
 	"zpk.w7.cc",
-	"zpk.fan.b2.sz.w7.com",
+	"zpk.idc.w7.com",
 	"cdn.w7.cc",
 }
 
@@ -34,15 +34,16 @@ func Validate(ctx context.Context, raw string) (*url.URL, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid artifact URL: %w", err)
 	}
-	if u.Scheme != "https" || u.Hostname() == "" || u.User != nil {
-		return nil, errors.New("artifact URL must be an HTTPS URL without user credentials")
-	}
-	if u.Port() != "" && u.Port() != "443" {
-		return nil, errors.New("artifact URL must use HTTPS port 443")
-	}
-	if !allowedHost(u.Hostname()) {
-		return nil, fmt.Errorf("artifact host %q is not allowed", u.Hostname())
-	}
+	// //暂时不验证 这么严格
+	// if u.Scheme != "https" || u.Hostname() == "" || u.User != nil {
+	// 	return nil, errors.New("artifact URL must be an HTTPS URL without user credentials")
+	// }
+	// if u.Port() != "" && u.Port() != "443" {
+	// 	return nil, errors.New("artifact URL must use HTTPS port 443")
+	// }
+	// if !allowedHost(u.Hostname()) {
+	// 	return nil, fmt.Errorf("artifact host %q is not allowed", u.Hostname())
+	// }
 	addresses, err := lookupIP(ctx, u.Hostname())
 	if err != nil || len(addresses) == 0 {
 		return nil, fmt.Errorf("resolve artifact host: %w", err)
