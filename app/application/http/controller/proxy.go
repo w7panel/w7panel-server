@@ -1,12 +1,16 @@
 package controller
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	stdhttp "net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -62,6 +66,10 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	if err := bindBuildImageServiceAccount(http.Request, path, client.GetServiceAccountName()); err != nil {
+		self.JsonResponseWithError(http, err, stdhttp.StatusBadRequest)
+		return
+	}
 
 	// 检查并修改 http.Request 中的 Authorization 头部
 	auth := http.Request.Header.Get("Authorization")
@@ -88,6 +96,43 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+}
+
+// bindBuildImageServiceAccount prevents direct CR creation through k8s-proxy
+// from falling back to Kubernetes' unprivileged default ServiceAccount. The
+// Kubernetes credential was minted by PanelAuth, so its ServiceAccount is the
+// only identity allowed to reach the in-cluster registry from this build Job.
+func bindBuildImageServiceAccount(request *stdhttp.Request, path, serviceAccountName string) error {
+	if request.Method != stdhttp.MethodPost || !strings.HasPrefix(path, "/apis/w7panel.w7.com/v1alpha1/namespaces/") || !strings.HasSuffix(path, "/buildimages") {
+		return nil
+	}
+	if serviceAccountName == "" || serviceAccountName == "default" || serviceAccountName == "unknown" {
+		return errors.New("unable to determine a permitted build ServiceAccount")
+	}
+	body, err := io.ReadAll(request.Body)
+	if err != nil {
+		return err
+	}
+	var object map[string]interface{}
+	if err := json.Unmarshal(body, &object); err != nil {
+		return fmt.Errorf("invalid BuildImage payload: %w", err)
+	}
+	if object["apiVersion"] != "w7panel.w7.com/v1alpha1" || object["kind"] != "BuildImage" {
+		return nil
+	}
+	spec, ok := object["spec"].(map[string]interface{})
+	if !ok {
+		return errors.New("BuildImage spec is required")
+	}
+	spec["serviceAccountName"] = serviceAccountName
+	body, err = json.Marshal(object)
+	if err != nil {
+		return err
+	}
+	request.Body = io.NopCloser(bytes.NewReader(body))
+	request.ContentLength = int64(len(body))
+	request.Header.Set("Content-Length", strconv.FormatInt(request.ContentLength, 10))
+	return nil
 }
 
 // proxyPanelAPI exposes panel's Kubernetes-backed operations below the same

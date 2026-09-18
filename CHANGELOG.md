@@ -2,6 +2,10 @@
 
 ## 2026-09-18
 
+- 修复经 `k8s-proxy` 创建 BuildImage CR 未记录调用者 ServiceAccount、构建 Job 回退 `default` 而被内置镜像仓库拒绝的问题；现在由服务端从已签发的 Kubernetes 凭据强制写入构建身份。
+- 补齐远端 MicroApp group 优化提交遗漏的 API 类型 import，恢复控制器包编译。
+- 验证：BuildImage 请求身份注入单元测试。
+
 - 移除已无路由引用的 `ProxyNoAuth` 中间件，防止后续误用恢复匿名 Service 代理入口。
 - 同步清理超级权限表和 GPUStack 示例中已下线的匿名代理路径。
 - 验证：静态路由与全项目旧代理入口检索。
