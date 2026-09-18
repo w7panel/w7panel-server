@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	"github.com/w7panel/w7panel/common/service/oidc"
+	"github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 
@@ -13,7 +14,7 @@ type MicroApp struct {
 	controller.Abstract
 }
 
-func microAppGroupName(item *microappv1.MicroApp) string {
+func microAppGroupName(item *v1alpha1.MicroApp) string {
 	if item == nil {
 		return ""
 	}
