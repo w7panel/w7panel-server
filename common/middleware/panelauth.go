@@ -93,6 +93,14 @@ func panelToken(req *http.Request) string {
 	if auth := req.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
 		return strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
 	}
+	// Build-image, Helm-package and file-management downloads are fetched by
+	// a Job rather than a browser, so they cannot attach an Authorization
+	// header. The UI issues these URLs with api-token in the query string.
+	// Keep this narrow compatibility path for downloads only; ordinary panel
+	// APIs must use a header-based token.
+	if strings.HasPrefix(req.URL.Path, "/panel-api/v1/download/") {
+		return strings.TrimSpace(req.URL.Query().Get("api-token"))
+	}
 	return ""
 }
 

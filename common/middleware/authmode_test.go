@@ -40,3 +40,20 @@ func TestPanelTokenHeaderMode(t *testing.T) {
 		t.Fatalf("panelToken() = %q, want authorization-token", got)
 	}
 }
+
+func TestPanelTokenAllowsAPITokenQueryForDownloadsOnly(t *testing.T) {
+	download := httptest.NewRequest("GET", "/panel-api/v1/download/upload/source.zip?api-token=download-token", nil)
+	if got := panelToken(download); got != "download-token" {
+		t.Fatalf("panelToken(download) = %q, want download-token", got)
+	}
+
+	nonDownload := httptest.NewRequest("GET", "/panel-api/v1/namespaces?api-token=download-token", nil)
+	if got := panelToken(nonDownload); got != "" {
+		t.Fatalf("panelToken(non-download) = %q, want empty", got)
+	}
+
+	download.Header.Set("Authorization", "Bearer authorization-token")
+	if got := panelToken(download); got != "authorization-token" {
+		t.Fatalf("panelToken(download with Authorization) = %q, want authorization-token", got)
+	}
+}
