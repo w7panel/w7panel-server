@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/artifacturl"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
@@ -109,10 +109,9 @@ func (self Static) Download(http *gin.Context) {
 // FrontendProxy 代理前端静态资源请求到远程制品库
 // zpkUrl 和 ticket 从缓存获取
 // URL: /ui/microapp/:identifie/:version/*path
-// URL: /panel-api/v1/static/proxy/:zpkUrl/:identifie/:version/frontend/*path
+// URL: /panel-api/v1/static/proxy/:identifie/:version/frontend/*path
 // 代理到: {zpkUrl}/zpk/respo/attach/frontend/{identifie}/{version}/{path}?ticket={ticket}
 func (self Static) FrontendProxy(ctx *gin.Context) {
-	zpkUrlEncoded := ctx.Param("zpkUrl")
 	identifie := ctx.Param("identifie")
 	version := ctx.Param("version")
 	path := ctx.Param("path")
@@ -169,26 +168,23 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 		return
 	}
 
-	// 从缓存获取 zpkUrl，兼容旧路径中携带 base64url zpkUrl 的方式
+	// The source is recorded by the authenticated StaticInfo request. Never
+	// accept an artifact host encoded in a public static-resource URL.
 	zpkUrl := ""
 	if val, ok := helper.Get("frontend-zpk-url-" + identifie); ok {
 		if cachedZpkUrl, ok := val.(string); ok {
 			zpkUrl = cachedZpkUrl
 		}
 	}
-	if zpkUrl == "" && zpkUrlEncoded != "" {
-		zpkUrlBytes, err := base64.RawURLEncoding.DecodeString(zpkUrlEncoded)
-		if err != nil {
-			slog.Error("解码zpkUrl失败", "zpkUrlEncoded", zpkUrlEncoded, "error", err)
-			self.JsonResponseWithServerError(ctx, err)
-			return
-		}
-		zpkUrl = string(zpkUrlBytes)
-	}
 	zpkUrl = strings.TrimRight(zpkUrl, "/")
 	if zpkUrl == "" {
 		slog.Error("zpkUrl为空")
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "zpkUrl is empty"})
+		return
+	}
+	if _, err := artifacturl.Validate(ctx.Request.Context(), zpkUrl); err != nil {
+		slog.Warn("blocked untrusted frontend artifact origin", "identifie", identifie, "error", err)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid frontend artifact source"})
 		return
 	}
 

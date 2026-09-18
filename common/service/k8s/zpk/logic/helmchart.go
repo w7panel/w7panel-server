@@ -191,25 +191,26 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 		}
 	}
 
-	shellCmd := "/ko-app/w7panel helmgo --chartName=" + helmConfig.ChartName + " --namespace=" + packageApp.Namespace + " --repository=" + helmConfig.Repository + " --zipUrl=" + packageApp.ZipUrl + " --releaseName=" + releaseName + ""
-	shellCmd += " --set " + "global.panel.image=" + helper.SelfImage()
-	shellCmd += " --set " + "global.panel.thirdPartyCDToken=" + packageApp.ThirdpartyCDToken
-	shellCmd += " --set " + "global.panel.installId=" + packageApp.InstallId
-	shellCmd += " --set " + "global.panel.panelAccessToken=" + panelAccessToken
-	shellCmd += " --set " + "global.panel.innerUrl=" + helper.PanelInnerUrl()
-	shellCmd += " --set " + "global.panel.panelToken=" + panelToken
-	shellCmd += " --set " + "global.panel.panelRealToken=" + packageApp.RealToken
-	shellCmd += " --set " + "global.panel.serviceAccountName=" + packageApp.ServiceAccountName //saName
-	shellCmd += " --set " + "global.panel.userName=" + packageApp.UserName                     //用户名
-	shellCmd += " --set " + "global.panel.imageRepo=" + repo                                   //镜像仓库地址
-	shellCmd += " --set " + "global.panel.version=" + version                                  //版本号
-	shellCmd += " --set " + "global.panel.panelUrl=" + packageApp.PanelUrl                     //面板地址
+	shellCmd := "/ko-app/w7panel helmgo --chartName=" + shellQuote(helmConfig.ChartName) + " --namespace=" + shellQuote(packageApp.Namespace) + " --repository=" + shellQuote(helmConfig.Repository) + " --zipUrl=" + shellQuote(packageApp.ZipUrl) + " --releaseName=" + shellQuote(releaseName)
+	setArg := func(key, value string) { shellCmd += " --set " + shellQuote(key+"="+value) }
+	setArg("global.panel.image", helper.SelfImage())
+	setArg("global.panel.thirdPartyCDToken", packageApp.ThirdpartyCDToken)
+	setArg("global.panel.installId", packageApp.InstallId)
+	setArg("global.panel.panelAccessToken", panelAccessToken)
+	setArg("global.panel.innerUrl", helper.PanelInnerUrl())
+	setArg("global.panel.panelToken", panelToken)
+	setArg("global.panel.panelRealToken", packageApp.RealToken)
+	setArg("global.panel.serviceAccountName", packageApp.ServiceAccountName)
+	setArg("global.panel.userName", packageApp.UserName)
+	setArg("global.panel.imageRepo", repo)
+	setArg("global.panel.version", version)
+	setArg("global.panel.panelUrl", packageApp.PanelUrl)
 	domainURL := packageApp.IngressHost
 	domainParam := packageApp.GetKey("DOMAIN_URL")
 	if strings.TrimSpace(domainParam.ModuleName) != "" {
 		domainURL = domainParam.ValuesText
 	}
-	shellCmd += " --set " + "DOMAIN_URL=" + domainURL //添加DOMAIN_URL
+	setArg("DOMAIN_URL", domainURL)
 	atomic := false
 	set := fillHelmSet(packageApp, "", []string{"HELM_ATOMIC", "DOMAIN_URL"}, false) //pvc 站点管理 会新建一个名字出来
 
@@ -224,18 +225,18 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 	if !packageApp.IsHelm() {
 
 		if packageApp.IngressHost != "" {
-			shellCmd += " --set ingressHost=" + packageApp.IngressHost
+			setArg("ingressHost", packageApp.IngressHost)
 			// shellCmd += " --set DOMAIN_URL=" + (packageApp.IngressHost)
 		}
 		if packageApp.IngressClassName != "" {
-			shellCmd += " --set ingressClassName=" + packageApp.IngressClassName
+			setArg("ingressClassName", packageApp.IngressClassName)
 		}
 		if packageApp.IngressForceHttps {
-			shellCmd += " --set ingressForceHttps=" + helper.BoolToString(packageApp.IngressForceHttps)
+			setArg("ingressForceHttps", helper.BoolToString(packageApp.IngressForceHttps))
 		}
 
 		if packageApp.IngressSeletorName != "" {
-			shellCmd += " --set ingressSelectorName=" + (packageApp.IngressSeletorName)
+			setArg("ingressSelectorName", packageApp.IngressSeletorName)
 		}
 		// if packageApp.GetVolumeMounts() != nil && len(packageApp.GetVolumeMounts()) > 0 {
 		// 	jsonstr, err := helper.ToJson(packageApp.GetVolumeMounts())
@@ -253,8 +254,8 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 		// 		shellCmd += " --set-json 'volumes=" + jsonstr + "'"
 		// 	}
 		// }
-		shellCmd += " --set 'backend_identifier=" + packageApp.GetName() + "'"
-		shellCmd += " --set 'backend_identifie=" + packageApp.GetName() + "'"
+		setArg("backend_identifier", packageApp.GetName())
+		setArg("backend_identifie", packageApp.GetName())
 	}
 
 	for _, env := range packageApp.Manifest.Platform.Container.Env {
@@ -291,14 +292,14 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 		shellCmd += annostr
 	}
 	if len(helmConfig.Version) > 0 {
-		shellCmd += " --version=" + helmConfig.Version
+		shellCmd += " --version=" + shellQuote(helmConfig.Version)
 	}
 	shell := &types.Shell{
 		Title: "helm安装" + packageApp.GetTitle(),
 		Type:  "helm",
 		Shell: shellCmd,
 	}
-	slog.Debug("helm install job", "shellCmd", shellCmd)
+	slog.Debug("helm install job created", "releaseName", releaseName)
 	job := helm.ToHelmShellJob(packageApp, shell)
 	return job
 }

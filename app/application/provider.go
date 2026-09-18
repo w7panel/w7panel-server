@@ -183,7 +183,8 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		{
 			localApiGroup.GET("/tty", middleware.Auth{}.Process, controller2.PodExec{}.Tty)
 			localApiGroup.GET("/nodetty", middleware.Auth{}.Process, controller2.PodExec{}.NodeTty)
-			localApiGroup.GET("/download/*path", middleware.Auth{}.Process, controller2.File{}.Download)
+			localApiGroup.GET("/download/*path", middleware.DownloadAuth{}.Process, controller2.File{}.Download)
+			localApiGroup.POST("/download-grants", middleware.Auth{}.Process, controller2.File{}.DownloadGrant)
 			localApiGroup.POST("/cp", middleware.Auth{}.Process, controller2.PodExec{}.KubectlCp) //kubectl cp文件
 			localApiGroup.POST("/cppid", middleware.Auth{}.Process, controller2.File{}.CpPidFile) //pid文件移动
 			localApiGroup.POST("/mvpid", middleware.Auth{}.Process, controller2.File{}.CpPidFile) //pid文件移动
@@ -222,7 +223,10 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			// localApiGroup.Any("/v1/:name/proxy/*path", controller2.Proxy{}.ProxyCommon)
 
-			localApiGroup.Any("/proxy-url/", controller2.Proxy{}.ProxyAddr)
+			// Helm repository metadata is fetched through a constrained,
+			// authenticated artifact endpoint. Do not restore the former
+			// arbitrary /proxy-url/ forwarder here.
+			localApiGroup.GET("/artifacts/helm-index", middleware.Auth{}.Process, controller2.Proxy{}.HelmIndex)
 
 			localApiGroup.GET("/longhorn/need-delete-replica", middleware.Auth{}.Process, controller2.Longhorn{}.GetNeedDeleteReplicas)
 			localApiGroup.GET("/longhorn/volumes/status", middleware.Auth{}.Process, controller2.Longhorn{}.GetVolumesStatus)
@@ -238,7 +242,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.GET("/static/:identifie/status", middleware.Auth{}.Process, controller2.Static{}.StaticInfo)
 			localApiGroup.POST("/static/:namespace/download/:name", middleware.Auth{}.Process, controller2.Static{}.Download)
 			// 前端静态资源回源代理：本地未下载时从远程制品库拉取
-			localApiGroup.GET("/static/proxy/:zpkUrl/:identifie/:version/frontend/*path", controller2.Static{}.FrontendProxy)
+			localApiGroup.GET("/static/proxy/:identifie/:version/frontend/*path", controller2.Static{}.FrontendProxy)
 
 		}
 		gpuGroup := engine.Group("/panel-api/v1/gpu").Use(middleware.Auth{}.Process, middleware.Proxy{}.Process)
@@ -259,9 +263,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			// engine.Handle(method, "/panel-api/v1/files/webdav-test/*path", controller2.Webdav{}.HandleTest)
 		}
 		// /etc/passwd 缓存
-
-		// 新版 API - 代理到服务 //TODO 没有权限校验的代理接口，需要加auth middleware
-		engine.Any("/panel-api/v1/namespaces/:namespace/services/:name/proxy-no/*path", middleware.ProxyNoAuth{}.Process, controller2.Proxy{}.ProxyNoAuthService)
 
 		engine.POST("/panel-api/v1/files/compress-agent/:pid/compress", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.CompressAgent{}.Compress)
 		engine.POST("/panel-api/v1/files/compress-agent/:pid/extract", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.CompressAgent{}.Extract)

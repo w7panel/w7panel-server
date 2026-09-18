@@ -43,6 +43,8 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env: 
+          - name: ARTIFACT_ALLOWED_HOSTS
+            value: {{ join "," .Values.artifact.allowedHosts | quote }}
           # - name: GOGC
           #   value: "10"
           - name: HELM_NAMESPACE

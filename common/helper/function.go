@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto"
 	"crypto/md5"
 	"crypto/sha1"
@@ -38,6 +39,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
 	"github.com/google/go-containerregistry/pkg/crane"
+	"github.com/w7panel/w7panel/common/service/artifacturl"
 
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 
@@ -454,15 +456,14 @@ func SelfImageInfo() (string, string) {
 }
 
 func ExtractSingleFileFromTgz(url, fileName string) ([]byte, error) {
-	// 发起 HTTP 请求获取远程 tgz 文件的响应
-	resp, err := http.Get(url)
+	// Chart archives are only fetched from approved external artifact origins.
+	archive, err := artifacturl.Get(context.Background(), url, 32<<20)
 	if err != nil {
 		return nil, fmt.Errorf("无法获取远程文件: %w", err)
 	}
-	defer resp.Body.Close()
 
 	// 创建 gzip 读取器来解压响应体
-	gzr, err := gzip.NewReader(resp.Body)
+	gzr, err := gzip.NewReader(bytes.NewReader(archive))
 	if err != nil {
 		return nil, fmt.Errorf("无法解压 gzip 文件: %w", err)
 	}
@@ -709,7 +710,7 @@ func ProxyUrl(proxyUrl string, path string, host string, headers map[string]stri
 			"originalHost", originalHost,
 			"newURL", req.URL.String(),
 			"newHost", req.Host,
-			"headers", fmt.Sprintf("%v", req.Header),
+			"headers", redactedHeaders(req.Header),
 		)
 	}
 
@@ -745,7 +746,7 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	slog.Info("Sending request to remote server",
 		"method", req.Method,
 		"url", req.URL.String(),
-		"headers", fmt.Sprintf("%v", req.Header),
+		"headers", redactedHeaders(req.Header),
 	)
 
 	// 使用原始Transport发送请求
@@ -764,6 +765,16 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	}
 
 	return resp, err
+}
+
+func redactedHeaders(headers http.Header) http.Header {
+	result := headers.Clone()
+	for _, key := range []string{"Authorization", "AuthorizationX", "X-W7Panel-Token", "Cookie", "Sec-WebSocket-Protocol"} {
+		if result.Get(key) != "" {
+			result.Set(key, "[REDACTED]")
+		}
+	}
+	return result
 }
 
 // 计算两个字符串切片的差集

@@ -337,7 +337,9 @@ func ToBuildJob(p K8sResourceInterface, opt types.BuildImageInterface, shellType
 */
 func ToShellJob(p K8sResourceInterface, shell ManifestShellInterface) *batchv1.Job {
 	shellStr := shell.GetShell()
-	shellStr = strings.ReplaceAll(shellStr, "%CODE_ZIP_URL%", p.GetZipUrl())
+	// Manifest shells are retained for backwards compatibility, but values
+	// interpolated by the panel must be treated as one POSIX shell argument.
+	shellStr = strings.ReplaceAll(shellStr, "%CODE_ZIP_URL%", "'"+strings.ReplaceAll(p.GetZipUrl(), "'", "'\\\"'\\\"'")+"'")
 	cmd := []string{"/bin/sh", "-c", shellStr}
 	jobName := p.GetShellJobName(shell.GetType())
 	matchlabels := map[string]string{

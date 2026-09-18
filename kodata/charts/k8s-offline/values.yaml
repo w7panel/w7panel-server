@@ -13,6 +13,15 @@ tmpCdToken: ""
 panelAuth:
   signingKey: ""
 
+# HTTPS artifact hosts allowed for Helm metadata, chart archives and frontend
+# fallback resources. Private, loopback and link-local resolutions are always
+# rejected even when a hostname is listed here.
+artifact:
+  allowedHosts:
+    - zpk.w7.cc
+    - zpk.fan.b2.sz.w7.com
+    - cdn.w7.cc
+
 # 控制台注册功能，默认不开启
 console:
   enabled: false

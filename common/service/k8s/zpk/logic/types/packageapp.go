@@ -962,7 +962,7 @@ func (p *PackageApp) GetMicroAppProps() map[string]string {
 	for _, v := range p.EnvKv {
 		result[v.Name] = v.Value
 	}
-	///k8s/v1/namespaces/default/services/w7-sitemanager-eeyidnlv-site-manager:8000/proxy-no
+	///panel-api/v1/namespaces/default/services/w7-sitemanager-eeyidnlv-site-manager:8000/proxy-root
 	// /ui/microapp/w7-sitemanager-eeyidnlv/index.html
 	result["backendUrl"] = p.GetBackendUrl()
 	result["frontendUrl"] = p.GetFrontendUrl()
@@ -974,9 +974,9 @@ func (p *PackageApp) GetMicroAppProps() map[string]string {
 func (p *PackageApp) GetBackendUrl() string {
 	port := p.GetFirstPort()
 	if port == 80 || port == 0 {
-		return "/panel-api/v1/namespaces/default/services/" + p.GetName() + "/proxy-no"
+		return "/panel-api/v1/namespaces/default/services/" + p.GetName() + "/proxy-root"
 	}
-	return "/panel-api/v1/namespaces/default/services/" + p.GetName() + ":" + strconv.Itoa(int(port)) + "/proxy-no"
+	return "/panel-api/v1/namespaces/default/services/" + p.GetName() + ":" + strconv.Itoa(int(port)) + "/proxy-root"
 }
 
 func (p *PackageApp) GetFrontendUrl() string {

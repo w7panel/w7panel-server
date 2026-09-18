@@ -12,8 +12,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/downloadticket"
 	"github.com/w7panel/w7panel/common/service/procpath"
 	"github.com/w7panel/w7panel/common/service/s3"
+	"github.com/w7panel/w7panel/common/service/safepath"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
@@ -77,9 +79,11 @@ func removeChunkLock(identifier string) {
 
 func (self File) Download(http *gin.Context) {
 	r := http.Request
-	filename := filepath.Join(facade.GetConfig().GetString("s3.base_dir"),
-		strings.TrimPrefix(r.URL.Path, "/panel-api/v1/download/"),
-	)
+	filename, err := safepath.Resolve(facade.GetConfig().GetString("s3.base_dir"), strings.TrimPrefix(r.URL.Path, "/panel-api/v1/download/"))
+	if err != nil {
+		self.JsonResponseWithError(http, err, 400)
+		return
+	}
 	fs, err := os.Stat(filename)
 	if os.IsNotExist(err) {
 		self.JsonResponseWithError(http, fmt.Errorf("file not found"), 404)
@@ -97,6 +101,34 @@ func (self File) Download(http *gin.Context) {
 	http.Header("Content-Type", "application/octet-stream")
 	http.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", file.Name()))
 	http.File(file.Name())
+}
+
+// DownloadGrant creates a short-lived URL for an installation Job. The job
+// receives no panel JWT and may fetch only this exact existing relative file.
+func (self File) DownloadGrant(http *gin.Context) {
+	var request struct {
+		Path string `json:"path" binding:"required"`
+	}
+	if err := http.ShouldBindJSON(&request); err != nil {
+		self.JsonResponseWithError(http, err, 400)
+		return
+	}
+	path := strings.TrimPrefix(request.Path, "/")
+	filename, err := safepath.Resolve(facade.GetConfig().GetString("s3.base_dir"), path)
+	if err != nil {
+		self.JsonResponseWithError(http, err, 400)
+		return
+	}
+	if info, err := os.Stat(filename); err != nil || info.IsDir() {
+		self.JsonResponseWithError(http, fmt.Errorf("file not found"), 404)
+		return
+	}
+	ticket, expiresAt, err := downloadticket.Issue(path)
+	if err != nil {
+		self.JsonResponseWithError(http, err, 500)
+		return
+	}
+	self.JsonResponseWithoutError(http, gin.H{"url": "/panel-api/v1/download/" + path + "?download-ticket=" + ticket, "expiresAt": expiresAt})
 }
 
 func (self File) Upload(http *gin.Context) {
@@ -129,6 +161,10 @@ func (self File) UploadChunk(http *gin.Context) {
 		self.JsonResponseWithError(http, fmt.Errorf("missing required parameters"), 400)
 		return
 	}
+	if err := safepath.Identifier(identifier); err != nil {
+		self.JsonResponseWithError(http, err, 400)
+		return
+	}
 
 	chunkIndex, err := strconv.Atoi(chunkIndexStr)
 	if err != nil {
@@ -151,7 +187,11 @@ func (self File) UploadChunk(http *gin.Context) {
 	// 计算文件 MD5 作为分片目录
 	// fileMD5 := md5.Sum([]byte(identifier + fileName))
 	// fileMD5Str := hex.EncodeToString(fileMD5[:])
-	userChunkDir := filepath.Join(chunkDir, identifier)
+	userChunkDir, err := safepath.Resolve(chunkDir, identifier)
+	if err != nil {
+		self.JsonResponseWithError(http, err, 400)
+		return
+	}
 
 	// 创建分片目录
 	if err := os.MkdirAll(userChunkDir, 0755); err != nil {
@@ -230,6 +270,10 @@ func (self File) CheckChunk(http *gin.Context) {
 		self.JsonResponseWithError(http, fmt.Errorf("invalid parameters: %v", err), 400)
 		return
 	}
+	if err := safepath.Identifier(params.Identifier); err != nil {
+		self.JsonResponseWithError(http, err, 400)
+		return
+	}
 
 	chunkIndex, err := strconv.Atoi(params.ChunkIndex)
 	if err != nil {
@@ -246,7 +290,11 @@ func (self File) CheckChunk(http *gin.Context) {
 	// 计算文件 MD5
 	// fileMD5 := md5.Sum([]byte(params.Identifier + params.FileName))
 	// fileMD5Str := hex.EncodeToString(fileMD5[:])
-	userChunkDir := filepath.Join(chunkDir, params.Identifier)
+	userChunkDir, err := safepath.Resolve(chunkDir, params.Identifier)
+	if err != nil {
+		self.JsonResponseWithError(http, err, 400)
+		return
+	}
 
 	chunkFilename := fmt.Sprintf("%d_%d", chunkIndex, chunkTotal)
 	chunkFilePath := filepath.Join(userChunkDir, chunkFilename)
@@ -280,11 +328,19 @@ func (self File) MergeChunks(http *gin.Context) {
 		self.JsonResponseWithError(http, fmt.Errorf("invalid parameters: %v", err), 400)
 		return
 	}
+	if err := safepath.Identifier(params.Identifier); err != nil {
+		self.JsonResponseWithError(http, err, 400)
+		return
+	}
 
 	// 计算文件 MD5
 	// fileMD5 := md5.Sum([]byte(params.Identifier + params.FileName))
 	// fileMD5Str := hex.EncodeToString(fileMD5[:])
-	userChunkDir := filepath.Join(chunkDir, params.Identifier)
+	userChunkDir, err := safepath.Resolve(chunkDir, params.Identifier)
+	if err != nil {
+		self.JsonResponseWithError(http, err, 400)
+		return
+	}
 
 	// 获取锁，避免并发合并
 	lock := getChunkLock(params.Identifier)
@@ -314,10 +370,18 @@ func (self File) MergeChunks(http *gin.Context) {
 
 	// 确定最终文件路径
 	finalFileName := params.FileName
-	finalFilePath := filepath.Join(baseDir, finalFileName)
+	finalFilePath, err := safepath.Resolve(baseDir, finalFileName)
+	if err != nil {
+		self.JsonResponseWithError(http, err, 400)
+		return
+	}
 	if params.Pid != "" && params.Pid != "0" {
 		procPath := procpath.GetRootPathWithSubPid(params.Pid, params.SubPid)
-		finalFilePath = filepath.Join(procPath, params.FileName)
+		finalFilePath, err = safepath.Resolve(procPath, params.FileName)
+		if err != nil {
+			self.JsonResponseWithError(http, err, 400)
+			return
+		}
 	}
 
 	// 创建目标文件目录
@@ -388,15 +452,24 @@ func (self File) CpPidFile(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
+	var err error
 
 	if params.Upload == "1" {
-		params.From = filepath.Join(baseDir, params.From)
+		params.From, err = safepath.Resolve(baseDir, params.From)
+		if err != nil {
+			self.JsonResponseWithError(http, err, 400)
+			return
+		}
 		params.To = procpath.ConvertToLocalPath(params.To)
 	} else {
-		params.To = filepath.Join(baseDir, params.To)
+		params.To, err = safepath.Resolve(baseDir, params.To)
+		if err != nil {
+			self.JsonResponseWithError(http, err, 400)
+			return
+		}
 		params.From = procpath.ConvertToLocalPath(params.From)
 	}
-	err := os.Mkdir(filepath.Dir(params.To), 0755)
+	err = os.Mkdir(filepath.Dir(params.To), 0755)
 	if err != nil && !os.IsExist(err) {
 		self.JsonResponseWithError(http, err, 500)
 		return
@@ -422,13 +495,21 @@ func (self File) MoveToPod(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
-	fromFullPath := filepath.Join(baseDir, params.FromPath)
+	fromFullPath, err := safepath.Resolve(baseDir, params.FromPath)
+	if err != nil {
+		self.JsonResponseWithError(http, err, 400)
+		return
+	}
 	if params.SubPID == "0" {
 		params.SubPID = ""
 	}
 
 	toBasePath := procpath.GetRootPathWithSubPid(params.Pid, params.SubPID)
-	toFullPath := filepath.Join(toBasePath, params.ToPath)
+	toFullPath, err := safepath.Resolve(toBasePath, params.ToPath)
+	if err != nil {
+		self.JsonResponseWithError(http, err, 400)
+		return
+	}
 
 	// mv file fromFullPath to toFullPath
 	slog.Info("mv", "from", fromFullPath, "to", toFullPath)

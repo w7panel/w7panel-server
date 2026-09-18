@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	zpkcontroller "github.com/w7panel/w7panel/app/zpk/http"
 	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/artifacturl"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
@@ -123,10 +124,6 @@ func (self Proxy) proxyPanelAPI(http *gin.Context, path string) bool {
 		return true
 	}
 	return false
-}
-
-func (self Proxy) ProxyNoAuthService(gin *gin.Context) {
-	self.ProxyService(gin)
 }
 
 // 转发k8s
@@ -272,28 +269,21 @@ func (self Proxy) proxyUrl(gin *gin.Context, proxyUrl string, path string) {
 	proxy.ServeHTTP(gin.Writer, gin.Request)
 }
 
-func (self Proxy) ProxyAddr(http *gin.Context) {
-	type ParamsValidate struct {
-		ProxyUrl string `form:"proxyUrl" binding:"required`
-	}
-	params := ParamsValidate{}
-	if !self.Validate(http, &params) {
+// HelmIndex returns repository metadata from an approved artifact origin.
+// It accepts a repository root rather than an arbitrary URL, so the endpoint
+// cannot be reused as an authenticated SSRF primitive.
+func (self Proxy) HelmIndex(ctx *gin.Context) {
+	repository := strings.TrimRight(strings.TrimSpace(ctx.Query("repository")), "/")
+	if repository == "" {
+		self.JsonResponseWithError(ctx, errors.New("repository is required"), stdhttp.StatusBadRequest)
 		return
 	}
-	res, err := helper.RetryHttpClient().R().Get(params.ProxyUrl)
+	body, err := artifacturl.Get(ctx.Request.Context(), repository+"/index.yaml", 4<<20)
 	if err != nil {
-		http.String(200, "")
+		self.JsonResponseWithError(ctx, err, stdhttp.StatusBadRequest)
 		return
 	}
-	http.String(200, res.String())
-	// res.Body().Close()
-	// uri, err := url.Parse(params.ProxyUrl)
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(http, err)
-	// 	return
-	// }
-
-	// self.proxyUrl(http, params.ProxyUrl, "")
+	ctx.Data(stdhttp.StatusOK, "application/x-yaml; charset=utf-8", body)
 }
 
 func (self Proxy) Kubeconfig(gin *gin.Context) {

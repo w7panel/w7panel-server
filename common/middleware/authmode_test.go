@@ -41,10 +41,10 @@ func TestPanelTokenHeaderMode(t *testing.T) {
 	}
 }
 
-func TestPanelTokenAllowsAPITokenQueryForDownloadsOnly(t *testing.T) {
+func TestPanelTokenRejectsAPITokenQuery(t *testing.T) {
 	download := httptest.NewRequest("GET", "/panel-api/v1/download/upload/source.zip?api-token=download-token", nil)
-	if got := panelToken(download); got != "download-token" {
-		t.Fatalf("panelToken(download) = %q, want download-token", got)
+	if got := panelToken(download); got != "" {
+		t.Fatalf("panelToken(download) = %q, want empty", got)
 	}
 
 	nonDownload := httptest.NewRequest("GET", "/panel-api/v1/namespaces?api-token=download-token", nil)

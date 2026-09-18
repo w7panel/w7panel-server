@@ -1,12 +1,12 @@
 package logic
 
 import (
+	"context"
 	"encoding/json"
-	"io"
 	"log"
-	"net/http"
 	"strings"
 
+	"github.com/w7panel/w7panel/common/service/artifacturl"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	appv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
@@ -92,12 +92,7 @@ func (u *UpgradeCheck) Check(namespace string, groupname string) *UpgradeInfo {
 
 func (u *UpgradeCheck) CheckHelmRepo(group *appv1.AppGroup) (*UpgradeInfo, error) {
 	if group.Spec.HelmConfig.Repository != "" {
-		res, err := http.Get(group.Spec.HelmConfig.Repository + "/index.yaml")
-		if err != nil {
-			return nil, err
-		}
-		defer res.Body.Close()
-		data, err := io.ReadAll(res.Body)
+		data, err := artifacturl.Get(context.Background(), strings.TrimRight(group.Spec.HelmConfig.Repository, "/")+"/index.yaml", 4<<20)
 		if err != nil {
 			return nil, err
 		}

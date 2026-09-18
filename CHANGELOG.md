@@ -2,6 +2,11 @@
 
 ## 2026-09-18
 
+- 收紧外部制品与内部代理边界：下线匿名 `/proxy-url`、`proxy-no`，Helm 索引改为经面板认证的 `/artifacts/helm-index`，仅允许 HTTPS 白名单制品域名且拒绝私网 DNS 解析与不安全重定向。
+- 文件下载、分片上传和合并统一校验相对路径；下载任务使用五分钟、单文件绑定、最多四次的 opaque 下载票据，不再从 query string 接受面板 JWT。
+- Helm Job 对由面板插入的参数使用 POSIX shell escaping，制品 TGZ/ZIP、升级索引和静态资源回源均使用受限制品客户端；代理调试日志脱敏认证头和 Cookie。
+- 验证：`go test ./common/middleware ./common/service/artifacturl ./common/service/safepath ./common/service/downloadticket`；控制器测试仍有既有 `/tmp/test.txt` fixture 缺失失败。
+
 - 修复 CKM MicroApp WebTTY 经 `/panel-api/v1/microapp/:name/proxy` 转发时返回 403：WebSocket 上游保留浏览器原始 Host，避免代理改写为内部 Service Host 后与 Origin 不一致而被 CKM 的同源升级校验拒绝。
 - WebShell Upgrade 新增 `w7panel-terminal` 协商子协议；认证 bearer 仍只由面板认证中间件解析，确保代理链路能返回完整 WebSocket Upgrade 响应。
 - 影响模块：`/panel-api/v1/exec`、`/tty`、`/nodetty`。
