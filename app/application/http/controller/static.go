@@ -165,7 +165,7 @@ func (self Static) Download(http *gin.Context) {
 	if err != nil {
 		slog.Warn("创建 MicroApp 客户端失败，静态资源下载回退父应用版本", "appgroup", appgroupObj.Name, "error", err)
 	}
-	appgroup.DownStatic(appgroupObj, sigClient)
+	appgroup.DownStatic(appgroupObj, sigClient, token)
 
 }
 

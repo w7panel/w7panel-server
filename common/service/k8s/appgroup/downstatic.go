@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/w7panel/w7panel/common/helper"
+	microappservice "github.com/w7panel/w7panel/common/service/k8s/microapp"
 	"github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	microappv1 "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -23,8 +24,9 @@ import (
 )
 
 type ZpkInfo struct {
-	Code int  `json:"code"`
-	Data Data `json:"data"`
+	Code  int    `json:"code"`
+	Error string `json:"error"`
+	Data  Data   `json:"data"`
 }
 type Version struct {
 	ID          int       `json:"id"`
@@ -91,7 +93,7 @@ func DownStaticStatus(identifie, version, releaseName string) string {
 	}
 	return val.(string)
 }
-func DownStatic(appgroup *v1alpha1.AppGroup, microAppClient sig.Client) {
+func DownStatic(appgroup *v1alpha1.AppGroup, microAppClient sig.Client, panelToken string) {
 	downEnv := os.Getenv("STATIC_DOWN_ENABLED")
 	if downEnv != "true" {
 		slog.Info("静态资源下载未开启")
@@ -129,15 +131,22 @@ func DownStatic(appgroup *v1alpha1.AppGroup, microAppClient sig.Client) {
 			}
 		}
 	}
-	fetchWebZipAndDownload(appgroup.Spec.ZpkUrl, appgroup.Name, appgroup.Spec.Version, frontendVersions)
+	if err := fetchWebZipAndDownload(appgroup.Spec.ZpkUrl, appgroup.Name, appgroup.Spec.Version, frontendVersions, panelToken); err != nil {
+		slog.Error("下载静态资源失败", "appgroup", appgroup.Name, "error", err)
+	}
 	// }
 }
 
 func DownStaticGo(zpkurl, name, version string) {
-	go fetchWebZipAndDownload(zpkurl, name, version, nil)
+	go func() {
+		if err := fetchWebZipAndDownload(zpkurl, name, version, nil, ""); err != nil {
+			slog.Error("下载静态资源失败", "appgroup", name, "error", err)
+		}
+	}()
 }
-func fetchWebZipAndDownload(zpkUrl string, releaseName, version string, frontendVersions map[string]string) error {
+func fetchWebZipAndDownload(zpkUrl string, releaseName, version string, frontendVersions map[string]string, panelToken string) error {
 	req := helper.RetryHttpClient().R()
+	microappservice.SetCloudAccessTokenHeader(req, panelToken)
 	if version != "" {
 		req.SetQueryParam("cur_version", version)
 		slog.Error("下载静态资源地址", "url", zpkUrl, "version", version)
@@ -314,7 +323,9 @@ func downStaticMap(webzipUrl, frontendVersions map[string]string, releaseName, m
 			if version == "" {
 				version = parentVersion
 			}
-			downAndUnzip(k, version, microappPath, releaseName, url)
+			if code := downAndUnzip(k, version, microappPath, releaseName, url); code != 0 {
+				return fmt.Errorf("下载前端包失败: identifie=%s, version=%s, code=%d", kName, version, code)
+			}
 		}
 	}
 	return nil
@@ -343,21 +354,20 @@ func downAndUnzip(k string, version string, microappPath string, releaseName str
 	defer mu.Unlock()
 	defer releaseDownloadMutex(lockKey)
 
-	err := os.Mkdir(microappPath, os.ModePerm)
+	err := os.MkdirAll(filepath.Join(microappPath, releaseName), os.ModePerm)
 	if err != nil {
 		slog.Error("创建目录失败", "error", err)
-		// continue
-	}
-	err = os.Mkdir(microappPath+"/"+releaseName, os.ModePerm) // 创建目录，如果不存在则创建 ingore err
-	if err != nil {
-		slog.Error("创建目录失败", "error", err)
-		// continue
+		helper.Set(cacheKey, NO_DOWN, time.Hour*24)
+		helper.Set(cacheKeyOld, NO_DOWN, time.Hour*24)
+		return 1
 	}
 	if version != "" {
-		err = os.Mkdir(microappPath+"/"+kName+"/"+version, os.ModePerm) // 创建版本目录，如果不存在则创建 ingore err
+		err = os.MkdirAll(filepath.Join(microappPath, kName, version), os.ModePerm)
 		if err != nil {
 			slog.Error("创建目录失败", "error", err)
-			// continue
+			helper.Set(cacheKey, NO_DOWN, time.Hour*24)
+			helper.Set(cacheKeyOld, NO_DOWN, time.Hour*24)
+			return 1
 		}
 	}
 
@@ -367,6 +377,7 @@ func downAndUnzip(k string, version string, microappPath string, releaseName str
 	if err != nil {
 		slog.Error("下载静态资源包失败", "error", err, "url", url, "tempFile", tempZipFile)
 		helper.Set(cacheKey, NO_DOWN, time.Hour*24)
+		helper.Set(cacheKeyOld, NO_DOWN, time.Hour*24)
 		return 1
 	}
 
@@ -376,6 +387,7 @@ func downAndUnzip(k string, version string, microappPath string, releaseName str
 		slog.Error("zip 文件验证失败", "error", err, "tempFile", tempZipFile)
 		os.Remove(tempZipFile)
 		helper.Set(cacheKey, NO_DOWN, time.Hour*24)
+		helper.Set(cacheKeyOld, NO_DOWN, time.Hour*24)
 		return 2
 	}
 	zipReader.Close()
@@ -386,6 +398,7 @@ func downAndUnzip(k string, version string, microappPath string, releaseName str
 		slog.Error("解压静态资源包失败", "error", err, "tempFile", tempZipFile)
 		os.Remove(tempZipFile)
 		helper.Set(cacheKey, NO_DOWN, time.Hour*24)
+		helper.Set(cacheKeyOld, NO_DOWN, time.Hour*24)
 		return 3
 	}
 	if version != "" {
@@ -394,6 +407,7 @@ func downAndUnzip(k string, version string, microappPath string, releaseName str
 			slog.Error("解压静态资源包失败", "error", err, "tempFile", tempZipFile)
 			os.Remove(tempZipFile)
 			helper.Set(cacheKey, NO_DOWN, time.Hour*24)
+			helper.Set(cacheKeyOld, NO_DOWN, time.Hour*24)
 			return 4
 		}
 	}

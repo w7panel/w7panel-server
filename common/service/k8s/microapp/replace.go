@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
@@ -113,4 +114,21 @@ func GetCloudAccessToken(openId string) (string, error) {
 		// return result.(string), nil
 	}
 	return "", errors.New("openId is empty")
+}
+
+// SetCloudAccessTokenHeader adds the cloud credential required by ZPK requests.
+// Invalid or incomplete panel tokens are ignored to preserve public ZPK access.
+func SetCloudAccessTokenHeader(req *resty.Request, panelToken string) {
+	if req == nil || panelToken == "" {
+		return
+	}
+	replace, err := NewMicroAppReplace(panelToken)
+	if err != nil || replace.GetConsoleOpenId() == "" {
+		return
+	}
+	cloudAccessToken, err := GetCloudAccessToken(replace.GetConsoleOpenId())
+	if err != nil {
+		return
+	}
+	req.SetHeader("X-Cloud-AccessToken", cloudAccessToken)
 }
