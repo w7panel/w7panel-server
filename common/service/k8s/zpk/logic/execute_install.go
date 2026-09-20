@@ -67,7 +67,7 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 	appgroupObj, err := appgroup.GetAppgroupUseSdk(params.ReleaseName, client.GetNamespace(), client)
 
 	repo := NewRepo(repoUrl, params.ThirdpartyCDToken, "")
-	repo.SetDomain(params.IngressHost)
+	repo.SetDomain(installRequestDomain(params))
 	repo.SetAppIdentify(params.ReleaseName)
 	repo.SetReinstall(params.Reinstall)
 	if err == nil {
@@ -217,4 +217,34 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 		return InstallResult{}, err
 	}
 	return InstallResult{ReleaseName: releaseName, InstallID: installId, Namespace: namespace}, nil
+}
+
+func installRequestDomain(params InstallRequest) string {
+	if params.IngressHost != "" {
+		return params.IngressHost
+	}
+
+	for _, option := range params.InstallOptions {
+		for _, env := range option.EnvKv {
+			name := strings.ToUpper(strings.TrimSpace(env.Name))
+			if name != "DOMAIN_URL" && name != "DOMAIN_SSL_URL" {
+				continue
+			}
+			if domain := normalizeInstallDomainHost(env.Value); domain != "" {
+				return domain
+			}
+		}
+	}
+	return ""
+}
+
+func normalizeInstallDomainHost(value string) string {
+	if strings.Contains(strings.ToUpper(value), "%DOMAIN_") {
+		return ""
+	}
+	parsed, ok := helper.ParseDomainURL(value, "http://")
+	if !ok {
+		return ""
+	}
+	return strings.ToLower(parsed.Host)
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -1027,17 +1026,12 @@ func (b *PackageApp) HasHelmUrl() bool {
 }
 
 func normalizeDefaultDomain(value, defaultScheme string) string {
-	value = strings.TrimSpace(value)
-	if value == "" || strings.Contains(strings.ToUpper(value), "%DOMAIN_") {
+	if strings.Contains(strings.ToUpper(value), "%DOMAIN_") {
 		return ""
 	}
-	if !strings.Contains(value, "://") {
-		value = defaultScheme + strings.Trim(value, "/")
-	}
-
-	parsed, err := url.Parse(value)
-	if err != nil || parsed.Host == "" || (!strings.EqualFold(parsed.Scheme, "http") && !strings.EqualFold(parsed.Scheme, "https")) {
+	parsed, ok := helper.ParseDomainURL(value, defaultScheme)
+	if !ok {
 		return ""
 	}
-	return strings.TrimRight(value, "/")
+	return strings.TrimRight(parsed.String(), "/")
 }

@@ -96,3 +96,50 @@ func TestInstallRequestWireCompatibility(t *testing.T) {
 		t.Fatal("conflict error type lost")
 	}
 }
+
+func TestInstallRequestDomain(t *testing.T) {
+	tests := []struct {
+		name    string
+		request InstallRequest
+		want    string
+	}{
+		{
+			name: "ingress host takes precedence",
+			request: InstallRequest{
+				IngressHost: "request.example.test",
+				InstallOptions: []types.InstallOption{{EnvKv: []types.EnvKv{
+					{Name: "DOMAIN_URL", Value: "dependency.example.test"},
+				}}},
+			},
+			want: "request.example.test",
+		},
+		{
+			name: "domain url startup parameter",
+			request: InstallRequest{InstallOptions: []types.InstallOption{{EnvKv: []types.EnvKv{
+				{Name: "DOMAIN_URL", Value: "https://Plugin.Example.Test/"},
+			}}}},
+			want: "plugin.example.test",
+		},
+		{
+			name: "ssl domain startup parameter",
+			request: InstallRequest{InstallOptions: []types.InstallOption{{EnvKv: []types.EnvKv{
+				{Name: "domain_ssl_url", Value: "plugin.example.test"},
+			}}}},
+			want: "plugin.example.test",
+		},
+		{
+			name: "unresolved placeholder is skipped",
+			request: InstallRequest{InstallOptions: []types.InstallOption{{EnvKv: []types.EnvKv{
+				{Name: "DOMAIN_URL", Value: "%DOMAIN_URL%"},
+			}}}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := installRequestDomain(tt.request); got != tt.want {
+				t.Fatalf("install request domain = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

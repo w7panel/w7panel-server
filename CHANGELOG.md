@@ -222,6 +222,6 @@
 
 ## 2026-09-20
 
-- AppGroup 在安装请求未单独提供 `ingressHost` 时，会从最终解析的 `DOMAIN_URL` 或 `DOMAIN_SSL_URL` 启动参数补充 `w7.cc/default-domain`，支持应用插件复用依赖应用域名；`DOMAIN_SSL_URL` 的 host-only 值使用 HTTPS，未解析占位符不会写入注解。
+- 安装请求未单独提供 `ingressHost` 时，会从最终解析的 `DOMAIN_URL` 或 `DOMAIN_SSL_URL` 启动参数提取域名传给制品信息接口，使安装前签发的 Ticket 和安装完成通知包含应用插件继承的域名；同时补充 AppGroup 的 `w7.cc/default-domain`。`DOMAIN_SSL_URL` 的 host-only 值使用 HTTPS，未解析占位符不会写入注解。
 - 影响模块：ZPK 安装、AppGroup 元数据。
-- 验证：补充默认域名注解定向测试，覆盖请求域名优先、依赖模块参数、显式协议、HTTPS 和未解析占位符。
+- 验证：补充制品请求域名和默认域名注解定向测试，覆盖请求域名优先、依赖模块参数、显式协议、HTTPS 和未解析占位符。
