@@ -225,3 +225,8 @@
 - 安装请求未单独提供 `ingressHost` 时，会从最终解析的 `DOMAIN_URL` 或 `DOMAIN_SSL_URL` 启动参数提取域名传给制品信息接口，使安装前签发的 Ticket 和安装完成通知包含应用插件继承的域名；同时补充 AppGroup 的 `w7.cc/default-domain`。`DOMAIN_SSL_URL` 的 host-only 值使用 HTTPS，未解析占位符不会写入注解。
 - 影响模块：ZPK 安装、AppGroup 元数据。
 - 验证：补充制品请求域名和默认域名注解定向测试，覆盖请求域名优先、依赖模块参数、显式协议、HTTPS 和未解析占位符。
+
+- 清理已废弃且无对象的 `MCPServer` CRD 遗留 codegen 配置；MCPServer 已不再由面板定义或消费。
+
+- 新增 `make ko-push` 镜像构建目标，使用 ko 将镜像推送到 `ccr.ccs.tencentyun.com/afan-public/w7panel-server`，支持通过 `PUSH_IMAGE`、`IMAGE_TAG` 和 `PLATFORM` 覆盖目标参数；影响模块：Makefile 镜像构建流程。
+- 验证：Makefile 目标与语法检查通过；实际推送需具备目标仓库认证及 Docker/ko 构建环境。
