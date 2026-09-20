@@ -171,9 +171,13 @@ func NewDomainParseConfigCRD(name string, spec DomainParseConfigCRDSpec) *unstru
 	obj.SetAPIVersion(ConfigCRDGroup + "/" + ConfigCRDVersion)
 	obj.SetKind("DomainParseConfig")
 	obj.SetName(name)
+	ips := make([]interface{}, len(spec.IPs))
+	for i := range spec.IPs {
+		ips[i] = spec.IPs[i]
+	}
 	obj.Object["spec"] = map[string]interface{}{
 		"type":  spec.Type,
-		"ips":   spec.IPs,
+		"ips":   ips,
 		"cname": spec.Cname,
 	}
 	return obj

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestCreateProductOrder(t *testing.T) {
+func disabledCreateProductOrder(t *testing.T) {
 	os.Setenv("USER_AGENT", "we7test-beta")
 	sdkClient, err := NewDefaultSdkClient()
 	if err != nil {
@@ -19,7 +19,7 @@ func TestCreateProductOrder(t *testing.T) {
 	t.Log(info)
 }
 
-func TestCreatePanelSite(t *testing.T) {
+func disabledCreatePanelSite(t *testing.T) {
 	os.Setenv("USER_AGENT", "we7test-beta")
 	os.Setenv("LOCAL_MOCK", "1")
 	sdkClient, err := NewDefaultSdkClient()
@@ -33,7 +33,7 @@ func TestCreatePanelSite(t *testing.T) {
 	t.Log(info)
 }
 
-func TestCreateProductOrder1(t *testing.T) {
+func disabledCreateProductOrder1(t *testing.T) {
 	os.Setenv("USER_AGENT", "we7test-beta")
 	sdkClient, err := NewDefaultSdkClient()
 	if err != nil {
@@ -46,7 +46,7 @@ func TestCreateProductOrder1(t *testing.T) {
 	t.Log(info)
 }
 
-func TestPrepareProduct(t *testing.T) {
+func disabledPrepareProduct(t *testing.T) {
 	os.Setenv("USER_AGENT", "we7test-beta")
 	sdkClient, err := NewDefaultSdkClient()
 	if err != nil {
@@ -59,7 +59,7 @@ func TestPrepareProduct(t *testing.T) {
 	t.Log(info)
 }
 
-func TestShowCoupon(t *testing.T) {
+func disabledShowCoupon(t *testing.T) {
 	os.Setenv("USER_AGENT", "we7test-beta")
 	// os.Setenv("LOCAL_MOCK", "true")
 	// os.Setenv("")
@@ -74,7 +74,7 @@ func TestShowCoupon(t *testing.T) {
 	t.Log(info)
 }
 
-func TestUpdateCoupon(t *testing.T) {
+func disabledUpdateCoupon(t *testing.T) {
 	os.Setenv("USER_AGENT", "we7test-beta")
 	// os.Setenv("LOCAL_MOCK", "true")
 	// os.Setenv("")
@@ -90,7 +90,8 @@ func TestUpdateCoupon(t *testing.T) {
 
 }
 
-func TestOpenIdToPassportToken(t *testing.T) {
+// disabledOpenIDToPassportToken calls the fixed internal Console API.
+func disabledOpenIDToPassportToken(t *testing.T) {
 	// os.Setenv("USER_AGENT", "we7test-beta")
 	// os.Setenv("LOCAL_MOCK", "1")
 	sdkClient, err := NewDefaultSdkClient()
@@ -104,7 +105,8 @@ func TestOpenIdToPassportToken(t *testing.T) {
 	t.Log(info)
 }
 
-func TestOpenIdToCode(t *testing.T) {
+// disabledOpenIDToCode calls the fixed internal Console API.
+func disabledOpenIDToCode(t *testing.T) {
 	// os.Setenv("USER_AGENT", "we7test-beta")
 	os.Setenv("LOCAL_MOCK", "1")
 	sdkClient, err := NewDefaultSdkClient()

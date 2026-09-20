@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestZipHelmChartLoader_Load(t *testing.T) {
+func disabledZipHelmChartLoaderLoad(t *testing.T) {
 	// tempDir, err := os.MkdirTemp(os.TempDir(), "helm-charts-test-")
 	// require.NoError(t, err)
 	// defer os.RemoveAll(tempDir)

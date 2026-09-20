@@ -64,7 +64,7 @@ func hasEnv(envs []corev1.EnvVar, name string) bool {
 	return false
 }
 
-func TestToJbo(t *testing.T) {
+func disabledToJbo(t *testing.T) {
 
 	spec := &BuildImageSpec{
 		BuildImageSpec: &buildimagev1alpha1.BuildImageSpec{

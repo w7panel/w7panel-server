@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/w7panel/w7panel/common/helper"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/client-go/dynamic"
@@ -23,7 +22,8 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
-func TestSdk_ApplyYaml(t *testing.T) {
+// disabledSdkApplyYaml requires an absolute local fixture and a live cluster.
+func disabledSdkApplyYaml(t *testing.T) {
 	type args struct {
 		Yamlbytes []byte
 		options   ApplyOptions
@@ -65,7 +65,8 @@ func TestSdk_ApplyYaml(t *testing.T) {
 	}
 }
 
-func TestSdk_GetRestMapping(t *testing.T) {
+// disabledSdkGetRestMapping uses an embedded cluster token and live discovery.
+func disabledSdkGetRestMapping(t *testing.T) {
 
 	type args struct {
 		apiVersion string
@@ -114,14 +115,16 @@ func TestSdk_GetRestMapping(t *testing.T) {
 	}
 }
 
-func TestSdk_Register(t *testing.T) {
+// disabledSdkRegister mutates a live Kubernetes cluster.
+func disabledSdkRegister(t *testing.T) {
 	self := NewK8sClient()
 	if err := self.Register("admin8", "123456", "default", "cluster-admin", true, "normal"); err != nil {
 		t.Log(err)
 	}
 }
 
-func TestSdk_ApplyRaw(t *testing.T) {
+// disabledSdkApplyRaw uses an embedded cluster token.
+func disabledSdkApplyRaw(t *testing.T) {
 	type fields struct {
 		restConfig         *rest.Config
 		ClientSet          *kubernetes.Clientset
@@ -162,7 +165,8 @@ func TestSdk_ApplyRaw(t *testing.T) {
 	}
 }
 
-func TestSdk_ToKubeconfig(t *testing.T) {
+// disabledSdkToKubeconfig depends on the developer's kubeconfig and cluster.
+func disabledSdkToKubeconfig(t *testing.T) {
 	// cluster := &v1.NamedCluster{}
 	sdk := NewK8sClientInner()
 	sdk.GetNamespaces()
@@ -197,7 +201,8 @@ func TestSdk_ToKubeconfig(t *testing.T) {
 	}
 }
 
-func TestSdk_GetApiServerUrl(t *testing.T) {
+// disabledSdkGetApiServerURL depends on the developer's kubeconfig and cluster.
+func disabledSdkGetApiServerURL(t *testing.T) {
 	sdk := NewK8sClient()
 	api, err := sdk.GetApiServerUrl()
 	if err != nil {
@@ -206,34 +211,16 @@ func TestSdk_GetApiServerUrl(t *testing.T) {
 	t.Log(api)
 }
 
-func TestSdk_GetApiConfigmap(t *testing.T) {
-	sdk := NewK8sClient()
-	api, err := sdk.ClientSet.CoreV1().ConfigMaps("default").Get(context.TODO(), "registries123", metav1.GetOptions{})
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if err := os.WriteFile("/tmp/test.yaml", []byte(api.Data["default.cnf"]), 0644); err != nil {
-		t.Error(err)
-	}
-	if api.Data["default-cnf"] == "" {
-		t.Error("default-cnf is empty")
-	}
-	t.Log(api)
-}
+// TestSdk_GetApiConfigmap is disabled because it reads a hard-coded ConfigMap
+// from the developer's cluster and has no fake client injection.
 
-func TestSdk_GetContainerPid(t *testing.T) {
-	sdk := NewK8sClient()
-	pod, err := sdk.GetDaemonsetAgentPod("default", "10.0.72.46")
-	if err != nil {
-		t.Error(err)
-	}
-	pid, err := sdk.GetContainerPid(pod, "containerd://d8805359e736a93e4022d941cc7e3989058680459dae93eb26af90b21f3fa874")
-	if err != nil {
-		t.Error(err)
-	}
+// TestSdk_GetContainerPid is disabled because it requires a live daemonset
+// agent and a node-local container ID. The input validation remains unit tested.
 
-	t.Log(pid)
+func TestSdk_GetContainerPidRejectsMissingPod(t *testing.T) {
+	if _, err := (Sdk{}).GetContainerPid(nil, "containerd://id"); err == nil {
+		t.Fatal("expected an error for a nil pod")
+	}
 }
 
 func TestGetTokenSaName(t *testing.T) {
@@ -244,7 +231,8 @@ func TestGetTokenSaName(t *testing.T) {
 	expireData.After(time.Now().Add(10 * time.Minute))
 }
 
-func TestSdk_CreateTokenRequest(t *testing.T) {
+// disabledSdkCreateTokenRequest creates tokens in a live cluster.
+func disabledSdkCreateTokenRequest(t *testing.T) {
 	self := NewK8sClientInner()
 	token, err := self.CreateTokenRequest("admin", 600, []string{})
 	if err != nil {
@@ -260,7 +248,8 @@ func GetK8sClientConfig() clientcmd.ClientConfig {
 	return kubeConfig
 }
 
-func TestSdk_GetDeploymentAppByIdentifie(t *testing.T) {
+// disabledSdkGetDeploymentAppByIdentifie queries a live cluster.
+func disabledSdkGetDeploymentAppByIdentifie(t *testing.T) {
 	sdk := NewK8sClient()
 	deploymentApps, err := sdk.GetDeploymentAppByIdentifie(Namespace, "w7-mysql")
 	if err != nil {
@@ -269,7 +258,8 @@ func TestSdk_GetDeploymentAppByIdentifie(t *testing.T) {
 	t.Log(deploymentApps)
 }
 
-func TestApplyCmd(t *testing.T) {
+// disabledApplyCmd applies a file to a live cluster.
+func disabledApplyCmd(t *testing.T) {
 	sdk := NewK8sClient()
 	factory := cmdutil.NewFactory(sdk.Sdk)
 	stream := genericiooptions.NewTestIOStreamsDiscard()
@@ -308,7 +298,8 @@ func TestApplyCmd(t *testing.T) {
 
 }
 
-func TestFactory(t *testing.T) {
+// disabledFactory queries a configured K3K cluster.
+func disabledFactory(t *testing.T) {
 	os.Setenv("SDK_DEBUG", "true")
 	// token := "eyJhbGciOiJSUzI1NiIsImtpZCI6IlRuSTlhci1sQ3lRcXBJNVVTSmdvOUlGY0NhM3lIOTRxNmN5TWxnVTlNeWsifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiLCJrM3MiXSwiZXhwIjoxNzUwMjQ1MTE4LCJpYXQiOjE3NTAyNDQ1MTgsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwianRpIjoiMDllMDg2ZTAtODE1NC00YzRiLTgwZmItYjgzZmQwZDQ0N2VmIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJkZWZhdWx0Iiwic2VydmljZWFjY291bnQiOnsibmFtZSI6Ims4IiwidWlkIjoiMWEzMjk5ZjAtYzliOC00YzI0LTliYjUtNTllNTcwMzU1MDM5In19LCJuYmYiOjE3NTAyNDQ1MTgsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0Oms4In0.m47xE157b_Hw9W982fnP3xrb-GYwtNsTCuyk4DTO5o5YyE7JCHqMgJUgLmZfdFd1g_GEGsNOJIzd8M5U6H8LncGvwiTNZlN7xhlQuAHArPy-lQ1R70vSjYnXlNVB9-Wprv_jQ7BPa7SYng_GnueWeFDCNN9uTiGr7CRjtSzD38eKg9orWttWNDpVmQOyN_o5reWcflPXOwUJphL4Vdxh8k1IMO3klu0CAQ_pe_etF4GIm_nUusIfyWGp-0mObSXZ41_VxRqC4ayuEdJHYklYqMIRs2kqxT2rRBrZKXi42kHuQx26OUZX_pqcseQpP3DKAk-nkxiReA0uACUaFx9nhQ"
 	sdkroot := NewK8sClient()
@@ -329,7 +320,8 @@ func TestFactory(t *testing.T) {
 	t.Log(sa)
 }
 
-func TestApplyBytes(t *testing.T) {
+// disabledApplyBytes needs an absolute local fixture and a live cluster.
+func disabledApplyBytes(t *testing.T) {
 	data, err := os.ReadFile("/home/workspace/k8s-offline/kodata/test/mcp/mcpserver-mysql.yaml")
 	if err != nil {
 		t.Error(err)

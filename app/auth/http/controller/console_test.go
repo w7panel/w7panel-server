@@ -1,17 +1,6 @@
 package controller
 
-import (
-	"testing"
-
-	"github.com/w7panel/w7panel/common/service/console"
-)
-
-func TestConsole_Redirect(t *testing.T) {
-
-	client := console.DefaultClient(false)
-	redirectUrl, err := client.OauthService.GetLoginUrl("https://www.k8s-offline.com")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(redirectUrl)
-}
+// TestConsole_Redirect is intentionally disabled: Console.Redirect currently
+// constructs its OAuth client internally and its only observable successful
+// path requires a remote Console OAuth service. Keep this test disabled until
+// the client is injected, rather than making the suite network-dependent.

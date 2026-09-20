@@ -16,12 +16,13 @@ LOCAL_GO_CACHE ?= $(CURDIR)/.w7-go-cache
 LOCAL_GO_MODCACHE ?= $(CURDIR)/.w7-go-modcache
 LOCAL_GOPATH ?= $(CURDIR)/.w7-gopath
 LOCAL_GO_TMP ?= $(CURDIR)/.w7-go-tmp
+TEST_PACKAGES ?= ./...
 GO_TOOLCHAIN_ROOT ?= /home/afan/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.0.linux-amd64
 GO_BIN ?= $(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT)/bin/go,go)
 DOCKER_RUN_ARGS ?=
 W7PANEL_AUTH_MODE ?= panel
 
-.PHONY: help frontend image ko-build docker-run local-run dev
+.PHONY: help frontend image ko-build docker-run local-run dev test
 
 help:
 	@echo "本地镜像构建："
@@ -34,6 +35,8 @@ help:
 	@echo "本地源码运行："
 	@echo "  make dev"
 	@echo "  make local-run KUBECONFIG_FILE=/path/to/kubeconfig"
+	@echo "串行单元测试："
+	@echo "  make test"
 
 # 调用相邻 w7panel-ui 的构建脚本，将前端产物放入 ko 自动打包的 kodata 目录。
 frontend:
@@ -96,3 +99,14 @@ local-run:
 
 # 本地开发快捷入口，默认使用 ~/.kube/218.config 连接 218 集群。
 dev: local-run
+
+# 在项目目录维护独立 Go 缓存，并串行链接测试二进制，避免共享缓存的工具链版本冲突及 /tmp 空间耗尽。
+test:
+	@mkdir -p "$(LOCAL_GO_CACHE)" "$(LOCAL_GO_MODCACHE)" "$(LOCAL_GO_TMP)" "$(LOCAL_GOPATH)"
+	GOSUMDB=off \
+	GOPATH="$(LOCAL_GOPATH)" \
+	GOMODCACHE="$(LOCAL_GO_MODCACHE)" \
+	GOCACHE="$(LOCAL_GO_CACHE)" \
+	GOTMPDIR="$(LOCAL_GO_TMP)" \
+	GOROOT="$(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT),)" \
+	"$(GO_BIN)" test -p 1 $(TEST_PACKAGES)
