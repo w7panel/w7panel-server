@@ -22,6 +22,8 @@ GO_TOOLCHAIN_ROOT ?= /home/afan/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.0.
 GO_BIN ?= $(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT)/bin/go,go)
 DOCKER_RUN_ARGS ?=
 W7PANEL_AUTH_MODE ?= panel
+KO_GO_ENV = GOSUMDB=off GOPATH="$(LOCAL_GOPATH)" GOMODCACHE="$(LOCAL_GO_MODCACHE)" GOCACHE="$(LOCAL_GO_CACHE)" GOTMPDIR="$(LOCAL_GO_TMP)" GOROOT="$(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT),)" KO_GO_PATH="$(GO_BIN)"
+KO_LDFLAGS ?= -s -w
 
 .PHONY: help frontend image ko-build ko-push docker-run local-run dev test
 
@@ -56,13 +58,15 @@ image: frontend ko-build
 ko-build:
 	@command -v $(KO) >/dev/null 2>&1 || { echo "未找到 ko，请先安装：go install github.com/google/ko@latest"; exit 1; }
 	@command -v docker >/dev/null 2>&1 || { echo "未找到 docker，请先安装并启动 Docker"; exit 1; }
-	KO_DOCKER_REPO="$(LOCAL_IMAGE)" \
+	@mkdir -p "$(LOCAL_GO_CACHE)" "$(LOCAL_GO_MODCACHE)" "$(LOCAL_GO_TMP)" "$(LOCAL_GOPATH)"
+	$(KO_GO_ENV) KO_DOCKER_REPO="$(LOCAL_IMAGE)" \
 	KO_DEFAULTBASEIMAGE="$(KO_DEFAULTBASEIMAGE)" \
 	$(KO) build \
 		--local \
 		--bare \
 		--tags="$(IMAGE_TAG)" \
 		--tag-only \
+		--ldflags="$(KO_LDFLAGS)" \
 		--sbom=none \
 		--platform="$(PLATFORM)" \
 		.
@@ -72,12 +76,14 @@ ko-build:
 ko-push:
 	@command -v $(KO) >/dev/null 2>&1 || { echo "未找到 ko，请先安装：go install github.com/google/ko@latest"; exit 1; }
 	@test -n "$(PUSH_IMAGE)" || { echo "PUSH_IMAGE 不能为空"; exit 1; }
-	KO_DOCKER_REPO="$(PUSH_IMAGE)" \
+	@mkdir -p "$(LOCAL_GO_CACHE)" "$(LOCAL_GO_MODCACHE)" "$(LOCAL_GO_TMP)" "$(LOCAL_GOPATH)"
+	$(KO_GO_ENV) KO_DOCKER_REPO="$(PUSH_IMAGE)" \
 	KO_DEFAULTBASEIMAGE="$(KO_DEFAULTBASEIMAGE)" \
 	$(KO) build \
 		--bare \
 		--tags="$(IMAGE_TAG)" \
 		--tag-only \
+		--ldflags="$(KO_LDFLAGS)" \
 		--sbom=none \
 		--platform="$(PLATFORM)" \
 		.

@@ -6,6 +6,12 @@
 - 需要使用其他集群时，显式传入 `KUBECONFIG_FILE=/path/to/kubeconfig`，例如 `make local-run KUBECONFIG_FILE=/path/to/kubeconfig`。
 - `make dev` 的 Go 构建缓存保存在项目内已忽略的 `.w7-go-*` 目录，避免依赖用户目录的可写缓存。
 
+## Go 构建与测试缓存
+
+- 必须使用 `make test`（可附加 `TEST_PACKAGES=...`）运行 Go 测试；不得直接运行 `go test`。
+- 必须使用 `make ko-build`、`make ko-push` 或 `make image` 构建镜像；不得直接运行 `ko build`。
+- 对未被 Makefile 覆盖的 Go 构建，必须复用 Makefile 定义的项目内 `.w7-go-cache`、`.w7-go-modcache`、`.w7-gopath`、`.w7-go-tmp`；不得将编译缓存或 Go 临时工作目录写入用户目录或 `/tmp`。
+
 ## CHANGELOG 更新规则
 
 - 每次修改代码、配置、测试或文档时，必须在同一次变更中追加更新项目根目录的 `CHANGELOG.md`。

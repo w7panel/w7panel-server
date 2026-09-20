@@ -377,3 +377,11 @@
 
 - 新增 `make ko-push` 镜像构建目标，使用 ko 将镜像推送到 `ccr.ccs.tencentyun.com/afan-public/w7panel-server`，支持通过 `PUSH_IMAGE`、`IMAGE_TAG` 和 `PLATFORM` 覆盖目标参数；影响模块：Makefile 镜像构建流程。
 - 验证：Makefile 目标与语法检查通过；实际推送需具备目标仓库认证及 Docker/ko 构建环境。
+
+## 2026-09-20
+
+- `ko-build` 与 `ko-push` 复用项目内 Go 缓存、模块缓存和临时目录，并固定传递 `KO_GO_PATH`；避免镜像构建向用户目录或 `/tmp` 写入 Go 编译中间产物。验证：`make -n ko-build`、`make -n ko-push`。
+
+## 2026-09-20
+
+- `ko-build` 与 `ko-push` 默认以 `-s -w` 链接，移除 ELF 调试信息与符号表；生产镜像中的 Go 二进制预计从 173MiB 降至约 120MiB。验证：ELF 段分析与 `make -n ko-build`。
