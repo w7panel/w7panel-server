@@ -1223,6 +1223,12 @@ func (self Sdk) GetDaemonsetAgentPods(namespace string) (*corev1.PodList, error)
 }
 
 func (self Sdk) GetContainerPid(findPod *corev1.Pod, containerId string) (int, error) {
+	if findPod == nil {
+		return 0, fmt.Errorf("pod is required")
+	}
+	if len(findPod.Spec.Containers) == 0 {
+		return 0, fmt.Errorf("pod %q has no containers", findPod.Name)
+	}
 
 	session := terminal.NewTerminalSession(nil)
 	defer session.Close()

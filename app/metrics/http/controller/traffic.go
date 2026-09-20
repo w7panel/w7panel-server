@@ -136,9 +136,12 @@ func parseTrafficParams(ctx *gin.Context) (traffic.QueryParams, bool) {
 		return traffic.QueryParams{}, false
 	}
 	current := audit.CurrentUser(ctx)
-	namespace := strings.TrimSpace(ctx.DefaultQuery("namespace", current.Tenant))
-	if namespace == "" {
-		namespace = "default"
+	namespace := current.Tenant
+	if current.IsAdmin {
+		namespace = strings.TrimSpace(ctx.DefaultQuery("namespace", current.Tenant))
+	} else if current.Username != "" {
+		// 普通用户只能查询其所属 K3K 命名空间，不能通过 query 参数越权。
+		namespace = "k3k-" + current.Username
 	}
 	if namespace == "" {
 		namespace = "default"

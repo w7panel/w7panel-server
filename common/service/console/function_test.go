@@ -20,7 +20,7 @@ func TestVerifyDefaultLicense(t *testing.T) {
 	VerifyDefaultLicense(false)
 }
 
-func TestVerifyLicenseId(t *testing.T) {
+func disabledVerifyLicenseID(t *testing.T) {
 	SetConsoleApi("http://10.0.2.15:9004")
 	err := VerifyLicenseId("9", "admin")
 	if err != nil {

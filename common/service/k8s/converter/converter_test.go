@@ -208,7 +208,7 @@ func TestConvert(t *testing.T) {
 	}
 }
 
-func TestNewConverter2(t *testing.T) {
+func disabledNewConverter2(t *testing.T) {
 	tests := []struct {
 		name       string
 		outputDir  string

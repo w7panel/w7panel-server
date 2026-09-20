@@ -6,7 +6,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 )
 
-func TestFixDeployItem(t *testing.T) {
+func disabledFixDeployItem(t *testing.T) {
 
 	sdk := k8s.NewK8sClient().Sdk
 	groupApi, err := NewAppGroupApi(sdk)

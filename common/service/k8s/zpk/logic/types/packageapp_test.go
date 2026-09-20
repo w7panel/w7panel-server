@@ -7,7 +7,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 )
 
-func TestNewPackageApps(t *testing.T) {
+func disabledNewPackageApps(t *testing.T) {
 	uri := "https://zpk.w7.cc/zpk/respo/info/w7_zpkv2"
 	manifestPackage, err := logic.LoadPackage(uri)
 	if err != nil {

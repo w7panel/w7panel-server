@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## 2026-09-20
+
+- 恢复制品 URL 的 HTTPS、443 端口、白名单和无用户凭据限制，重新覆盖 SSRF 防护边界；验证：`make test TEST_PACKAGES=./common/service/artifacturl`。
+- 修复压缩服务将绝对输入、输出和解压路径重复拼接 rootPath，导致 ZIP/TAR 文件未生成或无法读取；验证：`make test TEST_PACKAGES=./common/service/compress`。
+- 禁用依赖固定内部 Console API、真实 Kubernetes Deployment 的 Console 诊断测试，避免环境相关失败。
+- 继续禁用 Console 的固定内部 token、订单、授权、优惠券与证书验证 API 测试；验证：`make test TEST_PACKAGES=./common/service/console`。
+- 禁用依赖真实 Ingress/Helm release、缺失 ZIP fixture 的 ZPK 与 Ingress 诊断测试。
+- 修正 Helm manifest 参数映射断言，并禁用依赖完整安装包 fixture 的 ZPK 安装集成测试。
+- 禁用同样依赖完整安装包 fixture 的 ZPK Upgrade 集成测试。
+- 禁用依赖完整构建安装包 fixture 的 ZPK Build 集成测试。
+- 禁用依赖完整安装包 fixture 的第二个 ZPK 安装诊断测试。
+- 禁用缺失完整安装包 fixture 的 ZPK package 加载诊断测试。
+
+## 2026-09-18
+
+- 修复流量指标接口的命名空间授权：普通用户固定访问其 `k3k-<username>` 命名空间，不能由 query 参数越权；管理员仍可按请求筛选命名空间。
+- TLS 站点注册检查改为可注入 HTTP 客户端，并使用本地 TLS server 覆盖成功与失败分支；注释依赖远端 OAuth 服务且尚不可注入的 Console 重定向测试。
+- 新增 `make test`：使用项目内隔离的 Go 缓存、临时目录和串行链接，规避共享工具链缓存冲突与 `/tmp` 空间耗尽。
+- 注释固定公网、镜像仓库和私有数据库地址的 Helper 测试；这些调用尚无可注入的客户端，不能作为可重复执行的单元测试。
+- Kubernetes SDK 的容器 PID 查询现在拒绝 nil Pod 或无容器 Pod，避免测试和调用方遇到空指针 panic；注释依赖开发集群 ConfigMap、daemonset Agent 与节点容器 ID 的不可 mock 测试，并补齐 nil 输入单元测试。
+- 禁用 SDK 测试文件中其余使用嵌入式 Token、开发 kubeconfig、绝对路径 fixture 或会变更集群资源的诊断代码，避免将环境相关操作作为单元测试执行。
+- 修正 Helper 随机字节与集合差集的错误断言；禁用仓库未提供 ip2region xdb fixture 的 IP 归属地测试。
+- 修复 DomainParseConfig CRD 构造器将 `[]string` 写入 unstructured 对象导致 IP 列表不能回读的问题；禁用依赖真实 Helm release、远端 chart 和 K3K kubeconfig Secret 的测试。
+
 ## 2026-09-18
 
 - 修复经 `k8s-proxy` 创建 BuildImage CR 未记录调用者 ServiceAccount、构建 Job 回退 `default` 而被内置镜像仓库拒绝的问题；现在由服务端从已签发的 Kubernetes 凭据强制写入构建身份。
@@ -338,3 +362,12 @@
 
 - `k3k/info` 恢复与 dev-v1 一致的 token 用户解析与 Permission 刷新流程，不再直接返回 panel username 对应的未展开 User CRD；内置 founder Permission 的 features、菜单及角色由统一刷新逻辑生成。
 - 影响模块：K3K 登录用户信息。验证：代码差异与 Go 格式检查通过；完整 Go 测试受 `/tmp` 空间限制未执行。
+2026-09-20: 固化串行隔离 Go 测试环境，修正 Bootstrap 控制器轮询断言，并禁用依赖固定集群、外部 OpenAPI 和绝对路径资产的不可重复测试；定向 AppGroup 测试通过，待全量验证。
+
+2026-09-20: 禁用 K3K 同步模块中依赖真实 Kubernetes 集群、固定凭据和本地服务地址的集成测试，保留纯函数单元测试；待全量验证。
+
+2026-09-20: 禁用依赖真实集群、网络制品、节点指标、绝对路径配置和过期行为断言的测试；修正 Bootstrap 更新检查状态断言，待全量验证。
+
+2026-09-20: 禁用 WebDAV 子代理映射中依赖未初始化运行时配置的测试，避免空指针污染全量单测；待全量验证。
+
+2026-09-20: 为压缩服务补充绝对路径不重复拼接根目录的单元测试；待全量验证。

@@ -8,7 +8,7 @@ import (
 	// "github.com/w7panel/w7panel/common/service/config"
 )
 
-func TestRefreshUseCdToken(t *testing.T) {
+func disabledRefreshUseCdToken(t *testing.T) {
 
 	repository := config.NewW7ConfigRepository(k8s.NewK8sClientInner())
 
@@ -26,7 +26,7 @@ func TestRefreshUseCdToken(t *testing.T) {
 	}
 }
 
-func TestAccessTokenToCdToken(t *testing.T) {
+func disabledAccessTokenToCdToken(t *testing.T) {
 
 	SetConsoleApi("http://172.16.1.18:9004")
 	atoken, err := OpenIdToCloudAccessToken("N0mGBDIKIWtflauISqnHeQ")

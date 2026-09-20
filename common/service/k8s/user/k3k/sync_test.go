@@ -84,7 +84,7 @@ func TestRegisterSyncedSitePassesSiteName(t *testing.T) {
 	}
 }
 
-func TestSyncIngress(t *testing.T) {
+func disabledSyncIngress(t *testing.T) {
 	// os.Setenv("LOCAL_MOCK", "true")
 	ing := &K3kSync{
 		VirtualName:      "ing-zqyhtpkg",
@@ -100,7 +100,7 @@ func TestSyncIngress(t *testing.T) {
 	}
 }
 
-func TestSyncIngressHttps(t *testing.T) {
+func disabledSyncIngressHttps(t *testing.T) {
 	sdk := k8s.NewK8sClient().Sdk
 	ing, err := sdk.ClientSet.NetworkingV1().Ingresses("default").Get(sdk.Ctx, "ing-jkfsrckbxs", metav1.GetOptions{})
 	if err != nil {
@@ -112,7 +112,7 @@ func TestSyncIngressHttps(t *testing.T) {
 	}
 }
 
-func TestSyncIngressHttp(t *testing.T) {
+func disabledSyncIngressHttp(t *testing.T) {
 	// os.Setenv("LOCAL_MOCK", "true")
 	os.Setenv("K3K_NAME", "console-164315")
 	os.Setenv("K3K_NAMESPACE", "k3k-console-164315")
@@ -129,7 +129,7 @@ func TestSyncIngressHttp(t *testing.T) {
 	}
 }
 
-func TestSyncConfigmap(t *testing.T) {
+func disabledSyncConfigmap(t *testing.T) {
 	os.Setenv("LOCAL_MOCK", "true")
 	os.Setenv("K3K_NAME", "v56")
 	os.Setenv("K3K_NAMESPACE", "k3k-v56")
@@ -145,7 +145,7 @@ func TestSyncConfigmap(t *testing.T) {
 	}
 }
 
-func TestSyncChild(t *testing.T) {
+func disabledSyncChild(t *testing.T) {
 	secret, err := k8s.NewK8sClient().Sdk.ClientSet.CoreV1().Secrets("k3k-console-75780").Get(context.TODO(), "who8-fan-b2-sz-w7-com-tls-secret", metav1.GetOptions{})
 	if err != nil {
 		t.Log(err)

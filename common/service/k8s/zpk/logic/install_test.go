@@ -215,7 +215,7 @@ func getIngressesApp() types.Package {
 
 }
 
-func TestInstall_Install(t *testing.T) {
+func disabledInstallInstall(t *testing.T) {
 	sdk := k8s.NewK8sClientInner()
 	apps := getApps()
 	install := NewInstall(sdk, apps)
@@ -226,7 +226,7 @@ func TestInstall_Install(t *testing.T) {
 
 }
 
-func TestInstall_Upgrade(t *testing.T) {
+func disabledInstallUpgrade(t *testing.T) {
 	sdk := k8s.NewK8sClientInner()
 	apps := getApps()
 	install := NewInstall(sdk, apps)
@@ -238,7 +238,7 @@ func TestInstall_Upgrade(t *testing.T) {
 
 }
 
-func TestInstall_Build(t *testing.T) {
+func disabledInstallBuild(t *testing.T) {
 	sdk := k8s.NewK8sClientInner()
 	apps := getBuildApps()
 	install := NewInstall(sdk, apps)
@@ -249,7 +249,7 @@ func TestInstall_Build(t *testing.T) {
 
 }
 
-func TestInstall2(t *testing.T) {
+func disabledInstall2(t *testing.T) {
 	sdk := k8s.NewK8sClientInner()
 	apps := getApps2()
 	install := NewInstall(sdk, apps)
@@ -260,7 +260,7 @@ func TestInstall2(t *testing.T) {
 	}
 }
 
-func TestInstallMysql(t *testing.T) {
+func disabledInstallMysql(t *testing.T) {
 	sdk := k8s.NewK8sClientInner()
 	apps := getMysqlApps()
 	install := NewInstall(sdk, apps)
@@ -271,7 +271,7 @@ func TestInstallMysql(t *testing.T) {
 	}
 }
 
-func TestInstallRedis(t *testing.T) {
+func disabledInstallRedis(t *testing.T) {
 	sdk := k8s.NewK8sClientInner()
 
 	apps := getRedisApps()
@@ -283,7 +283,7 @@ func TestInstallRedis(t *testing.T) {
 	}
 }
 
-func TestInstallHelm(t *testing.T) {
+func disabledInstallHelm(t *testing.T) {
 	sdk := k8s.NewK8sClientInner()
 	apps := getHelmApp()
 
@@ -295,7 +295,7 @@ func TestInstallHelm(t *testing.T) {
 	}
 }
 
-func TestInstallHelmZip(t *testing.T) {
+func disabledInstallHelmZip(t *testing.T) {
 	sdk := k8s.NewK8sClientInner()
 	apps := getHelmZipApp()
 
@@ -307,7 +307,7 @@ func TestInstallHelmZip(t *testing.T) {
 	}
 }
 
-func TestIngressesApps(t *testing.T) {
+func disabledIngressesApps(t *testing.T) {
 	// os.Setenv("KUBERNETES_MASTER", "https://172.16.1.13:6443")
 	// os.Setenv("KUBERNETES_SERVICE_HOST", "172.16.1.13")
 	// os.Setenv("KUBERNETES_SERVICE_PORT", "6443")
@@ -390,7 +390,7 @@ func getConsoleApps() *types.Package {
 
 }
 
-func TestConsoleApp(t *testing.T) {
+func disabledConsoleApp(t *testing.T) {
 	// os.Setenv("KUBERNETES_MASTER", "https://172.16.1.13:6443")
 	// os.Setenv("KUBERNETES_SERVICE_HOST", "172.16.1.13")
 	// os.Setenv("KUBERNETES_SERVICE_PORT", "6443")
@@ -444,7 +444,7 @@ func getWordpress() *types.Package {
 	return &apps
 
 }
-func TestWordpress(t *testing.T) {
+func disabledWordpress(t *testing.T) {
 	apps := getWordpress()
 	sdk := k8s.NewK8sClientInner()
 	install := NewInstall(sdk, *apps)
@@ -483,7 +483,7 @@ func getReuireInstallApp() *types.Package {
 	return &apps
 
 }
-func TestRequireInstallApp1(t *testing.T) {
+func disabledRequireInstallApp1(t *testing.T) {
 	// apps := getReuireInstallApp()
 	sdk := k8s.NewK8sClientInner()
 	// install := NewInstall(sdk, *apps)
@@ -518,7 +518,7 @@ func TestRequireInstallApp1(t *testing.T) {
 	rapp.Run()
 }
 
-func TestLoadConsole(t *testing.T) {
+func disabledLoadConsole(t *testing.T) {
 	os.Setenv("USER_AGENT", "we7test-beta")
 	uri := "deploy://console/133802/"
 	// uri := "deploy://console/97912"
