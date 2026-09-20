@@ -214,3 +214,8 @@
 
 - 保留 .mcp.json 和 opencode.jsonc 的 code-review-graph MCP 接入配置，恢复 AGENTS.md 中优先使用代码图探索与审查的规则；影响模块：开发工具配置与协作规范。
 - 验证：MCP 图统计与代码查询调用成功，索引对应当前 HEAD；配置 JSON 解析及 git diff --check 通过。
+
+## 2026-09-20
+
+- 限制 9090 端口仅允许通过 IPv4/IPv6 地址访问，拒绝域名和 localhost Host；影响模块：HostCheck 中间件。
+- 验证：新增 Host 校验测试，覆盖 IPv4、IPv6、域名、localhost 及其他端口场景。
