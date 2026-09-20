@@ -1,5 +1,6 @@
 KO ?= ko
 LOCAL_IMAGE ?= w7panel
+PUSH_IMAGE ?= ccr.ccs.tencentyun.com/afan-public/w7panel-server
 IMAGE_TAG ?= $(shell branch=$$(git branch --show-current 2>/dev/null); [ -n "$$branch" ] || branch=local; printf '%s' "$$branch" | tr '/' '-')
 PLATFORM ?= linux/amd64
 KO_DEFAULTBASEIMAGE ?= ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui
@@ -22,12 +23,13 @@ GO_BIN ?= $(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT)/bin/
 DOCKER_RUN_ARGS ?=
 W7PANEL_AUTH_MODE ?= panel
 
-.PHONY: help frontend image ko-build docker-run local-run dev test
+.PHONY: help frontend image ko-build ko-push docker-run local-run dev test
 
 help:
 	@echo "本地镜像构建："
 	@echo "  make image"
 	@echo "  make image LOCAL_IMAGE=w7panel IMAGE_TAG=dev PLATFORM=linux/arm64"
+	@echo "  make ko-push IMAGE_TAG=dev PUSH_IMAGE=ccr.ccs.tencentyun.com/afan-public/w7panel-server"
 	@echo "  make frontend UI_DIR=../w7panel-ui"
 	@echo "本地容器运行："
 	@echo "  make docker-run"
@@ -65,6 +67,21 @@ ko-build:
 		--platform="$(PLATFORM)" \
 		.
 	@echo "本地镜像构建完成：$(LOCAL_IMAGE):$(IMAGE_TAG)"
+
+# 使用 ko 构建并推送远程镜像；执行前需通过 ko login 或 Docker 凭据完成仓库认证。
+ko-push:
+	@command -v $(KO) >/dev/null 2>&1 || { echo "未找到 ko，请先安装：go install github.com/google/ko@latest"; exit 1; }
+	@test -n "$(PUSH_IMAGE)" || { echo "PUSH_IMAGE 不能为空"; exit 1; }
+	KO_DOCKER_REPO="$(PUSH_IMAGE)" \
+	KO_DEFAULTBASEIMAGE="$(KO_DEFAULTBASEIMAGE)" \
+	$(KO) build \
+		--bare \
+		--tags="$(IMAGE_TAG)" \
+		--tag-only \
+		--sbom=none \
+		--platform="$(PLATFORM)" \
+		.
+	@echo "远程镜像推送完成：$(PUSH_IMAGE):$(IMAGE_TAG)"
 
 docker-run:
 	@command -v docker >/dev/null 2>&1 || { echo "未找到 docker，请先安装并启动 Docker"; exit 1; }

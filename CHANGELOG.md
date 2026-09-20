@@ -374,3 +374,6 @@
 ## 2026-09-20
 
 - 清理已废弃且无对象的 `MCPServer` CRD 遗留 codegen 配置；MCPServer 已不再由面板定义或消费。
+
+- 新增 `make ko-push` 镜像构建目标，使用 ko 将镜像推送到 `ccr.ccs.tencentyun.com/afan-public/w7panel-server`，支持通过 `PUSH_IMAGE`、`IMAGE_TAG` 和 `PLATFORM` 覆盖目标参数；影响模块：Makefile 镜像构建流程。
+- 验证：Makefile 目标与语法检查通过；实际推送需具备目标仓库认证及 Docker/ko 构建环境。
