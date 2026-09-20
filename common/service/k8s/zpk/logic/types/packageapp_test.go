@@ -65,3 +65,66 @@ func TestGetDockerRegistryDefaultsForLocalRegistrySecret(t *testing.T) {
 		t.Fatalf("unexpected local registry default: %#v", registry)
 	}
 }
+
+func TestPackageAppDefaultDomainAnnotation(t *testing.T) {
+	tests := []struct {
+		name        string
+		ingressHost string
+		forceHTTPS  bool
+		startParams []types.StartParams
+		wantDomain  string
+	}{
+		{
+			name:        "ingress host remains the first choice",
+			ingressHost: "app.example.test",
+			startParams: []types.StartParams{{Name: "DOMAIN_URL", ValuesText: "dependency.example.test", ModuleName: "php-env"}},
+			wantDomain:  "http://app.example.test",
+		},
+		{
+			name:        "module domain parameter adds annotation",
+			startParams: []types.StartParams{{Name: "DOMAIN_URL", ValuesText: "dependency.example.test", ModuleName: "php-env"}},
+			wantDomain:  "http://dependency.example.test",
+		},
+		{
+			name:        "explicit domain scheme is preserved",
+			startParams: []types.StartParams{{Name: "domain_url", ValuesText: "https://dependency.example.test/", ModuleName: "php-env"}},
+			wantDomain:  "https://dependency.example.test",
+		},
+		{
+			name:        "forced https applies to host-only parameter",
+			forceHTTPS:  true,
+			startParams: []types.StartParams{{Name: "DOMAIN_URL", ValuesText: "dependency.example.test"}},
+			wantDomain:  "https://dependency.example.test",
+		},
+		{
+			name:        "ssl domain parameter uses https",
+			startParams: []types.StartParams{{Name: "DOMAIN_SSL_URL", ValuesText: "dependency.example.test", ModuleName: "php-env"}},
+			wantDomain:  "https://dependency.example.test",
+		},
+		{
+			name:        "unresolved placeholder is ignored",
+			startParams: []types.StartParams{{Name: "DOMAIN_URL", ValuesText: "%DOMAIN_URL%", ModuleName: "php-env"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := &types.PackageApp{
+				ManifestPackage: &types.ManifestPackage{Manifest: types.Manifest{
+					Application: types.Application{Identifie: "plugin", Type: "app-plugin"},
+					Platform:    types.Platform{Container: types.Container{StartParams: tt.startParams}},
+				}},
+				InstallOption: &types.InstallOption{
+					ReleaseName:       "plugin-release",
+					Namespace:         "default",
+					IngressHost:       tt.ingressHost,
+					IngressForceHttps: tt.forceHTTPS,
+				},
+			}
+
+			if got := app.GetAnnotations()["w7.cc/default-domain"]; got != tt.wantDomain {
+				t.Fatalf("default domain annotation = %q, want %q", got, tt.wantDomain)
+			}
+		})
+	}
+}

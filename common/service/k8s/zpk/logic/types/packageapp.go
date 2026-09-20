@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -487,8 +488,8 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 	// if !p.IsUpgrade() {
 	result["w7.cc/domains"] = string(domainsJson)
 	result["w7.cc/ingress-domains"] = string(ingressDomainsJson)
-	if p.IngressHost != "" {
-		result["w7.cc/default-domain"] = scheme + p.IngressHost
+	if defaultDomain := p.getDefaultDomain(scheme); defaultDomain != "" {
+		result["w7.cc/default-domain"] = defaultDomain
 	}
 	if p.RequireBuildImage() {
 		result["w7.cc/has-build"] = "true"
@@ -507,6 +508,27 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 	}
 
 	return result
+}
+
+func (p *PackageApp) getDefaultDomain(defaultScheme string) string {
+	if domain := normalizeDefaultDomain(p.IngressHost, defaultScheme); domain != "" {
+		return domain
+	}
+
+	for _, param := range p.Manifest.Platform.Container.StartParams {
+		paramName := strings.ToUpper(strings.TrimSpace(param.Name))
+		if paramName != "DOMAIN_URL" && paramName != "DOMAIN_SSL_URL" {
+			continue
+		}
+		paramScheme := defaultScheme
+		if paramName == "DOMAIN_SSL_URL" {
+			paramScheme = "https://"
+		}
+		if domain := normalizeDefaultDomain(param.ValuesText, paramScheme); domain != "" {
+			return domain
+		}
+	}
+	return ""
 }
 
 func (p *PackageApp) GetMatchLabels() map[string]string {
@@ -1002,4 +1024,20 @@ func (b *PackageApp) OnlyStatic() bool {
 
 func (b *PackageApp) HasHelmUrl() bool {
 	return b.HelmUrl != ""
+}
+
+func normalizeDefaultDomain(value, defaultScheme string) string {
+	value = strings.TrimSpace(value)
+	if value == "" || strings.Contains(strings.ToUpper(value), "%DOMAIN_") {
+		return ""
+	}
+	if !strings.Contains(value, "://") {
+		value = defaultScheme + strings.Trim(value, "/")
+	}
+
+	parsed, err := url.Parse(value)
+	if err != nil || parsed.Host == "" || (!strings.EqualFold(parsed.Scheme, "http") && !strings.EqualFold(parsed.Scheme, "https")) {
+		return ""
+	}
+	return strings.TrimRight(value, "/")
 }

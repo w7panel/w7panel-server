@@ -219,3 +219,9 @@
 
 - 限制 9090 端口仅允许通过 IPv4/IPv6 地址访问，拒绝域名和 localhost Host；影响模块：HostCheck 中间件。
 - 验证：新增 Host 校验测试，覆盖 IPv4、IPv6、域名、localhost 及其他端口场景。
+
+## 2026-09-20
+
+- AppGroup 在安装请求未单独提供 `ingressHost` 时，会从最终解析的 `DOMAIN_URL` 或 `DOMAIN_SSL_URL` 启动参数补充 `w7.cc/default-domain`，支持应用插件复用依赖应用域名；`DOMAIN_SSL_URL` 的 host-only 值使用 HTTPS，未解析占位符不会写入注解。
+- 影响模块：ZPK 安装、AppGroup 元数据。
+- 验证：补充默认域名注解定向测试，覆盖请求域名优先、依赖模块参数、显式协议、HTTPS 和未解析占位符。
