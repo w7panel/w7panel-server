@@ -475,14 +475,16 @@ func (self Zpk) GenHelmMemory(http *gin.Context) {
 	if (params.Repository == "") && params.ChartName != "" {
 		// param.Repository = "https://charts.helm.sh/stable"
 		// param.Version = "latest"
-		parseBytes, err := helper.ExtractSingleFileFromTgz(params.ChartName, "Chart.yaml")
+		parseBytes, err := helper.ExtractSingleFileFromPanelDownload(params.ChartName, "Chart.yaml")
 		if err != nil {
 			self.JsonResponseWithServerError(http, fmt.Errorf("无法正确解析chart包: %v", err))
+			return
 		}
 		meta := chart.Metadata{}
 		err = yaml.Unmarshal(parseBytes, &meta)
 		if err != nil {
 			self.JsonResponseWithServerError(http, fmt.Errorf("无法正确解析chart包: %v", err))
+			return
 		}
 		// params.Repository = ""
 		params.Version = meta.AppVersion

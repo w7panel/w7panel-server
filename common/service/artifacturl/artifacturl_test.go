@@ -48,3 +48,20 @@ func TestValidateAcceptsConfiguredHTTPSHost(t *testing.T) {
 		t.Fatalf("Validate() error = %v", err)
 	}
 }
+
+func TestValidatePanelDownload(t *testing.T) {
+	const host = "172.16.1.3:8011"
+	if _, err := ValidatePanelDownload("http://" + host + "/panel-api/v1/download/chart.tgz?download-ticket=ticket"); err != nil {
+		t.Fatalf("ValidatePanelDownload() error = %v", err)
+	}
+	for _, raw := range []string{
+		"http://" + host + "/other?download-ticket=ticket",
+		"http://" + host + "/panel-api/v1/download/chart.tgz?download-ticket=ticket&other=value",
+		"http://" + host + "/panel-api/v1/download/chart.tgz",
+		"http:///panel-api/v1/download/chart.tgz?download-ticket=ticket",
+	} {
+		if _, err := ValidatePanelDownload(raw); err == nil {
+			t.Fatalf("ValidatePanelDownload(%q) unexpectedly succeeded", raw)
+		}
+	}
+}

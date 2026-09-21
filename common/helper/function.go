@@ -40,6 +40,8 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/w7panel/w7panel/common/service/artifacturl"
+	"github.com/w7panel/w7panel/common/service/downloadticket"
+	"github.com/w7panel/w7panel/common/service/safepath"
 
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 
@@ -461,7 +463,40 @@ func ExtractSingleFileFromTgz(url, fileName string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("无法获取远程文件: %w", err)
 	}
+	return extractSingleFileFromTgz(archive, fileName)
+}
 
+// ExtractSingleFileFromPanelDownload reads a chart uploaded to this panel via
+// its path-bound short-lived download ticket without making an HTTP request.
+func ExtractSingleFileFromPanelDownload(url, fileName string) ([]byte, error) {
+	parsed, err := artifacturl.ValidatePanelDownload(url)
+	if err != nil {
+		return nil, fmt.Errorf("无效的面板下载地址: %w", err)
+	}
+	path := strings.TrimPrefix(parsed.Path, "/panel-api/v1/download/")
+	if !downloadticket.Consume(parsed.Query().Get("download-ticket"), path) {
+		return nil, errors.New("下载票据无效或已过期")
+	}
+	filename, err := safepath.Resolve(facade.GetConfig().GetString("s3.base_dir"), path)
+	if err != nil {
+		return nil, fmt.Errorf("解析面板上传文件: %w", err)
+	}
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("打开面板上传文件: %w", err)
+	}
+	defer file.Close()
+	archive, err := io.ReadAll(io.LimitReader(file, 32<<20+1))
+	if err != nil {
+		return nil, fmt.Errorf("读取面板上传文件: %w", err)
+	}
+	if len(archive) > 32<<20 {
+		return nil, errors.New("面板上传文件超过大小限制")
+	}
+	return extractSingleFileFromTgz(archive, fileName)
+}
+
+func extractSingleFileFromTgz(archive []byte, fileName string) ([]byte, error) {
 	// 创建 gzip 读取器来解压响应体
 	gzr, err := gzip.NewReader(bytes.NewReader(archive))
 	if err != nil {

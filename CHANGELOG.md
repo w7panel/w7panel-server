@@ -385,3 +385,7 @@
 ## 2026-09-20
 
 - `ko-build` 与 `ko-push` 默认以 `-s -w` 链接，移除 ELF 调试信息与符号表；生产镜像中的 Go 二进制预计从 173MiB 降至约 120MiB。验证：ELF 段分析与 `make -n ko-build`。
+
+2026-09-20: 新增 GitHub Actions v1.1 tag 镜像发布流水线；构建 dev-v1-k3k-crd 前端、执行 Go 测试并推送腾讯镜像仓库。验证：工作流 YAML 静态检查待 CI 触发验证。
+
+2026-09-21: Helm 上传 Chart 直接读取 `/panel-api/v1/download/` 短时 `download-ticket` 绑定的本机文件，外部制品仍保持 HTTPS 白名单限制；解析失败立即返回，避免错误响应后继续创建 `memory://` 制品。验证：`go test ./common/service/artifacturl ./common/helper ./app/zpk/http`。

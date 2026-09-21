@@ -55,6 +55,26 @@ func Validate(ctx context.Context, raw string) (*url.URL, error) {
 	return u, nil
 }
 
+// ValidatePanelDownload accepts only a short-lived panel download URL. Its
+// host is never fetched; callers read the ticket-bound local file directly.
+func ValidatePanelDownload(raw string) (*url.URL, error) {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return nil, fmt.Errorf("invalid panel download URL: %w", err)
+	}
+	if (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.Fragment != "" {
+		return nil, errors.New("invalid panel download URL")
+	}
+	if !strings.HasPrefix(u.Path, "/panel-api/v1/download/") || strings.TrimPrefix(u.Path, "/panel-api/v1/download/") == "" {
+		return nil, errors.New("panel download URL must target a panel download")
+	}
+	query := u.Query()
+	if len(query) != 1 || len(query["download-ticket"]) != 1 || query.Get("download-ticket") == "" {
+		return nil, errors.New("panel download URL must contain one download ticket")
+	}
+	return u, nil
+}
+
 func allowedHost(host string) bool {
 	host = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(host), "."))
 	for _, candidate := range append(defaultAllowedHosts, strings.Split(os.Getenv(allowedHostsEnv), ",")...) {
