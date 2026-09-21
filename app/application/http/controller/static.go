@@ -130,7 +130,7 @@ func (self Static) StaticInfo(http *gin.Context) {
 func (self Static) Download(http *gin.Context) {
 	name := http.Param("name")
 	namespace := http.Param("namespace")
-	// token := http.MustGet("k8s_token").(string)
+	token := http.MustGet("k8s_token").(string)
 
 	rootSdk := k8s.NewK8sClient().Sdk
 
