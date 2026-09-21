@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-09-21
+
+- `app-info` 接口新增 `isSubCluster` 字段，基于 `helper.IsChildAgent()`（环境变量 `IS_CHILD`）返回当前是否为子集群；影响模块：`app/application/http/controller/helm.go`。
+
 ## 2026-09-20
 
 - 恢复制品 URL 的 HTTPS、443 端口、白名单和无用户凭据限制，重新覆盖 SSRF 防护边界；验证：`make test TEST_PACKAGES=./common/service/artifacturl`。
