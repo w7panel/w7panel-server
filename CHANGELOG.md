@@ -331,6 +331,7 @@
 - 修复获取容器 PID 时 crictl 警告混入 stdout 导致 strconv.Atoi 失败：新增非交互 exec 输出方法分离 stdout/stderr，PID 仅解析 stdout，执行或解析失败保留 stderr 诊断；原交互式终端输出行为保持不变。
 - PID 解析兼容外围空白和旧模板单引号，拒绝空值、非数字及非正 PID；影响模块：Kubernetes exec、容器 PID 查询。
 - 验证：模拟 Kubernetes SPDY exec 双流回归测试覆盖警告与 PID 分离、nsenter/直接执行、空输出、无效输出和命令失败；PID 解析及容器选择/注解定向测试通过，mise exec -- go build ./... 与 git diff --check 通过。未在真实集群执行命令或部署。
+- 2026-09-21 修复：子集群磁盘用量改为直接汇总 kubelet `stats/summary` 的节点根文件系统使用量与总容量，不再依赖未部署的 Longhorn；验证：`make test TEST_PACKAGES=./common/service/k8s/metrics`。
 
 ## 2026-09-15
 

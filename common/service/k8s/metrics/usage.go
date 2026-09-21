@@ -1,6 +1,9 @@
 package metrics
 
 import (
+	"encoding/json"
+
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -43,6 +46,10 @@ func (k *LocalUsage) nodeAllocate(allocatedCPU resource.Quantity, allocatedMemor
 }
 
 func (k *LocalUsage) GetResourceDiskUsage() (storageUsage int64, storageTotal int64, err error) {
+	if helper.IsChildAgent() {
+		return k.nodeDiskUsage()
+	}
+
 	longhornClient, err := longhorn.NewLonghornClient(k.sdk)
 	if err != nil {
 		return 0, 0, err
@@ -58,4 +65,47 @@ func (k *LocalUsage) GetResourceDiskUsage() (storageUsage int64, storageTotal in
 		}
 	}
 	return storageUsage, storageTotal, nil
+}
+
+func (k *LocalUsage) nodeDiskUsage() (storageUsage int64, storageTotal int64, err error) {
+	nodes, err := k.sdk.ClientSet.CoreV1().Nodes().List(k.sdk.Ctx, metav1.ListOptions{})
+	if err != nil {
+		return 0, 0, err
+	}
+	for _, node := range nodes.Items {
+		data, err := k.sdk.ClientSet.CoreV1().RESTClient().Get().
+			Resource("nodes").Name(node.Name).SubResource("proxy", "stats", "summary").
+			DoRaw(k.sdk.Ctx)
+		if err != nil {
+			return 0, 0, err
+		}
+		usage, total, err := parseNodeDiskUsage(data)
+		if err != nil {
+			return 0, 0, err
+		}
+		storageUsage += usage
+		storageTotal += total
+	}
+	return storageUsage, storageTotal, nil
+}
+
+func parseNodeDiskUsage(data []byte) (usage int64, total int64, err error) {
+	var summary struct {
+		Node struct {
+			Fs struct {
+				AvailableBytes uint64 `json:"availableBytes"`
+				CapacityBytes  uint64 `json:"capacityBytes"`
+				UsedBytes      uint64 `json:"usedBytes"`
+			} `json:"fs"`
+		} `json:"node"`
+	}
+	if err := json.Unmarshal(data, &summary); err != nil {
+		return 0, 0, err
+	}
+	total = int64(summary.Node.Fs.CapacityBytes)
+	usage = int64(summary.Node.Fs.UsedBytes)
+	if usage == 0 && summary.Node.Fs.CapacityBytes >= summary.Node.Fs.AvailableBytes {
+		usage = int64(summary.Node.Fs.CapacityBytes - summary.Node.Fs.AvailableBytes)
+	}
+	return usage, total, nil
 }
