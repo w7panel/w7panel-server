@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/procpath"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
@@ -133,6 +134,9 @@ func (c PermissionAgent) Chown(http *gin.Context) {
 }
 
 func newPermissionIDMapper(pid, subpid string) ownerIDMapper {
+	if helper.IsChildAgent() {
+		return nil
+	}
 	return procpath.NewIDMapper(pid, subpid)
 }
 
