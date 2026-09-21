@@ -14,11 +14,30 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 )
 
+type DependencyBinding struct {
+	Namespace   string `json:"namespace,omitempty"`
+	ReleaseName string `json:"releaseName"`
+	Identifie   string `json:"identifie,omitempty"`
+}
+
+func appGroupDependencyReferences(bindings []DependencyBinding) []appgroup.DependencyReference {
+	references := make([]appgroup.DependencyReference, 0, len(bindings))
+	for _, binding := range bindings {
+		references = append(references, appgroup.DependencyReference{
+			Namespace: binding.Namespace,
+			Name:      binding.ReleaseName,
+			Identifie: binding.Identifie,
+		})
+	}
+	return references
+}
+
 type InstallRequest struct {
 	Namespace          string                `json:"namespace" binding:"required"`
 	RepoUrl            string                `json:"repoUrl" binding:"required"`
 	ReleaseName        string                `json:"releaseName" binding:"required"`
 	InstallOptions     []types.InstallOption `json:"installOptions" binding:"required"`
+	Dependencies       []DependencyBinding   `json:"dependencies,omitempty"`
 	IngressHost        string                `json:"ingressHost"`        // 域名
 	IngressSeletorName string                `json:"ingressSeletorName"` // 域名选择业务名称
 	IngressClassName   string                `json:"ingressClass"`       // 域名选择业务名称
@@ -137,6 +156,15 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 
 	packageApps := types.NewPackage(mPackage, params.InstallOptions, releaseName, installId, namespace,
 		params.IngressHost, params.IngressSeletorName, params.IngressClassName)
+	dependencies, err := appgroup.ResolveDependencies(
+		client,
+		namespace,
+		appGroupDependencyReferences(params.Dependencies),
+	)
+	if err != nil {
+		return InstallResult{}, err
+	}
+	packageApps.Root.AppGroupDependencies = dependencies
 	packageApps.ForceHttps(params.IngressForceHttps)
 	// packageApps.Root.K3kMode = k8sToken.K3kMode()
 	isChild := execution.IsChild

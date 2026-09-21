@@ -234,6 +234,7 @@ type PackageApp struct {
 	*InstallOption
 	ThirdpartyCDToken       string
 	AppGroupInstallResult   *v1alpha1.DeployItem
+	AppGroupDependencies    []v1alpha1.AppGroupDependency
 	PanelRegistryServerHost string
 }
 
@@ -246,6 +247,10 @@ func NewPackageApp(manifestPackage *ManifestPackage, installOption *InstallOptio
 func (p *PackageApp) GetIdentifie() string {
 	//_ convert -
 	return strings.ToLower(strings.ReplaceAll(p.ManifestPackage.Manifest.Application.Identifie, "_", "-"))
+}
+
+func (p *PackageApp) GetAppGroupDependencies() []v1alpha1.AppGroupDependency {
+	return append([]v1alpha1.AppGroupDependency(nil), p.AppGroupDependencies...)
 }
 
 // 后缀

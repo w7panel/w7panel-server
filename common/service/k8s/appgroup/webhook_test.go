@@ -8,19 +8,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestGetResourceGroupNamesSupportsGroupNames(t *testing.T) {
+func TestGetResourceGroupNamesSupportsPrimaryGroup(t *testing.T) {
 	obj := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
-				"group":             "owner",
-				"w7.cc/group-names": "site-a",
+				"group": "owner",
 			},
 		},
 	}
 
-	assert.Equal(t, []string{"owner", "site-a"}, getResourceGroupNames(obj))
-	assert.True(t, resourceVisibleInGroup(obj, "site-a"))
-	assert.False(t, resourceVisibleInGroup(obj, "site"))
+	assert.Equal(t, []string{"owner"}, getResourceGroupNames(obj))
+	assert.True(t, resourceVisibleInGroup(obj, "owner"))
+	assert.False(t, resourceVisibleInGroup(obj, "other"))
 }
 
 func TestGetResourceGroupNamesSupportsHelmMetadata(t *testing.T) {

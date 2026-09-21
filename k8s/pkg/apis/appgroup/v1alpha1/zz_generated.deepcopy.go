@@ -127,6 +127,11 @@ func (in *AppGroupSpec) DeepCopyInto(out *AppGroupSpec) {
 		*out = new(AppCredentials)
 		**out = **in
 	}
+	if in.Dependencies != nil {
+		in, out := &in.Dependencies, &out.Dependencies
+		*out = make([]AppGroupDependency, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

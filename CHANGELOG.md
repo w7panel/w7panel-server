@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-09-21
+
+- AppGroup 新增 `spec.dependencies`，ZPK 安装时解析并固化依赖 AppGroup 的 namespace、name、应用标识和应用类型；依赖按逻辑 Release 关联，提交的依赖不存在时安装直接失败，应用自身类型继续复用既有 `w7.cc/manifest-type` 注解。
+- 根据依赖关系维护 `w7.cc/depends-<releaseName>` 反向查询标签，并移除复数 `w7.cc/group-names` 的资源归集支持；单数 `w7.cc/group-name` 继续用于同一 Release 内资源归属。
+- AppGroup 依赖解析、校验、去重和元数据补全下沉到通用 AppGroup 服务，ZPK 安装层仅负责将请求字段映射为通用依赖引用。
+- AppGroup 依赖索引改由统一的创建、更新入口根据 `spec.dependencies` 强制同步，避免转换层吞掉索引错误或升级时整体覆盖已有标签；AppGroup 转换使用专用资源接口，不再要求所有 Kubernetes 资源实现依赖读取能力。
+- 影响模块：AppGroup/ZpkInstall CRD、ZPK 安装与 AppGroup 资源归集。
+- 验证：相关 Go 包编译和依赖关系定向测试通过，`git diff --check` 通过。
+
 ## 2026-09-18
 
 - 前端静态资源回源缓存增加父制品标识和版本，导入子应用可使用自身版本访问本地目录，同时从父制品读取对应前端包并沿用父制品 ticket。
