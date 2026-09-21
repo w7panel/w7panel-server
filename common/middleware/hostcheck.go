@@ -1,6 +1,10 @@
 package middleware
 
 import (
+	"net"
+	"net/http"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
@@ -11,6 +15,21 @@ type HostCheck struct {
 }
 
 func (self HostCheck) Process(c *gin.Context) {
-	// 移除域名限制，允许任意域名/IP访问（用于K8s容器部署）
+	if host, port, err := net.SplitHostPort(c.Request.Host); err == nil && port == "9090" {
+		if net.ParseIP(host) == nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"message": "port 9090 only supports IP host",
+			})
+			return
+		}
+	} else if strings.HasSuffix(c.Request.Host, ":9090") {
+		// SplitHostPort rejects malformed hosts. Treat them as invalid rather than
+		// allowing a non-IP Host header through on port 9090.
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "port 9090 only supports IP host",
+		})
+		return
+	}
+
 	c.Next()
 }

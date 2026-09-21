@@ -214,15 +214,7 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 	// 发送http请求 从uri获取json 数据
 	requestURI := helper.RemoveQueryParam(uri, "reinstall")
 	req := helper.RetryHttpClient().R().SetContext(ctx).SetAuthToken(token)
-	if self.panelToken != "" {
-		replace, err := microapp.NewMicroAppReplace(self.panelToken)
-		if err == nil && replace.GetConsoleOpenId() != "" {
-			cloudAccessToken, err := microapp.GetCloudAccessToken(replace.GetConsoleOpenId())
-			if err == nil {
-				req.SetHeader("X-Cloud-AccessToken", cloudAccessToken)
-			}
-		}
-	}
+	microapp.SetCloudAccessTokenHeader(req, self.panelToken)
 	if self.upgrade {
 		req.SetQueryParam("is_upgrade", "1")
 	}

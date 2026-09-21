@@ -231,6 +231,7 @@ type PackageApp struct {
 	*InstallOption
 	ThirdpartyCDToken       string
 	AppGroupInstallResult   *v1alpha1.DeployItem
+	AppGroupDependencies    []v1alpha1.AppGroupDependency
 	PanelRegistryServerHost string
 }
 
@@ -243,6 +244,10 @@ func NewPackageApp(manifestPackage *ManifestPackage, installOption *InstallOptio
 func (p *PackageApp) GetIdentifie() string {
 	//_ convert -
 	return strings.ToLower(strings.ReplaceAll(p.ManifestPackage.Manifest.Application.Identifie, "_", "-"))
+}
+
+func (p *PackageApp) GetAppGroupDependencies() []v1alpha1.AppGroupDependency {
+	return append([]v1alpha1.AppGroupDependency(nil), p.AppGroupDependencies...)
 }
 
 // 后缀
@@ -484,8 +489,8 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 	// if !p.IsUpgrade() {
 	result["w7.cc/domains"] = string(domainsJson)
 	result["w7.cc/ingress-domains"] = string(ingressDomainsJson)
-	if p.IngressHost != "" {
-		result["w7.cc/default-domain"] = scheme + p.IngressHost
+	if defaultDomain := p.getDefaultDomain(scheme); defaultDomain != "" {
+		result["w7.cc/default-domain"] = defaultDomain
 	}
 	if p.RequireBuildImage() {
 		result["w7.cc/has-build"] = "true"
@@ -504,6 +509,27 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 	}
 
 	return result
+}
+
+func (p *PackageApp) getDefaultDomain(defaultScheme string) string {
+	if domain := normalizeDefaultDomain(p.IngressHost, defaultScheme); domain != "" {
+		return domain
+	}
+
+	for _, param := range p.Manifest.Platform.Container.StartParams {
+		paramName := strings.ToUpper(strings.TrimSpace(param.Name))
+		if paramName != "DOMAIN_URL" && paramName != "DOMAIN_SSL_URL" {
+			continue
+		}
+		paramScheme := defaultScheme
+		if paramName == "DOMAIN_SSL_URL" {
+			paramScheme = "https://"
+		}
+		if domain := normalizeDefaultDomain(param.ValuesText, paramScheme); domain != "" {
+			return domain
+		}
+	}
+	return ""
 }
 
 func (p *PackageApp) GetMatchLabels() map[string]string {
@@ -997,4 +1023,15 @@ func (b *PackageApp) OnlyStatic() bool {
 
 func (b *PackageApp) HasHelmUrl() bool {
 	return b.HelmUrl != ""
+}
+
+func normalizeDefaultDomain(value, defaultScheme string) string {
+	if strings.Contains(strings.ToUpper(value), "%DOMAIN_") {
+		return ""
+	}
+	parsed, ok := helper.ParseDomainURL(value, defaultScheme)
+	if !ok {
+		return ""
+	}
+	return strings.TrimRight(parsed.String(), "/")
 }

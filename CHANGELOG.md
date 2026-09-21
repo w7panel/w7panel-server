@@ -17,6 +17,13 @@
 - 禁用依赖完整安装包 fixture 的第二个 ZPK 安装诊断测试。
 - 禁用缺失完整安装包 fixture 的 ZPK package 加载诊断测试。
 
+- AppGroup 新增 `spec.dependencies`，ZPK 安装时解析并固化依赖 AppGroup 的 namespace、name、应用标识和应用类型；依赖按逻辑 Release 关联，提交的依赖不存在时安装直接失败，应用自身类型继续复用既有 `w7.cc/manifest-type` 注解。
+- 根据依赖关系维护 `w7.cc/depends-<releaseName>` 反向查询标签，并移除复数 `w7.cc/group-names` 的资源归集支持；单数 `w7.cc/group-name` 继续用于同一 Release 内资源归属。
+- AppGroup 依赖解析、校验、去重和元数据补全下沉到通用 AppGroup 服务，ZPK 安装层仅负责将请求字段映射为通用依赖引用。
+- AppGroup 依赖索引改由统一的创建、更新入口根据 `spec.dependencies` 强制同步，避免转换层吞掉索引错误或升级时整体覆盖已有标签；AppGroup 转换使用专用资源接口，不再要求所有 Kubernetes 资源实现依赖读取能力。
+- 影响模块：AppGroup/ZpkInstall CRD、ZPK 安装与 AppGroup 资源归集。
+- 验证：相关 Go 包编译和依赖关系定向测试通过，`git diff --check` 通过。
+
 ## 2026-09-18
 
 - 修复流量指标接口的命名空间授权：普通用户固定访问其 `k3k-<username>` 命名空间，不能由 query 参数越权；管理员仍可按请求筛选命名空间。
@@ -58,6 +65,7 @@
 - 前端静态资源回源缓存增加父制品标识和版本，导入子应用可使用自身版本访问本地目录，同时从父制品读取对应前端包并沿用父制品 ticket。
 - AppGroup 前端包下载按同组 MicroApp 的 `w7.cc/identifie` 与 `w7.cc/version` 分别解压，版本不同的导入子应用不再误存到父应用版本目录；旧资源缺少版本标签时回退父版本。
 - MicroApp `frontprops` 的 `group/appgroup` 改为优先返回 `w7.cc/group-name`，避免导入子应用把资源名误当成父 AppGroup。
+- ZPK 制品安装与前端包下载统一复用云端访问令牌请求头注入逻辑；前端包下载接口会携带当前面板用户身份，并识别 HTTP 200 中的 ZPK 业务错误。下载目录改为递归创建，单包下载失败会回退状态并返回明确错误。
 - 影响模块：MicroApp 静态资源状态、AppGroup 前端包下载与远程回源代理。
 - 验证：静态资源控制器定向测试与异版本 MicroApp 下载目录测试通过，`git diff --check` 通过。
 
@@ -378,11 +386,21 @@
 2026-09-20: 为压缩服务补充绝对路径不重复拼接根目录的单元测试；待全量验证。
 ## 2026-09-20
 
+## 2026-09-20
+
+- 限制 9090 端口仅允许通过 IPv4/IPv6 地址访问，拒绝域名和 localhost Host；影响模块：HostCheck 中间件。
+- 验证：新增 Host 校验测试，覆盖 IPv4、IPv6、域名、localhost 及其他端口场景。
+
+## 2026-09-20
+
+- 安装请求未单独提供 `ingressHost` 时，会从最终解析的 `DOMAIN_URL` 或 `DOMAIN_SSL_URL` 启动参数提取域名传给制品信息接口，使安装前签发的 Ticket 和安装完成通知包含应用插件继承的域名；同时补充 AppGroup 的 `w7.cc/default-domain`。`DOMAIN_SSL_URL` 的 host-only 值使用 HTTPS，未解析占位符不会写入注解。
+- 影响模块：ZPK 安装、AppGroup 元数据。
+- 验证：补充制品请求域名和默认域名注解定向测试，覆盖请求域名优先、依赖模块参数、显式协议、HTTPS 和未解析占位符。
+
 - 清理已废弃且无对象的 `MCPServer` CRD 遗留 codegen 配置；MCPServer 已不再由面板定义或消费。
 
 - 新增 `make ko-push` 镜像构建目标，使用 ko 将镜像推送到 `ccr.ccs.tencentyun.com/afan-public/w7panel-server`，支持通过 `PUSH_IMAGE`、`IMAGE_TAG` 和 `PLATFORM` 覆盖目标参数；影响模块：Makefile 镜像构建流程。
 - 验证：Makefile 目标与语法检查通过；实际推送需具备目标仓库认证及 Docker/ko 构建环境。
-
 ## 2026-09-20
 
 - `ko-build` 与 `ko-push` 复用项目内 Go 缓存、模块缓存和临时目录，并固定传递 `KO_GO_PATH`；避免镜像构建向用户目录或 `/tmp` 写入 Go 编译中间产物。验证：`make -n ko-build`、`make -n ko-push`。

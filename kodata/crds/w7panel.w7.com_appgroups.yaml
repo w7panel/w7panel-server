@@ -49,6 +49,23 @@ spec:
                 - appId
                 - appSecret
                 type: object
+              dependencies:
+                items:
+                  properties:
+                    applicationType:
+                      type: string
+                    identifie:
+                      type: string
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                  - applicationType
+                  - identifie
+                  - name
+                  type: object
+                type: array
               description:
                 type: string
               helmConfig:

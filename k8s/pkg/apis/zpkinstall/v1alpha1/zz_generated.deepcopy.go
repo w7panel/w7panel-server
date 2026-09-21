@@ -157,6 +157,11 @@ func (in *ZpkInstallSpec) DeepCopyInto(out *ZpkInstallSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.Dependencies != nil {
+		in, out := &in.Dependencies, &out.Dependencies
+		*out = make([]DependencyBinding, len(*in))
+		copy(*out, *in)
+	}
 	if in.ThirdpartyCDTokenRef != nil {
 		in, out := &in.ThirdpartyCDTokenRef, &out.ThirdpartyCDTokenRef
 		*out = new(v1.SecretKeySelector)

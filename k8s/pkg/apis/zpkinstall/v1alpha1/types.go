@@ -29,6 +29,7 @@ type ZpkInstallSpec struct {
 	// +kubebuilder:validation:MinLength=1
 	ReleaseName          string                    `json:"releaseName"`
 	InstallOptions       []InstallOption           `json:"installOptions"`
+	Dependencies         []DependencyBinding       `json:"dependencies,omitempty"`
 	IngressHost          string                    `json:"ingressHost,omitempty"`
 	IngressSeletorName   string                    `json:"ingressSeletorName,omitempty"`
 	IngressClassName     string                    `json:"ingressClass,omitempty"`
@@ -39,6 +40,11 @@ type ZpkInstallSpec struct {
 	Reinstall            bool                      `json:"reinstall,omitempty"`
 	ThirdpartyCDTokenRef *corev1.SecretKeySelector `json:"thirdpartyCDTokenRef,omitempty"`
 	PanelTokenRef        *corev1.SecretKeySelector `json:"panelTokenRef,omitempty"`
+}
+type DependencyBinding struct {
+	Namespace   string `json:"namespace,omitempty"`
+	ReleaseName string `json:"releaseName"`
+	Identifie   string `json:"identifie,omitempty"`
 }
 type InstallOption struct {
 	Identifie                string               `json:"identifie,omitempty"`

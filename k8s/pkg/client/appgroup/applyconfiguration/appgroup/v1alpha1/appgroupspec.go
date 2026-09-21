@@ -39,8 +39,9 @@ type AppGroupSpecApplyConfiguration struct {
 	// DefaultDomain string     `json:"defaultDomain"` //默认域名
 	ZpkUrl *string `json:"zpkUrl,omitempty"`
 	// 制品库地址
-	HelmConfig     *HelmConfigApplyConfiguration     `json:"helmConfig,omitempty"`
-	AppCredentials *AppCredentialsApplyConfiguration `json:"appCredentials,omitempty"`
+	HelmConfig     *HelmConfigApplyConfiguration          `json:"helmConfig,omitempty"`
+	AppCredentials *AppCredentialsApplyConfiguration      `json:"appCredentials,omitempty"`
+	Dependencies   []AppGroupDependencyApplyConfiguration `json:"dependencies,omitempty"`
 	// Annotations   map[string]string `json:"annotations"`   //annotations
 	IsHelm *bool `json:"isHelm,omitempty"`
 }
@@ -136,6 +137,17 @@ func (b *AppGroupSpecApplyConfiguration) WithHelmConfig(value *HelmConfigApplyCo
 // If called multiple times, the AppCredentials field is set to the value of the last call.
 func (b *AppGroupSpecApplyConfiguration) WithAppCredentials(value *AppCredentialsApplyConfiguration) *AppGroupSpecApplyConfiguration {
 	b.AppCredentials = value
+	return b
+}
+
+// WithDependencies appends dependency values to the declarative configuration.
+func (b *AppGroupSpecApplyConfiguration) WithDependencies(values ...*AppGroupDependencyApplyConfiguration) *AppGroupSpecApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithDependencies")
+		}
+		b.Dependencies = append(b.Dependencies, *values[i])
+	}
 	return b
 }
 

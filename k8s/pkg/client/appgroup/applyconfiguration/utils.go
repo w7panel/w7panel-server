@@ -33,6 +33,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 	// Group=w7panel.w7.com, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithKind("AppGroup"):
 		return &appgroupv1alpha1.AppGroupApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("AppGroupDependency"):
+		return &appgroupv1alpha1.AppGroupDependencyApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("AppGroupItemStatus"):
 		return &appgroupv1alpha1.AppGroupItemStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("AppGroupSpec"):

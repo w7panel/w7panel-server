@@ -95,6 +95,11 @@ type K8sResourceInterface interface {
 	HasHelmUrl() bool //是否有helm url 制品库普通应用才有
 }
 
+type AppGroupResourceInterface interface {
+	K8sResourceInterface
+	GetAppGroupDependencies() []v1alpha1.AppGroupDependency
+}
+
 type K8sResourceIngressInterface interface {
 	K8sResourceInterface
 	GetIngressHost() string
@@ -945,7 +950,7 @@ type AppGroupSpec struct {
 
 */
 
-func ToAppGroup(p K8sResourceInterface, installResult []v1alpha1.DeployItem) *v1alpha1.AppGroup {
+func ToAppGroup(p AppGroupResourceInterface, installResult []v1alpha1.DeployItem) *v1alpha1.AppGroup {
 
 	aType := "zpk"
 	isHelm := false
@@ -975,6 +980,7 @@ func ToAppGroup(p K8sResourceInterface, installResult []v1alpha1.DeployItem) *v1
 		HelmConfig:  helmSpec,
 		IsHelm:      isHelm,
 	}
+	obj.Spec.Dependencies = p.GetAppGroupDependencies()
 	syncAppGroupZpkURL(obj, p.GetZpkUrl())
 	obj.Status = v1alpha1.AppGroupStatus{
 		DeployItems:  installResult,
