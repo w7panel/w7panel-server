@@ -2,6 +2,11 @@ package controller
 
 import (
 	// "github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
+	"fmt"
+	stdhttp "net/http"
+	"net/url"
+	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
@@ -12,6 +17,11 @@ import (
 
 type MicroApp struct {
 	controller.Abstract
+}
+
+type normalMicroApp struct {
+	Title string `json:"title"`
+	URL   string `json:"url"`
 }
 
 func microAppGroupName(item *v1alpha1.MicroApp) string {
@@ -42,8 +52,41 @@ func (self MicroApp) TopNormal(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	self.JsonResponseWithoutError(http, list)
+	items, err := normalMicroApps(list)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.normalMicroAppsResponse(http, items)
+}
 
+func (self MicroApp) normalMicroAppsResponse(http *gin.Context, items []normalMicroApp) {
+	if http.Query("callback") != "" {
+		http.JSONP(stdhttp.StatusOK, items)
+		return
+	}
+	self.JsonResponseWithoutError(http, items)
+}
+
+func normalMicroApps(list *v1alpha1.MicroAppList) ([]normalMicroApp, error) {
+	mainPanelURL, err := mainPanelURL()
+	if err != nil {
+		return nil, err
+	}
+	items := make([]normalMicroApp, 0, len(list.Items))
+	for _, item := range list.Items {
+		items = append(items, normalMicroApp{Title: item.Spec.Title, URL: mainPanelURL + "/appgroup/" + item.Name + "/micro"})
+	}
+	return items, nil
+}
+
+func mainPanelURL() (string, error) {
+	raw := strings.TrimSpace(os.Getenv("MAIN_PANEL_URL"))
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
+		return "", fmt.Errorf("MAIN_PANEL_URL must be an HTTPS origin")
+	}
+	return strings.TrimRight(u.String(), "/"), nil
 }
 
 func (self MicroApp) Info(http *gin.Context) {

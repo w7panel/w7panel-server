@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-09-22
+
+- `/panel-api/v1/noauth/microapp/normal` 现在仅返回普通角色 MicroApp 的 `title` 与主集群入口 URL，并支持 JSONP；主集群地址由 `MAIN_PANEL_URL` 提供，`app-info` 同时返回 `mainPanelUrl`。
+
 ## 2026-09-21
 
 - 新增受面板鉴权与操作审计保护的 Copilot API：提供脱敏集群上下文、OpenAI 兼容流式代理，以及 Kubernetes 资源的 dry-run/确认执行流程。

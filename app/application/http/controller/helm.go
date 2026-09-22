@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"os"
 	// "archive/zip"
 
 	"github.com/gin-gonic/gin"
@@ -142,6 +143,7 @@ func (self Helm) AppInfo(http *gin.Context) {
 		"metadataName":    metadataName,
 		"deploymentName":  deploymentName,
 		"isSubCluster":    helper.IsChildAgent(),
+		"mainPanelUrl":    os.Getenv("MAIN_PANEL_URL"),
 	}, nil, 200)
 
 }
