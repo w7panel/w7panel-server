@@ -20,6 +20,11 @@ app:
   debug: ${DEBUG-false}
 panel_auth:
   signing_key: ${PANEL_AUTH_SIGNING_KEY-} # empty falls back to app.aeskey for single-instance compatibility
+copilot:
+  enabled: ${COPILOT_ENABLED-false}
+  openai_base_url: ${COPILOT_OPENAI_BASE_URL-}
+  openai_api_key: ${COPILOT_OPENAI_API_KEY-}
+  model: ${COPILOT_MODEL-}
 
 static:
   download_enabled: ${STATIC_DOWN_ENABLED-false}
