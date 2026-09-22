@@ -83,19 +83,21 @@ func (m *ResourceMutator) handleLegacyMicroApp(ctx context.Context, req admissio
 	return admission.Allowed("legacy microapp mirrored to w7panel group")
 }
 
-func SetControllerReference(microApp *microapp.MicroApp, client sigclient.Client) bool {
-	if !controllerutil.HasControllerReference(microApp) {
-		// return admission.Allowed("")
-		group, err := appgroup.GetAppgroup(microApp.Name, microApp.Namespace, client)
-		if err != nil {
-			return false
-		}
-		err = controllerutil.SetControllerReference(group, microApp, k8s.GetScheme())
-		if err != nil {
-			slog.Error("SetControllerReference error", "error", err)
-			return false
-		}
-		return true
+func SetControllerReference(item *microapp.MicroApp, client sigclient.Client) bool {
+	if controllerutil.HasControllerReference(item) {
+		return false
 	}
-	return false
+	groupName := item.Labels["w7.cc/group-name"]
+	if groupName == "" {
+		return false
+	}
+	group, err := appgroup.GetAppgroup(groupName, item.Namespace, client)
+	if err != nil {
+		return false
+	}
+	if err := controllerutil.SetControllerReference(group, item, k8s.GetScheme()); err != nil {
+		slog.Error("SetControllerReference error", "error", err)
+		return false
+	}
+	return true
 }

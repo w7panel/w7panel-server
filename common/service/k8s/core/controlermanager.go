@@ -10,6 +10,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/buildimage"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
+	microappservice "github.com/w7panel/w7panel/common/service/k8s/microapp"
 	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/w7panel/w7panel/common/service/k8s/privatedns"
 	"github.com/w7panel/w7panel/common/service/k8s/service"
@@ -81,6 +82,10 @@ func StartControlManager() error {
 
 	err = service.SvcSetupManager(mgr)
 	if err != nil {
+		return err
+	}
+	if err := microappservice.SetupMicroAppController(mgr); err != nil {
+		slog.Error("setup MicroApp dependency controller failed", "err", err)
 		return err
 	}
 	if installcontroller.Enabled() {
