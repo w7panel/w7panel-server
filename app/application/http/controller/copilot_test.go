@@ -3,6 +3,8 @@ package controller
 import (
 	"testing"
 
+	"google.golang.org/adk/v2/session"
+	"google.golang.org/genai"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -14,6 +16,25 @@ func TestDecodeCopilotObject(t *testing.T) {
 	}
 	if got := resourceRef(object); got != "ConfigMap/default/example" {
 		t.Fatalf("resourceRef() = %q", got)
+	}
+}
+
+func TestCopilotEventTextKeepsOnlyTextParts(t *testing.T) {
+	event := &session.Event{LLMResponse: modelResponse("answer", genai.RoleModel)}
+	if got := copilotEventText(event); got != "answer" {
+		t.Fatalf("copilotEventText() = %q", got)
+	}
+	if got := copilotEventText(nil); got != "" {
+		t.Fatalf("copilotEventText(nil) = %q", got)
+	}
+}
+
+func TestNamespaceOrDefault(t *testing.T) {
+	if got := namespaceOrDefault("selected", "default"); got != "selected" {
+		t.Fatalf("namespaceOrDefault() = %q", got)
+	}
+	if got := namespaceOrDefault("", "default"); got != "default" {
+		t.Fatalf("namespaceOrDefault() = %q", got)
 	}
 }
 
