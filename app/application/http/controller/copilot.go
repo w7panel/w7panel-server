@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os/exec"
 	"sort"
 	"strings"
 	"sync"
@@ -45,6 +46,7 @@ type copilotProposal struct {
 	Actor     string
 	Operation string
 	Object    *unstructured.Unstructured
+	Command   []string
 	ExpiresAt time.Time
 }
 
@@ -361,11 +363,60 @@ func (Copilot) ConfirmAction(ctx *gin.Context) {
 		ctx.JSON(http.StatusNotFound, gin.H{"msg": "resource proposal was not found or expired"})
 		return
 	}
+	if len(proposal.Command) > 0 {
+		output, err := runCopilotKubectl(ctx.Request.Context(), proposal.Command)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"msg": "kubectl command failed", "detail": err.Error(), "output": output})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"resource": strings.Join(proposal.Command, " "), "operation": proposal.Operation, "output": output})
+		return
+	}
 	if err := runCopilotAction(ctx.Request.Context(), ctx.MustGet("k8s_token").(string), proposal.Operation, proposal.Object, false); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"msg": "resource change failed", "detail": err.Error()})
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"resource": resourceRef(proposal.Object), "operation": proposal.Operation})
+}
+
+func createCopilotKubectlProposal(actor, command string) (copilotProposalResponse, error) {
+	args, err := copilotKubectlArgs(command)
+	if err != nil {
+		return copilotProposalResponse{}, err
+	}
+	id, err := newCopilotProposalID()
+	if err != nil {
+		return copilotProposalResponse{}, err
+	}
+	expiresAt := time.Now().Add(10 * time.Minute)
+	copilotProposals.Lock()
+	copilotProposals.items[id] = copilotProposal{Actor: actor, Operation: "command", Command: args, ExpiresAt: expiresAt}
+	copilotProposals.Unlock()
+	return copilotProposalResponse{ID: id, Operation: "command", Resource: strings.Join(args, " "), ExpiresAt: expiresAt}, nil
+}
+
+func copilotKubectlArgs(command string) ([]string, error) {
+	if strings.ContainsAny(command, "\n\r;|&><`$") {
+		return nil, fmt.Errorf("shell operators are not allowed")
+	}
+	args := strings.Fields(command)
+	if len(args) < 2 || len(args) > 32 || args[0] != "kubectl" {
+		return nil, fmt.Errorf("command must be a kubectl command with at most 31 arguments")
+	}
+	for _, arg := range args[1:] {
+		lower := strings.ToLower(arg)
+		if lower == "secret" || lower == "secrets" || strings.HasPrefix(lower, "--kubeconfig") || strings.HasPrefix(lower, "--server") || strings.HasPrefix(lower, "--token") || strings.HasPrefix(lower, "--context") {
+			return nil, fmt.Errorf("command may not access Secrets or override cluster credentials")
+		}
+	}
+	return args, nil
+}
+
+func runCopilotKubectl(ctx context.Context, args []string) (string, error) {
+	commandCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	output, err := exec.CommandContext(commandCtx, args[0], args[1:]...).CombinedOutput()
+	return string(output), err
 }
 
 func (Copilot) RejectAction(ctx *gin.Context) {

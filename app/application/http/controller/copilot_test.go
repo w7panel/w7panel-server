@@ -38,6 +38,18 @@ func TestNamespaceOrDefault(t *testing.T) {
 	}
 }
 
+func TestCopilotKubectlArgsRejectsShellAndSecrets(t *testing.T) {
+	args, err := copilotKubectlArgs("kubectl get pods -n default")
+	if err != nil || len(args) != 5 || args[0] != "kubectl" {
+		t.Fatalf("copilotKubectlArgs() = %#v, %v", args, err)
+	}
+	for _, command := range []string{"kubectl get secrets", "kubectl get pods; id", "helm list"} {
+		if _, err := copilotKubectlArgs(command); err == nil {
+			t.Fatalf("copilotKubectlArgs(%q) succeeded", command)
+		}
+	}
+}
+
 func TestDecodeCopilotObjectRejectsMultipleResources(t *testing.T) {
 	_, err := decodeCopilotObject("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: first\n---\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: second\n")
 	if err == nil {
