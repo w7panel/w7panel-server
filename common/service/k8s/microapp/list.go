@@ -28,6 +28,10 @@ func ListTop(t string, authenticatedRole string) (*microapp.MicroAppList, error)
 	if role == "" {
 		return nil, errors.New("role is empty")
 	}
+	return ListByRole(role)
+}
+
+func ListByRole(role string) (*microapp.MicroAppList, error) {
 	rootSdk := k8s.NewK8sClient().Sdk
 
 	newList := &microapp.MicroAppList{}

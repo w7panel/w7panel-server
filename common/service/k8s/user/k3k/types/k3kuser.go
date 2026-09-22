@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/config"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	userv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/user/v1alpha1"
@@ -249,7 +248,7 @@ func (u *k3kUser) SupportCvm() bool {
 
 // 是否是cvm请求用户 子集群请求用户
 func (u *k3kUser) IsCkmReqUser() bool {
-	return u.ckmName != "" || helper.IsChildAgent()
+	return u.ckmName != ""
 }
 
 func (u *k3kUser) SetCkmName(name string) {

@@ -35,6 +35,17 @@ func (self MicroApp) List(http *gin.Context) {
 
 }
 
+// 普通用户列表，不包括管理员应用
+func (self MicroApp) TopNormal(http *gin.Context) {
+	list, err := microapp.ListByRole("normal")
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponseWithoutError(http, list)
+
+}
+
 func (self MicroApp) Info(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
 	name := http.Param("name")
