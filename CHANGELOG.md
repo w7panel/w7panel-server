@@ -2,6 +2,8 @@
 
 ## 2026-09-22
 
+- 普通 MicroApp 入口 URL 改为使用当前请求的协议与 Host 生成，`MAIN_PANEL_URL` 不再限制为 HTTPS，方便 HTTP 主面板部署与反向代理访问。
+
 - `/panel-api/v1/noauth/microapp/normal` 现在仅返回普通角色 MicroApp 的 `title` 与主集群入口 URL，并支持 JSONP；主集群地址由 `MAIN_PANEL_URL` 提供，`app-info` 同时返回 `mainPanelUrl`。
 
 ## 2026-09-21

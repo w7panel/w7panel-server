@@ -2,10 +2,7 @@ package controller
 
 import (
 	// "github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
-	"fmt"
 	stdhttp "net/http"
-	"net/url"
-	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -52,11 +49,7 @@ func (self MicroApp) TopNormal(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	items, err := normalMicroApps(list)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
+	items := normalMicroApps(http.Request, list)
 	self.normalMicroAppsResponse(http, items)
 }
 
@@ -68,25 +61,20 @@ func (self MicroApp) normalMicroAppsResponse(http *gin.Context, items []normalMi
 	self.JsonResponseWithoutError(http, items)
 }
 
-func normalMicroApps(list *v1alpha1.MicroAppList) ([]normalMicroApp, error) {
-	mainPanelURL, err := mainPanelURL()
-	if err != nil {
-		return nil, err
+func normalMicroApps(request *stdhttp.Request, list *v1alpha1.MicroAppList) []normalMicroApp {
+	scheme := "http"
+	if request.TLS != nil {
+		scheme = "https"
 	}
+	if forwarded := strings.TrimSpace(strings.Split(request.Header.Get("X-Forwarded-Proto"), ",")[0]); forwarded == "http" || forwarded == "https" {
+		scheme = forwarded
+	}
+	baseURL := scheme + "://" + request.Host
 	items := make([]normalMicroApp, 0, len(list.Items))
 	for _, item := range list.Items {
-		items = append(items, normalMicroApp{Title: item.Spec.Title, URL: mainPanelURL + "/appgroup/" + item.Name + "/micro"})
+		items = append(items, normalMicroApp{Title: item.Spec.Title, URL: baseURL + "/appgroup/" + item.Name + "/micro"})
 	}
-	return items, nil
-}
-
-func mainPanelURL() (string, error) {
-	raw := strings.TrimSpace(os.Getenv("MAIN_PANEL_URL"))
-	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
-		return "", fmt.Errorf("MAIN_PANEL_URL must be an HTTPS origin")
-	}
-	return strings.TrimRight(u.String(), "/"), nil
+	return items
 }
 
 func (self MicroApp) Info(http *gin.Context) {

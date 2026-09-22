@@ -13,26 +13,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestNormalMicroAppsUsesMainPanelURL(t *testing.T) {
-	t.Setenv("MAIN_PANEL_URL", "https://panel.example.com/")
-	items, err := normalMicroApps(&microappv1.MicroAppList{Items: []microappv1.MicroApp{{
+func TestNormalMicroAppsUsesRequestAddress(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "http://panel.example.com/panel-api/v1/noauth/microapp/normal", nil)
+	request.Header.Set("X-Forwarded-Proto", "https")
+	items := normalMicroApps(request, &microappv1.MicroAppList{Items: []microappv1.MicroApp{{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo-root"},
 		Spec:       microappv1.MicroAppSpec{Title: "Demo"},
 	}}})
-	if err != nil {
-		t.Fatal(err)
-	}
 	if len(items) != 1 || items[0].Title != "Demo" || items[0].URL != "https://panel.example.com/appgroup/demo-root/micro" {
 		t.Fatalf("normal microapps = %#v", items)
-	}
-}
-
-func TestMainPanelURLRejectsNonHTTPSOrigin(t *testing.T) {
-	for _, value := range []string{"", "http://panel.example.com", "https://panel.example.com/path", "https://user:pass@panel.example.com"} {
-		t.Setenv("MAIN_PANEL_URL", value)
-		if _, err := mainPanelURL(); err == nil {
-			t.Fatalf("mainPanelURL(%q) succeeded", value)
-		}
 	}
 }
 
