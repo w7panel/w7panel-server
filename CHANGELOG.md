@@ -2,6 +2,10 @@
 
 ## 2026-09-21
 
+- 新增受面板鉴权与操作审计保护的 Copilot API：提供脱敏集群上下文、OpenAI 兼容流式代理，以及 Kubernetes 资源的 dry-run/确认执行流程。
+- 配置：`COPILOT_ENABLED`、`COPILOT_OPENAI_BASE_URL`、`COPILOT_OPENAI_API_KEY`、`COPILOT_MODEL`。
+- 验证：`make test TEST_PACKAGES=./app/application/http/controller`、`git diff --check`。
+
 - `app-info` 接口新增 `isSubCluster` 字段，基于 `helper.IsChildAgent()`（环境变量 `IS_CHILD`）返回当前是否为子集群；影响模块：`app/application/http/controller/helm.go`。
 
 ## 2026-09-20
