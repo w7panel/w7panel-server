@@ -464,10 +464,10 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/datatypes v1.1.1-0.20230130040222-c43177d3cf8c // indirect
-	gorm.io/driver/mysql v1.5.1-0.20230509030346-3715c134c25b // indirect
+	gorm.io/driver/mysql v1.5.7 // indirect
 	gorm.io/gen v0.3.23 // indirect
 	gorm.io/hints v1.1.0 // indirect
-	gorm.io/plugin/dbresolver v1.3.0 // indirect
+	gorm.io/plugin/dbresolver v1.6.2 // indirect
 	helm.sh/helm/v3 v3.18.5
 	k8s.io/apimachinery v0.36.1
 	k8s.io/client-go v0.36.1

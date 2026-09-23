@@ -165,13 +165,9 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		apiGroup := engine.Group("/panel-api/v1") //.Use(middleware.Cors{}.Process)
 		{
-			copilotGroup := apiGroup.Group("/copilot", middleware.Auth{}.Process)
-			copilotGroup.GET("/context", controller2.Copilot{}.Context)
-			copilotGroup.POST("/stream", controller2.Copilot{}.Stream)
-			actionsGroup := copilotGroup.Group("/actions", middleware.Audit{}.Process)
-			actionsGroup.POST("", controller2.Copilot{}.CreateAction)
-			actionsGroup.POST("/:id/confirm", controller2.Copilot{}.ConfirmAction)
-			actionsGroup.POST("/:id/reject", controller2.Copilot{}.RejectAction)
+			// copilotGroup := apiGroup.Group("/copilot", middleware.Auth{}.Process)
+			// copilotGroup.GET("/context", controller2.Copilot{}.Context)
+			// copilotGroup.POST("/stream", controller2.Copilot{}.Stream)
 			apiGroup.GET("/namespaces", middleware.Auth{}.Process, controller2.Namespaces{}.GetList)
 			apiGroup.GET("/cluster/nodes/:name/longhorn-replicas", middleware.Auth{}.Process, controller2.Nodes{}.GetLonghornReplicas)
 			apiGroup.POST("/cluster/nodes/:name/longhorn-replicas/delete", middleware.Auth{}.Process, controller2.Nodes{}.DeleteLonghornReplicas)
