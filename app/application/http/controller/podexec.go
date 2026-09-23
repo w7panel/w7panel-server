@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +16,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/pid"
 	"github.com/w7panel/w7panel/common/service/k8s/remotecommand"
@@ -269,6 +272,77 @@ func (p PodExec) NodeTty(http *gin.Context) {
 		slog.Warn("node tty run error", "hostIp", params.HostIp, "reason", reason, "err", err)
 		p.JsonResponseWithServerError(http, err)
 		return
+	}
+}
+
+// NodeTtyForward connects the browser terminal to the panel instance running
+// on the selected node. It avoids a Kubernetes exec hop through the agent pod.
+func (p PodExec) NodeTtyForward(http *gin.Context) {
+	type ParamsValidate struct {
+		Shell  string `form:"shell,default=/bin/bash" binding:"oneof=/bin/sh /bin/bash"`
+		HostIp string `form:"hostIp" binding:"required"`
+	}
+	params := ParamsValidate{}
+	if !p.Validate(http, &params) {
+		return
+	}
+	target, err := nodeTtyTarget(params.HostIp, params.Shell, helper.GetToken(http))
+	if err != nil {
+		p.JsonResponseWithServerError(http, err)
+		return
+	}
+	dialer := websocket.Dialer{HandshakeTimeout: 10 * time.Second, Subprotocols: websocket.Subprotocols(http.Request)}
+	upstream, _, err := dialer.DialContext(http.Request.Context(), target, nil)
+	if err != nil {
+		slog.Warn("node tty connect error", "hostIp", params.HostIp, "err", err)
+		p.JsonResponseWithServerError(http, fmt.Errorf("node tty is unavailable"))
+		return
+	}
+	defer upstream.Close()
+
+	client, err := upgrader.Upgrade(http.Writer, http.Request, nil)
+	if err != nil {
+		return
+	}
+	defer client.Close()
+
+	execTimeout := facade.GetConfig().GetInt("k8s.exec_timeout_seconds")
+	if execTimeout <= 0 {
+		execTimeout = 1800
+	}
+	done := make(chan struct{}, 2)
+	go relayNodeTTY(upstream, client, done)
+	go relayNodeTTY(client, upstream, done)
+	select {
+	case <-done:
+	case <-time.After(time.Duration(execTimeout) * time.Second):
+		slog.Info("node tty session closing", "hostIp", params.HostIp, "reason", "timeout")
+	}
+}
+
+func nodeTtyTarget(hostIP, shell, token string) (string, error) {
+	ip := net.ParseIP(hostIP)
+	if ip == nil {
+		return "", fmt.Errorf("invalid hostIp")
+	}
+	target := url.URL{Scheme: "ws", Host: net.JoinHostPort(ip.String(), "8000"), Path: "/panel-api/v1/tty"}
+	query := target.Query()
+	query.Set("shell", shell)
+	query.Set("api-token", token)
+	target.RawQuery = query.Encode()
+	return target.String(), nil
+}
+
+func relayNodeTTY(dst, src *websocket.Conn, done chan<- struct{}) {
+	defer func() { done <- struct{}{} }()
+	for {
+		messageType, message, err := src.ReadMessage()
+		if err != nil {
+			return
+		}
+		if err := dst.WriteMessage(messageType, message); err != nil {
+			return
+		}
 	}
 }
 

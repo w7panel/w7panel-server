@@ -189,7 +189,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		localApiGroup := engine.Group("/panel-api/v1") //.Use(middleware.Cors{}.Process)
 		{
 			localApiGroup.GET("/tty", middleware.Auth{}.Process, controller2.PodExec{}.Tty)
-			localApiGroup.GET("/nodetty", middleware.Auth{}.Process, controller2.PodExec{}.NodeTty)
+			localApiGroup.GET("/nodetty", middleware.Auth{}.Process, controller2.PodExec{}.NodeTtyForward)
 			localApiGroup.GET("/download/*path", middleware.DownloadAuth{}.Process, controller2.File{}.Download)
 			localApiGroup.POST("/download-grants", middleware.Auth{}.Process, controller2.File{}.DownloadGrant)
 			localApiGroup.POST("/cp", middleware.Auth{}.Process, controller2.PodExec{}.KubectlCp) //kubectl cp文件
