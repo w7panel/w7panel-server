@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"net/http"
+	stdhttp "net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"os/exec"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/pid"
 	"github.com/w7panel/w7panel/common/service/k8s/remotecommand"
@@ -34,7 +34,7 @@ var upgrader = websocket.Upgrader{
 	Subprotocols:    []string{"w7panel-ckm", "w7panel-terminal"},
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
+	CheckOrigin: func(r *stdhttp.Request) bool {
 		return true
 	},
 }
@@ -275,8 +275,8 @@ func (p PodExec) NodeTty(http *gin.Context) {
 	}
 }
 
-// NodeTtyForward connects the browser terminal to the panel instance running
-// on the selected node. It avoids a Kubernetes exec hop through the agent pod.
+// NodeTtyForward proxies the browser terminal to the panel instance running on
+// the selected node. ReverseProxy handles the WebSocket Upgrade directly.
 func (p PodExec) NodeTtyForward(http *gin.Context) {
 	type ParamsValidate struct {
 		Shell  string `form:"shell,default=/bin/bash" binding:"oneof=/bin/sh /bin/bash"`
@@ -286,64 +286,35 @@ func (p PodExec) NodeTtyForward(http *gin.Context) {
 	if !p.Validate(http, &params) {
 		return
 	}
-	target, err := nodeTtyTarget(params.HostIp, params.Shell, helper.GetToken(http))
+	target, err := nodeTtyTarget(params.HostIp)
 	if err != nil {
 		p.JsonResponseWithServerError(http, err)
 		return
 	}
-	dialer := websocket.Dialer{HandshakeTimeout: 10 * time.Second, Subprotocols: websocket.Subprotocols(http.Request)}
-	upstream, _, err := dialer.DialContext(http.Request.Context(), target, nil)
-	if err != nil {
-		slog.Warn("node tty connect error", "hostIp", params.HostIp, "err", err)
-		p.JsonResponseWithServerError(http, fmt.Errorf("node tty is unavailable"))
-		return
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	director := proxy.Director
+	proxy.Director = func(request *stdhttp.Request) {
+		director(request)
+		request.URL.Path = "/panel-api/v1/tty"
+		request.URL.RawPath = ""
+		query := request.URL.Query()
+		query.Del("hostIp")
+		request.URL.RawQuery = query.Encode()
+		request.Host = target.Host
 	}
-	defer upstream.Close()
-
-	client, err := upgrader.Upgrade(http.Writer, http.Request, nil)
-	if err != nil {
-		return
+	proxy.ErrorHandler = func(writer stdhttp.ResponseWriter, _ *stdhttp.Request, err error) {
+		slog.Warn("node tty proxy error", "hostIp", params.HostIp, "err", err)
+		stdhttp.Error(writer, "node tty is unavailable", stdhttp.StatusBadGateway)
 	}
-	defer client.Close()
-
-	execTimeout := facade.GetConfig().GetInt("k8s.exec_timeout_seconds")
-	if execTimeout <= 0 {
-		execTimeout = 1800
-	}
-	done := make(chan struct{}, 2)
-	go relayNodeTTY(upstream, client, done)
-	go relayNodeTTY(client, upstream, done)
-	select {
-	case <-done:
-	case <-time.After(time.Duration(execTimeout) * time.Second):
-		slog.Info("node tty session closing", "hostIp", params.HostIp, "reason", "timeout")
-	}
+	proxy.ServeHTTP(http.Writer, http.Request)
 }
 
-func nodeTtyTarget(hostIP, shell, token string) (string, error) {
+func nodeTtyTarget(hostIP string) (*url.URL, error) {
 	ip := net.ParseIP(hostIP)
 	if ip == nil {
-		return "", fmt.Errorf("invalid hostIp")
+		return nil, fmt.Errorf("invalid hostIp")
 	}
-	target := url.URL{Scheme: "ws", Host: net.JoinHostPort(ip.String(), "8000"), Path: "/panel-api/v1/tty"}
-	query := target.Query()
-	query.Set("shell", shell)
-	query.Set("api-token", token)
-	target.RawQuery = query.Encode()
-	return target.String(), nil
-}
-
-func relayNodeTTY(dst, src *websocket.Conn, done chan<- struct{}) {
-	defer func() { done <- struct{}{} }()
-	for {
-		messageType, message, err := src.ReadMessage()
-		if err != nil {
-			return
-		}
-		if err := dst.WriteMessage(messageType, message); err != nil {
-			return
-		}
-	}
+	return &url.URL{Scheme: "http", Host: net.JoinHostPort(ip.String(), "8000")}, nil
 }
 
 func (self PodExec) Tty(http *gin.Context) {
