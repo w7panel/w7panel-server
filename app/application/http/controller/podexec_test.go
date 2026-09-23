@@ -1,13 +1,9 @@
 package controller
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"os"
 	"testing"
 
-	"github.com/gorilla/websocket"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/kubectl/pkg/cmd/cp"
@@ -15,60 +11,15 @@ import (
 )
 
 func TestNodeTtyTarget(t *testing.T) {
-	target, err := nodeTtyTarget("2001:db8::1", "/bin/bash", "token")
+	target, err := nodeTtyTarget("2001:db8::1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	parsed, err := url.Parse(target)
-	if err != nil || parsed.Host != "[2001:db8::1]:8000" || parsed.Path != "/panel-api/v1/tty" || parsed.Query().Get("shell") != "/bin/bash" || parsed.Query().Get("api-token") != "token" {
-		t.Fatalf("unexpected target: %q", target)
+	if target.Scheme != "http" || target.Host != "[2001:db8::1]:8000" {
+		t.Fatalf("unexpected target: %s", target)
 	}
-	if _, err := nodeTtyTarget("host.example", "/bin/sh", "token"); err == nil {
+	if _, err := nodeTtyTarget("host.example"); err == nil {
 		t.Fatal("expected invalid hostIp to fail")
-	}
-}
-
-func TestRelayNodeTTYForwardsTerminalMessages(t *testing.T) {
-	connections := make(chan *websocket.Conn, 2)
-	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		connection, err := upgrader.Upgrade(writer, request, nil)
-		if err == nil {
-			connections <- connection
-		}
-	}))
-	defer server.Close()
-	endpoint := "ws" + server.URL[len("http"):]
-	left, _, err := websocket.DefaultDialer.Dial(endpoint, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer left.Close()
-	serverLeft := <-connections
-	defer serverLeft.Close()
-	right, _, err := websocket.DefaultDialer.Dial(endpoint, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer right.Close()
-	serverRight := <-connections
-	defer serverRight.Close()
-
-	done := make(chan struct{}, 2)
-	go relayNodeTTY(serverRight, serverLeft, done)
-	go relayNodeTTY(serverLeft, serverRight, done)
-	if err := left.WriteMessage(websocket.TextMessage, []byte("stdin")); err != nil {
-		t.Fatal(err)
-	}
-	messageType, message, err := right.ReadMessage()
-	if err != nil || messageType != websocket.TextMessage || string(message) != "stdin" {
-		t.Fatalf("text relay = %d %q %v", messageType, message, err)
-	}
-	if err := right.WriteMessage(websocket.BinaryMessage, []byte{1, 2, 3, 4}); err != nil {
-		t.Fatal(err)
-	}
-	messageType, message, err = left.ReadMessage()
-	if err != nil || messageType != websocket.BinaryMessage || string(message) != string([]byte{1, 2, 3, 4}) {
-		t.Fatalf("binary relay = %d %v %v", messageType, message, err)
 	}
 }
 
