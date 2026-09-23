@@ -36,9 +36,11 @@
                 "MOCK_LONGHORN_LOCK" : "false",
                 "W7PANEL_AUTH_MODE": "panel",
                 "IS_CHILD" : "true",
+                "COPILOT_ENABLED" : "true",
                 // "SITE_ENABLED" : "true",
                 // "KUBECONFIG": "/home/workspace/k8s-offline/k3k-k8-k8-kubeconfig.yaml"
             },
+            "envFile": "${workspaceFolder}/.vscode/.env.local",
             "type": "go",
             "request": "launch",
             "asRoot": true,
