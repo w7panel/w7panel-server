@@ -286,7 +286,13 @@ func (p PodExec) NodeTtyForward(http *gin.Context) {
 	if !p.Validate(http, &params) {
 		return
 	}
-	target, err := nodeTtyTarget(params.HostIp)
+	rootsdk := k8s.NewK8sClient().Sdk
+	findPod, err := rootsdk.GetDaemonsetAgentPod(rootsdk.GetNamespace(), params.HostIp)
+	if err != nil {
+		p.JsonResponseWithServerError(http, err)
+		return
+	}
+	target, err := nodeTtyTarget(findPod.Status.PodIP)
 	if err != nil {
 		p.JsonResponseWithServerError(http, err)
 		return

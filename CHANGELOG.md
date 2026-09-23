@@ -437,3 +437,12 @@
 - 验证：MicroApp Controller 与依赖标签同步定向测试通过。
 
 2026-09-22: HostCheck 拒绝 9090 非 IP Host 时仅返回 HTTP 400，不再向客户端输出错误详情；验证：`go test ./common/middleware`。
+
+## 2026-09-23（adk 工具编译修复）
+
+- 修复 `common/service/adk/adk_tools.go` 中 `functiontool.New` 调用缺少尾随逗号导致的语法错误；同时让 `kubectlTool` 显式校验 `err` 并返回已构造的工具，局部变量不再遮蔽同名函数。
+- ADK v2 未提供 `functiontool` 包，工具处理函数签名改用 adk v1 的 `agent.ToolContext`，并移除该文件未使用的 `google.golang.org/adk/v2/agent` 导入，使包可编译。
+- 新增 `common/service/adk/adk_tools_test.go`，覆盖 bash_kubectl 工具构造与 `kubectlArgs` 对 shell 操作符、Secrets、凭据覆盖、非法前缀和参数数量的拒绝逻辑。
+- 影响模块：adk 工具层。
+- 验证：`make test TEST_PACKAGES=./common/service/adk/` 通过。
+

@@ -69,3 +69,7 @@ build.sh
 .w7-go-tmp/**
 .code-review-graph/**
 /.vscode/.env.local
+.env
+*.env
+agent/**
+/agent 

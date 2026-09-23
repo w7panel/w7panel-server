@@ -3,6 +3,7 @@ package pid
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/terminal"
@@ -26,13 +27,32 @@ func NewPidTest(saName string) (*pid, error) {
 }
 
 func (p *pid) Handle(param PidParam) (*PidResult, error) {
+	var pod *corev1.Pod
 	if param.FromPodName == "" {
-		return nil, fmt.Errorf("podName is required")
+		podx, err := p.rootSdk.GetDaemonsetAgentPod(p.rootSdk.GetNamespace(), param.HostIp)
+		if err != nil {
+			slog.Error("get  daemonsetPod err", "err", err)
+			return nil, err
+		}
+		pod = podx
+		//节点管理 不再返回agent pod 直接节点ip:9090 访问
+		// 9090 是面板pod 不是agent pod
+		// return &PidResult{
+		// 	Pid:           1,
+		// 	ProxyIp:       param.HostIp,
+		// 	ProxyPort:     9090,
+		// 	AgentPod:      nil,
+		// 	ContainerName: param.FromPodContainerName,
+		// 	Pwd:           "/",
+		// }, nil
+	} else {
+		pody, err := p.rootSdk.ClientSet.CoreV1().Pods(param.Namespace).Get(context.Background(), param.FromPodName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		pod = pody
 	}
-	pod, err := p.rootSdk.ClientSet.CoreV1().Pods(param.Namespace).Get(context.Background(), param.FromPodName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
+
 	if param.HostIp != "" && pod.Status.HostIP != param.HostIp {
 		return nil, fmt.Errorf("target node is not local: requested %s, pod runs on %s", param.HostIp, pod.Status.HostIP)
 	}

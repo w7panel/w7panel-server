@@ -2,9 +2,9 @@ package adk
 
 import (
 	"context"
+	"os"
 	"strings"
 
-	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
@@ -57,9 +57,9 @@ type Agent struct {
 }
 
 func llm(ctx context.Context) (model.LLM, error) {
-	model, err := openaimodel.NewModel(ctx, facade.Config.GetString("copilot.model"), &openaimodel.ClientConfig{
-		APIKey:  facade.Config.GetString("copilot.openai_api_key"),
-		BaseURL: strings.TrimRight(facade.Config.GetString("copilot.openai_base_url"), "/"),
+	model, err := openaimodel.NewModel(ctx, os.Getenv("ADK_MODEL"), &openaimodel.ClientConfig{
+		APIKey:  os.Getenv("ADK_OPENAI_API_KEY"),
+		BaseURL: strings.TrimRight(os.Getenv("ADK_OPENAI_BASE_URL"), "/"),
 	})
 	if err != nil {
 		return nil, err

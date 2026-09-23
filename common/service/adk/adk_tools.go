@@ -1,13 +1,21 @@
 package adk
 
-type kubectlCommandArgs struct {
-	Command string `json:"command" jsonschema:"A kubectl command without shell operators"`
-}
-type kubectlResult struct {
-	ID        string `json:"id"`
-	Operation string `json:"operation"`
-	Resource  string `json:"resource"`
-}
+import (
+	"context"
+	"fmt"
+	"os/exec"
+	"strings"
+	"time"
+)
+
+// type kubectlCommandArgs struct {
+// 	Command string `json:"command" jsonschema:"A kubectl command without shell operators"`
+// }
+// type kubectlResult struct {
+// 	ID        string `json:"id"`
+// 	Operation string `json:"operation"`
+// 	Resource  string `json:"resource"`
+// }
 
 // func proxyTool() (tool.Tool, error) {
 // 	proxyTool, err := functiontool.New(functiontool.Config{Name: "k8s_proxy_request", Description: "Make a read-only GET request through the current user's Kubernetes proxy credential."}, func(_ agent.Context, args copilotProxyArgs) (copilotProxyResult, error) {
@@ -19,12 +27,18 @@ type kubectlResult struct {
 // }
 
 // func kubectlTool() (tool.Tool, error) {
-// 	kubectlTool, err := functiontool.New(functiontool.Config{
+// 	cfg := functiontool.Config{
 // 		Name:        "bash_kubectl",
-// 		Description: "Propose a kubectl command for user confirmation; it cannot execute until the user confirms."},
+// 		Description: "Propose a kubectl command for user confirmation; it cannot execute until the user confirms.",
+// 	}
+// 	kubectlTool, err := functiontool.New(
+// 		cfg,
 // 		func(actx agent.Context, args kubectlCommandArgs) (kubectlResult, error) {
-
-// 		})
+// 			return kubectlResult{}, nil
+// 		},
+// 	)
+// 	return kubectlTool, err
+// }
 
 // 	return kubectlTool, err
 // }
@@ -99,29 +113,29 @@ type kubectlResult struct {
 // 	return copilotProposalResponse{ID: id, Operation: "command", Resource: strings.Join(args, " "), ExpiresAt: expiresAt}, nil
 // }
 
-// func copilotKubectlArgs(command string) ([]string, error) {
-// 	if strings.ContainsAny(command, "\n\r;|&><`$") {
-// 		return nil, fmt.Errorf("shell operators are not allowed")
-// 	}
-// 	args := strings.Fields(command)
-// 	if len(args) < 2 || len(args) > 32 || args[0] != "kubectl" {
-// 		return nil, fmt.Errorf("command must be a kubectl command with at most 31 arguments")
-// 	}
-// 	for _, arg := range args[1:] {
-// 		lower := strings.ToLower(arg)
-// 		if lower == "secret" || lower == "secrets" || strings.HasPrefix(lower, "--kubeconfig") || strings.HasPrefix(lower, "--server") || strings.HasPrefix(lower, "--token") || strings.HasPrefix(lower, "--context") {
-// 			return nil, fmt.Errorf("command may not access Secrets or override cluster credentials")
-// 		}
-// 	}
-// 	return args, nil
-// }
+func kubectlArgs(command string) ([]string, error) {
+	if strings.ContainsAny(command, "\n\r;|&><`$") {
+		return nil, fmt.Errorf("shell operators are not allowed")
+	}
+	args := strings.Fields(command)
+	if len(args) < 2 || len(args) > 32 || args[0] != "kubectl" {
+		return nil, fmt.Errorf("command must be a kubectl command with at most 31 arguments")
+	}
+	for _, arg := range args[1:] {
+		lower := strings.ToLower(arg)
+		if lower == "secret" || lower == "secrets" || strings.HasPrefix(lower, "--kubeconfig") || strings.HasPrefix(lower, "--server") || strings.HasPrefix(lower, "--token") || strings.HasPrefix(lower, "--context") {
+			return nil, fmt.Errorf("command may not access Secrets or override cluster credentials")
+		}
+	}
+	return args, nil
+}
 
-// func runCopilotKubectl(ctx context.Context, args []string) (string, error) {
-// 	commandCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-// 	defer cancel()
-// 	output, err := exec.CommandContext(commandCtx, args[0], args[1:]...).CombinedOutput()
-// 	return string(output), err
-// }
+func runKubectl(ctx context.Context, args []string) (string, error) {
+	commandCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	output, err := exec.CommandContext(commandCtx, args[0], args[1:]...).CombinedOutput()
+	return string(output), err
+}
 
 // func createCopilotProposal(ctx context.Context, token, actor, operation, manifest string) (copilotProposalResponse, error) {
 // 	if operation == "" {

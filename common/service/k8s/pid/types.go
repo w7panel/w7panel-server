@@ -18,6 +18,7 @@ type PidResult struct {
 	Pid           int    `json:"pid"`
 	SubPid        int    `json:"subPid"`
 	ProxyIp       string `json:"proxyIp"`
+	ProxyPort     int    `json:"proxyPort"`
 	AgentPod      *corev1.Pod
 	ContainerName string `json:"containerName"`
 	Pwd           string `json:"pwd"`
@@ -34,16 +35,11 @@ func (p *PidResult) ToArray() map[string]string {
 	podIp := p.ProxyIp
 	pidstr := strconv.Itoa(p.Pid)
 	subpidstr := strconv.Itoa(p.SubPid)
-	// webdavUrl := "/panel-api/v1/" + podIp + ":8000/proxy/panel-api/v1/files/webdav-agent/" + pidstr + "/agent"
-	// webdavBasePath := "panel-api/v1/files/webdav-agent/" + pidstr + "/agent" //前端根据这个过滤掉 当前目录?
-	// compressUrl := "/panel-api/v1/" + podIp + ":8000/proxy/panel-api/v1/files/compress-agent/" + pidstr
-	// permissionUrl := "/panel-api/v1/" + podIp + ":8000/proxy/panel-api/v1/files/permission-agent/" + pidstr
-	// if p.SubPid > 0 {
-	// 	webdavUrl = "/panel-api/v1/" + podIp + ":8000/proxy/panel-api/v1/files/webdav-agent/" + pidstr + "/subagent/" + subpidstr + "/agent"
-	// 	webdavBasePath = "panel-api/v1/files/webdav-agent/" + pidstr + "/subagent/" + subpidstr + "/agent"
-	// 	compressUrl = "/panel-api/v1/" + podIp + ":8000/proxy/panel-api/v1/files/compress-agent/" + pidstr + "/subagent/" + subpidstr
-	// 	permissionUrl = "/panel-api/v1/" + podIp + ":8000/proxy/panel-api/v1/files/permission-agent/" + pidstr + "/subagent/" + subpidstr
-	// }
+
+	proxyPortStr := "8000"
+	if p.ProxyPort > 0 {
+		proxyPortStr = strconv.Itoa(p.ProxyPort)
+	}
 	// Requests without an agent Pod IP are handled by the local agent endpoint.
 	webdavUrl := "/panel-api/v1/files/webdav-agent/" + pidstr + "/agent"
 	webdavBasePath := "panel-api/v1/files/webdav-agent/" + pidstr + "/agent" //前端根据这个过滤掉 当前目录?
@@ -52,24 +48,31 @@ func (p *PidResult) ToArray() map[string]string {
 
 	// An agent Pod IP allows direct forwarding to that node's daemonset agent.
 	if podIp != "" {
-		webdavUrl = "/panel-api/v1/" + podIp + ":8000/proxy/panel-api/v1/files/webdav-agent/" + pidstr + "/agent"
+		webdavUrl = "/panel-api/v1/" + podIp + ":" + proxyPortStr + "/proxy/panel-api/v1/files/webdav-agent/" + pidstr + "/agent"
 		webdavBasePath = "panel-api/v1/files/webdav-agent/" + pidstr + "/agent" //前端根据这个过滤掉 当前目录?
-		compressUrl = "/panel-api/v1/" + podIp + ":8000/proxy/panel-api/v1/files/compress-agent/" + pidstr
-		permissionUrl = "/panel-api/v1/" + podIp + ":8000/proxy/panel-api/v1/files/permission-agent/" + pidstr
+		compressUrl = "/panel-api/v1/" + podIp + ":" + proxyPortStr + "/proxy/panel-api/v1/files/compress-agent/" + pidstr
+		permissionUrl = "/panel-api/v1/" + podIp + ":" + proxyPortStr + "/proxy/panel-api/v1/files/permission-agent/" + pidstr
 	}
-	pod := p.AgentPod
+	pod := p.AgentPod //节点管理 不再返回agent pod 直接节点ip:9090 访问
 	if subpidstr == "0" {
 		subpidstr = ""
 	}
 	containerName := p.ContainerName
-	if containerName == "" && len(pod.Spec.Containers) == 1 {
+	if pod != nil && containerName == "" && len(pod.Spec.Containers) == 1 {
 		containerName = pod.Spec.Containers[0].Name
 	}
+
+	ns := "default"
+	podName := "default"
+	if pod != nil {
+		ns = pod.Namespace
+		podName = pod.Name
+	}
 	return map[string]string{
-		"podName":       pod.Name,
+		"podName":       podName,
 		"pid":           pidstr,
 		"subPid":        subpidstr,
-		"namespace":     pod.Namespace,
+		"namespace":     ns,
 		"containerName": containerName,
 		"podIp":         podIp,
 		// "pwd":            pwd,
@@ -79,7 +82,7 @@ func (p *PidResult) ToArray() map[string]string {
 		"compressUrl":    compressUrl,
 		"permissionUrl":  permissionUrl,
 		"pwd":            p.Pwd,
-		"agentUrl":       "/panel-api/v1/" + podIp + ":8000/proxy",
+		"agentUrl":       "/panel-api/v1/" + podIp + ":" + proxyPortStr + "/proxy",
 		// "users":          users,
 	}
 
