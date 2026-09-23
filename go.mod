@@ -1,6 +1,6 @@
 module github.com/w7panel/w7panel
 
-go 1.26.0
+go 1.26.6
 
 replace (
 	k8s.io/api => k8s.io/api v0.35.3
