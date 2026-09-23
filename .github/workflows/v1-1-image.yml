@@ -1,0 +1,60 @@
+name: Publish v1.1 image
+
+on:
+  push:
+    tags:
+      - "v1.1.*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.0"
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build frontend
+        run: |
+          set -eu
+          git clone --depth 1 --branch dev-v1-k3k-crd https://github.com/w7panel/w7panel-ui /tmp/w7panel-ui
+          cd /tmp/w7panel-ui
+          npm install
+          npm run build
+          cp -a dist/. "${GITHUB_WORKSPACE}/kodata/"
+
+      - name: Prepare static assets
+        run: |
+          set -eu
+          mkdir -p kodata/assets
+          cp kodata/logo.png kodata/assets/logo.png
+          cp kodata/index.html kodata/panel.html
+
+      - name: Test
+        run: make test
+
+      - name: Install ko
+        run: |
+          go install github.com/google/ko@v0.19.1
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Publish image
+        env:
+          TENCENT_DOCKER_USERNAME: ${{ secrets.TENCENT_DOCKER_USERNAME }}
+          TENCENT_DOCKER_PASSWORD: ${{ secrets.TENCENT_DOCKER_PASSWORD }}
+          KO_DOCKER_REPO: ccr.ccs.tencentyun.com/afan-public/w7panel1
+          KO_DEFAULTBASEIMAGE: ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui
+        run: |
+          set -eu
+          ko login ccr.ccs.tencentyun.com -u "$TENCENT_DOCKER_USERNAME" -p "$TENCENT_DOCKER_PASSWORD"
+          ko build --bare --tags="${GITHUB_REF_NAME}" --tag-only --sbom=none --platform=all .
