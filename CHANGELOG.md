@@ -424,3 +424,15 @@
 2026-09-20: 新增 GitHub Actions v1.1 tag 镜像发布流水线；构建 dev-v1-k3k-crd 前端、执行 Go 测试并推送腾讯镜像仓库。验证：工作流 YAML 静态检查待 CI 触发验证。
 
 2026-09-21: Helm 上传 Chart 直接读取 `/panel-api/v1/download/` 短时 `download-ticket` 绑定的本机文件，外部制品仍保持 HTTPS 白名单限制；解析失败立即返回，避免错误响应后继续创建 `memory://` 制品。验证：`go test ./common/service/artifacturl ./common/helper ./app/zpk/http`。
+
+## 2026-09-22（MicroApp 依赖索引同步）
+
+- 新增独立 MicroApp Controller；每个显式标记 `w7.cc/group-name` 的 MicroApp 在创建、更新及控制器启动初始扫描时，根据所属 AppGroup 的 `spec.dependencies` 自行重建 `w7.cc/depends-*` 标签。AppGroup WorkloadManager 和事件队列不再处理 MicroApp，admission 仅维护 ownerReference，也不按同名资源兼容回退。
+- 影响模块：AppGroup 依赖标签、MicroApp Controller 与 admission。
+- 验证：单元测试覆盖 MicroApp Controller 同步、旧索引清理和无变化时不重复 Patch；webhook 包测试通过。AppGroup 全包测试受工作树既有未跟踪 `eventqueue_test.go` 引用缺失函数阻断。
+
+## 2026-09-22（MicroApp Controller 代码整理）
+
+- 将 MicroApp 依赖标签同步逻辑收拢到 `microapp_controller.go`，删除独立的 `dependency.go`；行为保持不变。
+- 影响模块：MicroApp Controller。
+- 验证：MicroApp Controller 与依赖标签同步定向测试通过。

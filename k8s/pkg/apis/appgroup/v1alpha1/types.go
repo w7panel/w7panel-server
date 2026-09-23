@@ -2,9 +2,12 @@ package v1alpha1
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/samber/lo"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 var GROUPTYPE string
@@ -126,6 +129,28 @@ type AppGroupDependency struct {
 	Name            string `json:"name"`
 	Identifie       string `json:"identifie"`
 	ApplicationType string `json:"applicationType"`
+}
+
+const DependencyLabelPrefix = "w7.cc/depends-"
+
+func DependencyLabelKey(releaseName string) (string, error) {
+	key := DependencyLabelPrefix + strings.TrimSpace(releaseName)
+	if errs := validation.IsQualifiedName(key); len(errs) > 0 {
+		return "", fmt.Errorf("invalid dependency release name %q: %s", releaseName, strings.Join(errs, "; "))
+	}
+	return key, nil
+}
+
+func DesiredDependencyLabels(dependencies []AppGroupDependency) (map[string]string, error) {
+	desired := make(map[string]string, len(dependencies))
+	for _, dependency := range dependencies {
+		key, err := DependencyLabelKey(dependency.Name)
+		if err != nil {
+			return nil, err
+		}
+		desired[key] = "true"
+	}
+	return desired, nil
 }
 
 type AppGroupSpec struct {

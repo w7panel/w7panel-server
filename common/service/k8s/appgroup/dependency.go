@@ -6,10 +6,7 @@ import (
 
 	"github.com/w7panel/w7panel/common/service/k8s"
 	appv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
-	"k8s.io/apimachinery/pkg/util/validation"
 )
-
-const dependencyLabelNamePrefix = "depends-"
 
 // DependencyReference identifies an AppGroup dependency before its metadata is resolved.
 type DependencyReference struct {
@@ -52,7 +49,7 @@ func resolveDependencies(defaultNamespace string, references []DependencyReferen
 		if target == nil {
 			return nil, fmt.Errorf("resolve dependency %s/%s: empty AppGroup", dependencyNamespace, name)
 		}
-		if _, err = DependencyLabelKey(target.Name); err != nil {
+		if _, err = appv1.DependencyLabelKey(target.Name); err != nil {
 			return nil, err
 		}
 		dependency := appv1.AppGroupDependency{
@@ -74,33 +71,23 @@ func resolveDependencies(defaultNamespace string, references []DependencyReferen
 	return resolved, nil
 }
 
-// DependencyLabelKey returns the label key used to reverse-query AppGroups
-// that depend on the named release.
-func DependencyLabelKey(releaseName string) (string, error) {
-	key := "w7.cc/" + dependencyLabelNamePrefix + strings.TrimSpace(releaseName)
-	if errs := validation.IsQualifiedName(key); len(errs) > 0 {
-		return "", fmt.Errorf("invalid dependency release name %q: %s", releaseName, strings.Join(errs, "; "))
-	}
-	return key, nil
-}
-
 // SyncDependencyLabels removes stale dependency index labels and rebuilds them
 // from the desired AppGroup dependencies.
 func SyncDependencyLabels(group *appv1.AppGroup) error {
+	desired, err := appv1.DesiredDependencyLabels(group.Spec.Dependencies)
+	if err != nil {
+		return err
+	}
 	if group.Labels == nil {
 		group.Labels = map[string]string{}
 	}
 	for key := range group.Labels {
-		if strings.HasPrefix(key, "w7.cc/"+dependencyLabelNamePrefix) {
+		if strings.HasPrefix(key, appv1.DependencyLabelPrefix) {
 			delete(group.Labels, key)
 		}
 	}
-	for _, dependency := range group.Spec.Dependencies {
-		key, err := DependencyLabelKey(dependency.Name)
-		if err != nil {
-			return err
-		}
-		group.Labels[key] = "true"
+	for key, value := range desired {
+		group.Labels[key] = value
 	}
 	return nil
 }
