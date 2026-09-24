@@ -9,6 +9,7 @@ import (
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/model/openaimodel"
+	"google.golang.org/adk/v2/tool"
 	"google.golang.org/genai"
 )
 
@@ -16,9 +17,9 @@ const copilotAgentPrompt = `You are W7Panel Operations Agent. Help users query c
 
 The W7Panel custom-resource API group is w7panel.w7.com/v1alpha1. Its resources are AppGroup (application groups), MicroApp and MicroAppSetting (micro-app configuration), BuildImage (image builds; its serviceAccountName is server-bound), ZpkInstall and BootstrapInstallation (package installation), User and Permission (panel access), LoginConfig and OIDCClient (authentication), Site and PrivateDNS (site/DNS), ApiClient, ContactConfig, DomainParseConfig, FilingConfig, GpuClass, K3sConfig, K3kConfig, OverSellingConfig. Query these with k8s_proxy_request using paths below /apis/w7panel.w7.com/v1alpha1; use their actual API schema rather than guessing fields.
 
-k8s_proxy_request is read-only and uses the current user's Kubernetes credential. For resource changes use propose_resource_change. For imperative kubectl work use bash_kubectl: it only creates a command proposal, never executes it. The user must click confirmation before the server executes the command. Never claim a proposed or confirmed command has succeeded until its result is returned.
+k8s_proxy_request is read-only and uses the current user's Kubernetes credential. For imperative kubectl work use kubectl. It requires explicit user confirmation before execution. Never claim a confirmed command has succeeded until its result is returned.
 
-Output only OpenUI Lang statements. The first statement must be root = CopilotCard([children], "title"). Components are CopilotCard(children, title), CopilotText(text), CopilotMetric(label, value), CopilotAlert(text, level), CopilotYaml(operation, manifest), and CopilotAction(id, operation, resource). Every non-root variable must be referenced by its parent. Use CopilotAction only after propose_resource_change or bash_kubectl returns its id, operation, and resource. Use CopilotYaml only when no proposal has been created; its browser action is still server-side dry-run validated.`
+Output only OpenUI Lang statements. The first statement must be root = CopilotCard([children], "title"). Components are CopilotCard(children, title), CopilotText(text), CopilotMetric(label, value), CopilotAlert(text, level), CopilotYaml(operation, manifest), and CopilotAction(id, operation, resource). Every non-root variable must be referenced by its parent. Use CopilotAction only after propose_resource_change returns its id, operation, and resource. Use CopilotYaml only when no proposal has been created; its browser action is still server-side dry-run validated.`
 
 type copilotNoArgs struct{}
 
@@ -67,13 +68,25 @@ func llm(ctx context.Context) (model.LLM, error) {
 	return model, nil
 }
 func adkAgent(model model.LLM) (agent.Agent, error) {
+	kubectlTool, err := kubectlTool()
+	if err != nil {
+		return nil, err
+	}
 	config := llmagent.Config{Name: "w7panel_operations", Description: "k8s manager",
-		Model: model, Instruction: copilotAgentPrompt /*Tools: agentTools*/}
+		Model: model, Instruction: copilotAgentPrompt, Tools: []tool.Tool{kubectlTool}}
 	agent, err := llmagent.New(config)
 	if err != nil {
 		return nil, err
 	}
 	return agent, nil
+}
+
+func NewAgent(ctx context.Context) (agent.Agent, error) {
+	model, err := llm(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return adkAgent(model)
 }
 
 // func runCopilotAgent(ctx *gin.Context, request copilotStreamRequest, lastUser int) error {

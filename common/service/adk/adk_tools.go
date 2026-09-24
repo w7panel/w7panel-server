@@ -6,16 +6,19 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
-// type kubectlCommandArgs struct {
-// 	Command string `json:"command" jsonschema:"A kubectl command without shell operators"`
-// }
-// type kubectlResult struct {
-// 	ID        string `json:"id"`
-// 	Operation string `json:"operation"`
-// 	Resource  string `json:"resource"`
-// }
+type kubectlCommandArgs struct {
+	Command string `json:"command" jsonschema:"A kubectl command without shell operators"`
+}
+
+type kubectlResult struct {
+	Output string `json:"output"`
+}
 
 // func proxyTool() (tool.Tool, error) {
 // 	proxyTool, err := functiontool.New(functiontool.Config{Name: "k8s_proxy_request", Description: "Make a read-only GET request through the current user's Kubernetes proxy credential."}, func(_ agent.Context, args copilotProxyArgs) (copilotProxyResult, error) {
@@ -26,19 +29,20 @@ import (
 // 	}
 // }
 
-// func kubectlTool() (tool.Tool, error) {
-// 	cfg := functiontool.Config{
-// 		Name:        "bash_kubectl",
-// 		Description: "Propose a kubectl command for user confirmation; it cannot execute until the user confirms.",
-// 	}
-// 	kubectlTool, err := functiontool.New(
-// 		cfg,
-// 		func(actx agent.Context, args kubectlCommandArgs) (kubectlResult, error) {
-// 			return kubectlResult{}, nil
-// 		},
-// 	)
-// 	return kubectlTool, err
-// }
+func kubectlTool() (tool.Tool, error) {
+	return functiontool.New(functiontool.Config{
+		Name:                "kubectl",
+		Description:         "Run a kubectl command after explicit user confirmation.",
+		RequireConfirmation: true,
+	}, func(ctx agent.Context, input kubectlCommandArgs) (kubectlResult, error) {
+		args, err := kubectlArgs(input.Command)
+		if err != nil {
+			return kubectlResult{}, err
+		}
+		output, err := runKubectl(ctx, args)
+		return kubectlResult{Output: output}, err
+	})
+}
 
 // 	return kubectlTool, err
 // }

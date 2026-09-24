@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-09-24
+
+- 移除未使用的 `google.golang.org/adk v1` 依赖，统一使用 ADK v2，修复 vendor 一致性检查失败。
+
+## 2026-09-24
+
+- 新增 `agent/run.sh`，使用项目内 Go 缓存启动 ADK WebUI，默认监听 8001；通过 `ADK_MODEL`、`ADK_OPENAI_BASE_URL` 和 `ADK_OPENAI_API_KEY` 配置模型。
+
+## 2026-09-24
+
+- ADK 运维 Agent 注册需人工确认的 `kubectl` 工具；命令经现有安全校验后仅在 ADK 确认回调批准时执行。
+
 ## 2026-09-22
 
 - 运维 Copilot 按当前用户 Kubernetes 权限汇总节点、Pod、事件及资源指标，并在模型请求时附加最多三个异常 Pod 的原始最近 100 行日志；日志不再经浏览器请求体回传。
@@ -445,4 +457,3 @@
 - 新增 `common/service/adk/adk_tools_test.go`，覆盖 bash_kubectl 工具构造与 `kubectlArgs` 对 shell 操作符、Secrets、凭据覆盖、非法前缀和参数数量的拒绝逻辑。
 - 影响模块：adk 工具层。
 - 验证：`make test TEST_PACKAGES=./common/service/adk/` 通过。
-
