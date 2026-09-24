@@ -17,7 +17,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/agentpod"
 	"github.com/w7panel/w7panel/common/service/k8s/pid"
 	"github.com/w7panel/w7panel/common/service/k8s/remotecommand"
 	"github.com/w7panel/w7panel/common/service/k8s/terminal"
@@ -257,7 +259,7 @@ func (p PodExec) NodeTty(http *gin.Context) {
 		p.JsonResponseWithServerError(http, err)
 		return
 	}
-	shells := []string{"nsenter", "-t", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--", params.Shell}
+	shells := nodeTtyShell(params.Shell)
 	if findPod == nil {
 		p.JsonResponseWithServerError(http, fmt.Errorf("not found agent pod for hostIp: %s", params.HostIp))
 		return
@@ -278,6 +280,10 @@ func (p PodExec) NodeTty(http *gin.Context) {
 // NodeTtyForward proxies the browser terminal to the panel instance running on
 // the selected node. ReverseProxy handles the WebSocket Upgrade directly.
 func (p PodExec) NodeTtyForward(http *gin.Context) {
+	if http.Query("nodeTtyForwarded") == "1" {
+		p.Tty(http)
+		return
+	}
 	type ParamsValidate struct {
 		Shell  string `form:"shell,default=/bin/bash" binding:"oneof=/bin/sh /bin/bash"`
 		HostIp string `form:"hostIp" binding:"required"`
@@ -286,13 +292,7 @@ func (p PodExec) NodeTtyForward(http *gin.Context) {
 	if !p.Validate(http, &params) {
 		return
 	}
-	rootsdk := k8s.NewK8sClient().Sdk
-	findPod, err := rootsdk.GetDaemonsetAgentPod(rootsdk.GetNamespace(), params.HostIp)
-	if err != nil {
-		p.JsonResponseWithServerError(http, err)
-		return
-	}
-	target, err := nodeTtyTarget(findPod.Status.PodIP)
+	target, err := nodeTtyForwardTarget(params.HostIp)
 	if err != nil {
 		p.JsonResponseWithServerError(http, err)
 		return
@@ -301,10 +301,11 @@ func (p PodExec) NodeTtyForward(http *gin.Context) {
 	director := proxy.Director
 	proxy.Director = func(request *stdhttp.Request) {
 		director(request)
-		request.URL.Path = "/panel-api/v1/tty"
+		request.URL.Path = "/panel-api/v1/nodetty"
 		request.URL.RawPath = ""
 		query := request.URL.Query()
 		query.Del("hostIp")
+		query.Set("nodeTtyForwarded", "1")
 		request.URL.RawQuery = query.Encode()
 		request.Host = target.Host
 	}
@@ -313,6 +314,82 @@ func (p PodExec) NodeTtyForward(http *gin.Context) {
 		stdhttp.Error(writer, "node tty is unavailable", stdhttp.StatusBadGateway)
 	}
 	proxy.ServeHTTP(http.Writer, http.Request)
+}
+
+func nodeTtyShell(shell string) []string {
+	return []string{"nsenter", "-t", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--", shell}
+}
+
+func (p PodExec) RegisterAgentPodIP(http *gin.Context) {
+	type ParamsValidate struct {
+		NodeIP string `json:"nodeIp" binding:"required"`
+		PodIP  string `json:"podIp" binding:"required"`
+	}
+	if http.GetString("username") != helper.ServiceAccountName() {
+		http.Status(stdhttp.StatusForbidden)
+		return
+	}
+	params := ParamsValidate{}
+	if !p.Validate(http, &params) {
+		return
+	}
+	if err := agentpod.Register(params.NodeIP, params.PodIP); err != nil {
+		p.JsonResponseWithServerError(http, err)
+		return
+	}
+	http.Status(stdhttp.StatusNoContent)
+}
+
+func RegisterAgentPodIP() {
+	if !helper.IsAgent() {
+		return
+	}
+	nodeIP, podIP := strings.TrimSpace(os.Getenv("NODE_IP")), strings.TrimSpace(os.Getenv("POD_IP"))
+	panelURL := strings.TrimRight(strings.TrimSpace(os.Getenv("PANEL_SERVICE_URL")), "/")
+	if err := agentpod.Register(nodeIP, podIP); err != nil {
+		slog.Warn("agent pod IP registration skipped", "nodeIP", nodeIP, "podIP", podIP, "err", err)
+		return
+	}
+	if panelURL == "" {
+		slog.Warn("agent pod IP registration skipped: PANEL_SERVICE_URL is empty")
+		return
+	}
+	token, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
+	if err != nil {
+		slog.Warn("read agent service account token", "err", err)
+		return
+	}
+	for attempt := 0; attempt < 3; attempt++ {
+		response, err := helper.RetryHttpClient().R().SetAuthToken(strings.TrimSpace(string(token))).SetBody(gin.H{"nodeIp": nodeIP, "podIp": podIP}).Post(panelURL + "/internal/agent-pod")
+		if err == nil && response.IsSuccess() {
+			return
+		}
+		if attempt == 2 {
+			status := 0
+			if response != nil {
+				status = response.StatusCode()
+			}
+			slog.Warn("register agent pod IP", "status", status, "err", err)
+			return
+		}
+		time.Sleep(time.Second)
+	}
+}
+
+func nodeTtyForwardTarget(hostIP string) (*url.URL, error) {
+	nodeIP := net.ParseIP(hostIP)
+	if nodeIP == nil {
+		return nil, fmt.Errorf("invalid hostIp")
+	}
+	if podIP, ok := agentpod.Lookup(nodeIP.String()); ok {
+		return nodeTtyTarget(podIP)
+	}
+	sdk := k8s.NewK8sClient().Sdk
+	agentPod, err := sdk.GetDaemonsetAgentPod(sdk.GetNamespace(), nodeIP.String())
+	if err != nil {
+		return nil, err
+	}
+	return nodeTtyTarget(agentPod.Status.PodIP)
 }
 
 func nodeTtyTarget(hostIP string) (*url.URL, error) {
@@ -333,7 +410,11 @@ func (self PodExec) Tty(http *gin.Context) {
 	}
 
 	ttyChrootDir := facade.GetConfig().GetString("k8s.tty_chroot_dir")
-	cmd := exec.Command(params.Shell)
+	command := []string{params.Shell}
+	if http.Request.URL.Path == "/panel-api/v1/nodetty" && http.Query("nodeTtyForwarded") == "1" {
+		command = nodeTtyShell(params.Shell)
+	}
+	cmd := exec.Command(command[0], command[1:]...)
 	// 获取当前进程的所有环境变量
 	cmd.Env = os.Environ()
 	// 设置新的环境变量

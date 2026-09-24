@@ -70,6 +70,10 @@ spec:
             value: "true"     
           - name: IS_AGENT
             value: "true"
+          - name: SERVICE_ACCOUNT_NAME
+            value: {{ .Release.Name }}
+          - name: PANEL_SERVICE_URL
+            value: {{ printf "http://%s.%s.svc:8000" (include "helm.fullname" .) .Release.Namespace | quote }}
           - name: PANEL_AUTH_SIGNING_KEY
             valueFrom:
               secretKeyRef:

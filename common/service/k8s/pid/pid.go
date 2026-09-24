@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/agentpod"
 	"github.com/w7panel/w7panel/common/service/k8s/terminal"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -91,9 +92,13 @@ func (p *pid) Handle(param PidParam) (*PidResult, error) {
 			pwd = pwd1
 		}
 	}
+	proxyIP := agentPod.Status.PodIP
+	if registeredPodIP, ok := agentpod.Lookup(pod.Status.HostIP); ok {
+		proxyIP = registeredPodIP
+	}
 	return &PidResult{
 		Pid:           pidValue,
-		ProxyIp:       agentPod.Status.PodIP,
+		ProxyIp:       proxyIP,
 		AgentPod:      agentPod,
 		ContainerName: param.FromPodContainerName,
 		Pwd:           pwd,

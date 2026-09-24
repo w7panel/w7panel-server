@@ -47,6 +47,9 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(consoleShell.TestUploadChunk)) // 测试分片上传功能
 
 	p.RegisterHttpRoutes(httpServer)
+	if helper.IsAgent() {
+		go controller2.RegisterAgentPodIP()
+	}
 	p.cleanupLegacyK3sAddons()
 	console2.SetConsoleApi(facade.GetConfig().GetString("app.console_base_url"))
 	if helper.IsLocalMock() {
@@ -160,6 +163,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	webdavMethods := []string{"PROPFIND", "PROPPATCH", "MKCOL", "COPY", "MOVE", "LOCK", "UNLOCK", "LINK", "UNLINK", "GET", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH", "POST"}
 	server.RegisterRouters(func(engine *gin.Engine) {
 		engine.GET("/docs/openapi", controller2.OpenAPI{}.Page)
+		engine.POST("/internal/agent-pod", middleware.Auth{}.ProcessServiceAccount, controller2.PodExec{}.RegisterAgentPodIP)
 		engine.GET("/docs/openapi/spec", controller2.OpenAPI{}.Spec)
 		engine.GET("/openapi.json", controller2.OpenAPI{}.RedirectJSON)
 

@@ -133,6 +133,12 @@ func (self Auth) ProcessKubernetesToken(ctx *gin.Context, token string) {
 	ctx.Next()
 }
 
+// ProcessServiceAccount authenticates an in-cluster caller with its mounted
+// ServiceAccount token, even when panel authentication is enabled.
+func (self Auth) ProcessServiceAccount(ctx *gin.Context) {
+	self.ProcessKubernetesToken(ctx, self.getToken(ctx))
+}
+
 func (self Auth) abortUnauthorized(ctx *gin.Context, msg string) {
 	ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 		"code": http.StatusUnauthorized,
