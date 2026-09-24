@@ -30,22 +30,27 @@ func NewPidTest(saName string) (*pid, error) {
 func (p *pid) Handle(param PidParam) (*PidResult, error) {
 	var pod *corev1.Pod
 	if param.FromPodName == "" {
-		podx, err := p.rootSdk.GetDaemonsetAgentPod(p.rootSdk.GetNamespace(), param.HostIp)
-		if err != nil {
-			slog.Error("get  daemonsetPod err", "err", err)
-			return nil, err
+		proxyIP := ""
+		if registeredPodIP, ok := agentpod.Lookup(param.HostIp); ok {
+			proxyIP = registeredPodIP
+		} else {
+			podx, err := p.rootSdk.GetDaemonsetAgentPod(p.rootSdk.GetNamespace(), param.HostIp)
+			if err != nil {
+				slog.Error("get  daemonsetPod err", "err", err)
+				return nil, err
+			}
+			proxyIP = podx.Status.PodIP
 		}
-		pod = podx
-		//节点管理 不再返回agent pod 直接节点ip:9090 访问
+
 		// 9090 是面板pod 不是agent pod
-		// return &PidResult{
-		// 	Pid:           1,
-		// 	ProxyIp:       param.HostIp,
-		// 	ProxyPort:     9090,
-		// 	AgentPod:      nil,
-		// 	ContainerName: param.FromPodContainerName,
-		// 	Pwd:           "/",
-		// }, nil
+		return &PidResult{
+			Pid:     1,
+			ProxyIp: proxyIP,
+			// ProxyPort:     9090,
+			AgentPod:      nil,
+			ContainerName: param.FromPodContainerName,
+			Pwd:           "/",
+		}, nil
 	} else {
 		pody, err := p.rootSdk.ClientSet.CoreV1().Pods(param.Namespace).Get(context.Background(), param.FromPodName, metav1.GetOptions{})
 		if err != nil {
