@@ -359,19 +359,16 @@ func RegisterAgentPodIP() {
 		slog.Warn("read agent service account token", "err", err)
 		return
 	}
-	for attempt := 0; attempt < 3; attempt++ {
+	for {
 		response, err := helper.RetryHttpClient().R().SetAuthToken(strings.TrimSpace(string(token))).SetBody(gin.H{"nodeIp": nodeIP, "podIp": podIP}).Post(panelURL + "/internal/agent-pod")
 		if err == nil && response.IsSuccess() {
 			return
 		}
-		if attempt == 2 {
-			status := 0
-			if response != nil {
-				status = response.StatusCode()
-			}
-			slog.Warn("register agent pod IP", "status", status, "err", err)
-			return
+		status := 0
+		if response != nil {
+			status = response.StatusCode()
 		}
+		slog.Warn("register agent pod IP", "status", status, "err", err)
 		time.Sleep(time.Second)
 	}
 }

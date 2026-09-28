@@ -457,3 +457,4 @@
 - 新增 `common/service/adk/adk_tools_test.go`，覆盖 bash_kubectl 工具构造与 `kubectlArgs` 对 shell 操作符、Secrets、凭据覆盖、非法前缀和参数数量的拒绝逻辑。
 - 影响模块：adk 工具层。
 - 验证：`make test TEST_PACKAGES=./common/service/adk/` 通过。
+2026-09-28: Agent 注册面板 Pod IP 失败后改为每秒持续重试，直到面板接受注册；影响模块：Agent Pod IP 注册。验证：未运行测试。
