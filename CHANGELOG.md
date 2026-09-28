@@ -458,3 +458,4 @@
 - 影响模块：adk 工具层。
 - 验证：`make test TEST_PACKAGES=./common/service/adk/` 通过。
 2026-09-28: Agent 注册面板 Pod IP 失败后改为每秒持续重试，直到面板接受注册；影响模块：Agent Pod IP 注册。验证：未运行测试。
+2026-09-28: PID 与 NodeTTY/WebShell 路径增加 Agent Pod IP 解析日志，包含节点 IP、最终 Pod IP 及是否使用注册映射。影响模块：PID、NodeTTY 转发。验证：未运行测试。

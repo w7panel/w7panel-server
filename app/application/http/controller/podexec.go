@@ -264,6 +264,7 @@ func (p PodExec) NodeTty(http *gin.Context) {
 		p.JsonResponseWithServerError(http, fmt.Errorf("not found agent pod for hostIp: %s", params.HostIp))
 		return
 	}
+	slog.Info("node tty agent pod selected", "nodeIP", params.HostIp, "podIP", findPod.Status.PodIP)
 	err = rootsdk.RunExec(session, findPod.Namespace, findPod.Name, findPod.Spec.Containers[0].Name, shells, true)
 	if err != nil {
 		reason := "upstream_close"
@@ -379,6 +380,7 @@ func nodeTtyForwardTarget(hostIP string) (*url.URL, error) {
 		return nil, fmt.Errorf("invalid hostIp")
 	}
 	if podIP, ok := agentpod.Lookup(nodeIP.String()); ok {
+		slog.Info("node tty agent pod selected", "nodeIP", nodeIP.String(), "podIP", podIP, "registered", true)
 		return nodeTtyTarget(podIP)
 	}
 	sdk := k8s.NewK8sClient().Sdk
@@ -386,6 +388,7 @@ func nodeTtyForwardTarget(hostIP string) (*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
+	slog.Info("node tty agent pod selected", "nodeIP", nodeIP.String(), "podIP", agentPod.Status.PodIP, "registered", false)
 	return nodeTtyTarget(agentPod.Status.PodIP)
 }
 

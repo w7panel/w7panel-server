@@ -31,7 +31,8 @@ func (p *pid) Handle(param PidParam) (*PidResult, error) {
 	var pod *corev1.Pod
 	if param.FromPodName == "" {
 		proxyIP := ""
-		if registeredPodIP, ok := agentpod.Lookup(param.HostIp); ok {
+		registeredPodIP, registered := agentpod.Lookup(param.HostIp)
+		if registered {
 			proxyIP = registeredPodIP
 		} else {
 			podx, err := p.rootSdk.GetDaemonsetAgentPod(p.rootSdk.GetNamespace(), param.HostIp)
@@ -41,6 +42,7 @@ func (p *pid) Handle(param PidParam) (*PidResult, error) {
 			}
 			proxyIP = podx.Status.PodIP
 		}
+		slog.Info("resolve PID agent pod IP", "nodeIP", param.HostIp, "podIP", proxyIP, "registered", registered)
 
 		// 9090 是面板pod 不是agent pod
 		return &PidResult{
@@ -98,9 +100,11 @@ func (p *pid) Handle(param PidParam) (*PidResult, error) {
 		}
 	}
 	proxyIP := agentPod.Status.PodIP
-	if registeredPodIP, ok := agentpod.Lookup(pod.Status.HostIP); ok {
+	registeredPodIP, registered := agentpod.Lookup(pod.Status.HostIP)
+	if registered {
 		proxyIP = registeredPodIP
 	}
+	slog.Info("resolve PID agent pod IP", "nodeIP", pod.Status.HostIP, "podIP", proxyIP, "registered", registered)
 	return &PidResult{
 		Pid:           pidValue,
 		ProxyIp:       proxyIP,
