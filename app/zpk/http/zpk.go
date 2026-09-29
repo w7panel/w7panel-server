@@ -25,6 +25,7 @@ import (
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/chart"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 )
@@ -80,7 +81,7 @@ func (self Zpk) relayRepoError(ctx *gin.Context, err error) bool {
 
 func (self Zpk) GetConfig(http *gin.Context) {
 	type ParamsValidate struct {
-		RepoUrl           string `form:"repoUrl" binding:"required"`
+		RepoUrl           string `form:"repoUrl"`
 		ThirdpartyCDToken string `form:"thirdpartyCDToken"` // 域名选择业务名称
 		ReleaseName       string `form:"releaseName"`
 		Reinstall         bool   `form:"reinstall"`
@@ -90,12 +91,7 @@ func (self Zpk) GetConfig(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
-	repoUrl := params.RepoUrl
-
-	if repoUrl == "" {
-		self.JsonResponseWithServerError(http, errors.New("repo url is empty"))
-		return
-	}
+	repoUrl := strings.TrimSpace(params.RepoUrl)
 
 	// if params.ThirdpartyCDToken == "" {
 	// 	self.JsonResponseWithServerError(http, errors.New("thirdpartyCDToken is required, please login first or refresh the page"))
@@ -106,30 +102,48 @@ func (self Zpk) GetConfig(http *gin.Context) {
 
 	// slog.Info("repoUrl", repoUrl)
 	// slog.Info("ThirdpartyCDToken", params.ThirdpartyCDToken)
-	repo := logic.NewRepo(repoUrl, params.ThirdpartyCDToken, "")
-	// repo.SetCheckUpgrade(true)
 	token := http.MustGet("k8s_token").(string)
-	repo.SetPanelToken(token)
-	k8sToken := k8s.NewK8sToken(token)
 	client, err := k8s.NewK8sClient().Channel(token)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	saName, err := k8sToken.GetUserName()
-	if err != nil {
-		slog.Error("zpk config get saName err", "err", err)
+	params.ReleaseName = strings.ToLower(strings.TrimSpace(params.ReleaseName))
+	if params.RuntimeContext && params.ReleaseName == "" {
+		self.JsonResponseWithError(http, errors.New("releaseName is required for runtime context"), nethttp.StatusBadRequest)
+		return
 	}
-	params.ReleaseName = strings.ToLower(params.ReleaseName)
+	appgroupObj, appgroupErr := appgroup.GetAppgroupUseSdk(params.ReleaseName, client.GetNamespace(), client)
+	if params.RuntimeContext {
+		if appgroupErr != nil {
+			if apierrors.IsNotFound(appgroupErr) {
+				self.JsonResponseWithoutError(http, runtimeContextResponse{Status: "not_supported"})
+				return
+			}
+			self.JsonResponseWithServerError(http, appgroupErr)
+			return
+		}
+		repoUrl = strings.TrimSpace(appgroupObj.Spec.ZpkUrl)
+		if repoUrl == "" {
+			self.JsonResponseWithoutError(http, runtimeContextResponse{Status: "not_supported"})
+			return
+		}
+	} else if repoUrl == "" {
+		self.JsonResponseWithServerError(http, errors.New("repo url is empty"))
+		return
+	}
+
+	repo := logic.NewRepo(repoUrl, params.ThirdpartyCDToken, "")
+	// repo.SetCheckUpgrade(true)
+	repo.SetPanelToken(token)
 	repo.SetAppIdentify(params.ReleaseName)
 	repo.SetReinstall(params.Reinstall)
 	repo.SetRuntimeContext(params.RuntimeContext)
-	appgroupObj, err := appgroup.GetAppgroupUseSdk(params.ReleaseName, client.GetNamespace(), client)
 	// helmApi := k8s.NewHelm(client)
 	// _, err = helmApi.Info(params.ReleaseName, client.GetNamespace())
 	var dependsEnv *logic.DependEnv
 	upgrade := false
-	if err == nil {
+	if !params.RuntimeContext && appgroupErr == nil {
 		repo.SetUpgrade(true)
 		repo.SetCurVersion(appgroupObj.Spec.Version)
 		upgrade = true
@@ -152,6 +166,11 @@ func (self Zpk) GetConfig(http *gin.Context) {
 			Data:   mPackage.DynamicValues,
 		})
 		return
+	}
+	k8sToken := k8s.NewK8sToken(token)
+	saName, err := k8sToken.GetUserName()
+	if err != nil {
+		slog.Error("zpk config get saName err", "err", err)
 	}
 	mPackage.ReplaceDefault(saName)
 	rootConfig := mPackage.ToPackageAddConfig(params.ReleaseName, false)

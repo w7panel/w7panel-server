@@ -257,3 +257,5 @@
 - `/panel-api/v1/zpk/config` 增加 `runtimeContext=true` 模式，只返回 ZPK 运行时动态值；面板后端不解释订单有效性规则。
 - MicroApp Controller 将所属 AppGroup 的完整 `spec.zpkUrl` 独立同步到 `w7.cc/zpk-url` 注解，供 Wujie 宿主按 AppGroup 安全查询动态值。
 - 验证：MicroApp Controller 定向测试及 ZPK URL 注解同步测试通过。
+- 2026-09-29 更正：运行时动态值改为由 W7Panel 后端根据 `releaseName` 查询已安装 AppGroup 的 `spec.zpkUrl`，不再从 MicroApp 注解读取或由浏览器提交 ZPK URL；移除 MicroApp Controller 的 `w7.cc/zpk-url` 同步，使没有 MicroApp 的依赖应用也能按 AppGroup 查询动态上下文。影响模块：ZPK runtimeContext、MicroApp Controller；验证结果见本次定向测试。
+- 2026-09-29 调整：移除 MicroApp Controller 主动清理历史 `w7.cc/zpk-url` 注解的迁移逻辑；新生成的 MicroApp 仍不会携带该注解。影响模块：MicroApp Controller；验证：MicroApp Controller 定向测试通过。

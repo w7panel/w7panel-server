@@ -130,7 +130,7 @@ w7panel 镜像，也可通过 `w7.cc/root-ca-bundle-image` Pod annotation 指定
 - **制品静态状态** - 静态状态接口同时返回回源根地址和完整 `respoUrl`，完整地址保留订单查询参数供制品授权检查使用
 - **应用资源跟踪** - AppGroup Controller 自动为已归组的 workload 补齐 `w7.cc/group-name`，由 informer 持续同步 Deployment、StatefulSet、DaemonSet 等资源状态
 - **应用依赖关系** - AppGroup 通过 `spec.dependencies` 保存具体依赖实例；MicroApp Controller 根据每个 MicroApp 的 `w7.cc/group-name`，将所属 AppGroup 的依赖重建为 `w7.cc/depends-<releaseName>`，供面板直接反查关联入口和应用摘要
-- **MicroApp 动态值来源** - MicroApp Controller 同步所属 AppGroup 的完整 ZPK 地址到 `w7.cc/zpk-url`；`/panel-api/v1/zpk/config?runtimeContext=true` 只透传 ZPK 动态值，不生成安装配置
+- **应用动态值来源** - `/panel-api/v1/zpk/config?runtimeContext=true&releaseName=<appgroup>` 根据已安装 AppGroup 的 `spec.zpkUrl` 请求并透传 ZPK 动态值，不依赖目标应用是否创建 MicroApp，也不生成安装配置
 - **集群管理** - 节点、资源对象管理
 - **网关插件权限** - 为创始人默认权限注册网关插件查看、新建、编辑和删除菜单权限
 - **插件微应用入口过滤** - 顶部微应用接口根据 MicroApp 的 `w7.cc/manifest-type=gateway-plugin` 注解排除插件，避免出现在顶部菜单和“应用直达”列表

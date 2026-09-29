@@ -63,3 +63,4 @@ build.sh
 .w7-go-modcache/**
 .w7-go-tmp/**
 .code-review-graph/**
+.vscode/.env.local
