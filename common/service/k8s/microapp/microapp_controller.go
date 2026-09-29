@@ -14,7 +14,6 @@ import (
 )
 
 const resourceGroupLabel = "w7.cc/group-name"
-const zpkURLAnnotation = "w7.cc/zpk-url"
 
 // MicroAppController keeps one MicroApp's derived metadata aligned with the
 // AppGroup identified by w7.cc/group-name.
@@ -46,16 +45,15 @@ func (r *MicroAppController) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	before := item.DeepCopy()
-	dependencyLabelsChanged, err := syncDependencyLabels(item, group)
+	changed, err := syncDependencyLabels(item, group)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	zpkURLChanged := syncZpkURLAnnotation(item, group)
-	if !dependencyLabelsChanged && !zpkURLChanged {
+	if !changed {
 		return ctrl.Result{}, nil
 	}
 	if err := r.Patch(ctx, item, client.MergeFrom(before)); err != nil {
-		return ctrl.Result{}, fmt.Errorf("sync AppGroup metadata to MicroApp %s/%s: %w", item.Namespace, item.Name, err)
+		return ctrl.Result{}, fmt.Errorf("sync dependency labels to MicroApp %s/%s: %w", item.Namespace, item.Name, err)
 	}
 	return ctrl.Result{}, nil
 }
@@ -76,17 +74,4 @@ func syncDependencyLabels(item *microappv1.MicroApp, group *appgroupv1.AppGroup)
 	}
 	maps.Copy(item.Labels, desired)
 	return !maps.Equal(before, item.Labels), nil
-}
-
-func syncZpkURLAnnotation(item *microappv1.MicroApp, group *appgroupv1.AppGroup) bool {
-	before := maps.Clone(item.Annotations)
-	if item.Annotations == nil {
-		item.Annotations = map[string]string{}
-	}
-	if zpkURL := strings.TrimSpace(group.Spec.ZpkUrl); zpkURL != "" {
-		item.Annotations[zpkURLAnnotation] = zpkURL
-	} else {
-		delete(item.Annotations, zpkURLAnnotation)
-	}
-	return !maps.Equal(before, item.Annotations)
 }
