@@ -459,3 +459,9 @@
 - 验证：`make test TEST_PACKAGES=./common/service/adk/` 通过。
 2026-09-28: Agent 注册面板 Pod IP 失败后改为每秒持续重试，直到面板接受注册；影响模块：Agent Pod IP 注册。验证：未运行测试。
 2026-09-28: PID 与 NodeTTY/WebShell 路径增加 Agent Pod IP 解析日志，包含节点 IP、最终 Pod IP 及是否使用注册映射。影响模块：PID、NodeTTY 转发。验证：未运行测试。
+
+## 2026-09-29（应用运行时动态值）
+
+- `/panel-api/v1/zpk/config` 增加 `runtimeContext=true` 模式，只返回 ZPK 运行时动态值；面板后端不解释订单有效性规则。
+- MicroApp Controller 将所属 AppGroup 的完整 `spec.zpkUrl` 独立同步到 `w7.cc/zpk-url` 注解，供 Wujie 宿主按 AppGroup 安全查询动态值。
+- 验证：MicroApp Controller 定向测试及 ZPK URL 注解同步测试通过。

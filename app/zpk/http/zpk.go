@@ -30,6 +30,23 @@ type Zpk struct {
 	controller.Abstract
 }
 
+type runtimeContextResponse struct {
+	Status string                 `json:"status"`
+	Data   map[string]interface{} `json:"data"`
+}
+
+func trialExpiredPayload(err error) (map[string]interface{}, bool) {
+	var remoteErr *logic.RemoteHTTPError
+	if !errors.As(err, &remoteErr) || remoteErr.StatusCode != nethttp.StatusForbidden {
+		return nil, false
+	}
+	var payload map[string]interface{}
+	if json.Unmarshal(remoteErr.Body, &payload) != nil || payload["code"] != "ZPK_TRIAL_EXPIRED" {
+		return nil, false
+	}
+	return payload, true
+}
+
 func writeArtifactInstallConflictResponse(http *gin.Context, err error) bool {
 	var conflictErr *logic.ArtifactInstallConflictError
 	if !errors.As(err, &conflictErr) {
@@ -50,12 +67,8 @@ func writeArtifactInstallConflictResponse(http *gin.Context, err error) bool {
 }
 
 func (self Zpk) relayRepoError(ctx *gin.Context, err error) bool {
-	var remoteErr *logic.RemoteHTTPError
-	if !errors.As(err, &remoteErr) || remoteErr.StatusCode != nethttp.StatusForbidden {
-		return false
-	}
-	var payload map[string]interface{}
-	if json.Unmarshal(remoteErr.Body, &payload) != nil || payload["code"] != "ZPK_TRIAL_EXPIRED" {
+	payload, ok := trialExpiredPayload(err)
+	if !ok {
 		return false
 	}
 	ctx.JSON(nethttp.StatusForbidden, payload)
@@ -68,6 +81,7 @@ func (self Zpk) GetConfig(http *gin.Context) {
 		ThirdpartyCDToken string `form:"thirdpartyCDToken"` // 域名选择业务名称
 		ReleaseName       string `form:"releaseName"`
 		Reinstall         bool   `form:"reinstall"`
+		RuntimeContext    bool   `form:"runtimeContext"`
 	}
 	params := ParamsValidate{}
 	if !self.Validate(http, &params) {
@@ -106,6 +120,7 @@ func (self Zpk) GetConfig(http *gin.Context) {
 	params.ReleaseName = strings.ToLower(params.ReleaseName)
 	repo.SetAppIdentify(params.ReleaseName)
 	repo.SetReinstall(params.Reinstall)
+	repo.SetRuntimeContext(params.RuntimeContext)
 	appgroupObj, err := appgroup.GetAppgroupUseSdk(params.ReleaseName, client.GetNamespace(), client)
 	// helmApi := k8s.NewHelm(client)
 	// _, err = helmApi.Info(params.ReleaseName, client.GetNamespace())
@@ -126,6 +141,13 @@ func (self Zpk) GetConfig(http *gin.Context) {
 			return
 		}
 		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	if params.RuntimeContext {
+		self.JsonResponseWithoutError(http, runtimeContextResponse{
+			Status: "ready",
+			Data:   mPackage.DynamicValues,
+		})
 		return
 	}
 	mPackage.ReplaceDefault(saName)
