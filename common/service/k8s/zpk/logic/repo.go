@@ -30,6 +30,7 @@ type repo struct {
 	domain         string `json:"domain"`
 	appIdentify    string `json:"app_identify"`
 	reinstall      bool   `json:"reinstall"`
+	runtimeContext bool   `json:"runtime_context"`
 	targetVersion  string `json:"target_version"`
 	// loadInnerDepends bool   `json:"load_inner_depends"` // 是否加载内部依赖
 }
@@ -142,6 +143,10 @@ func (self *repo) SetReinstall(reinstall bool) {
 	self.reinstall = reinstall
 }
 
+func (self *repo) SetRuntimeContext(runtimeContext bool) {
+	self.runtimeContext = runtimeContext
+}
+
 func (self *repo) getConsoleUrl() string {
 	return self.baseConsoleUrl + "config2?url=" + self.repoUrl
 }
@@ -236,6 +241,9 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 	if self.reinstall {
 		req.SetQueryParam("reinstall", "true")
 	}
+	if self.runtimeContext {
+		req.SetQueryParam("runtime_context", "true")
+	}
 	resp, err := req.Get(requestURI)
 	if err != nil {
 		return nil, err
@@ -256,6 +264,12 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 	var zpkInfo types.ZpkInfo
 	if err := json.Unmarshal(body, &zpkInfo); err != nil {
 		return nil, err
+	}
+	if self.runtimeContext {
+		return &types.ManifestPackage{
+			ZpkUrl:        self.repoUrl,
+			DynamicValues: zpkInfo.Data.DynamicValues,
+		}, nil
 	}
 	manifestStr := zpkInfo.Data.Manifest
 
@@ -284,6 +298,7 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 		// Identifie: manifest.Application.Identifie,
 		HelmUrl:            zpkInfo.Data.HelmUrl,
 		ZpkUrl:             zpkURL,
+		DynamicValues:      zpkInfo.Data.DynamicValues,
 		ZipUrl:             zpkInfo.Data.ZipURL,
 		OciUrl:             zpkInfo.Data.OciURL,
 		WebZipUrl:          zpkInfo.Data.WebZipURL,

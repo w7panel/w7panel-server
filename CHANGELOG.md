@@ -251,3 +251,9 @@
 - 将 MicroApp 依赖标签同步逻辑收拢到 `microapp_controller.go`，删除独立的 `dependency.go`；行为保持不变。
 - 影响模块：MicroApp Controller。
 - 验证：MicroApp Controller 与依赖标签同步定向测试通过。
+
+## 2026-09-29（应用运行时动态值）
+
+- `/panel-api/v1/zpk/config` 增加 `runtimeContext=true` 模式，只返回 ZPK 运行时动态值；面板后端不解释订单有效性规则。
+- MicroApp Controller 将所属 AppGroup 的完整 `spec.zpkUrl` 独立同步到 `w7.cc/zpk-url` 注解，供 Wujie 宿主按 AppGroup 安全查询动态值。
+- 验证：MicroApp Controller 定向测试及 ZPK URL 注解同步测试通过。
