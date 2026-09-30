@@ -195,6 +195,10 @@ func ReadK3sConfig() ([]byte, error) {
 	return os.ReadFile(filePath)
 }
 
+func ReadK3sKubeconfig() ([]byte, error) {
+	return os.ReadFile("/host/etc/rancher/k3s/k3s.yaml")
+}
+
 func WriteK3sConfig(config []byte) error {
 	filePath := "/host/etc/rancher/k3s/config.yaml"
 	// return os.WriteFile(filePath, config, 0644)

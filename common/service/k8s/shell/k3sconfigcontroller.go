@@ -266,6 +266,7 @@ func (s *k3sConfigController) initK3sConfig(node *v1.Node) error {
 		"k3s.config":             (k3sConfig.k3sRawConfig),
 		"k3s.mode":               k3sConfig.GetMode(),
 		"k3s.default-tls-san":    strings.Join(k3sConfig.GetDefaultTlsSanIp(), ","),
+		"k3s.tls-san":            strings.Join(k3sConfig.GetConfigTlsSanIp(), ","),
 	}
 	labels := map[string]string{
 		"data-hash": "init",
@@ -365,16 +366,8 @@ func (s *k3sConfigController) handleK3sConfig(data map[string]string, nodes *v1.
 				k3sConfig.k3sConfigYaml["datastore-endpoint"] = data["k3s.datastore-endpoint"]
 				change = true
 			}
-			// if config.Data["k3s.tls-san"] != "" { //可能会覆盖之前的配置，暂时不启用
-			ips := strings.Split(data["k3s.tls-san"], ",")
-			if len(ips) > 0 {
-				k3sConfig.k3sConfigYaml["tls-san"] = ips
-			} else {
-				delete(k3sConfig.k3sConfigYaml, "tls-san")
-			}
+			setK3sTlsSan(k3sConfig.k3sConfigYaml, data["k3s.tls-san"])
 			change = true
-
-			// }
 			if change {
 				data, err := helper.YamlToBytes(k3sConfig.k3sConfigYaml)
 				if err != nil {
@@ -393,6 +386,20 @@ func (s *k3sConfigController) handleK3sConfig(data map[string]string, nodes *v1.
 	}
 
 	return nil
+}
+
+func setK3sTlsSan(config map[string]interface{}, value string) {
+	var addresses []string
+	for _, address := range strings.Split(value, ",") {
+		if address = strings.TrimSpace(address); address != "" {
+			addresses = append(addresses, address)
+		}
+	}
+	if len(addresses) == 0 {
+		delete(config, "tls-san")
+		return
+	}
+	config["tls-san"] = addresses
 }
 
 func (s *k3sConfigController) restart(nodes *v1.NodeList) error {

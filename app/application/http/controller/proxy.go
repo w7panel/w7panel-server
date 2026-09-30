@@ -19,7 +19,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/artifacturl"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
-	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/w7panel/w7panel/common/service/oidc"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
@@ -318,13 +317,12 @@ func (self Proxy) HelmIndex(ctx *gin.Context) {
 }
 
 func (self Proxy) Kubeconfig(gin *gin.Context) {
-	apiServerUrl := gin.Query("apiServerUrl")
-	config, err := k8s.NewK8sClient().ToKubeconfigForServiceAccount(apiServerUrl, permissionservice.APIPermissionName)
+	config, err := helper.ReadK3sKubeconfig()
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
 	}
-	self.JsonResponseWithoutError(gin, config)
+	gin.Data(stdhttp.StatusOK, "application/x-yaml; charset=utf-8", config)
 
 }
 
