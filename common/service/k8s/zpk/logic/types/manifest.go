@@ -483,6 +483,7 @@ type Version struct {
 }
 type Data struct {
 	Manifest        string                 `json:"manifest"`
+	Title           string                 `json:"title"`
 	Version         Version                `json:"version"`
 	DynamicValues   map[string]interface{} `json:"dynamic_values"`
 	InfoURL         string                 `json:"info_url"`

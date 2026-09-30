@@ -27,6 +27,7 @@ type DeployItem struct {
 
 type ManifestPackage struct {
 	Manifest                 Manifest                    `json:"manifest"`
+	Title                    string                      `json:"title"`
 	ZpkUrl                   string                      `json:"zpkUrl"`
 	DynamicValues            map[string]interface{}      `json:"dynamicValues"`
 	HelmUrl                  string                      `json:"helmUrl"`
