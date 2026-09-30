@@ -2,7 +2,7 @@
 
 ## 2026-09-30
 
-- `/panel-api/v1/kubeconfig` 改为读取宿主机 K3s kubeconfig 原文，供集群认证信息页展示；K3sConfig 初始化保留已有 TLS SAN，空 SAN 应用会删除 K3s 配置项。验证：`make test TEST_PACKAGES="./common/helper ./common/service/k8s/shell ./app/application/http/controller"` 通过。
+- `/panel-api/v1/kubeconfig` 通过 server 节点 agent pod 读取宿主机 kubeconfig；agent 内请求读取本机挂载。K3sConfig 初始化保留已有 TLS SAN，空 SAN 应用会删除 K3s 配置项。验证：`make test TEST_PACKAGES="./common/helper ./common/service/k8s/shell ./app/application/http/controller"` 通过。
 - 新增受面板鉴权的镜像源读取与保存接口；主集群继续使用 `registries` ConfigMap，K3K 子集群直接操作 `/etc/rancher/k3s/registries.yaml`。验证未运行（按会话要求不运行测试）。
 
 ## 2026-09-24

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	zpkcontroller "github.com/w7panel/w7panel/app/zpk/http"
@@ -22,6 +24,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/oidc"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -317,13 +320,69 @@ func (self Proxy) HelmIndex(ctx *gin.Context) {
 }
 
 func (self Proxy) Kubeconfig(gin *gin.Context) {
-	config, err := helper.ReadK3sKubeconfig()
+	var config []byte
+	var err error
+	if helper.IsAgent() {
+		config, err = helper.ReadK3sKubeconfig()
+	} else {
+		config, err = readKubeconfigFromAgent(gin.Request.Context())
+	}
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
 	}
 	gin.Data(stdhttp.StatusOK, "application/x-yaml; charset=utf-8", config)
 
+}
+
+func readKubeconfigFromAgent(ctx context.Context) ([]byte, error) {
+	sdk := k8s.NewK8sClient().Sdk
+	nodes, err := sdk.ClientSet.CoreV1().Nodes().List(ctx, v1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	var lastErr error
+	for _, node := range nodes.Items {
+		_, controlPlane := node.Labels["node-role.kubernetes.io/control-plane"]
+		_, master := node.Labels["node-role.kubernetes.io/master"]
+		if !controlPlane && !master {
+			continue
+		}
+		var nodeIP string
+		for _, address := range node.Status.Addresses {
+			if address.Type == corev1.NodeInternalIP {
+				nodeIP = address.Address
+				break
+			}
+		}
+		if nodeIP == "" {
+			continue
+		}
+		pod, err := sdk.GetDaemonsetAgentPod(sdk.GetNamespace(), nodeIP)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if pod.Status.Phase != corev1.PodRunning || len(pod.Spec.Containers) == 0 {
+			lastErr = fmt.Errorf("agent pod on server node %q is not running", node.Name)
+			continue
+		}
+		readCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		config, stderr, err := sdk.RunExecOutput(readCtx, pod.Namespace, pod.Name, pod.Spec.Containers[0].Name, []string{"cat", "/host/etc/rancher/k3s/k3s.yaml"})
+		cancel()
+		if err == nil && len(config) > 0 {
+			return config, nil
+		}
+		if err != nil {
+			lastErr = fmt.Errorf("read kubeconfig from agent pod %q: %w (%s)", pod.Name, err, strings.TrimSpace(string(stderr)))
+		} else {
+			lastErr = fmt.Errorf("agent pod %q returned an empty kubeconfig", pod.Name)
+		}
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, fmt.Errorf("no server node with a readable agent pod was found")
 }
 
 func (self Proxy) parseName(name string) (string, string, string) {
