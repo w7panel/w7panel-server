@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-09-30
+
+- 新增受面板鉴权的镜像源读取与保存接口；主集群继续使用 `registries` ConfigMap，K3K 子集群直接操作 `/etc/rancher/k3s/registries.yaml`。验证未运行（按会话要求不运行测试）。
+
 ## 2026-09-24
 
 - 移除未使用的 `google.golang.org/adk v1` 依赖，统一使用 ADK v2，修复 vendor 一致性检查失败。

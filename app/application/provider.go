@@ -188,6 +188,8 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		localApiGroup := engine.Group("/panel-api/v1") //.Use(middleware.Cors{}.Process)
 		{
+			localApiGroup.GET("/registry/registries", middleware.Auth{}.Process, controller2.Site{}.GetRegistries)
+			localApiGroup.PUT("/registry/registries", middleware.Auth{}.Process, controller2.Site{}.SaveRegistries)
 			localApiGroup.GET("/tty", middleware.Auth{}.Process, controller2.PodExec{}.Tty)
 			localApiGroup.GET("/nodetty", middleware.Auth{}.Process, controller2.PodExec{}.NodeTtyForward)
 			localApiGroup.GET("/download/*path", middleware.DownloadAuth{}.Process, controller2.File{}.Download)
