@@ -268,6 +268,7 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 	if self.runtimeContext {
 		return &types.ManifestPackage{
 			ZpkUrl:        self.repoUrl,
+			Title:         zpkInfo.Data.Title,
 			DynamicValues: zpkInfo.Data.DynamicValues,
 		}, nil
 	}

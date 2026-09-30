@@ -30,7 +30,28 @@ func TestZPKRequestDoesNotForwardPanelToken(t *testing.T) {
 	}
 }
 
-func disabledLoadPackage(t *testing.T) {
+func TestLoadRuntimeContextIncludesArtifactTitle(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{"data":{"title":"测试制品","dynamic_values":{"order_status":"paid"}}}`))
+	}))
+	defer server.Close()
+
+	repository := NewRepo(server.URL+"/zpk/respo/info/demo", "", "")
+	repository.SetRuntimeContext(true)
+	manifestPackage, err := repository.loadPackageByHttp(context.Background(), repository.repoUrl, "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifestPackage.Title != "测试制品" {
+		t.Fatalf("title = %q, want 测试制品", manifestPackage.Title)
+	}
+	if manifestPackage.DynamicValues["order_status"] != "paid" {
+		t.Fatalf("dynamic values = %#v, want order_status=paid", manifestPackage.DynamicValues)
+	}
+}
+
+func TestLoadPackage(t *testing.T) {
 	type args struct {
 		uri string
 	}

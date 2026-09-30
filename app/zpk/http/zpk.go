@@ -33,6 +33,7 @@ type Zpk struct {
 
 type runtimeContextResponse struct {
 	Status string                 `json:"status"`
+	Title  string                 `json:"title,omitempty"`
 	Data   map[string]interface{} `json:"data"`
 }
 
@@ -160,6 +161,7 @@ func (self Zpk) GetConfig(http *gin.Context) {
 	if params.RuntimeContext {
 		self.JsonResponseWithoutError(http, runtimeContextResponse{
 			Status: "ready",
+			Title:  mPackage.Title,
 			Data:   mPackage.DynamicValues,
 		})
 		return
