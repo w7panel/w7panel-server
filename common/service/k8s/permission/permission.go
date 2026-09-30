@@ -87,7 +87,6 @@ var founderMenu = []string{
 	"sitemanage",
 	"system",
 	"system/cloud",
-	"system/license",
 	"system/audit",
 	"person/order-center",
 	"person/cost-center",

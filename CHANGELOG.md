@@ -477,3 +477,7 @@
 
 - ZPK `runtimeContext` 数据链路透传当前制品 `title`，`/panel-api/v1/zpk/config` 在 `ready` 响应中返回标题，供 `validateApp` 标识授权所属制品；影响模块：ZPK 客户端、运行时上下文接口。
 - 验证：ZPK runtime context 标题透传单元测试及相关包测试通过。
+## 2026-09-30（统一免费版）
+
+- 移除面板证书导入/验证接口及系统授权管理权限；面板配置统一报告免费版，云端主配置不再受产品版本门槛限制。
+- 验证：`make test TEST_PACKAGES='./common/service/config ./app/auth/http/controller ./common/service/k8s/permission'` 及 UI `npm run build` 通过。

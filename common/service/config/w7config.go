@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	service "github.com/w7corp/sdk-open-cloud-go/service"
@@ -29,29 +28,6 @@ func init() {
 	// CurrentCity = "北京"
 }
 
-type licenseVerify struct {
-	sync.Map
-}
-
-func (l *licenseVerify) IsCompany(name string) bool {
-	value, ok := l.Load(name)
-	if ok {
-		return value.(string) == "company"
-	}
-	return false
-}
-
-func (l *licenseVerify) IsTeam(name string) bool {
-	value, ok := l.Load(name)
-	if ok {
-		return value.(string) == "team"
-	}
-	return false
-}
-
-var LicenseVerify = licenseVerify{}
-
-// company team类型 取ServiceAccount 其中一个
 var MainW7Config *W7Config
 
 var CurrentCity string
@@ -63,10 +39,6 @@ var userGVR = schema.GroupVersionResource{
 }
 
 const userCloudConfigField = "cloud"
-
-func SetVerifyType(name, verifyType string) {
-	LicenseVerify.Store(name, verifyType)
-}
 
 type W7Config struct {
 	Name              string                  `json:"name"`
@@ -119,50 +91,7 @@ func (c *W7Config) IsCDTokenWillExpired() bool {
 	return int64(c.CDTokenExpireTime)-600 < time.Now().Unix()
 }
 
-func (c *W7Config) GetLicenseType() string {
-	license := c.License
-	licenseType := "free"
-	isExpired := false
-	if license != nil && len(license.Subject.Province) > 0 {
-		licenseType = license.Subject.Province[0]
-	}
-	if license != nil {
-		// endTime = license.NotAfter
-		if license.NotAfter.Before(time.Now()) {
-			isExpired = true
-		}
-		if isExpired {
-			licenseType = "free"
-		}
-	}
-	return licenseType
-}
-
-func (c *W7Config) NotFree() bool {
-	licenseType := c.GetLicenseType()
-	return licenseType == "team" || licenseType == "company"
-}
-
 func (c *W7Config) ToArray() map[string]interface{} {
-	license := c.License
-	licenseType := "free"
-	licenseId := "0"
-	if license != nil && len(license.Subject.Province) > 0 {
-		licenseType = license.Subject.Province[0]
-	}
-	endTime := time.Now()
-	isExpired := false
-	if license != nil {
-		licenseId = license.SerialNumber.String()
-		endTime = license.NotAfter
-		if license.NotAfter.Before(time.Now()) {
-			isExpired = true
-		}
-		if isExpired {
-			licenseType = "free"
-		}
-	}
-
 	return map[string]interface{}{
 		"thirdparty_cd_token": c.ThirdpartyCDToken,
 		"cluster_id":          c.ClusterId,
@@ -173,10 +102,7 @@ func (c *W7Config) ToArray() map[string]interface{} {
 		"require_oauth":       c.UserInfo == nil,
 		"is_register":         c.ClusterId != "",
 		"userinfo":            c.UserInfo,
-		"license_type":        licenseType,
-		"license_id":          licenseId,
-		"license_end_time":    endTime.Format("2006-01-02 15:04:05"),
-		"license_is_expired":  isExpired,
+		"license_type":        "free",
 		"debug_value":         c.DebugValue,
 		// "license":             c.License.Raw,
 	}

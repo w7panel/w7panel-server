@@ -92,7 +92,7 @@ const (
 	W7_OVER_RESOURCE      = "w7.cc/over-resource"      //
 	W7_OVER_BASE_RESOURCE = "w7.cc/over-base-resource" //首次购买资源
 	W7_LOGIN_TIME         = "w7.cc/login-time"
-	W7_CKM_NAME           = "w7.cc/ckm-name" //当前请求中ckm名称
+	W7_CKM_NAME           = "w7.cc/ckm-name"         //当前请求中ckm名称
 	W7_CVM_NAME           = "w7.cc/cvm-name"         //当前请求中cvm名称
 	W7_SERVER0_POD_NAME   = "w7.cc/server0-pod-name" //当前请求中cvm名称
 )
@@ -147,7 +147,6 @@ var K3K_MENU_FOUNDER_RULES = []string{
 	"sitemanage",
 	"system",
 	"system/cloud",
-	"system/license",
 	"system/audit",
 	"person/order-center",
 	"person/cost-center",

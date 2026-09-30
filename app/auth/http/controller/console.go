@@ -99,16 +99,6 @@ func (self Console) Info(gin *gin.Context) {
 	if err != nil {
 		w7config = config.NewEmptyConfig()
 	}
-	licenseClient, err := console.NewDefaultLicenseClient()
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-	license, err := licenseClient.GetLicense()
-	if (err == nil) && (license != nil) {
-		w7config.License = license.License
-	}
-
 	self.JsonResponseWithoutError(gin, w7config.ToArray())
 }
 
@@ -140,77 +130,6 @@ func (self Console) JsCloudCode(gin *gin.Context) {
 		return
 	}
 	self.JsonResponseWithoutError(gin, code)
-}
-
-func (self Console) ImportCert(gin *gin.Context) {
-	type ParamsValidate struct {
-		Cert string `form:"cert" binding:"required"`
-	}
-	params := ParamsValidate{}
-	if !self.Validate(gin, &params) {
-		return
-	}
-	token := gin.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
-	// sdk, err := k8s.NewK8sClient().Channel(token)
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(gin, err)
-	// 	return
-	// }
-	// sdk := k8s.NewK8sClient().Sdk
-	saName, err := k8sToken.GetUserName()
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-	licenseClient, err := console.NewDefaultLicenseClient()
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-	err = licenseClient.ImportCert([]byte(params.Cert), saName)
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-
-	self.JsonSuccessResponse(gin)
-}
-
-func (self Console) ImportCertConsole(gin *gin.Context) {
-	type ParamsValidate struct {
-		LicenseId string `form:"licenseId" binding:"required"`
-	}
-	params := ParamsValidate{}
-	if !self.Validate(gin, &params) {
-		return
-	}
-	token := gin.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
-	// sdk, err := k8s.NewK8sClient().Channel(token)
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(gin, err)
-	// 	return
-	// }
-	// sdk := k8s.NewK8sClient().Sdk
-	saName, err := k8sToken.GetUserName()
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-	err = console.VerifyLicenseId(params.LicenseId, saName)
-	if err != nil {
-		self.JsonResponseWithServerError(gin, err)
-		return
-	}
-
-	self.JsonSuccessResponse(gin)
-}
-
-func (self Console) VerifyCert(gin *gin.Context) {
-	// 重新验证license
-	console.VerifyDefaultLicense(true)
-	self.JsonSuccessResponse(gin)
 }
 
 func (self Console) Proxy(gin *gin.Context) {

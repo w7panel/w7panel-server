@@ -123,7 +123,7 @@ func RefreshCDToken() error {
 		// 	slog.Error("验证证书失败", "error", err)
 		// }
 
-		if v.ClusterId != "0" && v.ClusterId != "" && v.ThirdpartyCDToken != "" && v.NotFree() {
+		if v.ClusterId != "0" && v.ClusterId != "" && v.ThirdpartyCDToken != "" {
 			config.MainW7Config = v
 			// 应该判断v.Name != "main"
 			// clone := v.Clone()
