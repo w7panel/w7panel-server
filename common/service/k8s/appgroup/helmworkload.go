@@ -2,6 +2,7 @@ package appgroup
 
 import (
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
@@ -186,6 +187,13 @@ func (h *HelmWorkload) releaseToAppGroup(release *release.Release) *v1alpha1Type
 	}
 	if group.Annotations == nil {
 		group.Annotations = map[string]string{}
+	}
+	if manifestType := strings.TrimSpace(annotations[zpktypes.HELM_APPLICATION_TYPE]); manifestType != "" {
+		group.Annotations[zpktypes.HELM_APPLICATION_TYPE] = manifestType
+		if group.Labels == nil {
+			group.Labels = map[string]string{}
+		}
+		group.Labels[zpktypes.HELM_APPLICATION_TYPE] = manifestType
 	}
 	val5, ok5 := annotations[zpktypes.HELM_DENY_DELETE]
 	if ok5 {

@@ -90,7 +90,7 @@ func (a *AppGroupApi) GetAppGroup(namespace string, name string) (*appv1.AppGrou
 }
 
 func (a *AppGroupApi) UpdateAppGroup(namespace string, group *appv1.AppGroup) (*appv1.AppGroup, error) {
-	if err := SyncDependencyLabels(group); err != nil {
+	if _, err := SyncAppGroupLabels(group); err != nil {
 		return nil, err
 	}
 	a.filterEmpty(group)
@@ -98,7 +98,7 @@ func (a *AppGroupApi) UpdateAppGroup(namespace string, group *appv1.AppGroup) (*
 }
 
 func (a *AppGroupApi) CreateGroup(namespace string, group *appv1.AppGroup) (*appv1.AppGroup, error) {
-	if err := SyncDependencyLabels(group); err != nil {
+	if _, err := SyncAppGroupLabels(group); err != nil {
 		return nil, err
 	}
 	a.filterEmpty(group)

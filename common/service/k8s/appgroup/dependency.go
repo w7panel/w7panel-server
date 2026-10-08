@@ -71,27 +71,6 @@ func resolveDependencies(defaultNamespace string, references []DependencyReferen
 	return resolved, nil
 }
 
-// SyncDependencyLabels removes stale dependency index labels and rebuilds them
-// from the desired AppGroup dependencies.
-func SyncDependencyLabels(group *appv1.AppGroup) error {
-	desired, err := appv1.DesiredDependencyLabels(group.Spec.Dependencies)
-	if err != nil {
-		return err
-	}
-	if group.Labels == nil {
-		group.Labels = map[string]string{}
-	}
-	for key := range group.Labels {
-		if strings.HasPrefix(key, appv1.DependencyLabelPrefix) {
-			delete(group.Labels, key)
-		}
-	}
-	for key, value := range desired {
-		group.Labels[key] = value
-	}
-	return nil
-}
-
 // ApplicationType reads the existing manifest type annotation on an AppGroup.
 func ApplicationType(group *appv1.AppGroup) string {
 	if group == nil {
