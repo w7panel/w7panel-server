@@ -536,7 +536,11 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 		slog.Debug("synced parent domains", "group", group.Name)
 	}
 
-	changed := false
+	changed, err := NeedsSyncAppGroupLabels(group)
+	if err != nil {
+		slog.Error("sync appgroup labels error", "group", group.Name, "error", err)
+		return err
+	}
 	if group.Spec.Suffix == "" {
 		group.Spec.Suffix = group.Name
 		changed = true
@@ -581,7 +585,6 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 
 	return nil
 }
-
 func removeManagedAppGroupFinalizers(group *v1alpha1.AppGroup) bool {
 	if group == nil || len(group.Finalizers) == 0 {
 		return false

@@ -267,10 +267,8 @@
 
 ## 2026-10-08（AppGroup 应用类型标签同步）
 
-- AppGroup 创建和更新时，将 `w7.cc/manifest-type` annotation 同步到同名 label；注解删除或置空时清理旧 label，并保留 Helm Release 重建 AppGroup 所需的应用类型注解。
+- ZPK 安装创建 AppGroup、Helm Release 补建 AppGroup 时，直接从 manifest 来源同时初始化 `w7.cc/manifest-type` annotation 与同名 label；未声明应用类型的 AppGroup 不增加该标签。
+- 应用类型标签仅写入 AppGroup，不通过通用资源标签扩散到同组工作负载；依赖索引、应用类型同步和无副作用检查统一收敛到 AppGroup `labels.go`，`dependency.go` 只保留依赖解析。真正的 label 修改只在 AppGroup 创建、更新入口执行，WorkloadManager 使用只读检查决定是否需要更新，避免更新前后重复同步。
+- WorkloadManager 在纳入正常协调的启动初始事件和后续 AppGroup 事件中，通过统一 label 协调入口将历史资源的非空应用类型 annotation 幂等回填到同名 label；annotation 缺失或为空时保留已有 label，不改变 `shouldHandleAppGroupEvent` 原有的处理范围。
 - 影响模块：AppGroup 元数据、ZPK/Helm 应用类型筛选。
-- 验证：`LOCAL_MOCK=true go test ./common/service/k8s/appgroup -run '^(TestSyncAppGroupLabelsMirrorsManifestTypeAnnotation|TestReleaseToAppGroupCopiesManifestType)$' -count=1`。
-- 补充验证：显式排除工作区既有未跟踪测试后，上述两个定向用例通过，`LOCAL_MOCK=true go build ./common/service/k8s/appgroup` 通过；完整包测试被既有 `eventqueue_test.go` 引用缺失的 `isDeletingAppGroupEvent` 阻断。
-- 2026-10-08 更正：ZPK 与 Helm 构造 AppGroup 时直接从 manifest 来源写入应用类型 label；保存时仅在 annotation 明确存在时覆盖同步，缺失 annotation 不删除来源 label，显式空值才执行清理。
-- 2026-10-08 最终调整：应用类型 label 与 annotation 在 ZPK/Helm 创建 AppGroup 时一并初始化，移除保存阶段补写逻辑，并将 label 限定在 AppGroup，避免通过通用资源标签扩散到其他工作负载。
-- 2026-10-08 代码整理：`SyncDependencyLabels` 还原至 `dependency.go`，删除临时拆分的 `labels.go`；行为不变。
+- 验证：ZPK 创建、Helm 补建及 WorkloadManager 历史类型标签回填的定向测试通过，`go build ./common/service/k8s/appgroup ./common/service/k8s/zpk` 通过；完整包测试仍被工作区既有未完成测试和缺失的 `testdata/demo.zip` 阻断。
