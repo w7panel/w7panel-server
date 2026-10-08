@@ -368,20 +368,18 @@ func (self File) MergeChunks(http *gin.Context) {
 	// 排序分片文件（确保按正确顺序合并）
 	// sort.Strings(chunkFiles) //错了
 
-	// 确定最终文件路径
-	finalFileName := params.FileName
-	finalFilePath, err := safepath.Resolve(baseDir, finalFileName)
+	// 确定最终文件路径。PID 模式下客户端路径相对目标进程的根目录，
+	// 接受以 / 开头的进程内绝对路径，但仍通过 safepath 限制在进程 root 内。
+	var finalFilePath string
+	if params.Pid != "" && params.Pid != "0" {
+		procPath := procpath.GetRootPathWithSubPid(params.Pid, params.SubPid)
+		finalFilePath, err = safepath.Resolve(procPath, strings.TrimPrefix(params.FileName, "/"))
+	} else {
+		finalFilePath, err = safepath.Resolve(baseDir, params.FileName)
+	}
 	if err != nil {
 		self.JsonResponseWithError(http, err, 400)
 		return
-	}
-	if params.Pid != "" && params.Pid != "0" {
-		procPath := procpath.GetRootPathWithSubPid(params.Pid, params.SubPid)
-		finalFilePath, err = safepath.Resolve(procPath, params.FileName)
-		if err != nil {
-			self.JsonResponseWithError(http, err, 400)
-			return
-		}
 	}
 
 	// 创建目标文件目录

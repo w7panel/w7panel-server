@@ -482,4 +482,6 @@
 - 移除面板证书导入/验证接口及系统授权管理权限；面板配置统一报告免费版，云端主配置不再受产品版本门槛限制。
 - 验证：`make test TEST_PACKAGES='./common/service/config ./app/auth/http/controller ./common/service/k8s/permission'` 及 UI `npm run build` 通过。
 
+2026-10-08: 分片合并写入进程文件系统时支持以 `/` 开头的进程内路径，同时保留进程 root 路径限制；影响模块：文件分片上传。验证：未运行测试。
+
 2026-10-08: 从默认创始人菜单配置及 K3K 兼容菜单中移除站点管理一级入口；影响模块：权限菜单。验证：未运行测试。
