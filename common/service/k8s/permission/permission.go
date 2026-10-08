@@ -84,7 +84,6 @@ var founderMenu = []string{
 	"storage/disk/delete",
 	"storage/zone",
 	"zpk",
-	"sitemanage",
 	"system",
 	"system/cloud",
 	"system/audit",
