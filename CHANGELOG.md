@@ -477,11 +477,13 @@
 
 - ZPK `runtimeContext` 数据链路透传当前制品 `title`，`/panel-api/v1/zpk/config` 在 `ready` 响应中返回标题，供 `validateApp` 标识授权所属制品；影响模块：ZPK 客户端、运行时上下文接口。
 - 验证：ZPK runtime context 标题透传单元测试及相关包测试通过。
-## 2026-09-30（统一免费版）
 
-- 移除面板证书导入/验证接口及系统授权管理权限；面板配置统一报告免费版，云端主配置不再受产品版本门槛限制。
-- 验证：`make test TEST_PACKAGES='./common/service/config ./app/auth/http/controller ./common/service/k8s/permission'` 及 UI `npm run build` 通过。
+## 2026-10-08（AppGroup 应用类型标签同步）
 
-2026-10-08: 分片合并写入进程文件系统时支持以 `/` 开头的进程内路径，同时保留进程 root 路径限制；影响模块：文件分片上传。验证：未运行测试。
-
-2026-10-08: 从默认创始人菜单配置及 K3K 兼容菜单中移除站点管理一级入口；影响模块：权限菜单。验证：未运行测试。
+- AppGroup 创建和更新时，将 `w7.cc/manifest-type` annotation 同步到同名 label；注解删除或置空时清理旧 label，并保留 Helm Release 重建 AppGroup 所需的应用类型注解。
+- 影响模块：AppGroup 元数据、ZPK/Helm 应用类型筛选。
+- 验证：`LOCAL_MOCK=true go test ./common/service/k8s/appgroup -run '^(TestSyncAppGroupLabelsMirrorsManifestTypeAnnotation|TestReleaseToAppGroupCopiesManifestType)$' -count=1`。
+- 补充验证：显式排除工作区既有未跟踪测试后，上述两个定向用例通过，`LOCAL_MOCK=true go build ./common/service/k8s/appgroup` 通过；完整包测试被既有 `eventqueue_test.go` 引用缺失的 `isDeletingAppGroupEvent` 阻断。
+- 2026-10-08 更正：ZPK 与 Helm 构造 AppGroup 时直接从 manifest 来源写入应用类型 label；保存时仅在 annotation 明确存在时覆盖同步，缺失 annotation 不删除来源 label，显式空值才执行清理。
+- 2026-10-08 最终调整：应用类型 label 与 annotation 在 ZPK/Helm 创建 AppGroup 时一并初始化，移除保存阶段补写逻辑，并将 label 限定在 AppGroup，避免通过通用资源标签扩散到其他工作负载。
+- 2026-10-08 代码整理：`SyncDependencyLabels` 还原至 `dependency.go`，删除临时拆分的 `labels.go`；行为不变。
