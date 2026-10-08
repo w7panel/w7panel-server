@@ -971,6 +971,12 @@ func ToAppGroup(p AppGroupResourceInterface, installResult []v1alpha1.DeployItem
 	obj := appgroup.CreateAppGroup(p.GetReleaseName(), p.GetNamespace())
 	obj.Labels = p.GetLabels()
 	obj.Annotations = p.GetAnnotations()
+	if manifestType := strings.TrimSpace(obj.Annotations[types.HELM_APPLICATION_TYPE]); manifestType != "" {
+		if obj.Labels == nil {
+			obj.Labels = map[string]string{}
+		}
+		obj.Labels[types.HELM_APPLICATION_TYPE] = manifestType
+	}
 	obj.Spec = v1alpha1.AppGroupSpec{
 		Type:        aType,
 		Title:       p.GetRootTitle(),
