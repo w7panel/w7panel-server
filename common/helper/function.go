@@ -196,7 +196,14 @@ func ReadK3sConfig() ([]byte, error) {
 }
 
 func ReadK3sKubeconfig() ([]byte, error) {
-	return os.ReadFile("/host/etc/rancher/k3s/k3s.yaml")
+	return os.ReadFile(K3sKubeconfigPath())
+}
+
+func K3sKubeconfigPath() string {
+	if IsChildAgent() {
+		return "/etc/rancher/k3s/k3s.yaml"
+	}
+	return "/host/etc/rancher/k3s/k3s.yaml"
 }
 
 func WriteK3sConfig(config []byte) error {

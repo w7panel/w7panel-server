@@ -8,6 +8,17 @@ import (
 	"testing"
 )
 
+func TestK3sKubeconfigPath(t *testing.T) {
+	t.Setenv("IS_CHILD", "true")
+	if got := K3sKubeconfigPath(); got != "/etc/rancher/k3s/k3s.yaml" {
+		t.Fatalf("child kubeconfig path = %q", got)
+	}
+	t.Setenv("IS_CHILD", "false")
+	if got := K3sKubeconfigPath(); got != "/host/etc/rancher/k3s/k3s.yaml" {
+		t.Fatalf("root kubeconfig path = %q", got)
+	}
+}
+
 func TestRandomByte(t *testing.T) {
 	length := 10
 	bytes := RandomByte(length)

@@ -490,3 +490,8 @@
 
 - 单应用及全局 MicroApp frontprops 接口新增布尔字段 `isSubCluster`，由 `helper.IsChildAgent()` 判断，供前端 Wujie 注入。
 - 验证：`make test TEST_PACKAGES=./app/application/http/controller`、`git diff --check` 通过。
+
+## 2026-10-09（子集群 kubeconfig 读取路径）
+
+- `/panel-api/v1/kubeconfig` 在子集群从 agent Pod 的 `/etc/rancher/k3s/k3s.yaml` 读取；主集群仍读取 `/host/etc/rancher/k3s/k3s.yaml`，agent 本地读取使用相同路径规则。
+- 验证：`make test TEST_PACKAGES='./common/helper ./app/application/http/controller'`、`git diff --check` 通过。

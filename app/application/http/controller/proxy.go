@@ -368,7 +368,7 @@ func readKubeconfigFromAgent(ctx context.Context) ([]byte, error) {
 			continue
 		}
 		readCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-		config, stderr, err := sdk.RunExecOutput(readCtx, pod.Namespace, pod.Name, pod.Spec.Containers[0].Name, []string{"cat", "/host/etc/rancher/k3s/k3s.yaml"})
+		config, stderr, err := sdk.RunExecOutput(readCtx, pod.Namespace, pod.Name, pod.Spec.Containers[0].Name, []string{"cat", helper.K3sKubeconfigPath()})
 		cancel()
 		if err == nil && len(config) > 0 {
 			return config, nil
