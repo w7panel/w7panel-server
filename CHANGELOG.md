@@ -272,3 +272,9 @@
 - WorkloadManager 在纳入正常协调的启动初始事件和后续 AppGroup 事件中，通过统一 label 协调入口将历史资源的非空应用类型 annotation 幂等回填到同名 label；annotation 缺失或为空时保留已有 label，不改变 `shouldHandleAppGroupEvent` 原有的处理范围。
 - 影响模块：AppGroup 元数据、ZPK/Helm 应用类型筛选。
 - 验证：ZPK 创建、Helm 补建及 WorkloadManager 历史类型标签回填的定向测试通过，`go build ./common/service/k8s/appgroup ./common/service/k8s/zpk` 通过；完整包测试仍被工作区既有未完成测试和缺失的 `testdata/demo.zip` 阻断。
+
+## 2026-10-09（制品安装集群等级校验）
+
+- ZPK 配置读取接收制品服务按分类汇总的 `support_cluster` 并透传给安装页，由前端结合当前集群等级统一判断。
+- 新增安装配置支持信息透传回归测试，覆盖制品市场、制品开发、依赖安装和直达链接。
+- 验证：ZPK 客户端支持信息解析与配置透传定向测试、ZPK HTTP 包测试及 `git diff --check` 通过。

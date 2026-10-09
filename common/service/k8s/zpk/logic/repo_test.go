@@ -51,6 +51,31 @@ func TestLoadRuntimeContextIncludesArtifactTitle(t *testing.T) {
 	}
 }
 
+func TestPackageConfigIncludesClusterSupport(t *testing.T) {
+	manifestPackage := &types.ManifestPackage{SupportCluster: "sub"}
+	config := manifestPackage.ToPackageAddConfig("demo", false)
+	if config.SupportCluster != "sub" {
+		t.Fatalf("supportCluster = %q, want sub", config.SupportCluster)
+	}
+}
+
+func TestLoadPackageIncludesClusterSupport(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{"data":{"manifest":"{}","support_cluster":"main"}}`))
+	}))
+	defer server.Close()
+
+	repository := NewRepo(server.URL+"/zpk/respo/info/demo", "", "")
+	manifestPackage, err := repository.loadPackageByHttp(context.Background(), repository.repoUrl, "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifestPackage.SupportCluster != "main" {
+		t.Fatalf("supportCluster = %q, want main", manifestPackage.SupportCluster)
+	}
+}
+
 func TestLoadPackage(t *testing.T) {
 	type args struct {
 		uri string

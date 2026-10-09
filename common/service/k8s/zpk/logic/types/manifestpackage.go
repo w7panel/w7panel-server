@@ -45,6 +45,7 @@ type ManifestPackage struct {
 	IconUrl                  string                      `json:"iconUrl"`
 	Ticket                   string                      `json:"ticket"`
 	InstallFormulas          []InstallFormula            `json:"install_formulas"`
+	SupportCluster           string                      `json:"supportCluster"`
 }
 
 func (p *ManifestPackage) GetChartAnnotations(releaseName string) map[string]string {
@@ -166,6 +167,7 @@ type PackageAddConfig struct {
 	Volumes                  []corev1.Volume      `json:"volumes"`
 	IsUpgrade                bool                 `json:"isUpgrade"`
 	InstallFormulas          []InstallFormula     `json:"installFormulas"`
+	SupportCluster           string               `json:"supportCluster"`
 }
 
 func (p *ManifestPackage) ToPackageAddConfig(releaseName string, requireLimit bool) PackageAddConfig {
@@ -200,6 +202,7 @@ func (p *ManifestPackage) ToPackageAddConfig(releaseName string, requireLimit bo
 		IsConsole:                (p.ConsoleReleaseName != ""),
 		ZipURL:                   p.ZipUrl,
 		RequireLimit:             requireLimit,
+		SupportCluster:           p.SupportCluster,
 		VolumeMounts:             p.GetVolumeMounts("%PVCNAME%", releaseName, nil),
 		Volumes:                  p.GetVolumes("%PVCNAME%"),
 		// InstallFormulas:          p.InstallFormulas,
