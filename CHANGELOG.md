@@ -495,3 +495,8 @@
 
 - `/panel-api/v1/kubeconfig` 在子集群从 agent Pod 的 `/etc/rancher/k3s/k3s.yaml` 读取；主集群仍读取 `/host/etc/rancher/k3s/k3s.yaml`，agent 本地读取使用相同路径规则。
 - 验证：`make test TEST_PACKAGES='./common/helper ./app/application/http/controller'`、`git diff --check` 通过。
+
+## 2026-10-09（MicroApp frontprops 字段名）
+
+- 单应用和全局 frontprops 接口的子集群字段由 `isSubCluster` 改为 `is_sub_cluster`；其他接口保持原字段名。
+- 验证：`make test TEST_PACKAGES=./app/application/http/controller`、`git diff --check` 通过。

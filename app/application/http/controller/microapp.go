@@ -150,7 +150,7 @@ func (self MicroApp) FrontProps(http *gin.Context) {
 		"nickname":          replace.GetNickName(),
 		"cloud_uid":         replace.GetConsoleId(),
 		"cloud_accesstoken": cloudAccessToken,
-		"isSubCluster":      helper.IsChildAgent(),
+		"is_sub_cluster":    helper.IsChildAgent(),
 	})
 }
 
@@ -190,6 +190,6 @@ func (self MicroApp) GlobalFrontProps(http *gin.Context) {
 		"nickname":          replace.GetNickName(),
 		"cloud_uid":         replace.GetConsoleId(),
 		"cloud_accesstoken": cloudAccessToken,
-		"isSubCluster":      helper.IsChildAgent(),
+		"is_sub_cluster":    helper.IsChildAgent(),
 	})
 }
