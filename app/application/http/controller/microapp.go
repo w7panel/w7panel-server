@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	"github.com/w7panel/w7panel/common/service/oidc"
 	"github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
@@ -138,7 +139,7 @@ func (self MicroApp) FrontProps(http *gin.Context) {
 	}
 
 	groupName := microAppGroupName(item)
-	self.JsonResponseWithoutError(http, map[string]string{
+	self.JsonResponseWithoutError(http, gin.H{
 		// "url":               item.RoleServerUrl(role),
 		"group":             groupName,
 		"appgroup":          groupName,
@@ -149,6 +150,7 @@ func (self MicroApp) FrontProps(http *gin.Context) {
 		"nickname":          replace.GetNickName(),
 		"cloud_uid":         replace.GetConsoleId(),
 		"cloud_accesstoken": cloudAccessToken,
+		"isSubCluster":      helper.IsChildAgent(),
 	})
 }
 
@@ -179,7 +181,7 @@ func (self MicroApp) GlobalFrontProps(http *gin.Context) {
 		}
 	}
 
-	self.JsonResponseWithoutError(http, map[string]string{
+	self.JsonResponseWithoutError(http, gin.H{
 		// "url":               item.RoleServerUrl(role),
 		"userid":            replace.Name,
 		"role":              role,
@@ -188,5 +190,6 @@ func (self MicroApp) GlobalFrontProps(http *gin.Context) {
 		"nickname":          replace.GetNickName(),
 		"cloud_uid":         replace.GetConsoleId(),
 		"cloud_accesstoken": cloudAccessToken,
+		"isSubCluster":      helper.IsChildAgent(),
 	})
 }
