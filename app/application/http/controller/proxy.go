@@ -322,7 +322,7 @@ func (self Proxy) HelmIndex(ctx *gin.Context) {
 func (self Proxy) Kubeconfig(gin *gin.Context) {
 	var config []byte
 	var err error
-	if helper.IsAgent() {
+	if helper.IsChildAgent() {
 		config, err = helper.ReadK3sKubeconfig()
 	} else {
 		config, err = readKubeconfigFromAgent(gin.Request.Context())
