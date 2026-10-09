@@ -496,6 +496,7 @@ type Data struct {
 	IconUrl         string                 `json:"icon_url"`
 	Ticket          string                 `json:"ticket"`
 	InstallFormulas []InstallFormula       `json:"install_formulas"`
+	SupportCluster  string                 `json:"support_cluster"`
 }
 
 type InstallFormula struct {

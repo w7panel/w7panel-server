@@ -37,16 +37,22 @@ type runtimeContextResponse struct {
 	Data   map[string]interface{} `json:"data"`
 }
 
-func trialExpiredPayload(err error) (map[string]interface{}, bool) {
+func repoRestrictionPayload(err error) (map[string]interface{}, bool) {
 	var remoteErr *logic.RemoteHTTPError
 	if !errors.As(err, &remoteErr) || remoteErr.StatusCode != nethttp.StatusForbidden {
 		return nil, false
 	}
 	var payload map[string]interface{}
-	if json.Unmarshal(remoteErr.Body, &payload) != nil || payload["code"] != "ZPK_TRIAL_EXPIRED" {
+	if json.Unmarshal(remoteErr.Body, &payload) != nil {
 		return nil, false
 	}
-	return payload, true
+	code, _ := payload["code"].(string)
+	switch code {
+	case "ZPK_TRIAL_EXPIRED", "ZPK_ORDER_REFUNDING":
+		return payload, true
+	default:
+		return nil, false
+	}
 }
 
 func writeArtifactInstallConflictResponse(http *gin.Context, err error) bool {
@@ -69,7 +75,7 @@ func writeArtifactInstallConflictResponse(http *gin.Context, err error) bool {
 }
 
 func (self Zpk) relayRepoError(ctx *gin.Context, err error) bool {
-	payload, ok := trialExpiredPayload(err)
+	payload, ok := repoRestrictionPayload(err)
 	if !ok {
 		return false
 	}

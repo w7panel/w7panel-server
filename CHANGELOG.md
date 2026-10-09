@@ -486,17 +486,8 @@
 - 影响模块：AppGroup 元数据、ZPK/Helm 应用类型筛选。
 - 验证：ZPK 创建、Helm 补建及 WorkloadManager 历史类型标签回填的定向测试通过，`go build ./common/service/k8s/appgroup ./common/service/k8s/zpk` 通过；完整包测试仍被工作区既有未完成测试和缺失的 `testdata/demo.zip` 阻断。
 
-## 2026-10-09（MicroApp 子集群标识）
+## 2026-10-09（制品安装集群等级校验）
 
-- 单应用及全局 MicroApp frontprops 接口新增布尔字段 `isSubCluster`，由 `helper.IsChildAgent()` 判断，供前端 Wujie 注入。
-- 验证：`make test TEST_PACKAGES=./app/application/http/controller`、`git diff --check` 通过。
-
-## 2026-10-09（子集群 kubeconfig 读取路径）
-
-- `/panel-api/v1/kubeconfig` 在子集群从 agent Pod 的 `/etc/rancher/k3s/k3s.yaml` 读取；主集群仍读取 `/host/etc/rancher/k3s/k3s.yaml`，agent 本地读取使用相同路径规则。
-- 验证：`make test TEST_PACKAGES='./common/helper ./app/application/http/controller'`、`git diff --check` 通过。
-
-## 2026-10-09（MicroApp frontprops 字段名）
-
-- 单应用和全局 frontprops 接口的子集群字段由 `isSubCluster` 改为 `is_sub_cluster`；其他接口保持原字段名。
-- 验证：`make test TEST_PACKAGES=./app/application/http/controller`、`git diff --check` 通过。
+- ZPK 配置读取接收制品服务按分类汇总的 `support_cluster` 并透传给安装页，由前端结合当前集群等级统一判断。
+- 新增安装配置支持信息透传回归测试，覆盖制品市场、制品开发、依赖安装和直达链接。
+- 验证：ZPK 客户端支持信息解析与配置透传定向测试、ZPK HTTP 包测试及 `git diff --check` 通过。
