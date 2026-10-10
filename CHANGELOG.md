@@ -496,3 +496,4 @@
 
 - WebDAV 新建文件/上传（PUT）和新建文件夹（MKCOL）沿用父目录权限位，覆盖已有文件保留原权限；影响模块：文件管理 WebDAV。
 - 验证：`make test TEST_PACKAGES=./common/service/webdav` 通过。
+- 修复 PID 模式分片上传文件属主和权限错误：目标目录由 www-data 拥有时，合并接口此前以面板进程身份新建文件，文件变成 root:root、权限受 umask 限制；新文件现在继承目标目录属主，合并后的文件权限设为 777，覆盖已有文件保留原属主。验证：控制器包测试。

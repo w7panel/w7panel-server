@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
@@ -389,7 +391,7 @@ func (self File) MergeChunks(http *gin.Context) {
 	}
 
 	// 创建目标文件
-	destFile, err := os.Create(finalFilePath)
+	destFile, err := openMergeDestination(finalFilePath, params.Pid != "" && params.Pid != "0")
 	if err != nil {
 		self.JsonResponseWithError(http, fmt.Errorf("failed to create destination file: %v", err), 500)
 		return
@@ -434,6 +436,48 @@ func (self File) MergeChunks(http *gin.Context) {
 		FileName: params.FileName,
 		FileSize: totalWritten,
 	}, nil, 200)
+}
+
+func openMergeDestination(path string, inheritDirectoryOwner bool) (*os.File, error) {
+	if !inheritDirectoryOwner {
+		return os.Create(path)
+	}
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0666)
+	if errors.Is(err, os.ErrExist) {
+		file, err = os.OpenFile(path, os.O_WRONLY, 0)
+		if err != nil {
+			return nil, err
+		}
+		if err = file.Chmod(0777); err == nil {
+			err = file.Truncate(0)
+		}
+		if err != nil {
+			file.Close()
+			return nil, err
+		}
+		return file, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	dir, err := os.Stat(filepath.Dir(path))
+	if err == nil {
+		owner, ok := dir.Sys().(*syscall.Stat_t)
+		if !ok {
+			err = fmt.Errorf("failed to read directory owner: %s", filepath.Dir(path))
+		} else {
+			err = file.Chown(int(owner.Uid), int(owner.Gid))
+		}
+	}
+	if err == nil {
+		err = file.Chmod(0777)
+	}
+	if err != nil {
+		file.Close()
+		os.Remove(path)
+		return nil, err
+	}
+	return file, nil
 }
 
 // CpPidFile 复制 Pod 文件
