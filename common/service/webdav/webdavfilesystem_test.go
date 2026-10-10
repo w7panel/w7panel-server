@@ -19,6 +19,88 @@ func (fs renameEXDEVFS) Rename(ctx context.Context, oldName, newName string) err
 	return &os.LinkError{Op: "rename", Old: oldName, New: newName, Err: syscall.EXDEV}
 }
 
+func TestWebDAVFileSystemCreateUsesParentPermissions(t *testing.T) {
+	tmpDir := t.TempDir()
+	parentPath := filepath.Join(tmpDir, "parent")
+	if err := os.Mkdir(parentPath, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(parentPath, 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	fs := NewWebDAVFileSystem(webdav.Dir(tmpDir), tmpDir)
+	ctx := context.Background()
+	if err := fs.Mkdir(ctx, "/parent/new-dir", 0o777); err != nil {
+		t.Fatal(err)
+	}
+
+	file, err := fs.OpenFile(ctx, "/parent/new-file", os.O_CREATE|os.O_WRONLY, 0o666)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, name := range []string{"new-dir", "new-file"} {
+		got, err := os.Stat(filepath.Join(parentPath, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		wantPath := filepath.Join(tmpDir, "expected-"+name)
+		var wantErr error
+		if name == "new-dir" {
+			wantErr = os.Mkdir(wantPath, 0o750)
+		} else {
+			var wantFile *os.File
+			wantFile, wantErr = os.OpenFile(wantPath, os.O_CREATE|os.O_WRONLY, 0o750)
+			if wantErr == nil {
+				wantErr = wantFile.Close()
+			}
+		}
+		if wantErr != nil {
+			t.Fatal(wantErr)
+		}
+		want, err := os.Stat(wantPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Mode().Perm() != want.Mode().Perm() {
+			t.Errorf("%s permissions = %04o, want %04o", name, got.Mode().Perm(), want.Mode().Perm())
+		}
+	}
+}
+
+func TestWebDAVFileSystemOverwriteKeepsExistingPermissions(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(tmpDir, "parent"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	name := filepath.Join(tmpDir, "parent", "existing")
+	if err := os.WriteFile(name, []byte("old"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(name, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fs := NewWebDAVFileSystem(webdav.Dir(tmpDir), tmpDir)
+	file, err := fs.OpenFile(context.Background(), "/parent/existing", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o777)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("existing file permissions = %04o, want 0600", info.Mode().Perm())
+	}
+}
+
 func TestWebDAVFileSystemRename_FallbackCopiesAndRemovesFile(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "webdav-rename-file")
 	if err != nil {

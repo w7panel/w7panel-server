@@ -491,3 +491,8 @@
 - ZPK 配置读取接收制品服务按分类汇总的 `support_cluster` 并透传给安装页，由前端结合当前集群等级统一判断。
 - 新增安装配置支持信息透传回归测试，覆盖制品市场、制品开发、依赖安装和直达链接。
 - 验证：ZPK 客户端支持信息解析与配置透传定向测试、ZPK HTTP 包测试及 `git diff --check` 通过。
+
+## 2026-10-10（文件管理新建权限继承）
+
+- WebDAV 新建文件/上传（PUT）和新建文件夹（MKCOL）沿用父目录权限位，覆盖已有文件保留原权限；影响模块：文件管理 WebDAV。
+- 验证：`make test TEST_PACKAGES=./common/service/webdav` 通过。
