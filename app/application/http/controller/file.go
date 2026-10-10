@@ -442,13 +442,18 @@ func openMergeDestination(path string, inheritDirectoryOwner bool) (*os.File, er
 	if !inheritDirectoryOwner {
 		return os.Create(path)
 	}
+	dir, err := os.Stat(filepath.Dir(path))
+	if err != nil {
+		return nil, err
+	}
+	mode := dir.Mode().Perm()
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0666)
 	if errors.Is(err, os.ErrExist) {
 		file, err = os.OpenFile(path, os.O_WRONLY, 0)
 		if err != nil {
 			return nil, err
 		}
-		if err = file.Chmod(0777); err == nil {
+		if err = file.Chmod(mode); err == nil {
 			err = file.Truncate(0)
 		}
 		if err != nil {
@@ -460,17 +465,14 @@ func openMergeDestination(path string, inheritDirectoryOwner bool) (*os.File, er
 	if err != nil {
 		return nil, err
 	}
-	dir, err := os.Stat(filepath.Dir(path))
-	if err == nil {
-		owner, ok := dir.Sys().(*syscall.Stat_t)
-		if !ok {
-			err = fmt.Errorf("failed to read directory owner: %s", filepath.Dir(path))
-		} else {
-			err = file.Chown(int(owner.Uid), int(owner.Gid))
-		}
+	owner, ok := dir.Sys().(*syscall.Stat_t)
+	if !ok {
+		err = fmt.Errorf("failed to read directory owner: %s", filepath.Dir(path))
+	} else {
+		err = file.Chown(int(owner.Uid), int(owner.Gid))
 	}
 	if err == nil {
-		err = file.Chmod(0777)
+		err = file.Chmod(mode)
 	}
 	if err != nil {
 		file.Close()
