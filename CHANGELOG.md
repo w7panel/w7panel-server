@@ -502,6 +502,41 @@
 - 增加零副本 Deployment 搭配 Ingress、多 Deployment、无 Deployment 及空状态的回归测试。
 - 验证：AppGroup API 包测试与编译通过；LOCAL_MOCK=true 前端构建通过（存在图片压缩及样式弃用提示）；git diff --check 通过。
 
+## 2026-10-12 ZPK 更新存储容量回填
+
+- 历史配置接口读取旧 Release 清单及 Deployment 引用 PVC 的当前申请容量。
+- 存储参数支持 pvcName 关联；更新表单回填容量并校验最小值，单参数单 PVC 自动匹配。
+- 验证：ZPK HTTP 包测试、后端逻辑包编译、容量表单回归测试及 LOCAL_MOCK=true 前端构建通过；构建有图片压缩与样式弃用提示。未做集群更新实测。
+
+## 2026-10-12 存储回填改为前端查询
+
+- 撤回本次后端 PVC 容量字段及存储参数关联字段扩展；改用现有 K8s 代理读取 PVC。
+- 单 PVC 自动回填，多 PVC 在表单选择关联，支持 K8s 容量单位转换，无需修改 Chart。
+- 验证：PVC 筛选、单位转换、容量回填及选择回归测试通过，LOCAL_MOCK=true 前端构建通过（图片压缩及样式弃用提示）；git diff --check 通过。未部署或做集群更新实测。
+
+## 2026-10-12 Helm 更新保留已有 PVC 容量
+
+- 公共 Helm.Upgrade 接入 post-renderer；已有独立 PVC 保留当前申请容量，新增 PVC 沿用 Chart 配置，SDK 和 Job 更新共用入口。
+- 增加容量保护回归测试，不改变历史 values 或 API 字段。
+- 验证：PVC 渲染保护定向测试（含多个 PVC 分别保留容量）与公共 K8s / ZPK console 包编译通过，git diff --check 通过；未部署或做集群更新实测。
+
+## 2026-10-12 Helm post-render 统一入口
+
+- Upgrade 改为接入统一 post-render 管线，PVC 处理器在注册入口装配，后续渲染需求可顺序追加。
+- 增加执行顺序、输出传递、错误中止及空输出保护回归测试。
+- 验证：post-render 管线与 PVC 容量保护定向测试、公共 K8s 与 ZPK console 包编译通过，git diff --check 通过；本轮远端同步因 GitHub 网络超时失败，基于当前工作区验证。
+
+## 2026-10-12 PVC 渲染筛选简化
+
+- PVC 容量保护仅按 kind=PersistentVolumeClaim 筛选，移除 apiVersion=v1 限制。
+- 验证：post-render 管线与 PVC 容量保护定向回归测试、git diff --check 通过。
+
+## 2026-10-12 PVC post-render 容错
+
+- PVC 处理器错误改为警告日志与原始清单回退，单 PVC 失败不影响后续资源处理。统一入口其他处理器的错误中止行为不变。
+- 增加查询失败后继续处理其他 PVC 和 YAML 解析失败回退的回归测试。
+- 验证：post-render 管线与 PVC 容量/容错回归测试、公共 K8s 及 ZPK console 编译、git diff --check 通过。
+
 ## 2026-10-10（文件管理新建权限继承）
 
 - WebDAV 新建文件/上传（PUT）和新建文件夹（MKCOL）沿用父目录权限位，覆盖已有文件保留原权限；影响模块：文件管理 WebDAV。

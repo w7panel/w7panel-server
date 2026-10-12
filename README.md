@@ -213,6 +213,14 @@ bash compress.sh
 - [部署文档](../docs/deployment/README.md)
 - [开发指南](../docs/development/README.md)
 - [测试文档](../docs/testing/README.md)
+
+### Helm 更新保留 PVC 容量
+
+公共 `Helm.Upgrade` 使用 post-renderer 扫描渲染后的独立 `kind=PersistentVolumeClaim`，按资源 namespace（缺省使用 Release namespace）及名称查询现有 PVC，将待提交容量设为当前 `spec.resources.requests.storage`。新增 PVC 保留 Chart 容量；PVC 读取、解析或修改出错时记录 slog.Warn，保留该资源原始清单并继续；整份清单读取失败时返回原始清单，不阻断 post-render。Go SDK 和 Job 内 `helmgo` 更新共用该入口。历史 values 不修改，修正后的清单由 Helm 保存。应用更新不承担已有 PVC 扩容，扩容通过存储管理执行。StatefulSet 的 volumeClaimTemplates 与 Helm hook 资源不在本处理范围内。
+
+### Helm post-render 扩展入口
+
+`Helm.Upgrade` 统一调用 `newUpgradePostRenderer`，由 `helmPostRenderer` 按注册顺序执行各个 `postrender.PostRenderer`。前一个处理器输出作为下一个输入；错误或空输出立即中止。PVC 容量保护作为第一个处理器注册，后续需求在同一入口追加处理器，无需修改 Upgrade 的接入代码。
 # 镜像源 API
 
 - `GET /panel-api/v1/registry/registries`：读取镜像源 YAML，响应为纯文本。
