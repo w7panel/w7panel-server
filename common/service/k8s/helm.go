@@ -171,6 +171,7 @@ func (self *Helm) Upgrade(context context.Context, chart *chart.Chart, vals map[
 		return nil, err
 	}
 	action := action.NewUpgrade(cfg)
+	action.PostRenderer = self.newUpgradePostRenderer(context, namespace)
 	action.Namespace = namespace
 	// action.Force = true
 	// action.Recreate = true
