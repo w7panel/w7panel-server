@@ -191,7 +191,7 @@ type AppGroupStatus struct {
 	DeployItems    []DeployItem         `json:"deployInfo"`
 	DeployStatus   string               `json:"deployStatus"`
 	Ready          bool                 `json:"ready"`
-	IsZeroReplicas bool                 `json:"isZeroReplicas"` //是否暂停部署 只有一个应用并且replicas为0
+	IsZeroReplicas bool                 `json:"isZeroReplicas"` //存在 Deployment 且所有 Deployment 均为零副本
 }
 
 func (s AppGroupStatus) ComputeDeployIsFailed() bool {
@@ -230,9 +230,6 @@ func (g *AppGroup) ComputeStatus() {
 		}
 	}
 	g.Status.IsZeroReplicas = false
-	// if len(g.Status.Items) == 1 {
-	// 	g.Status.IsZeroReplicas = g.Status.Items[0].IsZeroReplicas
-	// }
 
 	if len(g.Status.Items) > 0 {
 		ready := lo.EveryBy(g.Status.Items, func(v AppGroupItemStatus) bool {
@@ -241,11 +238,13 @@ func (g *AppGroup) ComputeStatus() {
 		g.Status.Ready = ready
 	}
 	if len(g.Status.Items) == 0 {
-		// g.Status.IsZeroReplicas = true
 		g.Status.Ready = true
 	}
-	if len(g.Status.Items) > 0 {
-		allZero := lo.EveryBy(g.Status.Items, func(v AppGroupItemStatus) bool {
+	deployments := lo.Filter(g.Status.Items, func(v AppGroupItemStatus, _ int) bool {
+		return v.Kind == "Deployment"
+	})
+	if len(deployments) > 0 {
+		allZero := lo.EveryBy(deployments, func(v AppGroupItemStatus) bool {
 			return v.IsZeroReplicas
 		})
 		g.Status.IsZeroReplicas = allZero
