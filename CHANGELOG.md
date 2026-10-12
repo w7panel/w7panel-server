@@ -492,6 +492,12 @@
 - 新增安装配置支持信息透传回归测试，覆盖制品市场、制品开发、依赖安装和直达链接。
 - 验证：ZPK 客户端支持信息解析与配置透传定向测试、ZPK HTTP 包测试及 `git diff --check` 通过。
 
+## 2026-10-12 应用暂停状态修正
+
+- AppGroup 整体 isZeroReplicas 仅统计 Deployment；至少存在一个 Deployment 且全部零副本才标记暂停，Ingress 等资源不参与。
+- 增加零副本 Deployment 搭配 Ingress、多 Deployment、无 Deployment 及空状态的回归测试。
+- 验证：AppGroup API 包测试与编译通过；LOCAL_MOCK=true 前端构建通过（存在图片压缩及样式弃用提示）；git diff --check 通过。
+
 ## 2026-10-10（文件管理新建权限继承）
 
 - WebDAV 新建文件/上传（PUT）和新建文件夹（MKCOL）沿用父目录权限位，覆盖已有文件保留原权限；影响模块：文件管理 WebDAV。
