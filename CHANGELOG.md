@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-10-12
+
+- 修复域名解析配置接口 404：`DomainParse` handler 从 `app/zpk/http/zpk.go` 迁移到 `app/application/http/controller/domainparse.go`（`DomainParse{}.Get`），并在 `app/application/provider.go` 的 `/panel-api/v1` 分组下注册 `GET /domain-parse`（去掉 zpk 前缀，接口归属 application 而非制品库）；前端 `w7panel-ckm/ui/src/views/PanelDomain.vue` 调用路径同步改为 `/domain-parse`；`kodata/yaml/permission/normal.yaml` 新增普通用户 `get` 放行规则，并启用 `TestBuiltinNormalPermissionAllowsAccountBindingWithoutClusterRegistration` 用例。影响模块：application 路由、zpk 控制器、内置权限、ckm 前端域名页。验证：`go build ./app/... ./common/...` 通过；`go test ./common/service/k8s/permission/... ./app/application/... ./app/zpk/...` 通过。
+
 ## 2026-09-30
 
 - `/panel-api/v1/kubeconfig` 通过 server 节点 agent pod 读取宿主机 kubeconfig；agent 内请求读取本机挂载。K3sConfig 初始化保留已有 TLS SAN，空 SAN 应用会删除 K3s 配置项。验证：`make test TEST_PACKAGES="./common/helper ./common/service/k8s/shell ./app/application/http/controller"` 通过。

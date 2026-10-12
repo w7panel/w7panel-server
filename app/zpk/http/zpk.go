@@ -825,15 +825,3 @@ func (self Zpk) LocalZpkUrl(http *gin.Context) {
 		"oauthToken": oauthToken,
 	})
 }
-
-// DomainParse returns the domain parsing configuration used during application installation.
-func (self Zpk) DomainParse(http *gin.Context) {
-	client := k8s.NewK8sClient()
-
-	config, err := client.GetConfigCRD(http.Request.Context(), k8s.DomainParseConfigGVR, k8s.DomainParseConfigName)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonResponseWithoutError(http, config)
-}

@@ -248,6 +248,9 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-delete", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotDelete)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-purge", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotPurge)
 
+			// 域名解析配置 安装应用时使用
+			localApiGroup.GET("/domain-parse", middleware.Auth{}.Process, controller2.DomainParse{}.Get)
+
 			localApiGroup.GET("/static/:identifie/status", middleware.Auth{}.Process, controller2.Static{}.StaticInfo)
 			localApiGroup.POST("/static/:namespace/download/:name", middleware.Auth{}.Process, controller2.Static{}.Download)
 			// 前端静态资源回源代理：本地未下载时从远程制品库拉取

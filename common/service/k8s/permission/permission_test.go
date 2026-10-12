@@ -451,7 +451,7 @@ func TestBuiltinFounderUsesGatewayTrafficMenu(t *testing.T) {
 	}
 }
 
-func disabledBuiltinNormalPermissionAllowsAccountBindingWithoutClusterRegistration(t *testing.T) {
+func TestBuiltinNormalPermissionAllowsAccountBindingWithoutClusterRegistration(t *testing.T) {
 	p := loadBuiltinPermission(t, "normal.yaml")
 	api := APIMap(p)
 
@@ -461,8 +461,8 @@ func disabledBuiltinNormalPermissionAllowsAccountBindingWithoutClusterRegistrati
 	if len(p.Spec.RBACRules) != 0 {
 		t.Fatalf("normal rbacRules = %v, want empty", p.Spec.RBACRules)
 	}
-	if !MatchAPI(api, "GET", "/panel-api/v1/zpk/domain-parse") {
-		t.Fatal("normal permission should allow GET /panel-api/v1/zpk/domain-parse")
+	if !MatchAPI(api, "GET", "/panel-api/v1/domain-parse") {
+		t.Fatal("normal permission should allow GET /panel-api/v1/domain-parse")
 	}
 	for _, path := range []string{"/panel-api/v1/auth/console/bind", "/panel-api/v1/auth/console/info", "/panel-api/v1/app-info"} {
 		if !MatchAPI(api, "GET", path) {
@@ -481,7 +481,7 @@ func disabledBuiltinNormalPermissionAllowsAccountBindingWithoutClusterRegistrati
 		{method: "GET", path: "/panel-api/v1/kubeconfig"},
 		{method: "GET", path: "/panel-api/v1/namespaces"},
 		{method: "GET", path: "/panel-api/v1/helm/releases"},
-		{method: "POST", path: "/panel-api/v1/zpk/domain-parse"},
+		{method: "POST", path: "/panel-api/v1/domain-parse"},
 		{method: "GET", path: "/panel-api/v1/audit/list"},
 	}
 	for _, tt := range denied {

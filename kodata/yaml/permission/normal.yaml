@@ -108,6 +108,10 @@ spec:
             method:
                 - get
             path: /panel-api/v1/zpk/config
+        -
+            method:
+                - get
+            path: /panel-api/v1/domain-parse
     domainWhiteList: []
     features:
         debug: false
