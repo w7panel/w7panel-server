@@ -12,7 +12,7 @@
         image: ccr.ccs.tencentyun.com/afan-public/ubuntu:go-build
         volumes: 
           - /home/workspace/.cache:read-write
-          - /root/.cache:read-write
+          # - /root/.cache:read-write
       stages:
        
         - name: build-ui
