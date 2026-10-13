@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
-	"github.com/w7panel/w7panel/common/service/oidc"
 	"github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
@@ -122,12 +121,9 @@ func (self MicroApp) FrontProps(http *gin.Context) {
 
 	role := replace.GetRole()
 	accessToken := ""
-	server, err := oidc.GetServer()
-	if err == nil && server != nil {
-		accessToken, err = server.CreateDefaultAccessToken(server.ContextWithIssuer(http.Request.Context(), http.Request), replace.Name)
-		if err != nil {
-			accessToken = ""
-		}
+	accessToken, err = replace.GetAccessToken(http.Request.Context())
+	if err != nil {
+		accessToken = ""
 	}
 
 	cloudAccessToken := ""
@@ -165,12 +161,9 @@ func (self MicroApp) GlobalFrontProps(http *gin.Context) {
 
 	role := replace.GetRole()
 	accessToken := ""
-	server, err := oidc.GetServer()
-	if err == nil && server != nil {
-		accessToken, err = server.CreateDefaultAccessToken(server.ContextWithIssuer(http.Request.Context(), http.Request), replace.Name)
-		if err != nil {
-			accessToken = ""
-		}
+	accessToken, err = replace.GetAccessToken(http.Request.Context())
+	if err != nil {
+		accessToken = ""
 	}
 
 	cloudAccessToken := ""
