@@ -129,7 +129,6 @@ fi
 echo "同步内置 BootstrapInstallation"
 kubectl apply -f "$KO_DATA_PATH/yaml/bootstrap-installations.yaml" \
   --server-side \
-  --prune \
   -l 'w7.cc/bootstrap-builtin=true' \
   --prune-allowlist='w7panel.w7.com/v1alpha1/BootstrapInstallation'
 
