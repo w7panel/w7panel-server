@@ -54,6 +54,8 @@ type ArtifactInstallConflictError struct {
 	PanelURL      string `json:"panel_url"`
 	PanelDeviceSN string `json:"panel_device_sn"`
 	AppIdentify   string `json:"app_identify"`
+	Title         string `json:"title,omitempty"`
+	HTML          string `json:"html,omitempty"`
 }
 
 func (e *ArtifactInstallConflictError) Error() string {
@@ -218,7 +220,9 @@ func (self *repo) PreInstall() (*console.PreInstall, error) {
 func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token string, isParent bool) (*types.ManifestPackage, error) {
 	// 发送http请求 从uri获取json 数据
 	requestURI := helper.RemoveQueryParam(uri, "reinstall")
-	req := helper.RetryHttpClient().R().SetContext(ctx).SetAuthToken(token)
+	requestURI = helper.RemoveQueryParam(requestURI, "notice_format")
+	// Advertise support explicitly; older ZPK servers ignore this query parameter.
+	req := helper.RetryHttpClient().R().SetContext(ctx).SetAuthToken(token).SetQueryParam("notice_format", "html")
 	microapp.SetCloudAccessTokenHeader(req, self.panelToken)
 	if self.upgrade {
 		req.SetQueryParam("is_upgrade", "1")
