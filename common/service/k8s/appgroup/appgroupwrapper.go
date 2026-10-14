@@ -1,6 +1,8 @@
 package appgroup
 
 import (
+	"sort"
+
 	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 
 	"github.com/samber/lo"
@@ -67,6 +69,7 @@ func (g *appgroupWrapper) upsertStatusItem(item v1alpha1.AppGroupItemStatus) {
 	for i, v := range g.Status.Items {
 		if v.Name == item.Name && v.Kind == item.Kind && v.ApiVersion == item.ApiVersion {
 			g.Status.Items[i] = item
+			g.sortStatusItems()
 			g.changed = true
 			return
 		}
@@ -75,6 +78,7 @@ func (g *appgroupWrapper) upsertStatusItem(item v1alpha1.AppGroupItemStatus) {
 		}
 	}
 	g.Status.Items = append(g.Status.Items, item)
+	g.sortStatusItems()
 	g.changed = true
 }
 
@@ -141,4 +145,18 @@ func (g *appgroupWrapper) IsExists() bool {
 func (g *appgroupWrapper) IsDeleteEnabled() bool {
 	return g.deleteEnabled
 
+}
+
+// Keep equal orders and unordered resources in their existing relative order.
+func (g *appgroupWrapper) sortStatusItems() {
+	sort.SliceStable(g.Status.Items, func(i, j int) bool {
+		a, b := g.Status.Items[i].Order, g.Status.Items[j].Order
+		if a == nil {
+			return false
+		}
+		if b == nil {
+			return true
+		}
+		return *a < *b
+	})
 }

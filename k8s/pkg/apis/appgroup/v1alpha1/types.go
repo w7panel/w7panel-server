@@ -174,7 +174,8 @@ type AppGroupSpec struct {
 
 // ApplicationItemStatus 用于记录单个应用的部署状态信息
 type AppGroupItemStatus struct {
-	Kind              string      `json:"kind"` // "helm" or "deployment" or "statefulset" or "daemonset" or "job"
+	Order             *int        `json:"order,omitempty"` // 制品应用排序；nil 表示未设置，0 为有效值
+	Kind              string      `json:"kind"`            // "helm" or "deployment" or "statefulset" or "daemonset" or "job"
 	ApiVersion        string      `json:"apiVersion"`
 	Name              string      `json:"name"`
 	Title             string      `json:"title"`

@@ -48,6 +48,16 @@ func repoRestrictionPayload(err error) (map[string]interface{}, bool) {
 	}
 	code, _ := payload["code"].(string)
 	switch code {
+	case "ZPK_HTML_NOTICE":
+		detail, ok := payload["data"].(map[string]interface{})
+		if !ok {
+			return nil, false
+		}
+		html, ok := detail["html"].(string)
+		if !ok || strings.TrimSpace(html) == "" || len(html) > 64*1024 {
+			return nil, false
+		}
+		return payload, true
 	case "ZPK_TRIAL_EXPIRED", "ZPK_ORDER_REFUNDING":
 		return payload, true
 	default:
@@ -60,16 +70,16 @@ func writeArtifactInstallConflictResponse(http *gin.Context, err error) bool {
 	if !errors.As(err, &conflictErr) {
 		return false
 	}
+	data := gin.H{
+		"conflict_reason": conflictErr.Reason,
+		"domain":          conflictErr.Domain, "panel_url": conflictErr.PanelURL,
+		"panel_device_sn": conflictErr.PanelDeviceSN, "app_identify": conflictErr.AppIdentify,
+	}
+	if strings.TrimSpace(conflictErr.HTML) != "" && len(conflictErr.HTML) <= 64*1024 {
+		data["title"], data["html"] = conflictErr.Title, conflictErr.HTML
+	}
 	http.JSON(nethttp.StatusConflict, gin.H{
-		"code":  nethttp.StatusConflict,
-		"error": "制品安装绑定冲突",
-		"data": gin.H{
-			"conflict_reason": conflictErr.Reason,
-			"domain":          conflictErr.Domain,
-			"panel_url":       conflictErr.PanelURL,
-			"panel_device_sn": conflictErr.PanelDeviceSN,
-			"app_identify":    conflictErr.AppIdentify,
-		},
+		"code": nethttp.StatusConflict, "error": "制品安装绑定冲突", "data": data,
 	})
 	return true
 }

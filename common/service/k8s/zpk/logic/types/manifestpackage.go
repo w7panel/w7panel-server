@@ -63,6 +63,9 @@ func (p *ManifestPackage) GetChartAnnotations(releaseName string) map[string]str
 		zpktypes.HELM_TITLE:            p.Manifest.Application.Name,
 		zpktypes.HELM_STATIC_URL:       p.GetStaticUrl(releaseName),
 	}
+	if order := p.Manifest.Application.Order; order != nil {
+		anno[zpktypes.APP_ORDER] = strconv.Itoa(*order)
+	}
 	return anno
 }
 
