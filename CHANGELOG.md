@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-10-14
+
+- 升级脚本在触发 Higress BootstrapInstallation 前认领已有的 `kube-system/higress` HelmChart：仅当 chart 来源、目标命名空间和现有归属均匹配时补齐 `w7panel-higress` 的 Helm 元数据，避免旧资源缺少归属信息导致安装失败；验证：Shell 语法及匹配条件检查。
+
 ## 2026-10-12
 
 - 修复域名解析配置接口 404：`DomainParse` handler 从 `app/zpk/http/zpk.go` 迁移到 `app/application/http/controller/domainparse.go`（`DomainParse{}.Get`），并在 `app/application/provider.go` 的 `/panel-api/v1` 分组下注册 `GET /domain-parse`（去掉 zpk 前缀，接口归属 application 而非制品库）；前端 `w7panel-ckm/ui/src/views/PanelDomain.vue` 调用路径同步改为 `/domain-parse`；`kodata/yaml/permission/normal.yaml` 新增普通用户 `get` 放行规则，并启用 `TestBuiltinNormalPermissionAllowsAccountBindingWithoutClusterRegistration` 用例。影响模块：application 路由、zpk 控制器、内置权限、ckm 前端域名页。验证：`go build ./app/... ./common/...` 通过；`go test ./common/service/k8s/permission/... ./app/application/... ./app/zpk/...` 通过。

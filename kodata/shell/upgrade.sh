@@ -1,6 +1,27 @@
 #!/bin/sh
 set -ex
 
+echo "认领既有 Higress HelmChart"
+set +x
+higress_chart=$(kubectl -n kube-system get helmchart higress --ignore-not-found -o json)
+if [ -n "$higress_chart" ]; then
+  if ! printf '%s' "$higress_chart" | jq -e '
+    (.spec.chart | startswith("https://cdn.w7.cc/w7panel/charts/higress/higress-") and endswith(".tgz")) and
+    .spec.targetNamespace == "higress-system" and
+    ((.metadata.labels["app.kubernetes.io/managed-by"] // "Helm") == "Helm") and
+    ((.metadata.annotations["meta.helm.sh/release-name"] // "w7panel-higress") == "w7panel-higress") and
+    ((.metadata.annotations["meta.helm.sh/release-namespace"] // "default") == "default")
+  ' >/dev/null; then
+    echo "现有 Higress HelmChart 与 w7panel-higress 不匹配，停止自动认领" >&2
+    exit 1
+  fi
+  kubectl -n kube-system label helmchart higress app.kubernetes.io/managed-by=Helm --overwrite
+  kubectl -n kube-system annotate helmchart higress \
+    meta.helm.sh/release-name=w7panel-higress \
+    meta.helm.sh/release-namespace=default --overwrite
+fi
+set -x
+
 echo "导入crd"
 kubectl apply -f $KO_DATA_PATH/crds --server-side
 sh $KO_DATA_PATH/shell/migrate-crd-groups.sh
