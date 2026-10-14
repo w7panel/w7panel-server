@@ -508,9 +508,6 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 		}
 	}
 
-	if order := p.Manifest.Application.Order; order != nil {
-		result[types.APP_ORDER] = strconv.Itoa(*order)
-	}
 	return result
 }
 

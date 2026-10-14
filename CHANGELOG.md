@@ -555,3 +555,11 @@
 - 新增序号传递、乱序收集、零值、更新/删除、历史兼容和 DeepCopy 回归测试；验证结果待本次测试完成后追加。
 
 - 验证结果：`LOCAL_MOCK=true` 下，本次 AppGroup 排序回归（生产文件 + order_test.go）通过，zpk/logic/types 和 AppGroup API 类型包测试通过，`git diff --check` 通过。完整 AppGroup 包测试被现有 eventqueue_test.go 引用缺失的 isDeletingAppGroupEvent 阻断；前端构建被现有 Copilot 页面缺少 @openuidev/vue-lang 阻断。开发前 fetch/pull 两次均因 GitHub 连接超时失败，变更基于本地代码。
+
+## 2026-10-14
+
+- 移除 Chart 元数据中无效的应用排序注解；排序信息应写入工作负载 metadata.annotations，AppGroup 不从 Chart 元数据读取。同步调整回归断言。
+
+## 2026-10-14
+
+- 撤回 93a95c34 的后端应用排序实现及后续未提交补充：移除 Manifest order、工作负载排序注解、AppGroup order/isMain 字段、收集排序及 CRD/DeepCopy 变更；改由 UI 将名称等于当前 AppGroup 的 Deployment 优先展示。原排序回归测试随实现移除。
