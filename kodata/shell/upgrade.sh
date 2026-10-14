@@ -35,6 +35,9 @@ echo "补齐 Ingress 应用分组"
 echo "导入yaml"
 kubectl apply -f $KO_DATA_PATH/yaml/nvidia.yaml
 
+echo "创建默认登录配置"
+kubectl get loginconfig default >/dev/null 2>&1 || kubectl create -f $KO_DATA_PATH/yaml/loginconfig/default.yaml
+
 # echo "卸载默认的vm-operator"
 # helm list -n w7-system --filter 'vm-operator' | grep -q 'vm-operator' && helm uninstall vm-operator -n w7-system
 
@@ -42,14 +45,6 @@ kubectl apply -f $KO_DATA_PATH/yaml/nvidia.yaml
 echo "卸载旧版metrics pod " # 之前helm cleanup.enabled=false 导致无法删除，手动删除
 kubectl delete deployment.apps/vmsingle-vm-operator-k8s-offline-metrics-single -n w7-system --ignore-not-found
 kubectl delete deployment.apps/vmagent-vm-operator-k8s-offline-metrics-agent -n w7-system --ignore-not-found
-
-# echo "安装k3k"
-# helm upgrade --namespace k3k-system --create-namespace k3k $KO_DATA_PATH/charts/k3k-0.3.5.tgz --install --timeout 600s
-
-# kubectl create secret generic k3k-virtual --from-file=$KO_DATA_PATH/yaml/k3k/k3k-virtual.yaml -n k3k-system | echo "已存在k3k-virtual"
-
-# echo "导入k3k 0.3.5 crd"
-# kubectl apply -f $KO_DATA_PATH/crds-k3k 
 
 echo "apply longhorn-volumes configmap"
 kubectl create -f $KO_DATA_PATH/yaml/longhorn-volumes-config.yaml || echo "已存在longhorn-volumes-config"
@@ -96,10 +91,13 @@ kubectl apply -f $KO_DATA_PATH/yaml/longhorn/default-data-locality.yaml || echo 
 
 
 echo "higress config"
+# echo "安装 Gateway API CRD"
+# kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml
+# kubectl apply -f "$KO_DATA_PATH/yaml/higress-gateway.yaml"
 # higress 可能未启动成功 导致crd未创建 job设置重试3次
 kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
 kubectl apply -f $KO_DATA_PATH/yaml/higress/v1.5.0/experimental-install.yaml --server-side
-kubectl apply -f $KO_DATA_PATH/yaml/higress/v1.5.0/standdard-install.yaml --server-side
+# kubectl apply -f $KO_DATA_PATH/yaml/higress/v1.5.0/standard-install.yaml --server-side
 kubectl apply -f $KO_DATA_PATH/yaml/higress/gateway.yaml --server-side || echo "已存在higress gateway"
 
 # Higress controller 需要管理 Gateway API 实验资源；HelmChart 异步创建角色，角色不存在时跳过本次升级

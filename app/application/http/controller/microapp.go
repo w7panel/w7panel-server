@@ -1,13 +1,14 @@
 package controller
 
 import (
-
 	// "github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
+	stdhttp "net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
-	"github.com/w7panel/w7panel/common/service/oidc"
-	microappv1 "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
+	"github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
 
@@ -15,7 +16,12 @@ type MicroApp struct {
 	controller.Abstract
 }
 
-func microAppGroupName(item *microappv1.MicroApp) string {
+type normalMicroApp struct {
+	Title string `json:"title"`
+	URL   string `json:"url"`
+}
+
+func microAppGroupName(item *v1alpha1.MicroApp) string {
 	if item == nil {
 		return ""
 	}
@@ -27,14 +33,48 @@ func microAppGroupName(item *microappv1.MicroApp) string {
 
 func (self MicroApp) List(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
-	list, err := microapp.ListTop(token)
+	list, err := microapp.ListTop(token, http.GetString("user_mode"))
 	if err != nil {
-		newList := &microappv1.MicroAppList{}
-		self.JsonResponseWithoutError(http, newList)
+		self.JsonResponseWithServerError(http, err)
 		return
 	}
 	self.JsonResponseWithoutError(http, list)
 
+}
+
+// 普通用户列表，不包括管理员应用
+func (self MicroApp) TopNormal(http *gin.Context) {
+	list, err := microapp.ListByRole("normal")
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	items := normalMicroApps(http.Request, list)
+	self.normalMicroAppsResponse(http, items)
+}
+
+func (self MicroApp) normalMicroAppsResponse(http *gin.Context, items []normalMicroApp) {
+	if http.Query("callback") != "" {
+		http.JSONP(stdhttp.StatusOK, items)
+		return
+	}
+	self.JsonResponseWithoutError(http, items)
+}
+
+func normalMicroApps(request *stdhttp.Request, list *v1alpha1.MicroAppList) []normalMicroApp {
+	scheme := "http"
+	if request.TLS != nil {
+		scheme = "https"
+	}
+	if forwarded := strings.TrimSpace(strings.Split(request.Header.Get("X-Forwarded-Proto"), ",")[0]); forwarded == "http" || forwarded == "https" {
+		scheme = forwarded
+	}
+	baseURL := scheme + "://" + request.Host
+	items := make([]normalMicroApp, 0, len(list.Items))
+	for _, item := range list.Items {
+		items = append(items, normalMicroApp{Title: item.Spec.Title, URL: baseURL + "/appgroup/" + item.Name + "/micro"})
+	}
+	return items
 }
 
 func (self MicroApp) Info(http *gin.Context) {
@@ -81,12 +121,9 @@ func (self MicroApp) FrontProps(http *gin.Context) {
 
 	role := replace.GetRole()
 	accessToken := ""
-	server, err := oidc.GetServer()
-	if err == nil && server != nil {
-		accessToken, err = server.CreateDefaultAccessToken(server.ContextWithIssuer(http.Request.Context(), http.Request), replace.Name)
-		if err != nil {
-			accessToken = ""
-		}
+	accessToken, err = replace.GetAccessToken(http.Request.Context())
+	if err != nil {
+		accessToken = ""
 	}
 
 	cloudAccessToken := ""
@@ -98,7 +135,7 @@ func (self MicroApp) FrontProps(http *gin.Context) {
 	}
 
 	groupName := microAppGroupName(item)
-	self.JsonResponseWithoutError(http, map[string]string{
+	self.JsonResponseWithoutError(http, gin.H{
 		// "url":               item.RoleServerUrl(role),
 		"group":             groupName,
 		"appgroup":          groupName,
@@ -109,6 +146,7 @@ func (self MicroApp) FrontProps(http *gin.Context) {
 		"nickname":          replace.GetNickName(),
 		"cloud_uid":         replace.GetConsoleId(),
 		"cloud_accesstoken": cloudAccessToken,
+		"is_sub_cluster":    helper.IsChildAgent(),
 	})
 }
 
@@ -123,12 +161,9 @@ func (self MicroApp) GlobalFrontProps(http *gin.Context) {
 
 	role := replace.GetRole()
 	accessToken := ""
-	server, err := oidc.GetServer()
-	if err == nil && server != nil {
-		accessToken, err = server.CreateDefaultAccessToken(server.ContextWithIssuer(http.Request.Context(), http.Request), replace.Name)
-		if err != nil {
-			accessToken = ""
-		}
+	accessToken, err = replace.GetAccessToken(http.Request.Context())
+	if err != nil {
+		accessToken = ""
 	}
 
 	cloudAccessToken := ""
@@ -139,7 +174,7 @@ func (self MicroApp) GlobalFrontProps(http *gin.Context) {
 		}
 	}
 
-	self.JsonResponseWithoutError(http, map[string]string{
+	self.JsonResponseWithoutError(http, gin.H{
 		// "url":               item.RoleServerUrl(role),
 		"userid":            replace.Name,
 		"role":              role,
@@ -148,5 +183,6 @@ func (self MicroApp) GlobalFrontProps(http *gin.Context) {
 		"nickname":          replace.GetNickName(),
 		"cloud_uid":         replace.GetConsoleId(),
 		"cloud_accesstoken": cloudAccessToken,
+		"is_sub_cluster":    helper.IsChildAgent(),
 	})
 }

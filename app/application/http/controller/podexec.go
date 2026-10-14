@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
+	"net"
+	stdhttp "net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,13 +17,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/agentpod"
 	"github.com/w7panel/w7panel/common/service/k8s/pid"
 	"github.com/w7panel/w7panel/common/service/k8s/remotecommand"
 	"github.com/w7panel/w7panel/common/service/k8s/terminal"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 	remotecommand2 "k8s.io/client-go/tools/remotecommand"
@@ -29,9 +33,10 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
+	Subprotocols:    []string{"w7panel-ckm", "w7panel-terminal"},
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
+	CheckOrigin: func(r *stdhttp.Request) bool {
 		return true
 	},
 }
@@ -232,8 +237,6 @@ func (p PodExec) NodeTty(http *gin.Context) {
 		return
 	}
 
-	token := http.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
 	session := terminal.NewTerminalSession(conn)
 	execTimeout := facade.GetConfig().GetInt("k8s.exec_timeout_seconds")
 	if execTimeout <= 0 {
@@ -251,37 +254,17 @@ func (p PodExec) NodeTty(http *gin.Context) {
 		session.CloseWithReason(reason)
 	}()
 	rootsdk := k8s.NewK8sClient().Sdk
-	var findPod *corev1.Pod
-	shells := []string{params.Shell}
-	if k8sToken.IsK3kCluster() {
-		// client, err := k8s.NewK8sClient().ChannelLocal(http.MustGet("k8s_token").(string), true)
-		k3kConfig, err := k8sToken.GetK3kConfig()
-		if err != nil {
-			p.JsonResponseWithServerError(http, err)
-			return
-		}
-		pods, err := rootsdk.ClientSet.CoreV1().Pods(k3kConfig.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: "cluster"})
-		if err != nil {
-			p.JsonResponseWithServerError(http, err)
-			return
-		}
-		for _, pod := range pods.Items {
-			if pod.Status.PodIP == params.HostIp {
-				findPod = &pod
-			}
-		}
-	} else {
-		findPod, err = rootsdk.GetDaemonsetAgentPod(rootsdk.GetNamespace(), params.HostIp)
-		if err != nil {
-			p.JsonResponseWithServerError(http, err)
-			return
-		}
-		shells = []string{"nsenter", "-t", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--", params.Shell}
+	findPod, err := rootsdk.GetDaemonsetAgentPod(rootsdk.GetNamespace(), params.HostIp)
+	if err != nil {
+		p.JsonResponseWithServerError(http, err)
+		return
 	}
+	shells := nodeTtyShell(params.Shell)
 	if findPod == nil {
 		p.JsonResponseWithServerError(http, fmt.Errorf("not found agent pod for hostIp: %s", params.HostIp))
 		return
 	}
+	slog.Info("node tty agent pod selected", "nodeIP", params.HostIp, "podIP", findPod.Status.PodIP)
 	err = rootsdk.RunExec(session, findPod.Namespace, findPod.Name, findPod.Spec.Containers[0].Name, shells, true)
 	if err != nil {
 		reason := "upstream_close"
@@ -295,6 +278,128 @@ func (p PodExec) NodeTty(http *gin.Context) {
 	}
 }
 
+// NodeTtyForward proxies the browser terminal to the panel instance running on
+// the selected node. ReverseProxy handles the WebSocket Upgrade directly.
+func (p PodExec) NodeTtyForward(http *gin.Context) {
+	if http.Query("nodeTtyForwarded") == "1" {
+		p.Tty(http)
+		return
+	}
+	type ParamsValidate struct {
+		Shell  string `form:"shell,default=/bin/bash" binding:"oneof=/bin/sh /bin/bash"`
+		HostIp string `form:"hostIp" binding:"required"`
+	}
+	params := ParamsValidate{}
+	if !p.Validate(http, &params) {
+		return
+	}
+	target, err := nodeTtyForwardTarget(params.HostIp)
+	if err != nil {
+		p.JsonResponseWithServerError(http, err)
+		return
+	}
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	director := proxy.Director
+	proxy.Director = func(request *stdhttp.Request) {
+		director(request)
+		request.URL.Path = "/panel-api/v1/nodetty"
+		request.URL.RawPath = ""
+		query := request.URL.Query()
+		query.Del("hostIp")
+		query.Set("nodeTtyForwarded", "1")
+		request.URL.RawQuery = query.Encode()
+		request.Host = target.Host
+	}
+	proxy.ErrorHandler = func(writer stdhttp.ResponseWriter, _ *stdhttp.Request, err error) {
+		slog.Warn("node tty proxy error", "hostIp", params.HostIp, "err", err)
+		stdhttp.Error(writer, "node tty is unavailable", stdhttp.StatusBadGateway)
+	}
+	proxy.ServeHTTP(http.Writer, http.Request)
+}
+
+func nodeTtyShell(shell string) []string {
+	return []string{"nsenter", "-t", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--", shell}
+}
+
+func (p PodExec) RegisterAgentPodIP(http *gin.Context) {
+	type ParamsValidate struct {
+		NodeIP string `json:"nodeIp" binding:"required"`
+		PodIP  string `json:"podIp" binding:"required"`
+	}
+	if http.GetString("username") != helper.ServiceAccountName() {
+		http.Status(stdhttp.StatusForbidden)
+		return
+	}
+	params := ParamsValidate{}
+	if !p.Validate(http, &params) {
+		return
+	}
+	if err := agentpod.Register(params.NodeIP, params.PodIP); err != nil {
+		p.JsonResponseWithServerError(http, err)
+		return
+	}
+	http.Status(stdhttp.StatusNoContent)
+}
+
+func RegisterAgentPodIP() {
+	if !helper.IsAgent() {
+		return
+	}
+	nodeIP, podIP := strings.TrimSpace(os.Getenv("NODE_IP")), strings.TrimSpace(os.Getenv("POD_IP"))
+	panelURL := strings.TrimRight(strings.TrimSpace(os.Getenv("PANEL_SERVICE_URL")), "/")
+	if err := agentpod.Register(nodeIP, podIP); err != nil {
+		slog.Warn("agent pod IP registration skipped", "nodeIP", nodeIP, "podIP", podIP, "err", err)
+		return
+	}
+	if panelURL == "" {
+		slog.Warn("agent pod IP registration skipped: PANEL_SERVICE_URL is empty")
+		return
+	}
+	token, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
+	if err != nil {
+		slog.Warn("read agent service account token", "err", err)
+		return
+	}
+	for {
+		response, err := helper.RetryHttpClient().R().SetAuthToken(strings.TrimSpace(string(token))).SetBody(gin.H{"nodeIp": nodeIP, "podIp": podIP}).Post(panelURL + "/internal/agent-pod")
+		if err == nil && response.IsSuccess() {
+			return
+		}
+		status := 0
+		if response != nil {
+			status = response.StatusCode()
+		}
+		slog.Warn("register agent pod IP", "status", status, "err", err)
+		time.Sleep(time.Second)
+	}
+}
+
+func nodeTtyForwardTarget(hostIP string) (*url.URL, error) {
+	nodeIP := net.ParseIP(hostIP)
+	if nodeIP == nil {
+		return nil, fmt.Errorf("invalid hostIp")
+	}
+	if podIP, ok := agentpod.Lookup(nodeIP.String()); ok {
+		slog.Info("node tty agent pod selected", "nodeIP", nodeIP.String(), "podIP", podIP, "registered", true)
+		return nodeTtyTarget(podIP)
+	}
+	sdk := k8s.NewK8sClient().Sdk
+	agentPod, err := sdk.GetDaemonsetAgentPod(sdk.GetNamespace(), nodeIP.String())
+	if err != nil {
+		return nil, err
+	}
+	slog.Info("node tty agent pod selected", "nodeIP", nodeIP.String(), "podIP", agentPod.Status.PodIP, "registered", false)
+	return nodeTtyTarget(agentPod.Status.PodIP)
+}
+
+func nodeTtyTarget(hostIP string) (*url.URL, error) {
+	ip := net.ParseIP(hostIP)
+	if ip == nil {
+		return nil, fmt.Errorf("invalid hostIp")
+	}
+	return &url.URL{Scheme: "http", Host: net.JoinHostPort(ip.String(), "8000")}, nil
+}
+
 func (self PodExec) Tty(http *gin.Context) {
 	type ParamsValidate struct {
 		Shell string `form:"shell,default=/bin/bash" binding:"oneof=/bin/sh /bin/bash"`
@@ -305,7 +410,11 @@ func (self PodExec) Tty(http *gin.Context) {
 	}
 
 	ttyChrootDir := facade.GetConfig().GetString("k8s.tty_chroot_dir")
-	cmd := exec.Command(params.Shell)
+	command := []string{params.Shell}
+	if http.Request.URL.Path == "/panel-api/v1/nodetty" && http.Query("nodeTtyForwarded") == "1" {
+		command = nodeTtyShell(params.Shell)
+	}
+	cmd := exec.Command(command[0], command[1:]...)
 	// 获取当前进程的所有环境变量
 	cmd.Env = os.Environ()
 	// 设置新的环境变量
@@ -348,62 +457,21 @@ func (self PodExec) Tty(http *gin.Context) {
 		slog.Info("tty session closing", "reason", reason)
 		session.CloseWithReason(reason)
 	}()
-	token := http.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
-	if k8sToken.IsK3kCluster() {
-		// client, err := k8s.NewK8sClient().ChannelLocal(http.MustGet("k8s_token").(string), true)
-		client := k8s.NewK8sClient()
-
-		k3kConfig, err := k8sToken.GetK3kConfig()
-		if err != nil {
-			self.JsonResponseWithServerError(http, err)
-			return
+	err = remotecommand.NewLocalExecutor(cmd).StreamWithContext(session.Context(), remotecommand2.StreamOptions{
+		Stdin:             session,
+		Stdout:            session,
+		Stderr:            session,
+		Tty:               true,
+		TerminalSizeQueue: session,
+	})
+	if err != nil {
+		reason := "upstream_close"
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			reason = "timeout"
 		}
-		ckmName := k3kConfig.CvmName
-		podName := k3kConfig.GetK3kServer0Name()
-		pods, err := client.ClientSet.CoreV1().Pods(k3kConfig.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: "cluster=" + ckmName})
-		if err != nil {
-			slog.Error("tty k3k list pods error", "err", err)
-		} else {
-			for _, pod := range pods.Items {
-				podName = pod.Name
-			}
-		}
-
-		// clientsdk, err := client.Channel(token)
-		// if err != nil {
-		// 	self.JsonResponseWithServerError(http, err)
-		// 	return
-		// }
-		params.Shell = "/bin/sh" //k3k pod 只支持 /bin/sh
-		err = client.RunExec(session, k3kConfig.Namespace, podName, k3kConfig.GetK3kServer0ContainerName(), []string{params.Shell}, true)
-		if err != nil {
-			reason := "upstream_close"
-			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-				reason = "timeout"
-			}
-			session.CloseWithReason(reason)
-			slog.Warn("tty k3k run error", "reason", reason, "err", err)
-			self.JsonResponseWithServerError(http, err)
-			return
-		}
-	} else {
-		err = remotecommand.NewLocalExecutor(cmd).StreamWithContext(session.Context(), remotecommand2.StreamOptions{
-			Stdin:             session,
-			Stdout:            session,
-			Stderr:            session,
-			Tty:               true,
-			TerminalSizeQueue: session,
-		})
-		if err != nil {
-			reason := "upstream_close"
-			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-				reason = "timeout"
-			}
-			session.CloseWithReason(reason)
-			slog.Error("tty error", "reason", reason, "err", err)
-			return
-		}
+		session.CloseWithReason(reason)
+		slog.Error("tty error", "reason", reason, "err", err)
+		return
 	}
 
 }
@@ -433,16 +501,10 @@ func (self PodExec) KubectlCp(http *gin.Context) {
 		params.From = params.Podname + ":" + params.From
 	}
 
-	rootSdk := k8s.NewK8sClient().Sdk
-	token := http.MustGet("k8s_token").(string)
 	client, err := k8s.NewK8sClient().Channel(http.MustGet("k8s_token").(string))
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
-	}
-	k8stoken := k8s.NewK8sToken(token)
-	if k8stoken.IsK3kCluster() {
-		client = rootSdk
 	}
 	cmdutil.BehaviorOnFatal(func(errstr string, code int) {
 
@@ -468,14 +530,6 @@ func (self PodExec) KubectlCp(http *gin.Context) {
 // 根据pod获取pid
 func (self PodExec) GetNodePid(http *gin.Context) {
 
-	token := http.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
-	if !k8sToken.IsK3kCluster() {
-		self.JsonResponse(http, gin.H{
-			"pid": 1,
-		}, nil, 200)
-		return
-	}
 	type VParam struct {
 		Namespace     string `form:"namespace" binding:"required"`
 		PodName       string `form:"podName" binding:"required"`
@@ -488,7 +542,7 @@ func (self PodExec) GetNodePid(http *gin.Context) {
 	}
 
 	sdk := k8s.NewK8sClient().Sdk
-	pod, err := sdk.ClientSet.CoreV1().Pods(k8sToken.GetNamespace()).Get(context.TODO(), params.PodName, metav1.GetOptions{})
+	pod, err := sdk.ClientSet.CoreV1().Pods(params.Namespace).Get(context.TODO(), params.PodName, metav1.GetOptions{})
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return

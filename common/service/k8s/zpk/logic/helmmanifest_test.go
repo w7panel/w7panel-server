@@ -29,6 +29,6 @@ func TestHelmManifestApp(t *testing.T) {
 	assert.Equal(t, "helm-test", manifest.Platform.Helm.Repository)
 	assert.Equal(t, "helm-test", manifest.Platform.Helm.Version)
 	assert.Equal(t, 1, len(manifest.Platform.Container.StartParams))
-	assert.Equal(t, "test", manifest.Platform.Container.StartParams[0].Name)
-	assert.Equal(t, "test", manifest.Platform.Container.StartParams[0].ValuesText)
+	assert.Equal(t, "helm-test7", manifest.Platform.Container.StartParams[0].Name)
+	assert.Equal(t, "helm-test8", manifest.Platform.Container.StartParams[0].ValuesText)
 }

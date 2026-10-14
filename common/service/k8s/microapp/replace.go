@@ -2,7 +2,6 @@ package microapp
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"strings"
 
@@ -12,7 +11,10 @@ import (
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	"github.com/w7panel/w7panel/common/service/oidc"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
+	"github.com/zitadel/oidc/v3/pkg/op"
 )
+
+const microAppTokenIssuer = "http://w7panel-offline.default.svc.cluster.local:8000/panel-api/v1/oidc"
 
 type MicroAppReplace struct {
 	*k3ktypes.K3kUser
@@ -89,31 +91,19 @@ func (m *MicroAppReplace) Replace(ctx context.Context, data map[string]string, r
 	return result
 }
 
+// frontpros 前端js获取 issuer默认是外网地址 制品库获取用户信息走的内网导致issuer不一致
+// 改为强制内网地址先
 // GetAccessToken creates an OIDC access token for the current micro-app user.
 func (m *MicroAppReplace) GetAccessToken(ctx context.Context) (string, error) {
 	server, err := oidc.GetServer()
 	if err != nil {
 		return "", err
 	}
-	return server.CreateDefaultAccessToken(ctx, m.Name)
+	return server.CreateDefaultAccessToken(op.ContextWithIssuer(ctx, microAppTokenIssuer), m.Name)
 }
 
 func GetCloudAccessToken(openId string) (string, error) {
-	if openId != "" {
-		// 获取 passport token
-		// result, err := helper.Remember(openId, time.Hour, func() (any, error) {
-		token, err := console.OpenIdToCloudAccessToken(openId)
-		if err != nil {
-			return "", err
-		}
-		return token.Token, err
-		// })
-		// if err != nil {
-		// 	return "", err
-		// }
-		// return result.(string), nil
-	}
-	return "", errors.New("openId is empty")
+	return console.GetCachedCloudAccessToken(openId)
 }
 
 // SetCloudAccessTokenHeader adds the cloud credential required by ZPK requests.

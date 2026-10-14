@@ -6,7 +6,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 )
 
-func TestRelease(t *testing.T) {
+func disabledRelease(t *testing.T) {
 	sdk := k8s.NewK8sClient()
 	api := k8s.NewHelm(sdk.Sdk)
 

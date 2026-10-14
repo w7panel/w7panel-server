@@ -1,0 +1,14 @@
+apiVersion: w7panel.w7.com/v1alpha1
+kind: LoginConfig
+metadata:
+  name: default
+spec:
+  providers:
+    - type: we7-cloud
+      enabled: true
+      immutable: true
+    - type: oidc
+      enabled: false
+      scopes:
+        - openid
+        - profile

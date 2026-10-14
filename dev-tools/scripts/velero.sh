@@ -24,6 +24,4 @@ region=ap-guangzhou,s3ForcePathStyle="false",s3Url=https://cos.ap-guangzhou.myqc
 
 velero backup create backup-20260126 --include-namespaces default
 
-velero backup create nginx-backup --include-namespaces k3k-s82
 velero backup describe backup-default
-velero restore create --from-backup nginx-backup

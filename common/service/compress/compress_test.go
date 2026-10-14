@@ -478,6 +478,13 @@ func TestExtractTar(t *testing.T) {
 
 }
 
+func TestCompressorPathPreservesAbsolutePath(t *testing.T) {
+	compressor := NewCompressorRootPath(t.TempDir())
+	if got, want := compressor.path("/tmp/archive.tar"), "/tmp/archive.tar"; got != want {
+		t.Fatalf("path() = %q, want %q", got, want)
+	}
+}
+
 // Helper function to create an empty file
 func createEmptyFile(path string) *os.File {
 	file, _ := os.Create(path)

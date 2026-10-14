@@ -17,17 +17,13 @@ type HostCheck struct {
 func (self HostCheck) Process(c *gin.Context) {
 	if host, port, err := net.SplitHostPort(c.Request.Host); err == nil && port == "9090" {
 		if net.ParseIP(host) == nil {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-				"message": "port 9090 only supports IP host",
-			})
+			c.AbortWithStatus(http.StatusBadRequest)
 			return
 		}
 	} else if strings.HasSuffix(c.Request.Host, ":9090") {
 		// SplitHostPort rejects malformed hosts. Treat them as invalid rather than
 		// allowing a non-IP Host header through on port 9090.
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": "port 9090 only supports IP host",
-		})
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 

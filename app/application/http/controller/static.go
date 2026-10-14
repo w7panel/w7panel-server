@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -15,11 +14,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/artifacturl"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 type Static struct {
@@ -67,11 +66,12 @@ func (self Static) StaticInfo(http *gin.Context) {
 		releaseName = strings.ReplaceAll(releaseName, "-root", "")
 	}
 	status := appgroup.DownStaticStatus(identifie, version, releaseName)
-	token := http.MustGet("k8s_token").(string)
-	client, err := k8s.NewK8sClient().Channel(token)
-	if err != nil {
-		slog.Error("创建 k8s 客户端失败 static down", "error", err)
-	}
+	// // token := http.MustGet("k8s_token").(string)
+	// client, err := k8s.NewK8sClient().Channel(token)
+	// if err != nil {
+	// 	slog.Error("创建 k8s 客户端失败 static down", "error", err)
+	// }
+	client := k8s.NewK8sClient().Sdk // 面板分开后不需要 token 认证
 	// 通过 releaseName 查找 AppGroup，获取完整制品地址、回源根地址和 ticket 信息
 	respoUrl := ""
 	zpkUrl := ""
@@ -133,35 +133,38 @@ func (self Static) Download(http *gin.Context) {
 	token := http.MustGet("k8s_token").(string)
 
 	rootSdk := k8s.NewK8sClient().Sdk
-	sdk, err := k8s.NewK8sClient().Channel(token)
+
+	name = strings.ReplaceAll(name, "-root", "")
+
+	appgroupObj, err := appgroup.GetAppgroupUseSdk(name, namespace, rootSdk)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	useSdk := sdk
-	hasRoot := strings.Contains(name, "-root")
-	if hasRoot {
-		name = strings.ReplaceAll(name, "-root", "")
-		useSdk = rootSdk
-	}
-	appgroupObj, err := appgroup.GetAppgroupUseSdk(name, namespace, useSdk)
-	if err != nil {
-		// 尝试从root集群获取
-		if apierrors.IsNotFound(err) {
-			group, err := appgroup.GetAppgroupUseSdk(name, namespace, rootSdk)
-			if err != nil {
-				self.JsonResponseWithServerError(http, err)
-				return
-			}
-			appgroupObj = group
-			useSdk = rootSdk
-		} else {
-			self.JsonResponseWithServerError(http, err)
-			return
-		}
-	}
+	// useSdk := sdk
+	// hasRoot := strings.Contains(name, "-root")
+	// if hasRoot {
+	// 	name = strings.ReplaceAll(name, "-root", "")
+	// 	useSdk = rootSdk
+	// }
+	// appgroupObj, err := appgroup.GetAppgroupUseSdk(name, namespace, useSdk)
+	// if err != nil {
+	// 	// 尝试从root集群获取
+	// 	if apierrors.IsNotFound(err) {
+	// 		group, err := appgroup.GetAppgroupUseSdk(name, namespace, rootSdk)
+	// 		if err != nil {
+	// 			self.JsonResponseWithServerError(http, err)
+	// 			return
+	// 		}
+	// 		appgroupObj = group
+	// 		useSdk = rootSdk
+	// 	} else {
+	// 		self.JsonResponseWithServerError(http, err)
+	// 		return
+	// 	}
+	// }
 
-	sigClient, err := useSdk.ToSigClient()
+	sigClient, err := rootSdk.ToSigClient()
 	if err != nil {
 		slog.Warn("创建 MicroApp 客户端失败，静态资源下载回退父应用版本", "appgroup", appgroupObj.Name, "error", err)
 	}
@@ -172,10 +175,9 @@ func (self Static) Download(http *gin.Context) {
 // FrontendProxy 代理前端静态资源请求到远程制品库
 // zpkUrl 和 ticket 从缓存获取
 // URL: /ui/microapp/:identifie/:version/*path
-// URL: /panel-api/v1/static/proxy/:zpkUrl/:identifie/:version/frontend/*path
+// URL: /panel-api/v1/static/proxy/:identifie/:version/frontend/*path
 // 代理到: {zpkUrl}/zpk/respo/attach/frontend/{identifie}/{version}/{path}?ticket={ticket}
 func (self Static) FrontendProxy(ctx *gin.Context) {
-	zpkUrlEncoded := ctx.Param("zpkUrl")
 	identifie := ctx.Param("identifie")
 	version := ctx.Param("version")
 	path := ctx.Param("path")
@@ -242,21 +244,24 @@ func (self Static) FrontendProxy(ctx *gin.Context) {
 			source = cachedSource
 		}
 	}
-	if source.ZpkURL == "" && zpkUrlEncoded != "" {
-		zpkUrlBytes, err := base64.RawURLEncoding.DecodeString(zpkUrlEncoded)
-		if err != nil {
-			slog.Error("解码zpkUrl失败", "zpkUrlEncoded", zpkUrlEncoded, "error", err)
-			self.JsonResponseWithServerError(ctx, err)
-			return
-		}
-		source.ZpkURL = string(zpkUrlBytes)
-	}
+
 	zpkUrl := strings.TrimRight(source.ZpkURL, "/")
 	if zpkUrl == "" {
 		slog.Error("zpkUrl为空")
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "zpkUrl is empty"})
 		return
 	}
+	if _, err := artifacturl.Validate(ctx.Request.Context(), zpkUrl); err != nil {
+		slog.Warn("blocked untrusted frontend artifact origin", "identifie", identifie, "error", err)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid frontend artifact source"})
+		return
+	}
+
+	// 从缓存获取 ticket
+	// ticket := ""
+	// if val, ok := helper.Get("frontend-ticket-" + identifie); ok {
+	// 	ticket = val.(string)
+	// }
 
 	// 构造远程 URL
 	remotePath, remoteUrlStr, remoteQuery := buildFrontendRemoteRequest(zpkUrl, identifie, version, path, source)

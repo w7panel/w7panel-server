@@ -110,6 +110,42 @@ func TestMatchAPI(t *testing.T) {
 	}
 }
 
+func TestAuthorizeRouteWithPermissionForRegistryWrites(t *testing.T) {
+	permission := &configv1alpha1.Permission{Spec: configv1alpha1.PermissionSpec{
+		APIRules: []configv1alpha1.PermissionAPIRule{{
+			Path:   "/v2/*",
+			Method: []string{"create", "update", "patch", "delete"},
+		}},
+	}}
+
+	for _, method := range []string{"POST", "PUT", "PATCH", "DELETE"} {
+		allowed, err := AuthorizeRouteWithPermission(permission, method, "/v2/demo/manifests/latest")
+		if err != nil || !allowed {
+			t.Fatalf("AuthorizeRouteWithPermission(%s) = (%v, %v), want (true, nil)", method, allowed, err)
+		}
+	}
+	allowed, err := AuthorizeRouteWithPermission(permission, "GET", "/v2/demo/manifests/latest")
+	if err != nil || allowed {
+		t.Fatalf("AuthorizeRouteWithPermission(GET) = (%v, %v), want (false, nil)", allowed, err)
+	}
+}
+
+func TestBuiltinRegistryWritePermissions(t *testing.T) {
+	for _, name := range []string{"founder.yaml", "super.yaml", "api.yaml"} {
+		p := loadBuiltinPermission(t, name)
+		allowed, err := AuthorizeRouteWithPermission(p, "PUT", "/v2/demo/manifests/latest")
+		if err != nil || !allowed {
+			t.Fatalf("%s registry write = (%v, %v), want (true, nil)", name, allowed, err)
+		}
+	}
+
+	normal := loadBuiltinPermission(t, "normal.yaml")
+	allowed, err := AuthorizeRouteWithPermission(normal, "PUT", "/v2/demo/manifests/latest")
+	if err != nil || allowed {
+		t.Fatalf("normal registry write = (%v, %v), want (false, nil)", allowed, err)
+	}
+}
+
 func TestResolveForServiceAccountRequiresPermissionName(t *testing.T) {
 	_, err := ResolveForServiceAccount(context.Background(), nil, &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{Name: "no-panel-permission"},
@@ -425,8 +461,8 @@ func TestBuiltinNormalPermissionAllowsAccountBindingWithoutClusterRegistration(t
 	if len(p.Spec.RBACRules) != 0 {
 		t.Fatalf("normal rbacRules = %v, want empty", p.Spec.RBACRules)
 	}
-	if !MatchAPI(api, "GET", "/panel-api/v1/zpk/domain-parse") {
-		t.Fatal("normal permission should allow GET /panel-api/v1/zpk/domain-parse")
+	if !MatchAPI(api, "GET", "/panel-api/v1/domain-parse") {
+		t.Fatal("normal permission should allow GET /panel-api/v1/domain-parse")
 	}
 	for _, path := range []string{"/panel-api/v1/auth/console/bind", "/panel-api/v1/auth/console/info", "/panel-api/v1/app-info"} {
 		if !MatchAPI(api, "GET", path) {
@@ -445,7 +481,7 @@ func TestBuiltinNormalPermissionAllowsAccountBindingWithoutClusterRegistration(t
 		{method: "GET", path: "/panel-api/v1/kubeconfig"},
 		{method: "GET", path: "/panel-api/v1/namespaces"},
 		{method: "GET", path: "/panel-api/v1/helm/releases"},
-		{method: "POST", path: "/panel-api/v1/zpk/domain-parse"},
+		{method: "POST", path: "/panel-api/v1/domain-parse"},
 		{method: "GET", path: "/panel-api/v1/audit/list"},
 	}
 	for _, tt := range denied {

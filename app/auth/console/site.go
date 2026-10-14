@@ -28,6 +28,18 @@ type siteOption struct {
 
 var sitero = siteOption{}
 
+var tlsHandshakeClientFactory = func(host string, timeout time.Duration) *http.Client {
+	return &http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				// 不跳过证书验证，确保证书有效。
+				ServerName: host,
+			},
+		},
+	}
+}
+
 func (c Site) GetName() string {
 	return "site:register"
 }
@@ -81,16 +93,8 @@ func (c Site) checkTLSHandshake() bool {
 	url := fmt.Sprintf("https://%s", sitero.Host)
 	slog.Info("正在验证TLS握手", "url", url)
 
-	// 创建一个自定义的HTTP客户端，正确验证证书
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				// 不跳过证书验证，确保证书有效
-				ServerName: sitero.Host, // 确保验证的是正确的域名
-			},
-		},
-	}
+	// 创建一个自定义的 HTTP 客户端，正确验证证书。
+	client := tlsHandshakeClientFactory(sitero.Host, 10*time.Second)
 
 	// 发送HEAD请求，只检查连接，不下载内容
 	resp, err := client.Head(url)

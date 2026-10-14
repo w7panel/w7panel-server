@@ -7,6 +7,21 @@ replicaCount: 1
 apiServerUrl: ""
 tmpCdToken: ""
 
+# Shared HMAC key for panel JWTs. When empty, the chart creates a random key
+# on first install and preserves it on upgrades. Set a non-empty value only
+# when an externally managed, deterministic key is required.
+panelAuth:
+  signingKey: ""
+
+# HTTPS artifact hosts allowed for Helm metadata, chart archives and frontend
+# fallback resources. Private, loopback and link-local resolutions are always
+# rejected even when a hostname is listed here.
+artifact:
+  allowedHosts:
+    - zpk.w7.cc
+    - zpk.fan.b2.sz.w7.com
+    - cdn.w7.cc
+
 # 控制台注册功能，默认不开启
 console:
   enabled: false
@@ -195,9 +210,6 @@ gpustack:
   watch: true
 log:
   level: "error"
-k3k:
-  watch: true
-  runtimedir: "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io"
 k8s:
   watch: true
 k3s:
@@ -205,29 +217,6 @@ k3s:
 
 privatedns:
   enabled: true
-# Example configuration for CronJob
-cronjob:
-  enabled: true
-  schedule: "0 0/1 * * *"
-  timezone: "Asia/Shanghai"
-  concurrencyPolicy: "Allow"
-  suspend: false
-  startingDeadlineSeconds: 300
-  command:
-    - /bin/sh
-    - -c
-  args:
-    - w7panel k3k-return-check
-  env: []
-  # resources:
-  #   limits:
-  #     cpu: 100m
-  #     memory: 128Mi
-  #   requests:
-  #     cpu: 100m
-  #     memory: 128Mi
-  restartPolicy: Never
-  # Job template specific options
   jobTemplate:
     backoffLimit: 4
   # Pod specific options

@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
-	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	userservice "github.com/w7panel/w7panel/common/service/user"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	corev1 "k8s.io/api/core/v1"
@@ -94,20 +93,23 @@ func RecordOperation(ctx *gin.Context, start time.Time) {
 	}
 	status := ctx.Writer.Status()
 	log := OperationLog{
-		Time:       start,
-		AuditType:  TypeOperation,
-		Tenant:     user.Tenant,
-		Username:   user.Username,
-		UserMode:   user.UserMode,
-		Method:     ctx.Request.Method,
-		Path:       ctx.Request.URL.Path,
-		Route:      ctx.FullPath(),
-		Params:     sanitizeParams(ctx.Params),
-		StatusCode: status,
-		Success:    status < 400,
-		DurationMs: time.Since(start).Milliseconds(),
-		IP:         clientIP(ctx),
-		UserAgent:  ctx.Request.UserAgent(),
+		Actor:        ctx.GetString("actor"),
+		CKMName:      ctx.GetString("ckm_name"),
+		CKMNamespace: ctx.GetString("ckm_namespace"),
+		Time:         start,
+		AuditType:    TypeOperation,
+		Tenant:       user.Tenant,
+		Username:     user.Username,
+		UserMode:     user.UserMode,
+		Method:       ctx.Request.Method,
+		Path:         ctx.Request.URL.Path,
+		Route:        ctx.FullPath(),
+		Params:       sanitizeParams(ctx.Params),
+		StatusCode:   status,
+		Success:      status < 400,
+		DurationMs:   time.Since(start).Milliseconds(),
+		IP:           clientIP(ctx),
+		UserAgent:    ctx.Request.UserAgent(),
 	}
 	go safeWriteOperation(log)
 }
@@ -138,11 +140,6 @@ func CurrentUser(ctx *gin.Context) UserContext {
 	}
 	user.UserMode = token.GetRole()
 	user.IsAdmin = user.UserMode == "founder" || user.UserMode == "cluster"
-	if cfg, err := token.GetK3kConfig(); err == nil && cfg != nil {
-		user.Tenant = cfg.Namespace
-		user.K3kName = cfg.Name
-		user.K3kNamespace = cfg.Namespace
-	}
 	if user.Tenant == "" {
 		user.Tenant = "default"
 	}
@@ -179,17 +176,10 @@ func userFromServiceAccount(sa *corev1.ServiceAccount) UserContext {
 	}
 	user.Username = sa.Name
 	user.Tenant = sa.Namespace
-	if sa.Labels != nil && sa.Labels[k3ktypes.W7_USER_MODE] != "" {
-		user.UserMode = sa.Labels[k3ktypes.W7_USER_MODE]
+	if sa.Labels != nil && sa.Labels["w7.cc/user-mode"] != "" {
+		user.UserMode = sa.Labels["w7.cc/user-mode"]
 	}
 	user.IsAdmin = user.UserMode == "founder" || user.UserMode == "cluster"
-	if sa.Annotations != nil {
-		user.K3kName = sa.Annotations[k3ktypes.K3K_NAME]
-		user.K3kNamespace = sa.Annotations[k3ktypes.K3K_NAMESPACE]
-		if user.K3kNamespace != "" {
-			user.Tenant = user.K3kNamespace
-		}
-	}
 	return user
 }
 

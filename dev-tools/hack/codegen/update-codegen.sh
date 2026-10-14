@@ -72,15 +72,6 @@ kube::codegen::gen_client \
 kube::codegen::gen_client \
     --with-watch \
     --with-applyconfig \
-    --output-dir "${SCRIPT_ROOT}/k8s/pkg/client/mcpserver" \
-    --output-pkg "${THIS_PKG}/k8s/pkg/client/mcpserver" \
-    --boilerplate "${BOILERPLATE}" \
-    --one-input-api "mcpserver" \
-    "${SCRIPT_ROOT}/k8s/pkg/apis"        
-
-kube::codegen::gen_client \
-    --with-watch \
-    --with-applyconfig \
     --output-dir "${SCRIPT_ROOT}/k8s/pkg/client/microapp" \
     --output-pkg "${THIS_PKG}/k8s/pkg/client/microapp" \
     --boilerplate "${BOILERPLATE}" \

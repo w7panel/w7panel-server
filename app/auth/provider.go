@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 	app "github.com/w7panel/w7panel/app/auth/console"
 	controller2 "github.com/w7panel/w7panel/app/auth/http/controller"
-	k3kController "github.com/w7panel/w7panel/app/k3k/http/controller"
 	"github.com/w7panel/w7panel/common/middleware"
 	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
@@ -52,6 +51,8 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		{
 			localApiGroup.POST("/login", middleware.ConsoleSignature{}.Process, controller2.Auth{}.LoginBySign)
 			localApiGroup.POST("/api-token", controller2.APIToken{}.Exchange)
+			// localApiGroup.POST("/k8s-credentials/token", middleware.PanelAuth{}.Process, controller2.K8sCredential{}.Token)
+			localApiGroup.POST("/ckm-session", middleware.PanelAuth{}.Process, controller2.CKMSession{}.Create)
 			localApiGroup.POST("/register", controller2.Auth{}.Register)
 			localApiGroup.POST("/refresh-token2", controller2.Auth{}.RefreshToken2)
 			localApiGroup.POST("/init-user", controller2.Auth{}.InitUser)
@@ -59,12 +60,14 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/reset-password-current", middleware.Auth{}.Process, controller2.Auth{}.ResetPasswordCurrent) //设置当前登录用户密码
 
 			localApiGroup.GET("/console/oauth", controller2.Console{}.Redirect)
+			localApiGroup.GET("/oidc/start", controller2.LoginOIDC{}.Start)
+			localApiGroup.POST("/oidc/callback", controller2.LoginOIDC{}.Callback)
 
 			localApiGroup.GET("/console/login", controller2.Auth{}.ConsoleLogin)
 			localApiGroup.GET("/console/bind", middleware.Auth{}.Process, controller2.Console{}.BindConsole)
 			localApiGroup.GET("/console/info", middleware.Auth{}.Process, controller2.Console{}.Info)
 
-			localApiGroup.GET("/userinfo", middleware.Auth{}.Process, k3kController.K3k{}.Info)
+			localApiGroup.GET("/userinfo", middleware.Auth{}.Process, controller2.Auth{}.UserInfo)
 			// 不需要创始人权限
 			// localApiGroup.GET("/console/code/:code", middleware.Auth{}.Process, controller2.Console{}.ProxyCouponCode)
 			// localApiGroup.Any("/console/proxy/*path", middleware.Auth{}.Process, controller2.Console{}.Proxy)
@@ -77,10 +80,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 				})
 			})
 
-			//不能proxy 需要root kubeconfig
-			localApiGroup.POST("/console/import-cert", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.ImportCert)
-			localApiGroup.POST("/console/verify-cert", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.VerifyCert)
-			localApiGroup.POST("/console/import-cert-console", middleware.Auth{}.Process /*middleware.Proxy{}.Process, */, controller2.Console{}.ImportCertConsole)
 			// 即将废弃 使用site crd
 			localApiGroup.POST("/console/register-zpk-site" /* middleware.ConsoleSignature{}.Process */, controller2.Site{}.RegisterZpkSite)
 		}

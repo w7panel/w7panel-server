@@ -1,0 +1,116 @@
+package middleware
+
+import (
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/credential"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
+	"github.com/w7panel/w7panel/common/service/panelauth"
+	userservice "github.com/w7panel/w7panel/common/service/user"
+	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
+)
+
+type PanelAuth struct{ middleware.Abstract }
+
+func (PanelAuth) Process(ctx *gin.Context) {
+	raw := panelToken(ctx.Request)
+	principal, err := panelauth.Parse(raw)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "msg": "请登录"})
+		return
+	}
+
+	sdk := k8s.NewK8sClient().Sdk
+	if principal.TokenUse == panelauth.TokenUseCKMPanel {
+		processCKMPanel(ctx, *principal)
+		return
+	}
+	var permissionName = principal.PermissionName
+	if principal.TokenUse == panelauth.TokenUseExternalAPI {
+		permissionName = permissionservice.APIPermissionName
+	}
+	user, err := userservice.Get(ctx.Request.Context(), sdk, principal.Username)
+	if err == nil && principal.TokenUse == panelauth.TokenUsePanel {
+		permissionName = user.Spec.PermissionName
+		if permissionName == "" {
+			permissionName = principal.PermissionName
+		}
+	}
+	permission, err := permissionservice.Get(ctx.Request.Context(), sdk, permissionservice.NormalizePermissionName(permissionName))
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "msg": "没有权限"})
+		return
+	}
+	var allowed bool
+	if requiresRoutePermission(ctx.Request.Method, ctx.Request.URL.Path) {
+		allowed, err = permissionservice.AuthorizeRouteWithPermission(permission, ctx.Request.Method, ctx.Request.URL.Path)
+	} else {
+		allowed, err = permissionservice.AuthorizePanelAPIWithPermission(ctx.Request.Context(), sdk, permission, ctx.Request.Method, ctx.Request.URL.Path)
+	}
+	if err != nil || !allowed {
+		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "msg": "没有权限"})
+		return
+	}
+	role := principal.Role
+	if user != nil && role == "" {
+		role = user.Spec.Role
+	}
+	ctx.Set("panel_principal", *principal)
+	ctx.Set("username", principal.Username)
+	ctx.Set("permission_name", permission.Name)
+	ctx.Set("user_mode", role)
+	// Cluster-backed panel APIs and /k8s-proxy receive a credential minted
+	// server-side, never one supplied by the client.
+	if requiresLegacyK8sCredential(ctx.Request.URL.Path) {
+		aud := panelauth.GetAudience(*principal)
+		k8sToken, _, err := credential.IssueForPrincipalWithAudiences(ctx.Request.Context(), principal.Username, permission.Name, 10*time.Minute, aud)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"code": http.StatusInternalServerError, "msg": "生成 Kubernetes 凭据失败"})
+			return
+		}
+		ctx.Set("k8s_token", k8sToken)
+	}
+	ctx.Next()
+}
+
+func panelToken(req *http.Request) string {
+	if strings.EqualFold(req.Header.Get("Upgrade"), "websocket") {
+		for _, protocol := range strings.Split(req.Header.Get("Sec-WebSocket-Protocol"), ",") {
+			if raw, ok := strings.CutPrefix(strings.TrimSpace(protocol), "w7panel-bearer."); ok {
+				return raw
+			}
+		}
+	}
+	if panelTokenHeaderEnabled() {
+		if token := strings.TrimSpace(req.Header.Get("X-W7Panel-Token")); token != "" {
+			return token
+		}
+	}
+	if auth := req.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+		return strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
+	}
+	return ""
+}
+
+func requiresLegacyK8sCredential(path string) bool {
+	if strings.HasPrefix(path, "/v2/") {
+		return false
+	}
+	if path == "/panel-api/v1/auth/ckm-session" {
+		return false
+	}
+	if path == "/panel-api/v1/auth/k8s-credentials/token" || strings.HasPrefix(path, "/panel-api/v1/noauth/") {
+		return false
+	}
+	// These compatibility endpoints consume ctx["k8s_token"] in their
+	// controllers, so they must receive a server-minted Kubernetes credential.
+	if path == "/panel-api/v1/oidc/js-code" || path == "/panel-api/v1/oidc/redirect-uri" {
+		return true
+	}
+	// OIDC protocol endpoints authenticate through the OIDC server itself.
+	return !strings.HasPrefix(path, "/panel-api/v1/oidc/")
+}

@@ -41,6 +41,7 @@ type BuildImageInterface interface {
 
 	GetBuildJobName() string
 	GetPanelRegistryServerHost() string
+	GetServiceAccountName() string
 
 	GetLabels() map[string]string
 }
@@ -63,9 +64,9 @@ func NewBuildImageOption(packageApp BuildImageInterface) BuildImageOption {
 // 使用新的结构spec 创建job
 func (d BuildImageOption) ToBuilImageSpec() buildimagev1alpha1.BuildImageSpec {
 	return buildimagev1alpha1.BuildImageSpec{
-
-		Namespace: "default",
-		NotifyURL: d.GetNotifyCompletionUrl(),
+		Namespace:          "default",
+		ServiceAccountName: d.GetServiceAccountName(),
+		NotifyURL:          d.GetNotifyCompletionUrl(),
 		Source: buildimagev1alpha1.Source{
 			DownloadURL:    d.GetZipUrl(),
 			DockerfilePath: d.GetDockerfilePath(),
@@ -158,7 +159,14 @@ func (d BuildImageOption) ToEnv() []corev1.EnvVar {
 		envVar := corev1.EnvVar{Name: k, Value: v}
 		envs = append(envs, envVar)
 	}
+	if d.usesLocalRegistry() {
+		envs = append(envs, corev1.EnvVar{Name: "REGISTRY_SERVICE_ACCOUNT_TOKEN_FILE", Value: "/var/run/secrets/kubernetes.io/serviceaccount/token"})
+	}
 	return envs
+}
+
+func (d BuildImageOption) usesLocalRegistry() bool {
+	return strings.HasPrefix(d.GetPushImage(), "registry.local.w7.cc/")
 }
 
 func (d BuildImageOption) GetHostNetwork() bool {

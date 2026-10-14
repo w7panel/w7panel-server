@@ -136,15 +136,12 @@ func parseTrafficParams(ctx *gin.Context) (traffic.QueryParams, bool) {
 		return traffic.QueryParams{}, false
 	}
 	current := audit.CurrentUser(ctx)
-	namespace := strings.TrimSpace(ctx.DefaultQuery("namespace", current.Tenant))
-	if namespace == "" {
-		namespace = "default"
-	}
-	if !current.IsAdmin {
-		// Traffic metrics are collected in the host cluster, where each normal
-		// user's virtual cluster resides in its own k3k-{username} namespace.
-		// Never trust a caller-provided namespace for a normal user.
-		namespace = "k3k-" + strings.TrimSpace(current.Username)
+	namespace := current.Tenant
+	if current.IsAdmin {
+		namespace = strings.TrimSpace(ctx.DefaultQuery("namespace", current.Tenant))
+	} else if current.Username != "" {
+		// 普通用户只能查询其所属 K3K 命名空间，不能通过 query 参数越权。
+		namespace = "k3k-" + current.Username
 	}
 	if namespace == "" {
 		namespace = "default"

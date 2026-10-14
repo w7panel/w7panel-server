@@ -3,6 +3,8 @@ package helper
 import (
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 var (
@@ -20,6 +22,13 @@ func Remember(key string, duration time.Duration, callback func() (interface{}, 
 	return defaultCache.Remember(key, duration, callback)
 }
 
+// RememberWithTTL loads a missing value once per key and lets the loader set
+// the lifetime of the returned value. A non-positive lifetime returns the
+// value without storing it.
+func RememberWithTTL(key string, callback func() (interface{}, time.Duration, error)) (interface{}, error) {
+	return defaultCache.RememberWithTTL(key, callback)
+}
+
 func Check(key string, value interface{}) bool {
 	val, ok := defaultCache.Get(key)
 	return ok && val == value
@@ -33,8 +42,9 @@ type CacheItem struct {
 
 // MemoryCache is an in-memory cache with thread-safe operations
 type MemoryCache struct {
-	mu    sync.RWMutex
-	items map[string]*CacheItem
+	mu        sync.RWMutex
+	items     map[string]*CacheItem
+	loadGroup singleflight.Group
 }
 
 // NewMemoryCache creates a new MemoryCache instance
@@ -67,8 +77,8 @@ func (c *MemoryCache) Set(key string, value interface{}, duration time.Duration)
 // Get retrieves a value from the cache
 // Returns the value and a boolean indicating if the key was found and not expired
 func (c *MemoryCache) Get(key string) (interface{}, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	item, exists := c.items[key]
 	if !exists {
@@ -77,6 +87,7 @@ func (c *MemoryCache) Get(key string) (interface{}, bool) {
 
 	// Check if expired
 	if item.Expiration > 0 && time.Now().UnixNano() > item.Expiration {
+		delete(c.items, key)
 		return nil, false
 	}
 
@@ -86,16 +97,36 @@ func (c *MemoryCache) Get(key string) (interface{}, bool) {
 // Remember returns the cached value if present. Otherwise it calls callback,
 // stores the successful result, and returns it.
 func (c *MemoryCache) Remember(key string, duration time.Duration, callback func() (interface{}, error)) (interface{}, error) {
+	return c.RememberWithTTL(key, func() (interface{}, time.Duration, error) {
+		value, err := callback()
+		return value, duration, err
+	})
+}
+
+// RememberWithTTL behaves like Remember, while allowing the loader to choose
+// the cache lifetime after obtaining a value (for example, from a token
+// expiry). Concurrent cache misses for the same key share one loader call.
+func (c *MemoryCache) RememberWithTTL(key string, callback func() (interface{}, time.Duration, error)) (interface{}, error) {
 	if value, ok := c.Get(key); ok {
 		return value, nil
 	}
 
-	value, err := callback()
+	value, err, _ := c.loadGroup.Do(key, func() (interface{}, error) {
+		if cached, ok := c.Get(key); ok {
+			return cached, nil
+		}
+		loaded, duration, err := callback()
+		if err != nil {
+			return nil, err
+		}
+		if duration > 0 {
+			c.Set(key, loaded, duration)
+		}
+		return loaded, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	c.Set(key, value, duration)
 	return value, nil
 }
 
@@ -108,8 +139,8 @@ func (c *MemoryCache) Delete(key string) {
 
 // Has checks if a key exists in the cache and is not expired
 func (c *MemoryCache) Has(key string) bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	item, exists := c.items[key]
 	if !exists {
@@ -118,6 +149,7 @@ func (c *MemoryCache) Has(key string) bool {
 
 	// Check if expired
 	if item.Expiration > 0 && time.Now().UnixNano() > item.Expiration {
+		delete(c.items, key)
 		return false
 	}
 

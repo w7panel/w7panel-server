@@ -25,7 +25,7 @@ import (
 	// appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 )
 
-var buildimage = "ccr.ccs.tencentyun.com/afan-public/kaniko:w7console-new5-25"
+var buildimage = "ccr.ccs.tencentyun.com/afan-public/kaniko:w7console-new5-26"
 
 // convvst buildimage = "ccr.ccs.tencentyun.com/afan-public/kaniko:w7console-build-test1"
 func init() {
@@ -342,7 +342,9 @@ func ToBuildJob(p K8sResourceInterface, opt types.BuildImageInterface, shellType
 */
 func ToShellJob(p K8sResourceInterface, shell ManifestShellInterface) *batchv1.Job {
 	shellStr := shell.GetShell()
-	shellStr = strings.ReplaceAll(shellStr, "%CODE_ZIP_URL%", p.GetZipUrl())
+	// Manifest shells are retained for backwards compatibility, but values
+	// interpolated by the panel must be treated as one POSIX shell argument.
+	shellStr = strings.ReplaceAll(shellStr, "%CODE_ZIP_URL%", "'"+strings.ReplaceAll(p.GetZipUrl(), "'", "'\\\"'\\\"'")+"'")
 	cmd := []string{"/bin/sh", "-c", shellStr}
 	jobName := p.GetShellJobName(shell.GetType())
 	matchlabels := map[string]string{
@@ -452,11 +454,6 @@ func toIngress(app K8sResourceIngressInterface, svcName string, port int32, path
 	ingressClassName := app.GetIngressClassName()
 	if ingressClassName == "" {
 		ingressClassName = "higress"
-		// 兼容k3s虚拟集群模式
-		// k3kMode, ok := os.LookupEnv("K3K_MODE")
-		// if ok && k3kMode == "virtual" {
-		// 	ingressClassName = "traefik"
-		// }
 	}
 	annotations["kubernetes.io/ingress.class"] = ingressClassName
 	annotations["w7.cc/ingress-selector-name"] = app.GetIngressSelectorName()
@@ -1044,7 +1041,7 @@ func ToMicroApp(p K8sResourceInterface) *microapp.MicroApp {
 }
 
 func toBuildPodSpec(option types.BuildImageOption) corev1.PodSpec {
-	return corev1.PodSpec{
+	podSpec := corev1.PodSpec{
 		//挂载hostPath
 		Volumes:       option.GetVolumes(),
 		DNSPolicy:     corev1.DNSClusterFirstWithHostNet,
@@ -1065,6 +1062,11 @@ func toBuildPodSpec(option types.BuildImageOption) corev1.PodSpec {
 			},
 		},
 	}
+	if strings.HasPrefix(option.GetPushImage(), "registry.local.w7.cc/") {
+		podSpec.ServiceAccountName = option.GetServiceAccountName()
+		podSpec.AutomountServiceAccountToken = ptr.Bool(true)
+	}
+	return podSpec
 }
 
 func ToZpkBuildJob(opt types.BuildImageInterface) *batchv1.Job {

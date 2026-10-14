@@ -35,7 +35,7 @@ func NewCompressorRootPath(rootPath string) *Compressor {
 
 // Compress 压缩文件/目录
 func (c *Compressor) Compress(sources []string, output string) error {
-	outputPath := filepath.Join(c.rootPath, output)
+	outputPath := c.path(output)
 	slog.Info("Compressing files", "sources", sources, "output", outputPath)
 
 	// 根据扩展名确定格式
@@ -66,6 +66,13 @@ func (c *Compressor) Compress(sources []string, output string) error {
 	}
 }
 
+func (c *Compressor) path(path string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(c.rootPath, path)
+}
+
 // calculateBasePath 计算所有源文件的共同基础路径
 func (c *Compressor) calculateBasePath(sources []string) string {
 	if len(sources) == 0 {
@@ -73,7 +80,7 @@ func (c *Compressor) calculateBasePath(sources []string) string {
 	}
 	if len(sources) == 1 {
 		// 单个源：如果是文件，使用其目录；如果是目录，使用其本身
-		srcPath := filepath.Join(c.rootPath, sources[0])
+		srcPath := c.path(sources[0])
 		info, err := os.Stat(srcPath)
 		if err != nil {
 			return c.rootPath
@@ -87,7 +94,7 @@ func (c *Compressor) calculateBasePath(sources []string) string {
 	// 多个源：找到所有路径的共同前缀
 	dirs := make([]string, 0, len(sources))
 	for _, src := range sources {
-		srcPath := filepath.Join(c.rootPath, src)
+		srcPath := c.path(src)
 		info, err := os.Stat(srcPath)
 		if err != nil {
 			continue
@@ -122,8 +129,8 @@ func (c *Compressor) commonPath(a, b string) string {
 
 // Extract 解压文件
 func (c *Compressor) Extract(source, target string) error {
-	sourcePath := filepath.Join(c.rootPath, source)
-	targetPath := filepath.Join(c.rootPath, target)
+	sourcePath := c.path(source)
+	targetPath := c.path(target)
 	slog.Info("Extracting file", "source", sourcePath, "target", targetPath)
 
 	// 检测压缩格式

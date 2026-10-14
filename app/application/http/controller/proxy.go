@@ -1,23 +1,30 @@
 package controller
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
-	"net/http"
+	stdhttp "net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	zpkcontroller "github.com/w7panel/w7panel/app/zpk/http"
 	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/artifacturl"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
-	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/w7panel/w7panel/common/service/oidc"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
-	"github.com/zitadel/oidc/v3/pkg/op"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -40,6 +47,9 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 	if path == "" {
 		path = "/"
 	}
+	if self.proxyPanelAPI(http, path) {
+		return
+	}
 
 	// 修改请求路径
 	http.Request.URL.Path = path
@@ -56,6 +66,10 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 	client, err := k8s.NewK8sClient().ChannelLocal(token, forceLocal)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	if err := bindBuildImageServiceAccount(http.Request, path, client.GetServiceAccountName()); err != nil {
+		self.JsonResponseWithError(http, err, stdhttp.StatusBadRequest)
 		return
 	}
 
@@ -86,8 +100,77 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 	}
 }
 
-func (self Proxy) ProxyNoAuthService(gin *gin.Context) {
-	self.ProxyService(gin)
+// bindBuildImageServiceAccount prevents direct CR creation through k8s-proxy
+// from falling back to Kubernetes' unprivileged default ServiceAccount. The
+// Kubernetes credential was minted by PanelAuth, so its ServiceAccount is the
+// only identity allowed to reach the in-cluster registry from this build Job.
+func bindBuildImageServiceAccount(request *stdhttp.Request, path, serviceAccountName string) error {
+	if request.Method != stdhttp.MethodPost || !strings.HasPrefix(path, "/apis/w7panel.w7.com/v1alpha1/namespaces/") || !strings.HasSuffix(path, "/buildimages") {
+		return nil
+	}
+	if serviceAccountName == "" || serviceAccountName == "default" || serviceAccountName == "unknown" {
+		return errors.New("unable to determine a permitted build ServiceAccount")
+	}
+	body, err := io.ReadAll(request.Body)
+	if err != nil {
+		return err
+	}
+	var object map[string]interface{}
+	if err := json.Unmarshal(body, &object); err != nil {
+		return fmt.Errorf("invalid BuildImage payload: %w", err)
+	}
+	if object["apiVersion"] != "w7panel.w7.com/v1alpha1" || object["kind"] != "BuildImage" {
+		return nil
+	}
+	spec, ok := object["spec"].(map[string]interface{})
+	if !ok {
+		return errors.New("BuildImage spec is required")
+	}
+	spec["serviceAccountName"] = serviceAccountName
+	body, err = json.Marshal(object)
+	if err != nil {
+		return err
+	}
+	request.Body = io.NopCloser(bytes.NewReader(body))
+	request.ContentLength = int64(len(body))
+	request.Header.Set("Content-Length", strconv.FormatInt(request.ContentLength, 10))
+	return nil
+}
+
+// proxyPanelAPI exposes panel's Kubernetes-backed operations below the same
+// credential boundary as the native Kubernetes proxy. New endpoints belong
+// here; /panel-api must not accept a caller supplied Kubernetes token.
+func (self Proxy) proxyPanelAPI(http *gin.Context, path string) bool {
+	if path == "/panel/v1/helm/releases" && http.Request.Method == stdhttp.MethodGet {
+		Helm{}.List(http)
+		return true
+	}
+	if strings.HasPrefix(path, "/panel/v1/helm/releases/") {
+		http.Params = append(http.Params, gin.Param{Key: "name", Value: strings.TrimPrefix(path, "/panel/v1/helm/releases/")})
+		switch http.Request.Method {
+		case stdhttp.MethodGet:
+			Helm{}.Info(http)
+		case stdhttp.MethodPost:
+			Helm{}.InstallUseRepo(http)
+		case stdhttp.MethodDelete:
+			Helm{}.UnInstall(http)
+		case stdhttp.MethodPut:
+			if strings.HasSuffix(path, "/reuse") {
+				http.Params[len(http.Params)-1].Value = strings.TrimSuffix(strings.TrimPrefix(path, "/panel/v1/helm/releases/"), "/reuse")
+				Helm{}.ReUseValues(http)
+				return true
+			}
+			return false
+		default:
+			return false
+		}
+		return true
+	}
+	if path == "/panel/v1/zpk/upgrade-info" && http.Request.Method == stdhttp.MethodGet {
+		zpkcontroller.Zpk{}.UpgradeInfo(http)
+		return true
+	}
+	return false
 }
 
 // 转发k8s
@@ -107,20 +190,6 @@ func (self Proxy) ProxyService(gin *gin.Context) {
 	if facade.GetConfig().GetBool("longhorn.mock") {
 		// proxyUrl = "http://218.23.2.55:9090/"
 	}
-	// token := gin.GetString("k8s_token")
-	// if token != "" { //proxy-no 不传递token
-	// 	k8sToken := k8s.NewK8sToken(token)
-	// 	if k8sToken.IsVirtual() {
-	// 		client, err := k8s.NewK8sClient().Channel(token)
-	// 		if err != nil {
-	// 			self.JsonResponseWithServerError(gin, err)
-	// 			return
-	// 		}
-	// 		client.Proxy(gin.Request, gin.Writer)
-	// 		return
-	// 	}
-	// }
-
 	self.proxyUrl(gin, proxyUrl, path)
 }
 
@@ -190,7 +259,7 @@ func (self Proxy) proxyUrl(gin *gin.Context, proxyUrl string, path string) {
 	gin.Abort()
 
 	proxy := httputil.NewSingleHostReverseProxy(remote)
-	proxy.Director = func(req *http.Request) {
+	proxy.Director = func(req *stdhttp.Request) {
 		req.Host = remote.Host
 		req.URL.Scheme = remote.Scheme
 		req.URL.Host = remote.Host
@@ -213,13 +282,13 @@ func (self Proxy) proxyUrl(gin *gin.Context, proxyUrl string, path string) {
 			}
 		}
 	}
-	proxy.ModifyResponse = func(res *http.Response) error {
+	proxy.ModifyResponse = func(res *stdhttp.Response) error {
 		res.Header.Del("Access-Control-Allow-Origin")
 		return nil
 	}
-	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+	proxy.ErrorHandler = func(w stdhttp.ResponseWriter, r *stdhttp.Request, err error) {
 		slog.Error("Proxy error", "error", err, "path", r.URL.Path)
-		w.WriteHeader(http.StatusBadGateway)
+		w.WriteHeader(stdhttp.StatusBadGateway)
 		w.Write([]byte(fmt.Sprintf(`{"code":502,"error":"%s"}`, err.Error())))
 	}
 
@@ -233,39 +302,87 @@ func (self Proxy) proxyUrl(gin *gin.Context, proxyUrl string, path string) {
 	proxy.ServeHTTP(gin.Writer, gin.Request)
 }
 
-func (self Proxy) ProxyAddr(http *gin.Context) {
-	type ParamsValidate struct {
-		ProxyUrl string `form:"proxyUrl" binding:"required`
-	}
-	params := ParamsValidate{}
-	if !self.Validate(http, &params) {
+// HelmIndex returns repository metadata from an approved artifact origin.
+// It accepts a repository root rather than an arbitrary URL, so the endpoint
+// cannot be reused as an authenticated SSRF primitive.
+func (self Proxy) HelmIndex(ctx *gin.Context) {
+	repository := strings.TrimRight(strings.TrimSpace(ctx.Query("repository")), "/")
+	if repository == "" {
+		self.JsonResponseWithError(ctx, errors.New("repository is required"), stdhttp.StatusBadRequest)
 		return
 	}
-	res, err := helper.RetryHttpClient().R().Get(params.ProxyUrl)
+	body, err := artifacturl.Get(ctx.Request.Context(), repository+"/index.yaml", 4<<20)
 	if err != nil {
-		http.String(200, "")
+		self.JsonResponseWithError(ctx, err, stdhttp.StatusBadRequest)
 		return
 	}
-	http.String(200, res.String())
-	// res.Body().Close()
-	// uri, err := url.Parse(params.ProxyUrl)
-	// if err != nil {
-	// 	self.JsonResponseWithServerError(http, err)
-	// 	return
-	// }
-
-	// self.proxyUrl(http, params.ProxyUrl, "")
+	ctx.Data(stdhttp.StatusOK, "application/x-yaml; charset=utf-8", body)
 }
 
 func (self Proxy) Kubeconfig(gin *gin.Context) {
-	apiServerUrl := gin.Query("apiServerUrl")
-	config, err := k8s.NewK8sClient().ToKubeconfigForServiceAccount(apiServerUrl, permissionservice.APIPermissionName)
+	var config []byte
+	var err error
+	if helper.IsChildAgent() {
+		config, err = helper.ReadK3sKubeconfig()
+	} else {
+		config, err = readKubeconfigFromAgent(gin.Request.Context())
+	}
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
 	}
-	self.JsonResponseWithoutError(gin, config)
+	gin.Data(stdhttp.StatusOK, "application/x-yaml; charset=utf-8", config)
 
+}
+
+func readKubeconfigFromAgent(ctx context.Context) ([]byte, error) {
+	sdk := k8s.NewK8sClient().Sdk
+	nodes, err := sdk.ClientSet.CoreV1().Nodes().List(ctx, v1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	var lastErr error
+	for _, node := range nodes.Items {
+		_, controlPlane := node.Labels["node-role.kubernetes.io/control-plane"]
+		_, master := node.Labels["node-role.kubernetes.io/master"]
+		if !controlPlane && !master {
+			continue
+		}
+		var nodeIP string
+		for _, address := range node.Status.Addresses {
+			if address.Type == corev1.NodeInternalIP {
+				nodeIP = address.Address
+				break
+			}
+		}
+		if nodeIP == "" {
+			continue
+		}
+		pod, err := sdk.GetDaemonsetAgentPod(sdk.GetNamespace(), nodeIP)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if pod.Status.Phase != corev1.PodRunning || len(pod.Spec.Containers) == 0 {
+			lastErr = fmt.Errorf("agent pod on server node %q is not running", node.Name)
+			continue
+		}
+		readCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		config, stderr, err := sdk.RunExecOutput(readCtx, pod.Namespace, pod.Name, pod.Spec.Containers[0].Name, []string{"cat", helper.K3sKubeconfigPath()})
+		cancel()
+		if err == nil && len(config) > 0 {
+			return config, nil
+		}
+		if err != nil {
+			lastErr = fmt.Errorf("read kubeconfig from agent pod %q: %w (%s)", pod.Name, err, strings.TrimSpace(string(stderr)))
+		} else {
+			lastErr = fmt.Errorf("agent pod %q returned an empty kubeconfig", pod.Name)
+		}
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, fmt.Errorf("no server node with a readable agent pod was found")
 }
 
 func (self Proxy) parseName(name string) (string, string, string) {
@@ -292,71 +409,38 @@ func (self Proxy) ProxyMicroApp(gin *gin.Context) {
 
 	name := gin.Param("name")
 	path := gin.Param("path")
+	clientHost := gin.Request.Host
 
 	token := gin.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
-
-	role := k8sToken.GetRole()
+	role := k8s.NewK8sToken(token).GetRole()
 	microAppObj, err := microapp.ListInfo(token, name)
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
 	}
-	client, err := k8s.NewK8sClient().Channel(token)
+	proxy := microapp.NewMicroAppProxy(microAppObj, false, role)
+	if replace, err := microapp.NewMicroAppReplace(token); err == nil && replace != nil {
+		proxy.WithReplace(replace)
+	}
+	proxyCtx := gin.Request.Context()
+	if server, err := oidc.GetServer(); err == nil && server != nil {
+		proxyCtx = server.ContextWithIssuer(proxyCtx, gin.Request)
+	}
+	revert, err := proxy.Proxy(proxyCtx, path)
 	if err != nil {
 		self.JsonResponseWithServerError(gin, err)
 		return
 	}
-
-	if microAppObj.IsFromRoot() || !k8sToken.IsK3kCluster() {
-		if helper.IsK3kVirtual() { //转发到子集群pod后 强制设置成founder
-			role = "founder"
+	// The microapp proxy normally changes Host to the internal Service name.
+	// A WebSocket browser request keeps its public Origin, so that rewrite makes
+	// the target's default same-origin check reject the upgrade with 403. Keep
+	// the client Host only for upgrades; the transport still targets ServerUrl.
+	if strings.EqualFold(gin.GetHeader("Upgrade"), "websocket") && clientHost != "" {
+		director := revert.Director
+		revert.Director = func(req *stdhttp.Request) {
+			director(req)
+			req.Host = clientHost
 		}
-		proxy := microapp.NewMicroAppProxy(microAppObj, k8sToken.IsK3kCluster(), role)
-		replace, err := microapp.NewMicroAppReplace(token)
-		if err == nil && replace != nil {
-			proxy.WithReplace(replace) //替换掉原有请求
-		}
-		proxyCtx := gin.Request.Context()
-		if server, err := oidc.GetServer(); err == nil && server != nil {
-			proxyCtx = server.ContextWithIssuer(proxyCtx, gin.Request)
-
-			isser := op.IssuerFromContext(proxyCtx)
-			slog.Info("Issuer", "issuer", isser)
-
-		}
-		revert, err := proxy.Proxy(proxyCtx, path)
-		if err != nil {
-			self.JsonResponseWithServerError(gin, err)
-			return
-		}
-		revert.ServeHTTP(gin.Writer, gin.Request)
-		return
 	}
-	// --->panel--->sub-cluster--->microapp--->回到ZZZ 处
-	if k8sToken.IsK3kCluster() { //转发到子集群pod后 强制设置成founder
-
-		k8stoken := k8s.NewK8sToken(token)
-		config, err := k8stoken.GetK3kConfig()
-		if err != nil {
-			self.JsonResponseWithServerError(gin, err)
-			return
-		}
-		path := gin.Request.URL.String()
-		// agentHost := config.GetK3kAgentLbHost()
-		proxyUrl := "http://" + config.GetK3kAgentLbHost()
-		restConfig, err := client.ToRESTConfig()
-		if err != nil {
-			self.JsonResponseWithServerError(gin, err)
-			return
-		}
-		gin.Request.Header.Set("AuthorizationX", "Bearer "+restConfig.BearerToken)
-		proxy, err := helper.ProxyUrl(proxyUrl, path, "", nil, nil)
-		if err != nil {
-			self.JsonResponseWithServerError(gin, err)
-			return
-		}
-		proxy.ServeHTTP(gin.Writer, gin.Request)
-
-	}
+	revert.ServeHTTP(gin.Writer, gin.Request)
 }

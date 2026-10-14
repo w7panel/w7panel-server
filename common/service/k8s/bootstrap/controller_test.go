@@ -144,15 +144,15 @@ func TestAvailableAppGroupWithoutUpdateMarksReady(t *testing.T) {
 	if installer.installCalls != 0 {
 		t.Fatalf("install calls = %d, want 0", installer.installCalls)
 	}
-	if result.Requeue || result.RequeueAfter != 0 || installer.upgradeCalls != 0 || installer.checkCalls != 1 {
+	if result.Requeue || result.RequeueAfter != updateCheckRetryInterval || installer.upgradeCalls != 0 || installer.checkCalls != 1 {
 		t.Fatalf("ready check result=%#v checks=%d upgrades=%d", result, installer.checkCalls, installer.upgradeCalls)
 	}
 	updated := &installationv1.BootstrapInstallation{}
 	if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: item.Name}, updated); err != nil {
 		t.Fatal(err)
 	}
-	if updated.Status.Phase != installationv1.BootstrapPhaseReady || updated.Status.CompletedAt == nil {
-		t.Fatalf("unexpected ready status: %#v", updated.Status)
+	if updated.Status.Phase != installationv1.BootstrapPhaseReady || updated.Status.Message != "检查 ZPK 制品更新失败: 未返回候选制品" {
+		t.Fatalf("unexpected update-check status: %#v", updated.Status)
 	}
 	if installer.lookupCalls != 1 {
 		t.Fatalf("lookup calls = %d, want 1", installer.lookupCalls)
@@ -210,8 +210,8 @@ func TestReadyInstallationChecksZPKVersionWhenReconciled(t *testing.T) {
 	if installer.lookupCalls != 1 || installer.checkCalls != 1 || installer.upgradeCalls != 0 {
 		t.Fatalf("lookups=%d checks=%d upgrades=%d; want 1, 1, 0", installer.lookupCalls, installer.checkCalls, installer.upgradeCalls)
 	}
-	if result.Requeue || result.RequeueAfter != 0 {
-		t.Fatalf("ready installation must not schedule a periodic check: %#v", result)
+	if result.Requeue || result.RequeueAfter != updateCheckRetryInterval {
+		t.Fatalf("ready installation check requeue = %#v, want %s", result, updateCheckRetryInterval)
 	}
 }
 
@@ -266,8 +266,8 @@ func TestUpdateAtRetryLimitWaitsForNextCheckCycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if installer.upgradeCalls != 0 || result.Requeue || result.RequeueAfter != 0 {
-		t.Fatalf("retry limit did not enter check cooldown: upgrades=%d result=%#v", installer.upgradeCalls, result)
+	if installer.upgradeCalls != 1 || result.Requeue || result.RequeueAfter != 5*time.Second {
+		t.Fatalf("ready AppGroup upgrade result: upgrades=%d result=%#v", installer.upgradeCalls, result)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -18,12 +19,26 @@ type WebDAVFileSystem struct {
 }
 
 func (fs WebDAVFileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
+	parent, err := fs.FileSystem.Stat(ctx, path.Dir(name))
+	if err != nil {
+		return nil, err
+	}
+	perm = parent.Mode().Perm()
+
 	file, err := fs.FileSystem.OpenFile(ctx, name, flag, perm)
 	if err != nil {
 		slog.Error("webdav OpenFile failed", "name", name, "flag", flag, "perm", perm, "error", err)
 		return nil, err
 	}
 	return NewWebDAVFileWithIDMapper(file, fs.dir, name, fs.idMapper), err
+}
+
+func (fs WebDAVFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
+	parent, err := fs.FileSystem.Stat(ctx, path.Dir(name))
+	if err != nil {
+		return err
+	}
+	return fs.FileSystem.Mkdir(ctx, name, parent.Mode().Perm())
 }
 
 func (fs WebDAVFileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {

@@ -92,3 +92,15 @@ func TestIsPluginMicroApp(t *testing.T) {
 		})
 	}
 }
+
+func TestListTopRoleUsesAuthenticatedPanelRole(t *testing.T) {
+	if got := listTopRole("not-a-jwt", " founder "); got != "founder" {
+		t.Fatalf("listTopRole() = %q, want founder", got)
+	}
+}
+
+func TestListTopRoleFallsBackToLegacyToken(t *testing.T) {
+	if got := listTopRole("not-a-jwt", ""); got != "normal" {
+		t.Fatalf("listTopRole() = %q, want normal", got)
+	}
+}

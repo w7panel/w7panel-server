@@ -1,13 +1,20 @@
 package controller
 
 import (
+	"errors"
+	stdhttp "net/http"
+	"os"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	microappsettingv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/microappsetting/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	loginconfig "github.com/w7panel/w7panel/common/service/k8s/loginconfig"
 	"github.com/w7panel/w7panel/common/service/k8s/site"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
@@ -18,6 +25,88 @@ type Site struct {
 }
 
 const globalMicroAppSettingName = "default"
+
+const registriesFilePath = "/etc/rancher/k3s/registries.yaml"
+
+func (self Site) GetRegistries(http *gin.Context) {
+	if helper.IsK3kVirtual() || helper.IsK3kShared() {
+		data, err := os.ReadFile(registriesFilePath)
+		if errors.Is(err, os.ErrNotExist) {
+			http.String(200, "")
+			return
+		}
+		if err != nil {
+			self.JsonResponseWithError(http, err, 500)
+			return
+		}
+		http.String(200, string(data))
+		return
+	}
+
+	sdk := k8s.NewK8sClient()
+	configMap, err := sdk.ClientSet.CoreV1().ConfigMaps(sdk.GetNamespace()).Get(http, "registries", metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		http.String(200, "")
+		return
+	}
+	if err != nil {
+		self.JsonResponseWithError(http, err, 500)
+		return
+	}
+	http.String(200, configMap.Data["default.cnf"])
+}
+
+func (self Site) SaveRegistries(http *gin.Context) {
+	var request struct {
+		Data *string `json:"data"`
+	}
+	if err := http.ShouldBindJSON(&request); err != nil {
+		self.JsonResponseWithError(http, err, 400)
+		return
+	}
+	if request.Data == nil {
+		self.JsonResponseWithError(http, errors.New("data is required"), 400)
+		return
+	}
+	if _, err := helper.YamlParse([]byte(*request.Data)); err != nil {
+		self.JsonResponseWithError(http, err, 400)
+		return
+	}
+
+	if helper.IsK3kVirtual() || helper.IsK3kShared() {
+		if err := helper.WriteFileAtomic(registriesFilePath, []byte(*request.Data)); err != nil {
+			self.JsonResponseWithError(http, err, 500)
+			return
+		}
+		http.Status(stdhttp.StatusNoContent)
+		return
+	}
+
+	sdk := k8s.NewK8sClient()
+	client := sdk.ClientSet.CoreV1().ConfigMaps(sdk.GetNamespace())
+	configMap, err := client.Get(http, "registries", metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		_, err = client.Create(http, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: "registries", Namespace: sdk.GetNamespace(), Annotations: map[string]string{"title": "镜像仓库"}, Labels: map[string]string{"data-hash": time.Now().Format("20060102150405.000000000"), "w7.cc/noauth": "true"}},
+			Data:       map[string]string{"default.cnf": *request.Data},
+		}, metav1.CreateOptions{})
+	} else if err == nil {
+		if configMap.Data == nil {
+			configMap.Data = make(map[string]string)
+		}
+		if configMap.Labels == nil {
+			configMap.Labels = make(map[string]string)
+		}
+		configMap.Data["default.cnf"] = *request.Data
+		configMap.Labels["data-hash"] = time.Now().Format("20060102150405.000000000")
+		_, err = client.Update(http, configMap, metav1.UpdateOptions{})
+	}
+	if err != nil {
+		self.JsonResponseWithError(http, err, 500)
+		return
+	}
+	http.Status(stdhttp.StatusNoContent)
+}
 
 func (self Site) Beian(http *gin.Context) {
 	sdk := k8s.NewK8sClient()
@@ -130,6 +219,22 @@ func (self Site) InitUser(http *gin.Context) {
 	self.JsonResponseWithoutError(http, response)
 }
 
+// LoginConfig only exposes the provider state needed before authentication. The
+// management UI reads the cluster-scoped CRD through the authenticated proxy.
+func (self Site) LoginConfig(http *gin.Context) {
+	if !helper.IsChildAgent() {
+		self.JsonResponseWithoutError(http, gin.H{"oidcEnabled": false, "childCluster": false})
+		return
+	}
+	config, err := loginconfig.Get(http.Request.Context(), k8s.NewK8sClient().Sdk)
+	if err != nil {
+		self.JsonResponseWithoutError(http, gin.H{"oidcEnabled": false, "childCluster": true})
+		return
+	}
+	oidc, ok := loginconfig.Provider(config, "oidc")
+	self.JsonResponseWithoutError(http, gin.H{"oidcEnabled": ok && oidc.Enabled, "childCluster": true})
+}
+
 func boolString(value bool) string {
 	if value {
 		return "true"
@@ -192,7 +297,6 @@ func contactIndex(value int32, fallback int) int32 {
 	return int32(fallback + 1)
 }
 
-// TODO 子集群的configmap获取不到 未登录情况下无法获取到子集群的configmap
 func (self Site) NoAuthConfigMap(http *gin.Context) {
 	sdk := k8s.NewK8sClient()
 	name := http.Param("name")

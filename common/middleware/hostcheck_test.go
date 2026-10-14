@@ -33,6 +33,9 @@ func TestHostCheckPort9090OnlyAllowsIP(t *testing.T) {
 			r.ServeHTTP(res, req)
 
 			assert.Equal(t, tt.wantStatus, res.Code)
+			if tt.wantStatus == 400 {
+				assert.Empty(t, res.Body.String())
+			}
 		})
 	}
 }

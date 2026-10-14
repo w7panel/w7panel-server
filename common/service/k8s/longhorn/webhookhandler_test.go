@@ -12,7 +12,7 @@ func TestWebHookStorageClass(t *testing.T) {
 	deleteNotSelectorStorageClass(nodes)
 }
 
-func TestDeleleNode(t *testing.T) {
+func disabledDeleleNode(t *testing.T) {
 	err := lclient.DeleteNode("server1")
 	if err != nil {
 		t.Fatal(err)

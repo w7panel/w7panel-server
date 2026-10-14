@@ -71,15 +71,9 @@ RUN echo "source <(kubectl completion bash)" >> ~/.bashrc
 RUN echo "source <(helm completion bash)" >> ~/.bashrc
 RUN echo "source /usr/share/bash-completion/bash_completion" >> /etc/bash.bashrc
 
-# //https://github.com/rancher/k3k/releases/download/v0.3.3-rc1/k3kcli-linux-amd64
-ARG K3K_CLI_VERSION=v0.3.3
-
-RUN wget https://ghproxy.net/https://github.com/rancher/k3k/releases/download/${K3K_CLI_VERSION}/k3kcli-linux-${TARGETARCH} -O /tmp/k3kcli && \
-    chmod +x /tmp/k3kcli && mv /tmp/k3kcli /usr/local/bin/
 # RUN apt-get install -y vi
 # 设置工作目录
 # WORKDIR /root
-# wget https://ghproxy.net/https://github.com/rancher/k3k/releases/download/v0.3.3-rc1/k3kcli-linux-amd64 -O /tmp/k3kcli && chmod +x /tmp/k3kcli && mv /tmp/k3kcli /usr/local/bin/
 # 验证安装
 # RUN kubectl version --client --short \
 #     && helm version --short \

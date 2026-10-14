@@ -139,7 +139,6 @@ func main() {
 		func(engine *gin.Engine) {
 			engine.Any("/k8s-proxy/*path",
 				commonmiddleware.Auth{}.Process,
-				commonmiddleware.K8sFilter{}.Process,
 				controller.Proxy{}.ProxyK8s)
 		},
 	)

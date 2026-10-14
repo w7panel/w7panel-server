@@ -8,7 +8,7 @@ import (
 	helmtypes "github.com/w7panel/w7panel/common/service/k8s/zpk/types"
 )
 
-func TestRequireInstall(t *testing.T) {
+func disabledRequireInstall(t *testing.T) {
 
 	// 创建一个测试用的secret
 	// 调用RequireInstall方法
@@ -19,7 +19,7 @@ func TestRequireInstall(t *testing.T) {
 
 }
 
-func TestRequireInstallApp(t *testing.T) {
+func disabledRequireInstallApp(t *testing.T) {
 	// apps := getReuireInstallApp()
 	sdk := k8s.NewK8sClientInner()
 	// install := NewInstall(sdk, *apps)

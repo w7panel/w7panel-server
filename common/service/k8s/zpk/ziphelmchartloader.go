@@ -2,12 +2,13 @@ package zpk
 
 import (
 	"archive/zip"
+	"context"
 	"errors"
 	"io"
-	"net/http"
 	"net/url"
 	"os"
 
+	"github.com/w7panel/w7panel/common/service/artifacturl"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 )
@@ -70,19 +71,15 @@ func (self ZipHelmChartLoader) getZipPath() (string, error) {
 		return self.zipFile, nil
 	}
 	if url.Scheme == "https" || url.Scheme == "http" {
-		resp, err := http.Get(self.zipFile)
+		bytes, err := artifacturl.Get(context.Background(), self.zipFile, 32<<20)
 		if err != nil {
 			return "", err
 		}
-		defer resp.Body.Close()
 		file, err := os.CreateTemp(os.TempDir(), "*.zip")
 		if err != nil {
 			return "", err
 		}
-		bytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return "", err
-		}
+		defer file.Close()
 		_, err = file.Write(bytes)
 		if err != nil {
 			return "", err

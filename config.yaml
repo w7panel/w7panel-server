@@ -14,10 +14,18 @@ app:
   upgrade_enable: ${UPGRADE_ENABLE-true} # 是否开启自动升级功能
   refresh_token_enable: ${REFRESH_TOKEN_ENABLE-false} # 是否开启刷新token
   login_seconds: ${LOGIN_SECONDS-36000} # 登陆有效时间 单位秒 改为10小时
-  watch: ${APP_WATCH-false} # 是否开启监控功能
-  local_mock: ${LOCAL_MOCK-false} # 开发模式：使用当前服务模拟agent（生产环境必须设为false）
   static_path: ${KO_DATA_PATH-./kodata} # 静态文件目录
+  watch: ${APP_WATCH-false} # 是否开启appgroup watch功能
+  local_mock: ${LOCAL_MOCK-false} # 开发模式：使用当前服务模拟agent（生产环境必须设为false）
   debug: ${DEBUG-false}
+panel_auth:
+  signing_key: ${PANEL_AUTH_SIGNING_KEY-} # empty falls back to app.aeskey for single-instance compatibility
+adk:
+  enabled: ${ADK_ENABLED-false}
+  openai_base_url: ${ADK_OPENAI_BASE_URL-}
+  openai_api_key: ${ADK_OPENAI_API_KEY-}
+  model: ${ADK_MODEL-}
+
 static:
   download_enabled: ${STATIC_DOWN_ENABLED-false}
   microapp_path: ${MICROAPP_PATH-./kodata/microapp} # 静态文件目录
@@ -39,8 +47,6 @@ buildimage:
 
 mcp:
   watch: ${MCP_WATCH-false}
-k3k:
-  watch: ${K3K_WATCH-false}
 cvm:
   enabled: ${CVM_ENABLED-false}   
 server:
@@ -66,7 +72,8 @@ privatedns:
   enabled: ${PRIVATEDNS_ENABLED-false}
 oidc:
   enabled: ${OIDC_ENABLED-true}
-  issuer: ${OIDC_ISSUER-http://w7panel-offline.default.svc.cluster.local:8000/panel-api/v1/oidc}
+  # issuer: ${OIDC_ISSUER-http://w7panel-offline.default.svc.cluster.local:8000/panel-api/v1/oidc}
+  issuer: ${OIDC_ISSUER-} # 公网内网都需要 先去掉默认值
   cookie_domain: ${OIDC_COOKIE_DOMAIN-}
   cookie_secure: ${OIDC_COOKIE_SECURE-false}
   signing_key_pem: ${OIDC_SIGNING_KEY_PEM-}

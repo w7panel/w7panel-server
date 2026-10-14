@@ -11,8 +11,8 @@ import (
 const (
 	ConfigCRDGroup        = "w7panel.w7.com"
 	ConfigCRDVersion      = "v1alpha1"
-	K3kConfigName         = "config"
 	K3sConfigName         = "config"
+	K3kConfigName         = "config"
 	LicenseName           = "license"
 	OverSellingConfigName = "config"
 	FilingConfigName      = "beian"
@@ -20,14 +20,15 @@ const (
 )
 
 var (
-	K3kConfigGVR         = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "k3kconfigs"}
 	K3sConfigGVR         = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "k3sconfigs"}
+	K3kConfigGVR         = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "k3kconfigs"}
 	LicenseGVR           = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "licenses"}
 	OverSellingConfigGVR = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "oversellingconfigs"}
 	FilingConfigGVR      = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "filingconfigs"}
 	DomainParseConfigGVR = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "domainparseconfigs"}
 	ContactConfigGVR     = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "contactconfigs"}
 	MicroAppSettingGVR   = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "microappsettings"}
+	LoginConfigGVR       = schema.GroupVersionResource{Group: ConfigCRDGroup, Version: ConfigCRDVersion, Resource: "loginconfigs"}
 )
 
 type LicenseCRDSpec struct {
@@ -170,9 +171,13 @@ func NewDomainParseConfigCRD(name string, spec DomainParseConfigCRDSpec) *unstru
 	obj.SetAPIVersion(ConfigCRDGroup + "/" + ConfigCRDVersion)
 	obj.SetKind("DomainParseConfig")
 	obj.SetName(name)
+	ips := make([]interface{}, len(spec.IPs))
+	for i := range spec.IPs {
+		ips[i] = spec.IPs[i]
+	}
 	obj.Object["spec"] = map[string]interface{}{
 		"type":  spec.Type,
-		"ips":   spec.IPs,
+		"ips":   ips,
 		"cname": spec.Cname,
 	}
 	return obj

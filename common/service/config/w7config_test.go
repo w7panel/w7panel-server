@@ -1,11 +1,30 @@
 package config
 
 import (
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"strings"
 	"testing"
+	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
+
+func TestW7ConfigAlwaysReportsFreeEdition(t *testing.T) {
+	config := &W7Config{License: &x509.Certificate{
+		Subject:  pkix.Name{Province: []string{"company"}},
+		NotAfter: time.Now().Add(time.Hour),
+	}}
+	data := config.ToArray()
+	if data["license_type"] != "free" {
+		t.Fatalf("license_type = %v, want free", data["license_type"])
+	}
+	for _, key := range []string{"license_id", "license_end_time", "license_is_expired"} {
+		if _, ok := data[key]; ok {
+			t.Errorf("ToArray() still exposes %q", key)
+		}
+	}
+}
 
 func TestUserConfigToW7ConfigReadsCloudMap(t *testing.T) {
 	config, err := userConfigToW7Config("console-75780", map[string]interface{}{

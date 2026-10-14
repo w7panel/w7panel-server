@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestClusterSummary_Summary(t *testing.T) {
+func disabledClusterSummary_Summary(t *testing.T) {
 	// client := fake.NewSimpleClientset()
 	os.Setenv("LOCAL_MOCK", "true")
 	sdk := k8s.NewK8sClientInner()

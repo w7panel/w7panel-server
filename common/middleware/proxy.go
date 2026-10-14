@@ -1,12 +1,7 @@
 package middleware
 
 import (
-	"log/slog"
-	"strings"
-
 	"github.com/gin-gonic/gin"
-	"github.com/w7panel/w7panel/common/helper"
-	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
 )
 
@@ -15,52 +10,5 @@ type Proxy struct {
 }
 
 func (self Proxy) Process(gin *gin.Context) {
-	iftoken, exites := gin.Get("k8s_token")
-	if !exites {
-		gin.Next()
-		return
-	}
-	token := iftoken.(string)
-	k3ktoken := k8s.NewK8sToken(token)
-	if k3ktoken.IsK3kCluster() && !helper.IsChildAgent() { //如果是子用户 直接转发agent pod
-		config, err := k3ktoken.GetK3kConfig()
-		if err != nil {
-			self.JsonResponseWithServerError(gin, err)
-			return
-		}
-		path := gin.Request.URL.String()
-		agentHost := config.GetK3kAgentName()
-		// proxyUrl := "http://" + config.GetVirtualIngressServiceName()
-		proxyUrl := "http://" + config.GetK3kAgentLbHost()
-		auth := gin.Request.Header.Get("Authorization")
-		if strings.HasPrefix(auth, "Bearer ") {
-			client, err := k8s.NewK8sClient().Channel(token)
-			if err != nil {
-				self.JsonResponseWithServerError(gin, err)
-				return
-			}
-			restConfig, err := client.ToRESTConfig()
-			if err != nil {
-				self.JsonResponseWithServerError(gin, err)
-				return
-			}
-			gin.Request.Header.Set("Authorization", "Bearer "+restConfig.BearerToken)
-		}
-
-		proxy, err := helper.ProxyUrl(proxyUrl, path, agentHost, nil, nil)
-		if err != nil {
-			self.JsonResponseWithServerError(gin, err)
-			return
-		}
-		defer func() {
-			//golang issue 23643
-			if r := recover(); r != nil {
-				slog.Error("客户端已断开连接", "error", r)
-			}
-		}()
-		proxy.ServeHTTP(gin.Writer, gin.Request)
-		gin.Abort()
-		return
-	}
 	gin.Next()
 }

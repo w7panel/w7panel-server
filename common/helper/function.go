@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto"
 	"crypto/md5"
 	"crypto/sha1"
@@ -38,6 +39,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
 	"github.com/google/go-containerregistry/pkg/crane"
+	"github.com/w7panel/w7panel/common/service/artifacturl"
+	"github.com/w7panel/w7panel/common/service/downloadticket"
+	"github.com/w7panel/w7panel/common/service/safepath"
 
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 
@@ -57,8 +61,6 @@ import (
 )
 
 var clusterD = "cluster.local"
-
-const K3K_AGENT_PREFIX = "w7panel-k3k-agent"
 
 func ClusterDomain(name, namespace string) string {
 	return fmt.Sprintf("%s.%s.svc.%s", name, namespace, clusterD)
@@ -191,6 +193,17 @@ func ReadRegistries() ([]byte, error) {
 func ReadK3sConfig() ([]byte, error) {
 	filePath := "/host/etc/rancher/k3s/config.yaml"
 	return os.ReadFile(filePath)
+}
+
+func ReadK3sKubeconfig() ([]byte, error) {
+	return os.ReadFile(K3sKubeconfigPath())
+}
+
+func K3sKubeconfigPath() string {
+	if IsChildAgent() {
+		return "/etc/rancher/k3s/k3s.yaml"
+	}
+	return "/host/etc/rancher/k3s/k3s.yaml"
 }
 
 func WriteK3sConfig(config []byte) error {
@@ -456,15 +469,47 @@ func SelfImageInfo() (string, string) {
 }
 
 func ExtractSingleFileFromTgz(url, fileName string) ([]byte, error) {
-	// 发起 HTTP 请求获取远程 tgz 文件的响应
-	resp, err := http.Get(url)
+	// Chart archives are only fetched from approved external artifact origins.
+	archive, err := artifacturl.Get(context.Background(), url, 32<<20)
 	if err != nil {
 		return nil, fmt.Errorf("无法获取远程文件: %w", err)
 	}
-	defer resp.Body.Close()
+	return extractSingleFileFromTgz(archive, fileName)
+}
 
+// ExtractSingleFileFromPanelDownload reads a chart uploaded to this panel via
+// its path-bound short-lived download ticket without making an HTTP request.
+func ExtractSingleFileFromPanelDownload(url, fileName string) ([]byte, error) {
+	parsed, err := artifacturl.ValidatePanelDownload(url)
+	if err != nil {
+		return nil, fmt.Errorf("无效的面板下载地址: %w", err)
+	}
+	path := strings.TrimPrefix(parsed.Path, "/panel-api/v1/download/")
+	if !downloadticket.Consume(parsed.Query().Get("download-ticket"), path) {
+		return nil, errors.New("下载票据无效或已过期")
+	}
+	filename, err := safepath.Resolve(facade.GetConfig().GetString("s3.base_dir"), path)
+	if err != nil {
+		return nil, fmt.Errorf("解析面板上传文件: %w", err)
+	}
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("打开面板上传文件: %w", err)
+	}
+	defer file.Close()
+	archive, err := io.ReadAll(io.LimitReader(file, 32<<20+1))
+	if err != nil {
+		return nil, fmt.Errorf("读取面板上传文件: %w", err)
+	}
+	if len(archive) > 32<<20 {
+		return nil, errors.New("面板上传文件超过大小限制")
+	}
+	return extractSingleFileFromTgz(archive, fileName)
+}
+
+func extractSingleFileFromTgz(archive []byte, fileName string) ([]byte, error) {
 	// 创建 gzip 读取器来解压响应体
-	gzr, err := gzip.NewReader(resp.Body)
+	gzr, err := gzip.NewReader(bytes.NewReader(archive))
 	if err != nil {
 		return nil, fmt.Errorf("无法解压 gzip 文件: %w", err)
 	}
@@ -597,17 +642,6 @@ func VerifyDataWithPublicKey(pubKey *rsa.PublicKey, data, signature []byte) erro
 	return nil
 }
 
-func GetK3kAgentName(name string) string {
-	return "w7panel-k3k-agent-" + name
-}
-
-func GetK3kServer0Name(name string) string {
-	return "k3k-" + name + "-server-0"
-}
-
-func GetK3kServer0ContainerName(name string) string {
-	return "k3k-" + name + "-server"
-}
 func GetVirtualIngressServiceName(ns, name string) string {
 	return ns + "-" + name + "-service-w7"
 }
@@ -722,7 +756,7 @@ func ProxyUrl(proxyUrl string, path string, host string, headers map[string]stri
 			"originalHost", originalHost,
 			"newURL", req.URL.String(),
 			"newHost", req.Host,
-			"headers", fmt.Sprintf("%v", req.Header),
+			"headers", redactedHeaders(req.Header),
 		)
 	}
 
@@ -758,7 +792,7 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	slog.Info("Sending request to remote server",
 		"method", req.Method,
 		"url", req.URL.String(),
-		"headers", fmt.Sprintf("%v", req.Header),
+		"headers", redactedHeaders(req.Header),
 	)
 
 	// 使用原始Transport发送请求
@@ -777,6 +811,16 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	}
 
 	return resp, err
+}
+
+func redactedHeaders(headers http.Header) http.Header {
+	result := headers.Clone()
+	for _, key := range []string{"Authorization", "AuthorizationX", "X-W7Panel-Token", "Cookie", "Sec-WebSocket-Protocol"} {
+		if result.Get(key) != "" {
+			result.Set(key, "[REDACTED]")
+		}
+	}
+	return result
 }
 
 // 计算两个字符串切片的差集
@@ -1005,11 +1049,6 @@ func HelmValflattenMap(config map[string]interface{}) map[string]string {
 }
 
 func PanelInnerUrl() string {
-	if IsChildAgent() {
-		svcName := os.Getenv("SVC_NAME")
-		return "http://" + svcName + ".default.svc:8000"
-
-	}
 	ns := os.Getenv("HELM_NAMESPACE")
 	if ns == "" {
 		ns = "default"

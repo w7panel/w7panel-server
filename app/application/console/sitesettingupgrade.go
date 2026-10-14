@@ -81,15 +81,6 @@ func (c SiteSettingUpgrade) loadLegacyConfig(ctx context.Context, sdk *k8s.Sdk) 
 		IndexPage: "login",
 	}
 
-	if data, err := sdk.GetConfigCRDData(ctx, k8s.K3kConfigGVR, k8s.K3kConfigName); err == nil {
-		setting.AllowConsoleRegister = data["allowConsoleRegister"]
-		if data["indexpage"] != "" {
-			setting.IndexPage = data["indexpage"]
-		}
-	} else if !apierrors.IsNotFound(err) {
-		slog.Warn("读取旧注册配置失败", "error", err)
-	}
-
 	if filing, err := sdk.GetConfigCRD(ctx, k8s.FilingConfigGVR, k8s.FilingConfigName); err == nil {
 		setting.Filing = k8s.ParseFilingConfigCRDSpec(filing)
 	} else if !apierrors.IsNotFound(err) {

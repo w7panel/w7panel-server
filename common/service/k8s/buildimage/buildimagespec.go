@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	defaultDomain = "registry.local.w7.cc"
+	defaultDomain                   = "registry.local.w7.cc"
+	registryServiceAccountTokenFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
 
 type BuildImageSpec struct {
@@ -114,6 +115,9 @@ func (d BuildImageSpec) ToEnv(registryHost string) []corev1.EnvVar {
 	realPushImage := d.GetRealPushImage(registryHost)
 	envs = append(envs, corev1.EnvVar{Name: "PUSH_IMAGE", Value: realPushImage})
 	envs = append(envs, corev1.EnvVar{Name: "KANIKO_REGISTRY_MAP", Value: mirrorMapToStr(registryHost)})
+	if d.IsPushToDefault() {
+		envs = append(envs, corev1.EnvVar{Name: "REGISTRY_SERVICE_ACCOUNT_TOKEN_FILE", Value: registryServiceAccountTokenFile})
+	}
 	return envs
 }
 

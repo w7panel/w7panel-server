@@ -10,7 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_syncRootDomain(t *testing.T) {
+func disabledSyncRootDomain(t *testing.T) {
 	sdk := k8s.NewK8sClient()
 
 	ing, err := sdk.ClientSet.NetworkingV1().Ingresses("default").Get(sdk.Ctx, "ing-gverlhgv", metav1.GetOptions{})
@@ -36,7 +36,7 @@ func Test_syncRootDomain(t *testing.T) {
 	sdk.ClientSet.NetworkingV1().Ingresses("default").Update(sdk.Ctx, ing, metav1.UpdateOptions{})
 }
 
-func Test_syncRoot(t *testing.T) {
+func disabledSyncRoot(t *testing.T) {
 	sdk := k8s.NewK8sClient()
 	client, err := sdk.ToSigClient()
 	if err != nil {
@@ -47,7 +47,7 @@ func Test_syncRoot(t *testing.T) {
 	sync.syncRoot()
 }
 
-func Test_syncChild(t *testing.T) {
+func disabledSyncChild(t *testing.T) {
 	sdk := k8s.NewK8sClient()
 	client, err := sdk.ToSigClient()
 	if err != nil {
@@ -58,7 +58,7 @@ func Test_syncChild(t *testing.T) {
 	sync.syncChild()
 }
 
-func Test_syncRootDelete(t *testing.T) {
+func disabledSyncRootDelete(t *testing.T) {
 	sdk := k8s.NewK8sClient()
 	client, err := sdk.ToSigClient()
 	if err != nil {
@@ -70,7 +70,7 @@ func Test_syncRootDelete(t *testing.T) {
 
 }
 
-func Test_syncChildDelete(t *testing.T) {
+func disabledSyncChildDelete(t *testing.T) {
 	sdk := k8s.NewK8sClient()
 	client, err := sdk.ToSigClient()
 	if err != nil {

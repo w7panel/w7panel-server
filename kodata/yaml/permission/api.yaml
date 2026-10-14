@@ -10,6 +10,9 @@ spec:
   role: api
   menuRules: []
   apiRules:
+  - path: /panel-api/v1/auth/k8s-credentials/token
+    method:
+    - create
   - path: /panel-api/v1/auth/userinfo
     method:
     - get
@@ -22,21 +25,6 @@ spec:
   - path: /panel-api/v1/menu
     method:
     - get
-  - path: /panel-api/v1/k3k/info
-    method:
-    - get
-  - path: /panel-api/v1/k3k/cvm*
-    method:
-    - '*'
-  - path: /panel-api/v1/k3k/ckm*
-    method:
-    - '*'
-  - path: /panel-api/v1/k3k/overselling/*
-    method:
-    - '*'
-  - path: /panel-api/v1/k3k/order/license
-    method:
-    - create
   - path: /panel-api/v1/namespaces
     method:
     - get
@@ -58,6 +46,12 @@ spec:
   - path: /panel-api/v1/registry/*
     method:
     - '*'
+  - path: /v2/*
+    method:
+    - create
+    - update
+    - patch
+    - delete
   - path: /panel-api/v1/tty
     method:
     - get

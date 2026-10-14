@@ -1,0 +1,30 @@
+# teamai single-repo mode — machine-local state (never commit).
+# As of P2 this data lives in ~/.teamai/projects/<slug>/; these entries guard
+# pre-P2 installs (pre-migration) and any un-relocated path.
+config.yaml
+state.json
+token
+teamai.lock
+.update-lock
+.reports-lock
+.bootstrap-lock
+.sync-lock
+env.sh
+env.local
+usage.jsonl
+known-skills.json
+search-index.json
+managed-mcp.json
+workspaces/
+dashboard/
+# git worktrees for reports (orphan branch) and knowledge PRs
+reports-wt/
+knowledge-wt/
+# report data lives on the teamai-reports orphan branch, not on main
+members/
+sessions/
+votes/
+stats/
+pending-review.jsonl
+
+# Knowledge (skills/, rules/, docs/, learnings/) is intentionally committed to main.

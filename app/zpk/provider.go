@@ -33,7 +33,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.GET("/", middleware.Auth{}.Process, controller.Zpk{}.List)                                 //安装列表
 			localApiGroup.PUT("/install", middleware.Auth{}.Process, controller.Zpk{}.Install)                       // 安装或更新
 			localApiGroup.GET("/upgrade-info", middleware.Auth{}.Process, controller.Zpk{}.UpgradeInfo)              // 更新信息
-			localApiGroup.Any("/build-image-success", middleware.Auth{}.Process, controller.Zpk{}.BuildImageSuccess) // 卸载插件
+			localApiGroup.Any("/build-image-success", controller.Zpk{}.BuildImageSuccess)                            // 不做任何处理 直接返回200 构建镜像成功回调
 			localApiGroup.GET("/trandition/env", middleware.Auth{}.Process, controller.Zpk{}.TranditionList)         // 传统应用环境
 			localApiGroup.POST("/trandition/install", middleware.Auth{}.Process, controller.Zpk{}.InstallTrandition) // 传统应用安装
 			localApiGroup.GET("/out-depends/env", middleware.Auth{}.Process, controller.Zpk{}.OutDependEnv)          // 外部依赖环境变量

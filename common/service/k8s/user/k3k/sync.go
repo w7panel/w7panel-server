@@ -309,7 +309,6 @@ func SyncIngress(params *K3kSync) error {
 	}
 	return nil
 }
-
 func SyncIngressHttp(ingress *networkingv1.Ingress) error {
 	return SyncHttp(ingress, "sync-ingress")
 }

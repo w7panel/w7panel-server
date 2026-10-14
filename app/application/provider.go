@@ -47,6 +47,9 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 	console.RegisterCommand(new(consoleShell.TestUploadChunk)) // 测试分片上传功能
 
 	p.RegisterHttpRoutes(httpServer)
+	if helper.IsAgent() {
+		go controller2.RegisterAgentPodIP()
+	}
 	p.cleanupLegacyK3sAddons()
 	console2.SetConsoleApi(facade.GetConfig().GetString("app.console_base_url"))
 	if helper.IsLocalMock() {
@@ -160,11 +163,15 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	webdavMethods := []string{"PROPFIND", "PROPPATCH", "MKCOL", "COPY", "MOVE", "LOCK", "UNLOCK", "LINK", "UNLINK", "GET", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH", "POST"}
 	server.RegisterRouters(func(engine *gin.Engine) {
 		engine.GET("/docs/openapi", controller2.OpenAPI{}.Page)
+		engine.POST("/internal/agent-pod", middleware.Auth{}.ProcessServiceAccount, controller2.PodExec{}.RegisterAgentPodIP)
 		engine.GET("/docs/openapi/spec", controller2.OpenAPI{}.Spec)
 		engine.GET("/openapi.json", controller2.OpenAPI{}.RedirectJSON)
 
 		apiGroup := engine.Group("/panel-api/v1") //.Use(middleware.Cors{}.Process)
 		{
+			// copilotGroup := apiGroup.Group("/copilot", middleware.Auth{}.Process)
+			// copilotGroup.GET("/context", controller2.Copilot{}.Context)
+			// copilotGroup.POST("/stream", controller2.Copilot{}.Stream)
 			apiGroup.GET("/namespaces", middleware.Auth{}.Process, controller2.Namespaces{}.GetList)
 			apiGroup.GET("/cluster/nodes/:name/longhorn-replicas", middleware.Auth{}.Process, controller2.Nodes{}.GetLonghornReplicas)
 			apiGroup.POST("/cluster/nodes/:name/longhorn-replicas/delete", middleware.Auth{}.Process, controller2.Nodes{}.DeleteLonghornReplicas)
@@ -181,9 +188,12 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		localApiGroup := engine.Group("/panel-api/v1") //.Use(middleware.Cors{}.Process)
 		{
+			localApiGroup.GET("/registry/registries", middleware.Auth{}.Process, controller2.Site{}.GetRegistries)
+			localApiGroup.PUT("/registry/registries", middleware.Auth{}.Process, controller2.Site{}.SaveRegistries)
 			localApiGroup.GET("/tty", middleware.Auth{}.Process, controller2.PodExec{}.Tty)
-			localApiGroup.GET("/nodetty", middleware.Auth{}.Process, controller2.PodExec{}.NodeTty)
-			localApiGroup.GET("/download/*path", middleware.Auth{}.Process, controller2.File{}.Download)
+			localApiGroup.GET("/nodetty", middleware.Auth{}.Process, controller2.PodExec{}.NodeTtyForward)
+			localApiGroup.GET("/download/*path", middleware.DownloadAuth{}.Process, controller2.File{}.Download)
+			localApiGroup.POST("/download-grants", middleware.Auth{}.Process, controller2.File{}.DownloadGrant)
 			localApiGroup.POST("/cp", middleware.Auth{}.Process, controller2.PodExec{}.KubectlCp) //kubectl cp文件
 			localApiGroup.POST("/cppid", middleware.Auth{}.Process, controller2.File{}.CpPidFile) //pid文件移动
 			localApiGroup.POST("/mvpid", middleware.Auth{}.Process, controller2.File{}.CpPidFile) //pid文件移动
@@ -222,7 +232,10 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			// localApiGroup.Any("/v1/:name/proxy/*path", controller2.Proxy{}.ProxyCommon)
 
-			localApiGroup.Any("/proxy-url/", controller2.Proxy{}.ProxyAddr)
+			// Helm repository metadata is fetched through a constrained,
+			// authenticated artifact endpoint. Do not restore the former
+			// arbitrary unauthenticated URL forwarder here.
+			localApiGroup.GET("/artifacts/helm-index", middleware.Auth{}.Process, controller2.Proxy{}.HelmIndex)
 
 			localApiGroup.GET("/longhorn/need-delete-replica", middleware.Auth{}.Process, controller2.Longhorn{}.GetNeedDeleteReplicas)
 			localApiGroup.GET("/longhorn/volumes/status", middleware.Auth{}.Process, controller2.Longhorn{}.GetVolumesStatus)
@@ -235,10 +248,13 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-delete", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotDelete)
 			localApiGroup.POST("/longhorn/volumes/:volumeName/snapshot-purge", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.Longhorn{}.SnapshotPurge)
 
+			// 域名解析配置 安装应用时使用
+			localApiGroup.GET("/domain-parse", middleware.Auth{}.Process, controller2.DomainParse{}.Get)
+
 			localApiGroup.GET("/static/:identifie/status", middleware.Auth{}.Process, controller2.Static{}.StaticInfo)
 			localApiGroup.POST("/static/:namespace/download/:name", middleware.Auth{}.Process, controller2.Static{}.Download)
 			// 前端静态资源回源代理：本地未下载时从远程制品库拉取
-			localApiGroup.GET("/static/proxy/:zpkUrl/:identifie/:version/frontend/*path", controller2.Static{}.FrontendProxy)
+			localApiGroup.GET("/static/proxy/:identifie/:version/frontend/*path", controller2.Static{}.FrontendProxy)
 
 		}
 		gpuGroup := engine.Group("/panel-api/v1/gpu").Use(middleware.Auth{}.Process, middleware.Proxy{}.Process)
@@ -259,9 +275,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			// engine.Handle(method, "/panel-api/v1/files/webdav-test/*path", controller2.Webdav{}.HandleTest)
 		}
 		// /etc/passwd 缓存
-
-		// 新版 API - 代理到服务 //TODO 没有权限校验的代理接口，需要加auth middleware
-		engine.Any("/panel-api/v1/namespaces/:namespace/services/:name/proxy-no/*path", middleware.ProxyNoAuth{}.Process, controller2.Proxy{}.ProxyNoAuthService)
 
 		engine.POST("/panel-api/v1/files/compress-agent/:pid/compress", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.CompressAgent{}.Compress)
 		engine.POST("/panel-api/v1/files/compress-agent/:pid/extract", middleware.Auth{}.Process, middleware.Proxy{}.Process, controller2.CompressAgent{}.Extract)
@@ -286,16 +299,20 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		// 安全的未授权接口 - 只返回必要的公开字段 加1分钟缓存
 		engine.GET("/panel-api/v1/noauth/site/beian", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.Beian)
 		engine.GET("/panel-api/v1/noauth/site/beian2", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.Beian2)
-		engine.GET("/panel-api/v1/noauth/site/k3k-config", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.K3kConfig)
 		engine.GET("/panel-api/v1/noauth/site/init-user", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.InitUser)
+		engine.GET("/panel-api/v1/noauth/site/login-config", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.LoginConfig)
+		engine.GET("/panel-api/v1/noauth/site/k3k-config", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.K3kConfig)
 		engine.GET("/panel-api/v1/noauth/site/lianxi", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.Lianxi)
+
+		engine.GET("/panel-api/v1/noauth/microapp/normal", controller2.MicroApp{}.TopNormal) //获取主集群microapp列表
 		// 镜像源配置文件
 		engine.GET("/panel-api/v1/noauth/site/registries", controller2.Site{}.Registries)
 		// 获取配置文件内容，label w7.cc/noauth=true 允许不授权访问
 		// 用于应用直达 注册协议 和logo 通用接口
 		engine.GET("/panel-api/v1/noauth/site/{name}/configmap", middleware.CacheResponseWithExpire(time.Minute*1), controller2.Site{}.NoAuthConfigMap)
 
-		engine.GET("/panel-api/v1/microapp/top", middleware.Auth{}.Process, controller2.MicroApp{}.List)                     //获取microapp列表
+		engine.GET("/panel-api/v1/microapp/top", middleware.Auth{}.Process, controller2.MicroApp{}.List) //获取microapp列表
+
 		engine.GET("/panel-api/v1/microapp/:name/info", middleware.Auth{}.Process, controller2.MicroApp{}.Info)              //获取microapp详情
 		engine.Any("/panel-api/v1/microapp/:name/proxy/*path", middleware.Auth{}.Process, controller2.Proxy{}.ProxyMicroApp) //microapp proxy
 

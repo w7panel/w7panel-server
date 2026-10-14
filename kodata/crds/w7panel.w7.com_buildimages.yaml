@@ -39,6 +39,8 @@ spec:
             properties:
               namespace:
                 type: string
+              serviceAccountName:
+                type: string
               notifyUrl:
                 type: string
               source:

@@ -16,7 +16,7 @@ w7panel/
 ├── app/                         # 业务应用模块
 │   ├── application/             # 控制台、HTTP 控制器等基础应用能力
 │   ├── auth/                    # 认证授权相关功能
-│   ├── k3k/                     # K3K 虚拟集群管理
+│   ├── k3k/                     # CKM 资源同步回调
 │   ├── k3s-registry/            # K3s 镜像仓库和容器运行时相关能力
 │   ├── metrics/                 # 监控指标相关功能
 │   └── zpk/                     # 应用包、站点和部署逻辑
@@ -221,3 +221,7 @@ bash compress.sh
 ### Helm post-render 扩展入口
 
 `Helm.Upgrade` 统一调用 `newUpgradePostRenderer`，由 `helmPostRenderer` 按注册顺序执行各个 `postrender.PostRenderer`。前一个处理器输出作为下一个输入；错误或空输出立即中止。PVC 容量保护作为第一个处理器注册，后续需求在同一入口追加处理器，无需修改 Upgrade 的接入代码。
+# 镜像源 API
+
+- `GET /panel-api/v1/registry/registries`：读取镜像源 YAML，响应为纯文本。
+- `PUT /panel-api/v1/registry/registries`：请求体为 `{"data":"<YAML>"}`；主集群保存到 `registries` ConfigMap，K3K 子集群保存到 `/etc/rancher/k3s/registries.yaml`。

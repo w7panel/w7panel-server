@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/config"
 )
 
@@ -17,37 +16,6 @@ type PayTicketInfo struct {
 }
 type CouponCode struct {
 	Code string `json:"code"`
-}
-
-type LastPaidOrder struct {
-	CanBuy          bool     `json: "canBuy"`
-	NeedCheckFinish bool     `json: "needCheckFinish"`
-	NeedCheckAfter  bool     `json: "needCheckAfter"`
-	K3kOrder        K3kOrder `json: "k3kOrder"`
-	Error           string   `json: "error"`
-	GoBtn           string   `json: "goBtn"`
-}
-
-type K3kOrder struct {
-	OrderId     int64  `json: "orderId"`
-	OrderSn     string `json: "orderSn"`
-	OrderStatus string `json: "orderStatus"`
-	ReturnAt    string `json: "returnAt"` //退业务时间
-	BuyMode     string `json: "buymode"`  //base 基础购买 expand扩容
-	Cpu         int64  `json: "cpu"`      //cpu
-	Memory      int64  `json: "memory"`   //内存
-	Storage     int64  `json: "storage"`  //存储
-	Bandwidth   int64  `json: "bandwidth"`
-	Hour        string `json: "hour"` // 购买时长
-}
-
-type LastReturnOrder struct {
-	HasOrder bool      `json: "hasOrder"`
-	K3kOrder *K3kOrder `json: "k3kOrder"`
-}
-
-func (c *K3kOrder) GetHour() int64 {
-	return helper.FloatStringToInt64(c.Hour)
 }
 
 type Coupon struct {

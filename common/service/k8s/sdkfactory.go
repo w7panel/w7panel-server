@@ -49,26 +49,13 @@ func (s *singleton) GetSdk() *Sdk {
 }
 
 func (s *singleton) ChannelLocal(token string, forceLocal bool) (*Sdk, error) {
-
-	if forceLocal {
-		result, err := s.loadFromCache(token)
-		return result, err
-	}
-	result, err := s.Channel(token)
-	return result, err
+	return s.Channel(token)
 }
 
 func (s *singleton) Channel(token string) (*Sdk, error) {
-	tokenobj := NewK8sToken(token)
-	isK3k := tokenobj.IsK3kCluster()
-
-	if isK3k {
-		result, err := s.GetK3kClusterSdk(tokenobj)
-		return result, err
-	}
-
-	result, err := s.loadFromCache(token)
-	return result, err
+	// A panel instance always talks to its own Kubernetes API server. Tokens
+	// are credentials only; their audience never selects another cluster.
+	return s.loadFromCache(token)
 }
 func (s *singleton) loadFromCache(token string) (*Sdk, error) {
 
@@ -160,17 +147,6 @@ func (s *singleton) GetK3kClusterSdkByConfig0(k3kconfig *K3kConfig, createToken 
 
 	return result, err
 }
-func (s *singleton) GetK3kClusterSdk(k8stoken *K8sToken) (*Sdk, error) {
-
-	k3kconfig, err := k8stoken.GetK3kConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	result, err := s.GetK3kClusterSdkByConfig0(k3kconfig, true)
-	return result, err
-}
-
 func (s *singleton) Clear(k3kName string, cvmName string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

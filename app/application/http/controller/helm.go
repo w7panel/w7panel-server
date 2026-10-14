@@ -1,9 +1,11 @@
 package controller
 
 import (
+	"os"
 	// "archive/zip"
 
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
@@ -140,6 +142,8 @@ func (self Helm) AppInfo(http *gin.Context) {
 		"helmNamespace":   helmNamespace,
 		"metadataName":    metadataName,
 		"deploymentName":  deploymentName,
+		"isSubCluster":    helper.IsChildAgent(),
+		"mainPanelUrl":    os.Getenv("MAIN_PANEL_URL"),
 	}, nil, 200)
 
 }

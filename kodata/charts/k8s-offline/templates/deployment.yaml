@@ -43,6 +43,8 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env: 
+          - name: ARTIFACT_ALLOWED_HOSTS
+            value: {{ join "," .Values.artifact.allowedHosts | quote }}
           # - name: GOGC
           #   value: "10"
           - name: HELM_NAMESPACE
@@ -59,6 +61,13 @@ spec:
             value: {{ .Values.controller.appWatch | quote }}  
           - name: HIGRESS_WATCH
             value: "true"     
+          - name: W7PANEL_AUTH_MODE
+            value: "panel"  
+          - name: PANEL_AUTH_SIGNING_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "helm.panelAuthSecretName" . }}
+                key: signing-key
           - name: GPUSTACK_WATCH
             value: {{ .Values.gpustack.watch | quote }}      
           - name: MOCK_UPGRADE
@@ -73,8 +82,6 @@ spec:
             value: /data/microapp
           - name: SITE_ENABLED
             value: "true"     
-          - name: K3K_WATCH
-            value: {{ .Values.k3k.watch | quote }}     
           - name: K8S_WATCH
             value: {{ .Values.k8s.watch | quote }}     
           - name: NODE_IP

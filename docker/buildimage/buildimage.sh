@@ -25,6 +25,19 @@ fi
 
 dockerauth()
 {
+if [ -n "$REGISTRY_SERVICE_ACCOUNT_TOKEN_FILE" ]; then
+    if [ ! -r "$REGISTRY_SERVICE_ACCOUNT_TOKEN_FILE" ]; then
+        fatal "registry service account token is not readable"
+    fi
+    registry_token=$(tr -d '\n' < "$REGISTRY_SERVICE_ACCOUNT_TOKEN_FILE")
+    if [ -z "$registry_token" ]; then
+        fatal "registry service account token is empty"
+    fi
+    registry_host=${PUSH_IMAGE%%/*}
+    registry_auth=$(printf '%s' "w7panel-k8s-token:$registry_token" | base64 | tr -d '\n')
+    printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$registry_host" "$registry_auth" > /kaniko/.docker/config.json
+    return
+fi
 cat > /kaniko/.docker/config.json<<EOF
 $DOCKER_AUTH
 EOF

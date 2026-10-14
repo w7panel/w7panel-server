@@ -9,9 +9,21 @@ UI_BUILD_SCRIPT ?= $(UI_DIR)/build.sh
 CONTAINER_NAME ?= w7panel-local
 HOST_PORT ?= 18000
 CONTAINER_PORT ?= 18000
-KUBECONFIG_FILE ?= $(HOME)/.kube/config
+# 本地联调默认接入 218 集群；可通过 make local-run KUBECONFIG_FILE=... 覆盖。
+KUBECONFIG_FILE ?= $(HOME)/.kube/218.config
 OIDC_ISSUER ?= http://172.16.1.18:18000/panel-api/v1/oidc
+LOCAL_PORT ?= 18000
+LOCAL_GO_CACHE ?= $(CURDIR)/.w7-go-cache
+LOCAL_GO_MODCACHE ?= $(CURDIR)/.w7-go-modcache
+LOCAL_GOPATH ?= $(CURDIR)/.w7-gopath
+LOCAL_GO_TMP ?= $(CURDIR)/.w7-go-tmp
+TEST_PACKAGES ?= ./...
+GO_TOOLCHAIN_ROOT ?= /home/afan/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.0.linux-amd64
+GO_BIN ?= $(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT)/bin/go,go)
 DOCKER_RUN_ARGS ?=
+W7PANEL_AUTH_MODE ?= panel
+KO_GO_ENV = GOSUMDB=off GOPATH="$(LOCAL_GOPATH)" GOMODCACHE="$(LOCAL_GO_MODCACHE)" GOCACHE="$(LOCAL_GO_CACHE)" GOTMPDIR="$(LOCAL_GO_TMP)" GOROOT="$(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT),)" KO_GO_PATH="$(GO_BIN)"
+KO_LDFLAGS ?= -s -w
 
 .PHONY: help frontend image ko-build ko-push docker-run local-run dev test
 
@@ -24,6 +36,11 @@ help:
 	@echo "本地容器运行："
 	@echo "  make docker-run"
 	@echo "  make docker-run HOST_PORT=18000 OIDC_ISSUER=http://172.16.1.18:18000/panel-api/v1/oidc"
+	@echo "本地源码运行："
+	@echo "  make dev"
+	@echo "  make local-run KUBECONFIG_FILE=/path/to/kubeconfig"
+	@echo "串行单元测试："
+	@echo "  make test"
 
 # 调用相邻 w7panel-ui 的构建脚本，将前端产物放入 ko 自动打包的 kodata 目录。
 frontend:
@@ -41,13 +58,15 @@ image: frontend ko-build
 ko-build:
 	@command -v $(KO) >/dev/null 2>&1 || { echo "未找到 ko，请先安装：go install github.com/google/ko@latest"; exit 1; }
 	@command -v docker >/dev/null 2>&1 || { echo "未找到 docker，请先安装并启动 Docker"; exit 1; }
-	KO_DOCKER_REPO="$(LOCAL_IMAGE)" \
+	@mkdir -p "$(LOCAL_GO_CACHE)" "$(LOCAL_GO_MODCACHE)" "$(LOCAL_GO_TMP)" "$(LOCAL_GOPATH)"
+	$(KO_GO_ENV) KO_DOCKER_REPO="$(LOCAL_IMAGE)" \
 	KO_DEFAULTBASEIMAGE="$(KO_DEFAULTBASEIMAGE)" \
 	$(KO) build \
 		--local \
 		--bare \
 		--tags="$(IMAGE_TAG)" \
 		--tag-only \
+		--ldflags="$(KO_LDFLAGS)" \
 		--sbom=none \
 		--platform="$(PLATFORM)" \
 		.
@@ -57,12 +76,14 @@ ko-build:
 ko-push:
 	@command -v $(KO) >/dev/null 2>&1 || { echo "未找到 ko，请先安装：go install github.com/google/ko@latest"; exit 1; }
 	@test -n "$(PUSH_IMAGE)" || { echo "PUSH_IMAGE 不能为空"; exit 1; }
-	KO_DOCKER_REPO="$(PUSH_IMAGE)" \
+	@mkdir -p "$(LOCAL_GO_CACHE)" "$(LOCAL_GO_MODCACHE)" "$(LOCAL_GO_TMP)" "$(LOCAL_GOPATH)"
+	$(KO_GO_ENV) KO_DOCKER_REPO="$(PUSH_IMAGE)" \
 	KO_DEFAULTBASEIMAGE="$(KO_DEFAULTBASEIMAGE)" \
 	$(KO) build \
 		--bare \
 		--tags="$(IMAGE_TAG)" \
 		--tag-only \
+		--ldflags="$(KO_LDFLAGS)" \
 		--sbom=none \
 		--platform="$(PLATFORM)" \
 		.
@@ -76,9 +97,39 @@ docker-run:
 		-p "$(HOST_PORT):$(CONTAINER_PORT)" \
 		-e "KUBECONFIG=/root/.kube/config" \
 		-e "OIDC_ISSUER=$(OIDC_ISSUER)" \
+		-e "W7PANEL_AUTH_MODE=$(W7PANEL_AUTH_MODE)" \
 		-e "W7PANEL_HTTP_SERVER_PORT=$(CONTAINER_PORT)" \
 		-v "$(KUBECONFIG_FILE):/root/.kube/config:ro" \
 		$(DOCKER_RUN_ARGS) \
 		"$(LOCAL_IMAGE):$(IMAGE_TAG)" \
 		server:start
 	@echo "容器已启动：$(CONTAINER_NAME)，访问 http://127.0.0.1:$(HOST_PORT)"
+
+# 直接运行源码，适合本地联调，避免每次构建镜像。
+local-run:
+	@test -f "$(KUBECONFIG_FILE)" || { echo "Kubeconfig 不存在：$(KUBECONFIG_FILE)"; exit 1; }
+	@mkdir -p "$(LOCAL_GO_TMP)"
+	GOSUMDB=off \
+	GOPATH="$(LOCAL_GOPATH)" \
+	GOMODCACHE="$(LOCAL_GO_MODCACHE)" \
+	GOCACHE="$(LOCAL_GO_CACHE)" \
+	GOTMPDIR="$(LOCAL_GO_TMP)" \
+	GOROOT="$(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT),)" \
+	KUBECONFIG="$(KUBECONFIG_FILE)" \
+	W7PANEL_AUTH_MODE="$(W7PANEL_AUTH_MODE)" \
+	W7PANEL_HTTP_SERVER_PORT="$(LOCAL_PORT)" \
+	"$(GO_BIN)" run . server:start
+
+# 本地开发快捷入口，默认使用 ~/.kube/218.config 连接 218 集群。
+dev: local-run
+
+# 在项目目录维护独立 Go 缓存，并串行链接测试二进制，避免共享缓存的工具链版本冲突及 /tmp 空间耗尽。
+test:
+	@mkdir -p "$(LOCAL_GO_CACHE)" "$(LOCAL_GO_MODCACHE)" "$(LOCAL_GO_TMP)" "$(LOCAL_GOPATH)"
+	GOSUMDB=off \
+	GOPATH="$(LOCAL_GOPATH)" \
+	GOMODCACHE="$(LOCAL_GO_MODCACHE)" \
+	GOCACHE="$(LOCAL_GO_CACHE)" \
+	GOTMPDIR="$(LOCAL_GO_TMP)" \
+	GOROOT="$(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT),)" \
+	"$(GO_BIN)" test -p 1 $(TEST_PACKAGES)

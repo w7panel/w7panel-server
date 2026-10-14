@@ -13,10 +13,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
-	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
-	bi "github.com/w7panel/w7panel/common/service/k8s/buildimage"
 	zpkk8s "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
@@ -27,7 +25,6 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 type Zpk struct {
@@ -247,7 +244,7 @@ func (self Zpk) Install(http *gin.Context) {
 	}
 	token := http.MustGet("k8s_token").(string)
 	identity := k8s.NewK8sToken(token)
-	if !identity.IsFounder() && !identity.IsK3kCluster() {
+	if !identity.IsFounder() {
 		self.JsonResponseWithServerError(http, errors.New("only founder can install"))
 		return
 	}
@@ -257,7 +254,7 @@ func (self Zpk) Install(http *gin.Context) {
 		return
 	}
 	result, err := logic.ExecuteInstall(params, logic.InstallExecution{
-		SDK: sdk, Identity: identity, PanelToken: token, IsChild: identity.IsK3kCluster(), CallbackHost: http.Request.Host,
+		SDK: sdk, Identity: identity, PanelToken: token, CallbackHost: http.Request.Host,
 	})
 	if err != nil {
 		if writeArtifactInstallConflictResponse(http, err) {
@@ -273,79 +270,79 @@ func (self Zpk) Install(http *gin.Context) {
 }
 func (self Zpk) BuildImageSuccess(http *gin.Context) {
 
-	type ParamsValidate struct {
-		Namespace         string `form:"namespace" binding:"required"`
-		ReleaseName       string `form:"releaseName" binding:"required"`
-		DomainHost        string `form:"domainHost" binding:"required"`
-		DeploymentName    string `form:"deploymentName" binding:"required"` //deploymentName
-		ThirdpartyCDToken string `form:"thirdpartyCDToken"`                 // 控制台token zpk不需要这个token
-	}
-	params := ParamsValidate{}
-	if !self.Validate(http, &params) {
-		return
-	}
-	if true {
-		return
-	}
-	if params.ThirdpartyCDToken == "" {
-		self.JsonSuccessResponse(http)
-		return
-	}
-	client, err := k8s.NewK8sClient().Channel(http.MustGet("k8s_token").(string))
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	cdClient := console.NewConsoleCdClient(params.ThirdpartyCDToken)
-	appSecret, err := cdClient.CreateSite(params.DomainHost, params.ReleaseName)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	if appSecret.AppId == "" || appSecret.AppSecret == "" {
-		self.JsonResponseWithServerError(http, errors.New("app id or secret is empty"))
-		return
-	}
-	// appSecret := &console.AppSecret{
-	// 	AppId:     "123",
-	// 	AppSecret: "456",
+	// type ParamsValidate struct {
+	// 	Namespace         string `form:"namespace" binding:"required"`
+	// 	ReleaseName       string `form:"releaseName" binding:"required"`
+	// 	DomainHost        string `form:"domainHost" binding:"required"`
+	// 	DeploymentName    string `form:"deploymentName" binding:"required"` //deploymentName
+	// 	ThirdpartyCDToken string `form:"thirdpartyCDToken"`                 // 控制台token zpk不需要这个token
 	// }
+	// params := ParamsValidate{}
+	// if !self.Validate(http, &params) {
+	// 	return
+	// }
+	// if true {
+	// 	return
+	// }
+	// if params.ThirdpartyCDToken == "" {
+	// 	self.JsonSuccessResponse(http)
+	// 	return
+	// }
+	// client, err := k8s.NewK8sClient().Channel(http.MustGet("k8s_token").(string))
+	// if err != nil {
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
+	// cdClient := console.NewConsoleCdClient(params.ThirdpartyCDToken)
+	// appSecret, err := cdClient.CreateSite(params.DomainHost, params.ReleaseName)
+	// if err != nil {
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
+	// if appSecret.AppId == "" || appSecret.AppSecret == "" {
+	// 	self.JsonResponseWithServerError(http, errors.New("app id or secret is empty"))
+	// 	return
+	// }
+	// // appSecret := &console.AppSecret{
+	// // 	AppId:     "123",
+	// // 	AppSecret: "456",
+	// // }
 
-	patchData := `{
-		"spec": {
-			"template": {
-				"spec": {
-					"containers": [
-						{
-							"name": "%s",
-							"env": [
-								{
-									"name": "APP_ID",
-									"value": "%s"
-								},
-								{
-									"name": "APP_SECRET",
-									"value": "%s"
-								}
-							]
-						}
-					]
-				}
-			}
-		}
-	}`
-	patchData = fmt.Sprintf(patchData, params.DeploymentName, appSecret.AppId, appSecret.AppSecret)
-	//deployment 修改env
-	//patch deployment
+	// patchData := `{
+	// 	"spec": {
+	// 		"template": {
+	// 			"spec": {
+	// 				"containers": [
+	// 					{
+	// 						"name": "%s",
+	// 						"env": [
+	// 							{
+	// 								"name": "APP_ID",
+	// 								"value": "%s"
+	// 							},
+	// 							{
+	// 								"name": "APP_SECRET",
+	// 								"value": "%s"
+	// 							}
+	// 						]
+	// 					}
+	// 				]
+	// 			}
+	// 		}
+	// 	}
+	// }`
+	// patchData = fmt.Sprintf(patchData, params.DeploymentName, appSecret.AppId, appSecret.AppSecret)
+	// //deployment 修改env
+	// //patch deployment
 
-	_, err = client.ClientSet.
-		AppsV1().
-		Deployments(params.Namespace).
-		Patch(client.Ctx, params.DeploymentName, k8stypes.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
+	// _, err = client.ClientSet.
+	// 	AppsV1().
+	// 	Deployments(params.Namespace).
+	// 	Patch(client.Ctx, params.DeploymentName, k8stypes.StrategicMergePatchType, []byte(patchData), metav1.PatchOptions{})
+	// if err != nil {
+	// 	self.JsonResponseWithServerError(http, err)
+	// 	return
+	// }
 	self.JsonSuccessResponse(http)
 }
 
@@ -537,14 +534,16 @@ func (self Zpk) GenHelmMemory(http *gin.Context) {
 	if (params.Repository == "") && params.ChartName != "" {
 		// param.Repository = "https://charts.helm.sh/stable"
 		// param.Version = "latest"
-		parseBytes, err := helper.ExtractSingleFileFromTgz(params.ChartName, "Chart.yaml")
+		parseBytes, err := helper.ExtractSingleFileFromPanelDownload(params.ChartName, "Chart.yaml")
 		if err != nil {
 			self.JsonResponseWithServerError(http, fmt.Errorf("无法正确解析chart包: %v", err))
+			return
 		}
 		meta := chart.Metadata{}
 		err = yaml.Unmarshal(parseBytes, &meta)
 		if err != nil {
 			self.JsonResponseWithServerError(http, fmt.Errorf("无法正确解析chart包: %v", err))
+			return
 		}
 		// params.Repository = ""
 		params.Version = meta.AppVersion
@@ -720,8 +719,6 @@ func (self Zpk) BuildImageJob(http *gin.Context) {
 	}
 	if params.DockerRegistry.Host == "registry.local.w7.cc" {
 		params.HostNetwork = true
-		params.DockerRegistry.Username = "admin"
-		params.DockerRegistry.Password = "w7-secret"
 	}
 	sdk := k8s.NewK8sClient()
 	client, err := sdk.Channel(http.MustGet("k8s_token").(string))
@@ -729,6 +726,7 @@ func (self Zpk) BuildImageJob(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	params.ServiceAccountName = client.GetServiceAccountName()
 	if params.DockerRegistrySecretName != "" {
 		dockerSecret, err := client.ClientSet.CoreV1().Secrets("default").Get(sdk.Ctx, params.DockerRegistrySecretName, metav1.GetOptions{})
 		if err != nil {
@@ -760,16 +758,6 @@ func (self Zpk) BuildImageJob(http *gin.Context) {
 		}
 	}
 
-	token := http.MustGet("k8s_token").(string)
-	k8sToken := k8s.NewK8sToken(token)
-	if k8sToken.IsK3kCluster() {
-		registryHost, err := bi.PanelRegistryServerHostUseSdk(client)
-		if err != nil {
-			slog.Warn("get registry host err", "err", err)
-		} else {
-			params.PanelRegistryHost = registryHost
-		}
-	}
 	job := zpkk8s.ToZpkBuildJob(&params)
 	if job == nil {
 		self.JsonResponseWithServerError(http, errors.New("create job failed"))
@@ -790,12 +778,13 @@ func (self Zpk) BuildImageCronJob(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
-	job := zpkk8s.ToZpkBuildCronJob(&params, params.Schedule)
 	client, err := k8s.NewK8sClient().Channel(http.MustGet("k8s_token").(string))
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	params.ServiceAccountName = client.GetServiceAccountName()
+	job := zpkk8s.ToZpkBuildCronJob(&params, params.Schedule)
 	job, err = client.ClientSet.BatchV1().CronJobs("default").Create(client.Ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
@@ -845,16 +834,4 @@ func (self Zpk) LocalZpkUrl(http *gin.Context) {
 		"isHttps":    ingressList.Items[0].Spec.TLS != nil,
 		"oauthToken": oauthToken,
 	})
-}
-
-// DomainParse 返回主集群的域名解析配置，子集群安装应用时也应使用此配置提示用户。
-func (self Zpk) DomainParse(http *gin.Context) {
-	client := k8s.NewK8sClient()
-
-	config, err := client.GetConfigCRD(http.Request.Context(), k8s.DomainParseConfigGVR, k8s.DomainParseConfigName)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	self.JsonResponseWithoutError(http, config)
 }
