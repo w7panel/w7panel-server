@@ -548,3 +548,10 @@
 
 - 微应用 `GetAccessToken` 固定使用集群内 OIDC issuer，`FrontProps` 与全局前端参数共用该入口；影响模块：微应用、OIDC 访问令牌。
 - 验证：`git diff --check` 通过；定向 `make test` 因项目所在磁盘空间不足，在 Go 编译阶段停止。
+
+## 2026-10-14
+
+- 制品应用排序：接收 `application.order` 并通过 `w7.cc/app-order` 传给工作负载，AppGroup 收集至 `status.items[].order` 后稳定升序排序；同步 CRD 和 DeepCopy，应用详情沿用返回顺序。
+- 新增序号传递、乱序收集、零值、更新/删除、历史兼容和 DeepCopy 回归测试；验证结果待本次测试完成后追加。
+
+- 验证结果：`LOCAL_MOCK=true` 下，本次 AppGroup 排序回归（生产文件 + order_test.go）通过，zpk/logic/types 和 AppGroup API 类型包测试通过，`git diff --check` 通过。完整 AppGroup 包测试被现有 eventqueue_test.go 引用缺失的 isDeletingAppGroupEvent 阻断；前端构建被现有 Copilot 页面缺少 @openuidev/vue-lang 阻断。开发前 fetch/pull 两次均因 GitHub 连接超时失败，变更基于本地代码。

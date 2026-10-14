@@ -2,6 +2,7 @@ package appgroup
 
 import (
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
@@ -144,6 +145,7 @@ func (w *WorkloadWrapper) GvkObject() GvkObject {
 func (d *WorkloadWrapper) ToItemStatus() appv1.AppGroupItemStatus {
 	gvk := d.GvkObject()
 	return appv1.AppGroupItemStatus{
+		Order:             resourceOrder(d.Annotations()),
 		ApiVersion:        gvk.ApiVerion,
 		Kind:              gvk.Kind,
 		Name:              gvk.Name,
@@ -549,4 +551,13 @@ func (d *WorkloadMock) Containers() []corev1.Container {
 
 func (d *WorkloadMock) PodTemplate() *corev1.PodTemplateSpec {
 	return nil
+}
+
+// resourceOrder ignores missing or malformed legacy annotations.
+func resourceOrder(annotations map[string]string) *int {
+	order, err := strconv.Atoi(annotations["w7.cc/app-order"])
+	if err != nil {
+		return nil
+	}
+	return &order
 }

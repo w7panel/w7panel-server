@@ -183,6 +183,8 @@ spec:
                       type: string
                     name:
                       type: string
+                    order:
+                      type: integer
                     ready:
                       type: boolean
                     title:
