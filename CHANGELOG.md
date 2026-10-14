@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-10-14 Kubernetes 凭据签发日志
+
+- 为 Kubernetes 凭据生成失败增加 `slog` 错误日志，记录用户、权限、audience 和原始错误，便于定位签发失败；影响模块：认证 HTTP 控制器。
+- 验证结果：待测试完成后追加。
+
 ## 2026-10-14
 
 - 升级脚本在触发 Higress BootstrapInstallation 前认领已有的 `kube-system/higress` HelmChart：仅当 chart 来源、目标命名空间和现有归属均匹配时补齐 `w7panel-higress` 的 Helm 元数据，避免旧资源缺少归属信息导致安装失败；验证：Shell 语法及匹配条件检查。

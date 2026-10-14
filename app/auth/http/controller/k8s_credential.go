@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -24,6 +25,7 @@ func (K8sCredential) Token(ctx *gin.Context) {
 	aud := panelauth.GetAudience(p)
 	token, expiresAt, err := credential.IssueForPrincipalWithAudiences(ctx.Request.Context(), p.Username, p.PermissionName, 10*time.Minute, aud)
 	if err != nil {
+		slog.Error("生成 Kubernetes 凭据失败", "username", p.Username, "permission", p.PermissionName, "audiences", aud, "error", err)
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"code": http.StatusInternalServerError, "msg": "生成 Kubernetes 凭据失败"})
 		return
 	}
