@@ -3,7 +3,7 @@
 ## 2026-10-14 Kubernetes 凭据签发日志
 
 - 为 Kubernetes 凭据生成失败增加 `slog` 错误日志，记录用户、权限、audience 和原始错误，便于定位签发失败；影响模块：认证 HTTP 控制器。
-- 验证结果：待测试完成后追加。
+- 验证结果：`make test TEST_PACKAGES=./app/auth/http/controller` 通过，`git diff --check` 通过。
 
 ## 2026-10-14
 
