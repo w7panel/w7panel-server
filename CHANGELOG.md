@@ -548,3 +548,8 @@
 
 - 微应用 `GetAccessToken` 固定使用集群内 OIDC issuer，`FrontProps` 与全局前端参数共用该入口；影响模块：微应用、OIDC 访问令牌。
 - 验证：`git diff --check` 通过；定向 `make test` 因项目所在磁盘空间不足，在 Go 编译阶段停止。
+
+## 2026-10-14 HTTPS OIDC issuer
+
+- 修复面板绑定 HTTPS 域名后 OIDC discovery 仍返回 HTTP issuer 和授权地址、导致子面板登录校验失败的问题；动态 issuer 依据 TLS 或代理的 HTTPS 协议头生成，集群内 HTTP 入口保持原值。影响模块：OIDC provider 与 discovery。
+- 验证：`make test TEST_PACKAGES=./common/service/oidc`。

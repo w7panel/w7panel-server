@@ -742,21 +742,42 @@ func TestDiscoveryIssuerUsesOIDCBasePath(t *testing.T) {
 		t.Fatalf("initProvider returned error: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "https://panel.example.com/panel-api/v1/oidc/.well-known/openid-configuration", nil)
-	resp, err := server.Discovery(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Discovery returned error: %v", err)
-	}
-
-	config, ok := resp.Data.(*zitadeloidc.DiscoveryConfiguration)
-	if !ok {
-		t.Fatalf("unexpected discovery response type: %T", resp.Data)
-	}
-	if got, want := config.Issuer, "http://panel.example.com/panel-api/v1/oidc"; got != want {
-		t.Fatalf("unexpected issuer: got %s want %s", got, want)
-	}
-	if got, want := config.AuthorizationEndpoint, "http://panel.example.com/panel-api/v1/oidc/authorize"; got != want {
-		t.Fatalf("unexpected authorization endpoint: got %s want %s", got, want)
+	for _, tc := range []struct {
+		name, host, scheme string
+		forwardedHTTPS     bool
+	}{
+		{name: "internal HTTP", host: "w7panel-offline.default.svc:8000", scheme: "http"},
+		{name: "direct HTTPS", host: "panel.example.com", scheme: "https"},
+		{name: "forwarded HTTPS", host: "panel.example.com", scheme: "https", forwardedHTTPS: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			requestScheme := tc.scheme
+			if tc.forwardedHTTPS {
+				requestScheme = "http"
+			}
+			req := httptest.NewRequest(http.MethodGet, requestScheme+"://"+tc.host+"/panel-api/v1/oidc/.well-known/openid-configuration", nil)
+			if tc.forwardedHTTPS {
+				req.Header.Set("X-Forwarded-Proto", "https")
+			}
+			resp, err := server.Discovery(context.Background(), req)
+			if err != nil {
+				t.Fatalf("Discovery returned error: %v", err)
+			}
+			config, ok := resp.Data.(*zitadeloidc.DiscoveryConfiguration)
+			if !ok {
+				t.Fatalf("unexpected discovery response type: %T", resp.Data)
+			}
+			issuer := tc.scheme + "://" + tc.host + "/panel-api/v1/oidc"
+			if got := config.Issuer; got != issuer {
+				t.Fatalf("unexpected issuer: got %s want %s", got, issuer)
+			}
+			if got := config.AuthorizationEndpoint; got != issuer+"/authorize" {
+				t.Fatalf("unexpected authorization endpoint: got %s want %s", got, issuer+"/authorize")
+			}
+			if got := server.provider.IssuerFromRequest(req); got != issuer {
+				t.Fatalf("provider issuer: got %s want %s", got, issuer)
+			}
+		})
 	}
 }
 
