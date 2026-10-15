@@ -99,6 +99,14 @@ kubectl create -f $KO_DATA_PATH/yaml/permission || echo "已存在"
 # 系统内置权限直接替换，自定义权限不在该目录中
 kubectl apply -f $KO_DATA_PATH/yaml/permission
 
+echo "迁移 cluster 用户为 normal"
+set +x
+users=$(kubectl get users -o json)
+printf '%s\n' "$users" \
+  | jq -r '.items[] | select(.spec.userMode == "cluster" or .spec.role == "cluster") | .metadata.name' \
+  | xargs -r -I {} kubectl patch user {} --type=merge -p '{"spec":{"userMode":"normal","role":"normal","permissionName":"normal"}}'
+set -x
+
 # echo "升级站点管理"
 # w7panel sitemanager-upgrade --version=1.0.24 --identifie=w7_php --is-agent=false
 # w7panel sitemanager-upgrade --version=1.0.24 --identifie=w7_go --is-agent=false

@@ -569,3 +569,8 @@
 - 新增序号传递、乱序收集、零值、更新/删除、历史兼容和 DeepCopy 回归测试；验证结果待本次测试完成后追加。
 
 - 验证结果：`LOCAL_MOCK=true` 下，本次 AppGroup 排序回归（生产文件 + order_test.go）通过，zpk/logic/types 和 AppGroup API 类型包测试通过，`git diff --check` 通过。完整 AppGroup 包测试被现有 eventqueue_test.go 引用缺失的 isDeletingAppGroupEvent 阻断；前端构建被现有 Copilot 页面缺少 @openuidev/vue-lang 阻断。开发前 fetch/pull 两次均因 GitHub 连接超时失败，变更基于本地代码。
+
+## 2026-10-15 升级时迁移 cluster 用户
+
+- 升级脚本在更新内置权限后，将 `spec.userMode` 或 `spec.role` 为 `cluster` 的 User 的 `userMode`、`role` 和 `permissionName` 统一设为 `normal`，避免旧角色继续影响登录权限；影响模块：用户升级脚本。
+- 验证：`sh -n kodata/shell/upgrade.sh`、`jq` 筛选样例及 `git diff --check` 通过；未对集群执行迁移。
