@@ -579,3 +579,11 @@
 
 - 升级脚本额外将 User 的 `spec.permissionName=k3k.permission.normal` 改为 `normal`，且不改动非 cluster 用户的角色字段；影响模块：用户升级脚本。
 - 验证：`sh -n kodata/shell/upgrade.sh` 与 `jq` 筛选样例通过；未对集群执行迁移。
+
+## 2026-10-14
+
+- 移除 Chart 元数据中无效的应用排序注解；排序信息应写入工作负载 metadata.annotations，AppGroup 不从 Chart 元数据读取。同步调整回归断言。
+
+## 2026-10-14
+
+- 撤回 93a95c34 的后端应用排序实现及后续未提交补充：移除 Manifest order、工作负载排序注解、AppGroup order/isMain 字段、收集排序及 CRD/DeepCopy 变更；改由 UI 将名称等于当前 AppGroup 的 Deployment 优先展示。原排序回归测试随实现移除。

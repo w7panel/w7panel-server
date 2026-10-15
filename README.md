@@ -225,8 +225,3 @@ bash compress.sh
 
 - `GET /panel-api/v1/registry/registries`：读取镜像源 YAML，响应为纯文本。
 - `PUT /panel-api/v1/registry/registries`：请求体为 `{"data":"<YAML>"}`；主集群保存到 `registries` ConfigMap，K3K 子集群保存到 `/etc/rancher/k3s/registries.yaml`。
-
-
-### 制品应用排序
-
-支持制品 `application.order`，工作负载通过 `w7.cc/app-order` 注解传递至 AppGroup `status.items[].order`。AppGroup 在新增或更新条目时稳定升序排序，有序号条目优先，0 有效，无序号保留原顺序。部署升级需同步更新 `kodata/crds/w7panel.w7.com_appgroups.yaml`；已有工作负载需更新部署以补充注解。

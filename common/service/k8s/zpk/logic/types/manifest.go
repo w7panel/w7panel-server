@@ -271,7 +271,6 @@ type Root struct {
 }
 
 type Application struct {
-	Order       *int              `json:"order,omitempty"`
 	Author      string            `json:"author"`
 	Description string            `json:"description"`
 	FrontType   []string          `json:"front_type"`

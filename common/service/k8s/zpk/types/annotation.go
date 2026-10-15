@@ -1,7 +1,6 @@
 package types
 
 const (
-	APP_ORDER             = "w7.cc/app-order"
 	HELM_RELEASE_SOURCE   = "w7.cc/source"
 	HELM_REPOSITORY_URL   = "w7.cc/repository-url"
 	HELM_CHART_NAME       = "w7.cc/chart-name"

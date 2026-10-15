@@ -69,7 +69,7 @@ func (g *appgroupWrapper) upsertStatusItem(item v1alpha1.AppGroupItemStatus) {
 	for i, v := range g.Status.Items {
 		if v.Name == item.Name && v.Kind == item.Kind && v.ApiVersion == item.ApiVersion {
 			g.Status.Items[i] = item
-			g.sortStatusItems()
+			g.prioritizeNamedItems()
 			g.changed = true
 			return
 		}
@@ -78,7 +78,7 @@ func (g *appgroupWrapper) upsertStatusItem(item v1alpha1.AppGroupItemStatus) {
 		}
 	}
 	g.Status.Items = append(g.Status.Items, item)
-	g.sortStatusItems()
+	g.prioritizeNamedItems()
 	g.changed = true
 }
 
@@ -147,16 +147,12 @@ func (g *appgroupWrapper) IsDeleteEnabled() bool {
 
 }
 
-// Keep equal orders and unordered resources in their existing relative order.
-func (g *appgroupWrapper) sortStatusItems() {
+// Keep the group's namesake first without changing the relative order of other items.
+func (g *appgroupWrapper) prioritizeNamedItems() {
+	if g.Name == "" {
+		return
+	}
 	sort.SliceStable(g.Status.Items, func(i, j int) bool {
-		a, b := g.Status.Items[i].Order, g.Status.Items[j].Order
-		if a == nil {
-			return false
-		}
-		if b == nil {
-			return true
-		}
-		return *a < *b
+		return g.Status.Items[i].Name == g.Name && g.Status.Items[j].Name != g.Name
 	})
 }
