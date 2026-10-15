@@ -20,6 +20,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	"github.com/w7panel/w7panel/common/service/k8s/shell"
+	mcpservice "github.com/w7panel/w7panel/common/service/mcp"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
@@ -162,6 +163,7 @@ func (p Provider) syncSelfImageConfigMap() error {
 func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	webdavMethods := []string{"PROPFIND", "PROPPATCH", "MKCOL", "COPY", "MOVE", "LOCK", "UNLOCK", "LINK", "UNLINK", "GET", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH", "POST"}
 	server.RegisterRouters(func(engine *gin.Engine) {
+
 		engine.GET("/docs/openapi", controller2.OpenAPI{}.Page)
 		engine.POST("/internal/agent-pod", middleware.Auth{}.ProcessServiceAccount, controller2.PodExec{}.RegisterAgentPodIP)
 		engine.GET("/docs/openapi/spec", controller2.OpenAPI{}.Spec)
@@ -172,6 +174,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			// copilotGroup := apiGroup.Group("/copilot", middleware.Auth{}.Process)
 			// copilotGroup.GET("/context", controller2.Copilot{}.Context)
 			// copilotGroup.POST("/stream", controller2.Copilot{}.Stream)
+			apiGroup.Any("/mcp", middleware.Auth{}.Process, gin.WrapH(mcpservice.McpHttpHandler()))
 			apiGroup.GET("/namespaces", middleware.Auth{}.Process, controller2.Namespaces{}.GetList)
 			apiGroup.GET("/cluster/nodes/:name/longhorn-replicas", middleware.Auth{}.Process, controller2.Nodes{}.GetLonghornReplicas)
 			apiGroup.POST("/cluster/nodes/:name/longhorn-replicas/delete", middleware.Auth{}.Process, controller2.Nodes{}.DeleteLonghornReplicas)

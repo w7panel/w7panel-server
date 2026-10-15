@@ -587,3 +587,18 @@
 ## 2026-10-14
 
 - 撤回 93a95c34 的后端应用排序实现及后续未提交补充：移除 Manifest order、工作负载排序注解、AppGroup order/isMain 字段、收集排序及 CRD/DeepCopy 变更；改由 UI 将名称等于当前 AppGroup 的 Deployment 优先展示。原排序回归测试随实现移除。
+
+## 2026-10-15 Kubernetes MCP 工具
+
+- 实现 `common/service/mcp` 的 `k8s_proxy_request` 工具：使用当前请求的 Bearer 凭据执行只读 Kubernetes API GET，限制 `/api`、`/apis` 路径并拒绝 Secret、路径遍历和超大响应；影响模块：MCP Kubernetes 查询。
+- 验证：`make test TEST_PACKAGES=./common/service/mcp`、`git diff --check` 通过。
+
+## 2026-10-15 MCP HTTP 路由
+
+- 在应用 HTTP 路由中注册 `/mcp`，接入 Streamable HTTP MCP handler，并复用现有认证中间件；影响模块：应用 HTTP 服务、MCP。
+- 验证：`make test TEST_PACKAGES=./common/service/mcp` 通过；应用包定向测试被已有未提交的 `app/application/http/controller/mcp.go` 编译错误阻断；`git diff --check` 通过。
+
+## 2026-10-15 MCP Kubernetes 凭据上下文
+
+- 认证中间件将 `k8s_token` 同步写入标准请求 context，MCP 工具优先使用 context 中经认证的 Kubernetes 凭据；影响模块：认证中间件、MCP HTTP 服务。
+- 验证：`make test TEST_PACKAGES='./common/middleware ./common/service/mcp ./app/application'` 通过；`git diff --check` 通过。

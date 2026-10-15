@@ -74,7 +74,7 @@ func (PanelAuth) Process(ctx *gin.Context) {
 			ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"code": http.StatusInternalServerError, "msg": "生成 Kubernetes 凭据失败"})
 			return
 		}
-		ctx.Set("k8s_token", k8sToken)
+		setK8sToken(ctx, k8sToken)
 	}
 	ctx.Next()
 }

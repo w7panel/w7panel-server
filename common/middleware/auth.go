@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -26,6 +27,25 @@ type Auth struct {
 	middleware.Abstract
 }
 
+type k8sTokenContextKey struct{}
+
+// WithK8sToken carries the authenticated Kubernetes credential into handlers
+// that run through net/http rather than directly through Gin.
+func WithK8sToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, k8sTokenContextKey{}, token)
+}
+
+// K8sTokenFromContext returns the credential minted or validated by Auth.
+func K8sTokenFromContext(ctx context.Context) (string, bool) {
+	token, ok := ctx.Value(k8sTokenContextKey{}).(string)
+	return token, ok && token != ""
+}
+
+func setK8sToken(ctx *gin.Context, token string) {
+	ctx.Set("k8s_token", token)
+	ctx.Request = ctx.Request.WithContext(WithK8sToken(ctx.Request.Context(), token))
+}
+
 func (self Auth) Process(ctx *gin.Context) {
 	path := ctx.Request.URL.Path
 	if strings.HasPrefix(path, "/panel-api/") && helper.IsChildAgent() && ckmAuthMode() == K8sAuthMode {
@@ -45,7 +65,7 @@ func (self Auth) Process(ctx *gin.Context) {
 	if os.Getenv("LOCAL_MOCK") == "true" || os.Getenv("LOCAL_MOCK") == "1" {
 		// 尝试从 kubeconfig 读取有效 token
 		token := getMockToken()
-		ctx.Set("k8s_token", token)
+		setK8sToken(ctx, token)
 		ctx.Next()
 		return
 	}
@@ -66,7 +86,7 @@ func (self Auth) Process(ctx *gin.Context) {
 				return
 			}
 		}
-		ctx.Set("k8s_token", bearertoken)
+		setK8sToken(ctx, bearertoken)
 		ctx.Next()
 		return
 	}
@@ -88,7 +108,7 @@ func (self Auth) Process(ctx *gin.Context) {
 			return
 		}
 	}
-	ctx.Set("k8s_token", bearertoken)
+	setK8sToken(ctx, bearertoken)
 	// if facade.Config.GetBool("app.refresh_token_enable") {
 	// 	if ctx.Writer.Status() >= http.StatusOK && ctx.Writer.Status() < 300 {
 	// 		saName, date := k8s.GetTokenSaName(bearertoken)
@@ -129,7 +149,7 @@ func (self Auth) ProcessKubernetesToken(ctx *gin.Context, token string) {
 	if !self.authorizeUserOrServiceAccount(ctx, saName) {
 		return
 	}
-	ctx.Set("k8s_token", token)
+	setK8sToken(ctx, token)
 	ctx.Next()
 }
 

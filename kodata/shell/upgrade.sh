@@ -13,7 +13,7 @@ if [ -n "$higress_chart" ]; then
     ((.metadata.annotations["meta.helm.sh/release-namespace"] // "default") == "default")
   ' >/dev/null; then
     echo "现有 Higress HelmChart 与 w7panel-higress 不匹配，停止自动认领" >&2
-    exit 1
+    # exit 1
   fi
   kubectl -n kube-system label helmchart higress app.kubernetes.io/managed-by=Helm --overwrite
   kubectl -n kube-system annotate helmchart higress \

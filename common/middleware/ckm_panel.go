@@ -28,7 +28,7 @@ func processChildPanel(ctx *gin.Context) {
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"msg": "目标集群凭据无效"})
 		return
 	}
-	ctx.Set("k8s_token", raw)
+	setK8sToken(ctx, raw)
 	ctx.Set("user_mode", "normal")
 	ctx.Next()
 }
@@ -55,7 +55,7 @@ func processCKMPanel(ctx *gin.Context, p panelauth.Principal) {
 	ctx.Set("ckm_name", p.CVMName)
 	ctx.Set("permission_name", "normal")
 	ctx.Set("user_mode", "normal")
-	ctx.Set("k8s_token", token)
+	setK8sToken(ctx, token)
 	if ckmLocalMetadata(ctx.Request.URL.Path) {
 		ctx.Next()
 		return
