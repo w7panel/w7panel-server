@@ -231,7 +231,20 @@ func (s *Server) initProvider() error {
 		AuthMethodPost:        true,
 		GrantTypeRefreshToken: true,
 	}
-	issuerBuilder := op.IssuerFromForwardedOrHost(oidcBasePath)
+	issuerBuilder := func(allowInsecure bool) (op.IssuerFromRequest, error) {
+		fromRequest, err := op.IssuerFromForwardedOrHost(oidcBasePath)(allowInsecure)
+		if err != nil {
+			return nil, err
+		}
+		return func(r *http.Request) string {
+			issuer := fromRequest(r)
+			// WithAllowInsecure forces Zitadel's dynamic issuer to HTTP even behind TLS.
+			if r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
+				return "https://" + strings.TrimPrefix(issuer, "http://")
+			}
+			return issuer
+		}, nil
+	}
 	if s.config.Issuer != "" {
 		issuerBuilder = op.StaticIssuer(strings.TrimRight(s.config.Issuer, "/"))
 	}

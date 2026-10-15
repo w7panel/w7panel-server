@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-10-14 Kubernetes 凭据签发日志
+
+- 为 Kubernetes 凭据生成失败增加 `slog` 错误日志，记录用户、权限、audience 和原始错误，便于定位签发失败；影响模块：认证 HTTP 控制器。
+- 验证结果：`make test TEST_PACKAGES=./app/auth/http/controller` 通过，`git diff --check` 通过。
+
+## 2026-10-14
+
+- 升级脚本在触发 Higress BootstrapInstallation 前认领已有的 `kube-system/higress` HelmChart：仅当 chart 来源、目标命名空间和现有归属均匹配时补齐 `w7panel-higress` 的 Helm 元数据，避免旧资源缺少归属信息导致安装失败；验证：Shell 语法及匹配条件检查。
+
 ## 2026-10-12
 
 - 修复域名解析配置接口 404：`DomainParse` handler 从 `app/zpk/http/zpk.go` 迁移到 `app/application/http/controller/domainparse.go`（`DomainParse{}.Get`），并在 `app/application/provider.go` 的 `/panel-api/v1` 分组下注册 `GET /domain-parse`（去掉 zpk 前缀，接口归属 application 而非制品库）；前端 `w7panel-ckm/ui/src/views/PanelDomain.vue` 调用路径同步改为 `/domain-parse`；`kodata/yaml/permission/normal.yaml` 新增普通用户 `get` 放行规则，并启用 `TestBuiltinNormalPermissionAllowsAccountBindingWithoutClusterRegistration` 用例。影响模块：application 路由、zpk 控制器、内置权限、ckm 前端域名页。验证：`go build ./app/... ./common/...` 通过；`go test ./common/service/k8s/permission/... ./app/application/... ./app/zpk/...` 通过。
@@ -548,6 +557,11 @@
 
 - 微应用 `GetAccessToken` 固定使用集群内 OIDC issuer，`FrontProps` 与全局前端参数共用该入口；影响模块：微应用、OIDC 访问令牌。
 - 验证：`git diff --check` 通过；定向 `make test` 因项目所在磁盘空间不足，在 Go 编译阶段停止。
+
+## 2026-10-14 HTTPS OIDC issuer
+
+- 修复面板绑定 HTTPS 域名后 OIDC discovery 仍返回 HTTP issuer 和授权地址、导致子面板登录校验失败的问题；动态 issuer 依据 TLS 或代理的 HTTPS 协议头生成，集群内 HTTP 入口保持原值。影响模块：OIDC provider 与 discovery。
+- 验证：`make test TEST_PACKAGES=./common/service/oidc`。
 
 ## 2026-10-14
 

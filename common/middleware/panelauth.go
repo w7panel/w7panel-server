@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -69,6 +70,7 @@ func (PanelAuth) Process(ctx *gin.Context) {
 		aud := panelauth.GetAudience(*principal)
 		k8sToken, _, err := credential.IssueForPrincipalWithAudiences(ctx.Request.Context(), principal.Username, permission.Name, 10*time.Minute, aud)
 		if err != nil {
+			slog.Error("生成 Kubernetes 凭据失败panelAuth.go", "error", err)
 			ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"code": http.StatusInternalServerError, "msg": "生成 Kubernetes 凭据失败"})
 			return
 		}
