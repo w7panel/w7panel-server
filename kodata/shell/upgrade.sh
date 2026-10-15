@@ -105,6 +105,9 @@ users=$(kubectl get users -o json)
 printf '%s\n' "$users" \
   | jq -r '.items[] | select(.spec.userMode == "cluster" or .spec.role == "cluster") | .metadata.name' \
   | xargs -r -I {} kubectl patch user {} --type=merge -p '{"spec":{"userMode":"normal","role":"normal","permissionName":"normal"}}'
+printf '%s\n' "$users" \
+  | jq -r '.items[] | select(.spec.userMode != "cluster" and .spec.role != "cluster" and .spec.permissionName == "k3k.permission.normal") | .metadata.name' \
+  | xargs -r -I {} kubectl patch user {} --type=merge -p '{"spec":{"permissionName":"normal"}}'
 set -x
 
 # echo "升级站点管理"

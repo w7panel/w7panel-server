@@ -574,3 +574,8 @@
 
 - 升级脚本在更新内置权限后，将 `spec.userMode` 或 `spec.role` 为 `cluster` 的 User 的 `userMode`、`role` 和 `permissionName` 统一设为 `normal`，避免旧角色继续影响登录权限；影响模块：用户升级脚本。
 - 验证：`sh -n kodata/shell/upgrade.sh`、`jq` 筛选样例及 `git diff --check` 通过；未对集群执行迁移。
+
+## 2026-10-15 旧普通用户权限名迁移
+
+- 升级脚本额外将 User 的 `spec.permissionName=k3k.permission.normal` 改为 `normal`，且不改动非 cluster 用户的角色字段；影响模块：用户升级脚本。
+- 验证：`sh -n kodata/shell/upgrade.sh` 与 `jq` 筛选样例通过；未对集群执行迁移。
