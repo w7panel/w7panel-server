@@ -382,7 +382,8 @@ func ToShellJob(p K8sResourceInterface, shell ManifestShellInterface) *batchv1.J
 			Annotations: annotations,
 		},
 		Spec: batchv1.JobSpec{
-			Template: toPodTemplateSpec(p, cmd, corev1.RestartPolicyNever, matchlabels, annotations),
+			Template:                toPodTemplateSpec(p, cmd, corev1.RestartPolicyNever, matchlabels, annotations),
+			TTLSecondsAfterFinished: ptr.Int32(300),
 		},
 	}
 	// appendPodAffinity(&job.Spec.Template, p.GetReleaseName())
@@ -1196,7 +1197,8 @@ func ToBeianCheckJob(info K8sResourceInterface, host string) *batchv1.Job {
 			Annotations: annotations,
 		},
 		Spec: batchv1.JobSpec{
-			Template: pod,
+			Template:                pod,
+			TTLSecondsAfterFinished: ptr.Int32(300),
 		},
 	}
 	return job
