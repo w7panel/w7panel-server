@@ -1,6 +1,6 @@
 KO ?= ko
 LOCAL_IMAGE ?= w7panel
-PUSH_IMAGE ?= ccr.ccs.tencentyun.com/afan-public/w7panel-server
+PUSH_IMAGE ?= ccr.ccs.tencentyun.com/afan-public/w7panel-dev
 IMAGE_TAG ?= $(shell branch=$$(git branch --show-current 2>/dev/null); [ -n "$$branch" ] || branch=local; printf '%s' "$$branch" | tr '/' '-')
 PLATFORM ?= linux/amd64
 KO_DEFAULTBASEIMAGE ?= ccr.ccs.tencentyun.com/afan-public/ubuntu:24.04-offlineui
