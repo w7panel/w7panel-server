@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-10-16
+
+- 普通面板页面也读取默认 MicroAppSetting 并注入站点 LOGO 等配置，使站点设置保存的 LOGO 在登录页和导航栏生效；影响模块：HTML 页面中间件。验证：`make test TEST_PACKAGES=./common/middleware` 与 `git diff --check` 通过。
+
 ## 2026-10-14 Kubernetes 凭据签发日志
 
 - 为 Kubernetes 凭据生成失败增加 `slog` 错误日志，记录用户、权限、audience 和原始错误，便于定位签发失败；影响模块：认证 HTTP 控制器。

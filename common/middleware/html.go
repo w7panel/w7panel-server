@@ -54,15 +54,16 @@ func (self Html) Process(ctx *gin.Context) {
 		return
 	}
 
-	if microappConfig, ok := buildMicroAppConfig(ctx); ok {
-		if siteConfig, err := loadMicroAppSiteConfig(ctx.Request.Context(), microappConfig); err != nil {
-			slog.Warn("load microapp site config failed", "err", err)
-		} else if len(siteConfig) > 0 {
-			microappConfig["site"] = siteConfig
-			if siteName, _ := siteConfig["siteName"].(string); siteName != "" {
-				htmlContent = replaceHTMLTitle(htmlContent, siteName)
-			}
+	microappConfig, isMicroApp := buildMicroAppConfig(ctx)
+	if siteConfig, err := loadMicroAppSiteConfig(ctx.Request.Context(), microappConfig); err != nil {
+		slog.Warn("load microapp site config failed", "err", err)
+	} else if len(siteConfig) > 0 {
+		microappConfig["site"] = siteConfig
+		if siteName, _ := siteConfig["siteName"].(string); siteName != "" {
+			htmlContent = replaceHTMLTitle(htmlContent, siteName)
 		}
+	}
+	if isMicroApp || microappConfig["site"] != nil {
 		htmlContent = injectMicroAppScript(htmlContent, microappConfig)
 	}
 
@@ -155,7 +156,7 @@ func loadMicroAppSiteConfig(ctx context.Context, microappConfig map[string]any) 
 	name, _ := microappConfig["name"].(string)
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, nil
+		name = globalMicroAppSettingName
 	}
 
 	sdk := k8s.NewK8sClient().Sdk
