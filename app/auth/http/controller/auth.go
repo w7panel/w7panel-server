@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -236,10 +237,17 @@ func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Contex
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
-	if u.Spec.Role == "founder" {
-		go console.RegisterLicenseSite(u.Name)
-	}
-	go console.RefreshCDTokenUseOpenid(u.Name)
+
+	go func() {
+		err := console.RefreshCDTokenUseOpenid(u.Name)
+		if err != nil {
+			slog.Error("refresh openid error", "err", err)
+		}
+		// 以来thirdpartyToken 需要前置refreshToken
+		if u.Spec.Role == "founder" {
+			go console.RegisterLicenseSite(u.Name)
+		}
+	}()
 
 	rs := service.GetRefreshToken(u.Name, ckmName)
 	auditservice.RecordLoginSuccessUser(http, u.Name, loginMethod, u)
