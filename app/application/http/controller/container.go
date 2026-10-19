@@ -25,6 +25,11 @@ func (self Container) ExportAndPushImage(http *gin.Context) {
 	if !self.Validate(http, &params) {
 		return
 	}
+	pushReq, err := localRegistryPushRequest(params.RegistryDomain, http.Request.Host, http.MustGet("k8s_token").(string))
+	if err != nil {
+		self.JsonResponseWithError(http, err, nethttp.StatusBadRequest)
+		return
+	}
 
 	flusher, ok := http.Writer.(nethttp.Flusher)
 	if !ok {
@@ -41,20 +46,18 @@ func (self Container) ExportAndPushImage(http *gin.Context) {
 	http.Writer.Header().Set("Content-Type", "text/event-stream")
 	http.Writer.Header().Set("Cache-Control", "no-cache")
 	http.Writer.Header().Set("Connection", "keep-alive")
-	err = container.ExportAndPushContainerImageByRootfs(containerClient, params.ContainerId, container.PushRequest{
-		ImageName:      params.ImageName,
-		RegisterDomain: params.RegistryDomain,
-		Progress: func(progress container.Progress) error {
-			_, err = fmt.Fprintf(http.Writer, "%s\n", progress.Content)
-			if err != nil {
-				slog.Error("exportAndPushContainerImageByRootfs streaming error", "params", params, "err", err)
-				return err
-			}
-			flusher.Flush()
+	pushReq.ImageName = params.ImageName
+	pushReq.Progress = func(progress container.Progress) error {
+		_, writeErr := fmt.Fprintf(http.Writer, "%s\n", progress.Content)
+		if writeErr != nil {
+			slog.Error("exportAndPushContainerImageByRootfs streaming error", "params", params, "err", writeErr)
+			return writeErr
+		}
+		flusher.Flush()
 
-			return nil
-		},
-	})
+		return nil
+	}
+	err = container.ExportAndPushContainerImageByRootfs(containerClient, params.ContainerId, pushReq)
 	if err != nil {
 		slog.Error("exportAndPushContainerImageByRootfs error", "params", params, "err", err)
 		self.JsonResponseWithServerError(http, err)
@@ -62,4 +65,16 @@ func (self Container) ExportAndPushImage(http *gin.Context) {
 	}
 
 	http.Writer.WriteHeader(nethttp.StatusOK)
+}
+
+func localRegistryPushRequest(registryDomain, requestHost, token string) (container.PushRequest, error) {
+	if registryDomain != requestHost || token == "" {
+		return container.PushRequest{}, errors.New("invalid local registry destination or credential")
+	}
+	return container.PushRequest{
+		RegisterDomain:    "127.0.0.1:8000",
+		RegistryUsername:  "w7panel-k8s-token",
+		RegistryPassword:  token,
+		RegistryPlainHTTP: true,
+	}, nil
 }
