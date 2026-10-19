@@ -211,6 +211,9 @@ w7panel longhornupgrade
 # echo "安装/升级higress"
 # helm upgrade --namespace "${NAMESPACE:-default}" w7panel-higress $KO_DATA_PATH/charts/w7panel-higress --install --timeout 600s
 
+echo "clean tls params"
+
+kubectl delete envoyfilter/higress-tls-params -n higress-system --ignore-not-found | echo "tls params not found"
 
 echo "clear completed jobs and pod..."
 
