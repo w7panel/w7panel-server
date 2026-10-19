@@ -606,3 +606,8 @@
 
 - 认证中间件将 `k8s_token` 同步写入标准请求 context，MCP 工具优先使用 context 中经认证的 Kubernetes 凭据；影响模块：认证中间件、MCP HTTP 服务。
 - 验证：`make test TEST_PACKAGES='./common/middleware ./common/service/mcp ./app/application'` 通过；`git diff --check` 通过。
+
+## 2026-10-19 容器镜像推送认证
+
+- 打包容器镜像时使用已认证请求的短期 Kubernetes 凭据，通过本机 HTTP 仓库推送；校验 UI 提供的仓库地址与当前 agent 一致，避免凭据发往其他地址。影响模块：容器镜像导出推送接口。
+- 验证：定向单元测试及 `git diff --check`。
