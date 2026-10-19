@@ -6,49 +6,15 @@ import (
 	"log/slog"
 
 	"github.com/w7panel/w7panel/common/service/config"
-	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	userservice "github.com/w7panel/w7panel/common/service/user"
-	"github.com/w7panel/w7panel/k8s/pkg/apis/user/v1alpha1"
 
 	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-func LoginByUser(client *k8s.Sdk, crdUser *v1alpha1.User, seconds int64, updateK3kUser bool, cvmName string, realSa string) (string, error) {
-
-	k3kUser := types.NewK3kUser(crdUser)
-
-	k8s.NewK8sClient().Clear(crdUser.Name, cvmName)
-
-	_, err := RefreshK3kUser(k3kUser, client, updateK3kUser)
-	if err != nil {
-		return "", err
-	}
-
-	token, err := client.CreateTokenRequest(realSa, seconds, k3kUser.GetTokenAud(cvmName))
-	if err != nil {
-		return "", err
-	}
-	// 标记最后登录时间 为了触发面板代理重建
-	if k3kUser.IsFounder() {
-		go console.RegisterLicenseSite(k3kUser.Name)
-	}
-
-	go SignLastLoginTime(client, k3kUser)
-	//刷新控制台token
-	go func() {
-		err := console.RefreshCDTokenUseOpenid(k3kUser.Name)
-		if err != nil {
-			slog.Warn("刷新CDToken失败", "err", err)
-		}
-	}()
-
-	return token, nil
-}
 
 func SignLastLoginTime(sdk *k8s.Sdk, user *types.K3kUser) error {
 	user.SetLoginTime()

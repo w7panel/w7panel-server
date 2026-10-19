@@ -19,11 +19,3 @@ func TestCleanLicenseCert(t *testing.T) {
 func TestVerifyDefaultLicense(t *testing.T) {
 	VerifyDefaultLicense(false)
 }
-
-func disabledVerifyLicenseID(t *testing.T) {
-	SetConsoleApi("http://10.0.2.15:9004")
-	err := VerifyLicenseId("9", "admin")
-	if err != nil {
-		t.Errorf("Error: %v", err)
-	}
-}

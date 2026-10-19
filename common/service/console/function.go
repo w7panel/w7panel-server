@@ -59,31 +59,6 @@ func VerifyDefaultLicense(clean bool) error {
 	return nil
 }
 
-func VerifyLicenseId(id, saName string) error {
-	licenseClient, err := NewDefaultLicenseClient()
-	if err != nil {
-		return err
-	}
-	license, err := licenseClient.GetLicense()
-	if err != nil {
-		return err
-	}
-	sdkClient, err := NewSdkClient(license)
-	if err != nil {
-		return err
-	}
-	licenseOrder, err := sdkClient.GenCert(id)
-	if err != nil {
-		return err
-	}
-
-	err = licenseClient.ImportCert([]byte(licenseOrder.Cert), saName)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func RefreshCDTokenUseOpenid(saName string) error {
 	sdk := k8s.NewK8sClient()
 	respo := config.NewW7ConfigRepository(sdk.Sdk)
