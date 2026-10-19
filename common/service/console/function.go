@@ -10,55 +10,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 )
 
-func VerifyLicense(license *License, clean bool) error {
-	if license == nil {
-		return errors.New("证书为空")
-	}
-	if license.License == nil {
-		return errors.New("证书为空")
-	}
-	cert := license.License
-	// if cert.Issuer.Organization != nil && len(cert.Issuer.Organization) > 0 {
-	// 	if cert.Issuer.Organization[0] != license.AppId {
-	// 		cleanLicenseCert(clean)
-	// 		return errors.New("证书颁发者与授权不符")
-	// 	}
-	// }
-	_, err := VerifyCert(cert)
-	if err != nil {
-		cleanLicenseCert(clean)
-		return err
-	}
-	SetCurrentLicense(license)
-	return nil
-}
-
-func cleanLicenseCert(clean bool) {
-	SetCurrentLicense(nil)
-	if clean {
-		client, err := NewDefaultLicenseClient()
-		if err != nil {
-			slog.Error("清理证书失败", "error", err)
-			return
-		}
-		err = client.CleanLicense()
-		if err != nil {
-			slog.Error("清理证书失败x", "error", err)
-			return
-		}
-	}
-}
-
-func VerifyDefaultLicense(clean bool) error {
-	license := GetCurrentLicense()
-	err := VerifyLicense(license, clean)
-	if err != nil {
-		slog.Error("验证证书失败", "error", err)
-		return err
-	}
-	return nil
-}
-
 func RefreshCDTokenUseOpenid(saName string) error {
 	sdk := k8s.NewK8sClient()
 	respo := config.NewW7ConfigRepository(sdk.Sdk)
