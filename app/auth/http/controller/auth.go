@@ -239,6 +239,7 @@ func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Contex
 	if u.Spec.Role == "founder" {
 		go console.RegisterLicenseSite(u.Name)
 	}
+	go console.RefreshCDTokenUseOpenid(u.Name)
 
 	rs := service.GetRefreshToken(u.Name, ckmName)
 	auditservice.RecordLoginSuccessUser(http, u.Name, loginMethod, u)
