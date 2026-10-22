@@ -706,7 +706,8 @@ func ProxyUrl(proxyUrl string, path string, host string, headers map[string]stri
 		req.URL.Host = remote.Host //
 		req.Host = remote.Host     //2个host有区别
 		for k, v := range headers {
-			req.Header.Add(k, v)
+			// Explicit proxy configuration overrides incoming headers, including credentials.
+			req.Header.Set(k, v)
 		}
 		if host != "" {
 			// req.URL.Host = host
