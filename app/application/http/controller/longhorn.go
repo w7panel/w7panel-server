@@ -10,6 +10,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	// "github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 
@@ -35,14 +38,37 @@ func (self Longhorn) Install(http *gin.Context) {
 	koData, ok := os.LookupEnv("KO_DATA_PATH")
 	if !ok {
 		self.JsonResponseWithServerError(http, errors.New("找不到longhorn yaml"))
+		return
 	}
 	body, err := os.ReadFile(filepath.Join(koData, "/yaml/longhorn/longhornfull.yaml"))
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	chart := client.DynamicClient().Resource(schema.GroupVersionResource{Group: "helm.cattle.io", Version: "v1", Resource: "helmcharts"}).Namespace("kube-system")
+	_, err = chart.Get(client.Ctx, "longhorn", metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	var marked []string
+	if apierrors.IsNotFound(err) {
+		marked, err = longhorn.PrepareDefaultDiskInstall(client)
+		if err != nil {
+			self.JsonResponseWithServerError(http, errors.Join(err, longhorn.CancelDefaultDiskInstall(client, marked)))
+			return
+		}
+	}
 	err = client.ApplyBytes(body, *k8s.NewApplyOptions(namespace))
 	if err != nil {
+		if len(marked) > 0 {
+			_, chartErr := chart.Get(client.Ctx, "longhorn", metav1.GetOptions{})
+			if apierrors.IsNotFound(chartErr) {
+				err = errors.Join(err, longhorn.CancelDefaultDiskInstall(client, marked))
+			} else if chartErr != nil {
+				err = errors.Join(err, chartErr)
+			}
+		}
 		self.JsonResponseWithServerError(http, err)
 		return
 	}

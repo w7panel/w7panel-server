@@ -2,7 +2,6 @@ package webhook
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -29,20 +28,6 @@ func (m *ResourceMutator) handleNode(ctx context.Context, req admission.Request)
 			return admission.Errored(http.StatusBadRequest, err)
 		}
 		longhorn.WebHookDeleteNode(node)
-	} else {
-		if err := (m.decoder).Decode(req, node); err != nil {
-			return admission.Errored(http.StatusBadRequest, err)
-		}
-		change := longhorn.WebHookNode(node)
-		if !change {
-			return admission.Allowed("")
-		}
-		mds, err := json.Marshal(node)
-		if err != nil {
-			return admission.Errored(http.StatusInternalServerError, err)
-		}
-
-		return admission.PatchResponseFromRaw(req.Object.Raw, mds)
 	}
 	return admission.Allowed("")
 

@@ -11,7 +11,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var lclient *longhornclient
@@ -21,25 +20,31 @@ func init() {
 }
 
 func OnStart() error {
-	nodes, err := lclient.GetNodeList()
-	if err != nil {
-		slog.Error("longhorn get node list error", "error", err)
-		return err
-	}
 	k8sNodes, err := lclient.GetK8sNodeList()
 	if err != nil {
 		slog.Error("longhorn get k8s node list error", "error", err)
 		return err
 	}
-	for _, k8sNodes := range k8sNodes.Items {
-		knode := &k8sNodes
-		ok := WebHookNode(&k8sNodes)
-		if ok {
-			_, err := lclient.sdk.ClientSet.CoreV1().Nodes().Update(lclient.sdk.Ctx, knode, metav1.UpdateOptions{})
-			if err != nil {
-				slog.Error("longhorn webhook handler update node error", "error", err)
+	nodes, nodeErr := lclient.GetNodeList()
+	diskCreated := make(map[string]bool)
+	if nodeErr == nil {
+		for _, node := range nodes.Items {
+			if _, ok := node.Spec.Disks["disk-default"]; ok {
+				diskCreated[node.Name] = true
 			}
 		}
+	}
+	for _, node := range k8sNodes.Items {
+		if node.Labels[defaultDiskLabel] != "config" || node.Annotations[defaultDiskAnnotation] != defaultDiskConfig {
+			continue
+		}
+		if err := clearDefaultDiskNode(lclient.sdk, node.Name, diskCreated[node.Name], false); err != nil {
+			slog.Error("cleanup Longhorn default disk node config error", "node", node.Name, "error", err)
+		}
+	}
+	if nodeErr != nil {
+		slog.Error("longhorn get node list error", "error", nodeErr)
+		return nodeErr
 	}
 
 	// createDefaultVolumeByNodeList(nodes)
@@ -72,6 +77,11 @@ func deleteNotSelectorStorageClass(nodes *longhornV1beta2.NodeList) {
 
 func WebhookLonghornNode(node *longhornV1beta2.Node) error {
 	time.AfterFunc(time.Second*5, func() {
+		if _, ok := node.Spec.Disks["disk-default"]; ok {
+			if err := clearDefaultDiskNode(lclient.sdk, node.Name, true, false); err != nil {
+				slog.Error("cleanup Longhorn default disk node config error", "node", node.Name, "error", err)
+			}
+		}
 		createStorageClass(node)
 		nodes, err := lclient.GetNodeList()
 		if err != nil {
@@ -103,26 +113,6 @@ func WebHookLonghornReplica() {
 		updateAllReplicaCount() //更新副本数
 	})
 
-}
-
-func WebHookNode(node *v1.Node) bool {
-	labels := node.GetLabels()
-	isMasterRole, ok := labels["node-role.kubernetes.io/control-plane"]
-	if !ok || isMasterRole != "true" {
-		return false
-	}
-	_, ok = labels["node.longhorn.io/create-default-disk"]
-	if ok {
-		return false
-	}
-	labels["node.longhorn.io/create-default-disk"] = "config"
-	annotations := node.GetAnnotations()
-	if annotations == nil {
-		annotations = make(map[string]string)
-	}
-	configJson := `[ { "path":"/var/lib/longhorn", "allowScheduling":true, "name": "disk-default", "tags":[ "disk-default" ] } ]`
-	annotations["node.longhorn.io/default-disks-config"] = configJson
-	return true
 }
 
 func WebHookDeleteNode(node *v1.Node) {

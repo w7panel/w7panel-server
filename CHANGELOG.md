@@ -611,3 +611,8 @@
 
 - 打包容器镜像时使用已认证请求的短期 Kubernetes 凭据，通过本机 HTTP 仓库推送；校验 UI 提供的仓库地址与当前 agent 一致，避免凭据发往其他地址。影响模块：容器镜像导出推送接口。
 - 验证：定向单元测试及 `git diff --check`。
+
+## 2026-10-26 Longhorn 默认磁盘仅首次安装创建
+
+- 首次安装 Longhorn 时仅为现有控制平面节点配置 `disk-default`，建盘后移除触发标签；启动时清理旧集群的面板默认磁盘配置，新增节点及重复安装不再补建磁盘。影响模块：Longhorn 安装接口、节点 Webhook、Longhorn 节点同步。
+- 验证：`make test TEST_PACKAGES='./common/service/k8s/longhorn ./common/service/k8s/webhook ./app/application/http/controller -run ^TestDefaultDisk'` 通过。
