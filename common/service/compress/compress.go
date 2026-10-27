@@ -67,10 +67,11 @@ func (c *Compressor) Compress(sources []string, output string) error {
 }
 
 func (c *Compressor) path(path string) string {
-	if filepath.IsAbs(path) {
+	path = filepath.Clean(path)
+	if path == c.rootPath || strings.HasPrefix(path, c.rootPath+string(os.PathSeparator)) {
 		return path
 	}
-	return filepath.Join(c.rootPath, path)
+	return filepath.Join(c.rootPath, strings.TrimPrefix(filepath.Clean("/"+path), "/"))
 }
 
 // calculateBasePath 计算所有源文件的共同基础路径

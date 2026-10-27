@@ -626,3 +626,8 @@
 
 - MCP 默认仅提供查询工具；启用 `MCP_K8S_WRITE_ENABLED=true` 后注册独立写入工具，使用当前用户凭据和 Kubernetes RBAC 执行资源及子资源的 POST、PUT、PATCH、DELETE，支持 exec、attach 和 proxy，并限制 Secret 访问及请求和响应大小。Helm 增加默认关闭的 `mcp.writeEnabled`。影响模块：MCP 服务、离线 Chart。
 - 验证：`make test TEST_PACKAGES=./common/service/mcp`、Helm 默认及启用模板渲染、`git diff --check` 通过；未对集群执行写操作。
+
+## 2026-10-27 容器文件解压路径修复
+
+- 压缩服务将文件管理传来的容器绝对路径映射到目标进程根目录，修复 `/tmp` 下压缩包解压时报找不到路径；已带根目录前缀的路径仍可使用。影响模块：文件压缩与解压。
+- 验证：`make test TEST_PACKAGES=./common/service/compress` 与 `git diff --check` 通过。
