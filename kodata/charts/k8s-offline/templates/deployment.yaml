@@ -63,6 +63,8 @@ spec:
             value: "true"     
           - name: W7PANEL_AUTH_MODE
             value: "panel"  
+          - name: MCP_K8S_WRITE_ENABLED
+            value: {{ .Values.mcp.writeEnabled | quote }}
           - name: PANEL_AUTH_SIGNING_KEY
             valueFrom:
               secretKeyRef:

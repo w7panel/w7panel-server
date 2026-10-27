@@ -13,6 +13,9 @@ tmpCdToken: ""
 panelAuth:
   signingKey: ""
 
+mcp:
+  writeEnabled: false
+
 # HTTPS artifact hosts allowed for Helm metadata, chart archives and frontend
 # fallback resources. Private, loopback and link-local resolutions are always
 # rejected even when a hostname is listed here.

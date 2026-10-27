@@ -621,3 +621,8 @@
 
 - 按 JSON 内容识别旧节点的多行默认磁盘注解；已有 Longhorn manager DaemonSet 且无 K3s HelmChart 时安装接口直接返回，避免普通 Helm 安装的集群重复标记磁盘或创建第二套 HelmChart。影响模块：Longhorn 节点清理、安装接口。
 - 验证：定向 Go 测试与 `git diff --check`。
+
+## 2026-10-27 MCP Kubernetes 写入开关
+
+- MCP 默认仅提供查询工具；启用 `MCP_K8S_WRITE_ENABLED=true` 后注册独立写入工具，使用当前用户凭据和 Kubernetes RBAC 执行资源及子资源的 POST、PUT、PATCH、DELETE，支持 exec、attach 和 proxy，并限制 Secret 访问及请求和响应大小。Helm 增加默认关闭的 `mcp.writeEnabled`。影响模块：MCP 服务、离线 Chart。
+- 验证：`make test TEST_PACKAGES=./common/service/mcp`、Helm 默认及启用模板渲染、`git diff --check` 通过；未对集群执行写操作。
