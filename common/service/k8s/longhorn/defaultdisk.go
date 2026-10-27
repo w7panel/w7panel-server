@@ -1,8 +1,10 @@
 package longhorn
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -17,6 +19,12 @@ const (
 	defaultDiskConfig     = `[ { "path":"/var/lib/longhorn", "allowScheduling":true, "name": "disk-default", "tags":[ "disk-default" ] } ]`
 )
 
+func isDefaultDiskConfig(value string) bool {
+	var actual, expected any
+	return json.Unmarshal([]byte(value), &actual) == nil &&
+		json.Unmarshal([]byte(defaultDiskConfig), &expected) == nil && reflect.DeepEqual(actual, expected)
+}
+
 func markDefaultDiskInstall(node *corev1.Node) bool {
 	if node.Labels["node-role.kubernetes.io/control-plane"] != "true" {
 		return false
@@ -24,7 +32,7 @@ func markDefaultDiskInstall(node *corev1.Node) bool {
 	if value := node.Labels[defaultDiskLabel]; value != "" && value != "config" {
 		return false
 	}
-	if value := node.Annotations[defaultDiskAnnotation]; value != "" && value != defaultDiskConfig {
+	if value := node.Annotations[defaultDiskAnnotation]; value != "" && !isDefaultDiskConfig(value) {
 		return false
 	}
 	if node.Labels == nil {
@@ -40,7 +48,7 @@ func markDefaultDiskInstall(node *corev1.Node) bool {
 }
 
 func clearDefaultDiskInstall(node *corev1.Node, diskCreated, force bool) bool {
-	if node.Labels[defaultDiskLabel] != "config" || node.Annotations[defaultDiskAnnotation] != defaultDiskConfig {
+	if node.Labels[defaultDiskLabel] != "config" || !isDefaultDiskConfig(node.Annotations[defaultDiskAnnotation]) {
 		return false
 	}
 	if !force && node.Annotations[defaultDiskPending] == "true" && !diskCreated {

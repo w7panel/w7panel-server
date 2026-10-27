@@ -34,12 +34,33 @@ func TestDefaultDiskLegacyCleanup(t *testing.T) {
 	if !clearDefaultDiskInstall(legacy, false, false) {
 		t.Fatal("legacy trigger was not cleared after disk deletion")
 	}
+	formatted := &corev1.Node{ObjectMeta: metav1.ObjectMeta{
+		Labels: map[string]string{defaultDiskLabel: "config"},
+		Annotations: map[string]string{defaultDiskAnnotation: `[
+  {
+    "path": "/var/lib/longhorn",
+    "allowScheduling": true,
+    "name": "disk-default",
+    "tags": ["disk-default"]
+  }
+]`},
+	}}
+	if !clearDefaultDiskInstall(formatted, false, false) {
+		t.Fatal("formatted legacy trigger was not cleared")
+	}
 	custom := &corev1.Node{ObjectMeta: metav1.ObjectMeta{
 		Labels:      map[string]string{defaultDiskLabel: "config"},
 		Annotations: map[string]string{defaultDiskAnnotation: `[{"name":"custom"}]`},
 	}}
 	if clearDefaultDiskInstall(custom, false, false) {
 		t.Fatal("custom Longhorn disk configuration was changed")
+	}
+	extraField := &corev1.Node{ObjectMeta: metav1.ObjectMeta{
+		Labels:      map[string]string{defaultDiskLabel: "config"},
+		Annotations: map[string]string{defaultDiskAnnotation: `[{"path":"/var/lib/longhorn","allowScheduling":true,"name":"disk-default","tags":["disk-default"],"storageReserved":1}]`},
+	}}
+	if clearDefaultDiskInstall(extraField, false, false) {
+		t.Fatal("custom Longhorn disk field was changed")
 	}
 	worker := &corev1.Node{}
 	if markDefaultDiskInstall(worker) {

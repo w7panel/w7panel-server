@@ -616,3 +616,8 @@
 
 - 首次安装 Longhorn 时仅为现有控制平面节点配置 `disk-default`，建盘后移除触发标签；启动时清理旧集群的面板默认磁盘配置，新增节点及重复安装不再补建磁盘。影响模块：Longhorn 安装接口、节点 Webhook、Longhorn 节点同步。
 - 验证：`make test TEST_PACKAGES='./common/service/k8s/longhorn ./common/service/k8s/webhook ./app/application/http/controller -run ^TestDefaultDisk'` 通过。
+
+## 2026-10-27 Longhorn 旧集群默认磁盘配置兼容
+
+- 按 JSON 内容识别旧节点的多行默认磁盘注解；已有 Longhorn manager DaemonSet 且无 K3s HelmChart 时安装接口直接返回，避免普通 Helm 安装的集群重复标记磁盘或创建第二套 HelmChart。影响模块：Longhorn 节点清理、安装接口。
+- 验证：定向 Go 测试与 `git diff --check`。

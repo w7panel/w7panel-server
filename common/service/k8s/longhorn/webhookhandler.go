@@ -35,7 +35,7 @@ func OnStart() error {
 		}
 	}
 	for _, node := range k8sNodes.Items {
-		if node.Labels[defaultDiskLabel] != "config" || node.Annotations[defaultDiskAnnotation] != defaultDiskConfig {
+		if node.Labels[defaultDiskLabel] != "config" || !isDefaultDiskConfig(node.Annotations[defaultDiskAnnotation]) {
 			continue
 		}
 		if err := clearDefaultDiskNode(lclient.sdk, node.Name, diskCreated[node.Name], false); err != nil {

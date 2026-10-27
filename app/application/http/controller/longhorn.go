@@ -53,6 +53,15 @@ func (self Longhorn) Install(http *gin.Context) {
 	}
 	var marked []string
 	if apierrors.IsNotFound(err) {
+		_, managerErr := client.ClientSet.AppsV1().DaemonSets("longhorn-system").Get(client.Ctx, "longhorn-manager", metav1.GetOptions{})
+		if managerErr != nil && !apierrors.IsNotFound(managerErr) {
+			self.JsonResponseWithServerError(http, managerErr)
+			return
+		}
+		if managerErr == nil {
+			self.JsonSuccessResponse(http)
+			return
+		}
 		marked, err = longhorn.PrepareDefaultDiskInstall(client)
 		if err != nil {
 			self.JsonResponseWithServerError(http, errors.Join(err, longhorn.CancelDefaultDiskInstall(client, marked)))
