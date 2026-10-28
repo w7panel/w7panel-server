@@ -178,6 +178,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			apiGroup.Any("/mcp", middleware.Auth{}.Process, gin.WrapH(mcpservice.McpHttpHandler()))
 			apiGroup.GET("/namespaces", middleware.Auth{}.Process, controller2.Namespaces{}.GetList)
 			apiGroup.GET("/cluster/nodes/:name/longhorn-replicas", middleware.Auth{}.Process, controller2.Nodes{}.GetLonghornReplicas)
+			apiGroup.GET("/cluster/nodes/public-ip/check", middleware.Auth{}.Process, controller2.Nodes{}.CheckPublicIP)
 			apiGroup.GET("/cluster/nodes/:name/public-ip/detect", middleware.Auth{}.Process, controller2.Nodes{}.DetectPublicIP)
 			apiGroup.PUT("/cluster/nodes/:name/public-ip", middleware.Auth{}.Process, controller2.Nodes{}.SavePublicIP)
 			apiGroup.POST("/cluster/nodes/:name/longhorn-replicas/delete", middleware.Auth{}.Process, controller2.Nodes{}.DeleteLonghornReplicas)

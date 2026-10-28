@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +21,48 @@ import (
 )
 
 const publicIPLabel = "w7.public-ip"
+
+var publicIPProbeClient = &stdhttp.Client{
+	Timeout: 3 * time.Second,
+	Transport: &stdhttp.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // 节点 API 使用自签名证书，检测只验证 HTTP 可达性。
+	},
+	CheckRedirect: func(*stdhttp.Request, []*stdhttp.Request) error { return stdhttp.ErrUseLastResponse },
+}
+
+func publicIPHTTPReachable(ctx context.Context, address string) bool {
+	request, err := stdhttp.NewRequestWithContext(ctx, stdhttp.MethodGet, address+"/livez", nil)
+	if err != nil {
+		return false
+	}
+	response, err := publicIPProbeClient.Do(request)
+	if err != nil {
+		return false
+	}
+	response.Body.Close()
+	return response.StatusCode == stdhttp.StatusOK || response.StatusCode == stdhttp.StatusUnauthorized || response.StatusCode == stdhttp.StatusForbidden
+}
+
+func (self Nodes) CheckPublicIP(ctx *gin.Context) {
+	sdk, err := k8s.NewK8sClient().Channel(ctx.MustGet("k8s_token").(string))
+	if err != nil {
+		self.JsonResponseWithServerError(ctx, err)
+		return
+	}
+	nodes, err := sdk.ClientSet.CoreV1().Nodes().List(ctx.Request.Context(), metav1.ListOptions{})
+	if err != nil {
+		self.JsonResponseWithServerError(ctx, err)
+		return
+	}
+	ips := publicSANs(nodes.Items)
+	for _, ip := range ips {
+		if publicIPHTTPReachable(ctx.Request.Context(), "https://"+net.JoinHostPort(ip, "6443")) {
+			self.JsonResponseWithoutError(ctx, gin.H{"available": true, "ip": ip})
+			return
+		}
+	}
+	self.JsonResponseWithoutError(ctx, gin.H{"available": false})
+}
 
 func (self Nodes) LocalPublicIP(ctx *gin.Context) {
 	ip, err := helper.MyIp()

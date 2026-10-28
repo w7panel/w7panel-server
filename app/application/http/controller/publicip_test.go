@@ -1,11 +1,37 @@
 package controller
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func TestPublicIPHTTPReachable(t *testing.T) {
+	var status atomic.Int32
+	status.Store(http.StatusForbidden)
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/livez" {
+			t.Errorf("request path = %q", r.URL.Path)
+		}
+		w.WriteHeader(int(status.Load()))
+	}))
+	if !publicIPHTTPReachable(context.Background(), server.URL) {
+		t.Fatal("self-signed TLS endpoint returning HTTP 403 should be reachable")
+	}
+	status.Store(http.StatusInternalServerError)
+	if publicIPHTTPReachable(context.Background(), server.URL) {
+		t.Fatal("unhealthy endpoint should not be accepted")
+	}
+	server.Close()
+	if publicIPHTTPReachable(context.Background(), server.URL) {
+		t.Fatal("closed endpoint should be unreachable")
+	}
+}
 
 func TestPublicSANs(t *testing.T) {
 	nodes := []corev1.Node{
