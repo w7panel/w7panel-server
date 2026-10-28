@@ -27,6 +27,8 @@ func (p Provider) Register(httpServer *httpserver.Server, console console.Consol
 
 func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	server.RegisterRouters(func(engine *gin.Engine) {
+		engine.GET("/.well-known/oauth-protected-resource/panel-api/v1/mcp", controller2.Oidc{}.MCPProtectedResource)
+		engine.GET("/.well-known/oauth-authorization-server/panel-api/v1/oidc", controller2.Oidc{}.OAuthAuthorizationServerMetadata)
 		oidcGroup := engine.Group("/panel-api/v1/oidc")
 		{
 			oidcGroup.Any("/.well-known/openid-configuration", controller2.Oidc{}.Discovery)

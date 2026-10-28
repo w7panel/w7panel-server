@@ -24,7 +24,10 @@ func (PanelAuth) Process(ctx *gin.Context) {
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "msg": "请登录"})
 		return
 	}
+	processPanelPrincipal(ctx, principal)
+}
 
+func processPanelPrincipal(ctx *gin.Context, principal *panelauth.Principal) {
 	sdk := k8s.NewK8sClient().Sdk
 	if principal.TokenUse == panelauth.TokenUseCKMPanel {
 		processCKMPanel(ctx, *principal)

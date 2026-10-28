@@ -95,6 +95,7 @@ oidc:
         - openid
         - profile
         - offline_access
+        - mcp
 log:
   default:
     driver: stack

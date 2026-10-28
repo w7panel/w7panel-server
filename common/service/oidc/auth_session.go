@@ -31,6 +31,7 @@ type authRequest struct {
 	ID            string
 	CreationDate  time.Time
 	ApplicationID string
+	Resource      string
 	CallbackURI   string
 	TransferState string
 	Prompt        []string
@@ -150,7 +151,7 @@ func (s *Server) authenticate(ctx context.Context, username, password string) (s
 	return username, nil
 }
 
-func (s *Server) CreateAuthRequest(_ context.Context, authReq *zitadeloidc.AuthRequest, userID string) (op.AuthRequest, error) {
+func (s *Server) CreateAuthRequest(ctx context.Context, authReq *zitadeloidc.AuthRequest, userID string) (op.AuthRequest, error) {
 	if len(authReq.Prompt) == 1 && authReq.Prompt[0] == zitadeloidc.PromptNone && userID == "" {
 		return nil, zitadeloidc.ErrLoginRequired()
 	}
@@ -158,6 +159,7 @@ func (s *Server) CreateAuthRequest(_ context.Context, authReq *zitadeloidc.AuthR
 		ID:            uuid.NewString(),
 		CreationDate:  time.Now(),
 		ApplicationID: authReq.ClientID,
+		Resource:      mcpResourceFromContext(ctx),
 		CallbackURI:   authReq.RedirectURI,
 		TransferState: authReq.State,
 		Prompt:        append([]string{}, authReq.Prompt...),
@@ -235,7 +237,12 @@ func (r *authRequest) GetAMR() []string {
 	}
 	return nil
 }
-func (r *authRequest) GetAudience() []string                        { return []string{r.ApplicationID} }
+func (r *authRequest) GetAudience() []string {
+	if r.Resource != "" {
+		return []string{r.Resource}
+	}
+	return []string{r.ApplicationID}
+}
 func (r *authRequest) GetAuthTime() time.Time                       { return r.authTime }
 func (r *authRequest) GetClientID() string                          { return r.ApplicationID }
 func (r *authRequest) GetCodeChallenge() *zitadeloidc.CodeChallenge { return r.CodeChallenge }
