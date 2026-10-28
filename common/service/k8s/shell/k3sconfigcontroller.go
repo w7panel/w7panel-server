@@ -12,6 +12,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/gpu"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -241,7 +242,6 @@ func (s *k3sConfigController) WatchNodeInformer() cache.SharedIndexInformer {
 				s.initK3sConfig(new)
 			}
 			s.updateK3sNodeSwap(new)
-			s.loadPublicIp(new)
 		},
 	})
 	return informer
@@ -268,12 +268,23 @@ func (s *k3sConfigController) initK3sConfig(node *v1.Node) error {
 		"k3s.default-tls-san":    strings.Join(k3sConfig.GetDefaultTlsSanIp(), ","),
 		"k3s.tls-san":            strings.Join(k3sConfig.GetConfigTlsSanIp(), ","),
 	}
+	existing, err := k8sClient.DynamicClient().Resource(k8s.K3sConfigGVR).Get(k8sClient.Ctx, k8s.K3sConfigName, metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	if err == nil {
+		for _, key := range []string{"k3s.tls-san", "k3s.tls-san.disabled", "k3s.public-tls-san"} {
+			if value, ok := k8s.ConfigCRDData(existing)[key]; ok {
+				data[key] = value
+			}
+		}
+	}
 	labels := map[string]string{
 		"data-hash": "init",
 	}
 	slog.Debug("k3s config", "data", data)
 	config := k8s.NewConfigCRD("K3sConfig", k8s.K3sConfigName, labels, data)
-	_, err := k8sClient.DynamicClient().Resource(k8s.K3sConfigGVR).Apply(k8sClient.Ctx, k8s.K3sConfigName, config, metav1.ApplyOptions{FieldManager: "k8s-offline", Force: true})
+	_, err = k8sClient.DynamicClient().Resource(k8s.K3sConfigGVR).Apply(k8sClient.Ctx, k8s.K3sConfigName, config, metav1.ApplyOptions{FieldManager: "k8s-offline", Force: true})
 	if err != nil {
 		slog.Error("create k3sconfigs/config crd error", "err", err)
 		return err
@@ -366,7 +377,7 @@ func (s *k3sConfigController) handleK3sConfig(data map[string]string, nodes *v1.
 				k3sConfig.k3sConfigYaml["datastore-endpoint"] = data["k3s.datastore-endpoint"]
 				change = true
 			}
-			setK3sTlsSan(k3sConfig.k3sConfigYaml, data["k3s.tls-san"])
+			setK3sTlsSan(k3sConfig.k3sConfigYaml, mergeK3sTlsSan(data))
 			change = true
 			if change {
 				data, err := helper.YamlToBytes(k3sConfig.k3sConfigYaml)
@@ -400,6 +411,21 @@ func setK3sTlsSan(config map[string]interface{}, value string) {
 		return
 	}
 	config["tls-san"] = addresses
+}
+
+func mergeK3sTlsSan(data map[string]string) string {
+	var addresses []string
+	seen := map[string]bool{}
+	for _, key := range []string{"k3s.default-tls-san", "k3s.tls-san", "k3s.public-tls-san"} {
+		for _, value := range strings.Split(data[key], ",") {
+			address := strings.TrimSpace(value)
+			if address != "" && !seen[address] {
+				addresses = append(addresses, address)
+				seen[address] = true
+			}
+		}
+	}
+	return strings.Join(addresses, ",")
 }
 
 func (s *k3sConfigController) restart(nodes *v1.NodeList) error {

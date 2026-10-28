@@ -149,6 +149,10 @@ spec:
   - path: /panel-api/v1/myip
     method:
     - get
+  - path: /panel-api/v1/cluster/nodes/*/public-ip*
+    method:
+    - get
+    - update
   - path: /panel-api/v1/db-conn-test
     method:
     - create
@@ -261,6 +265,13 @@ spec:
     - get
     - list
     - watch
+  - apiGroups:
+    - w7panel.w7.com
+    resources:
+    - k3sconfigs
+    verbs:
+    - get
+    - update
   - apiGroups:
     - ''
     resources:

@@ -32,3 +32,15 @@ func TestSetK3sTlsSan(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeK3sTlsSan(t *testing.T) {
+	data := map[string]string{
+		"k3s.default-tls-san": "10.0.0.1",
+		"k3s.tls-san":         "custom.example.com,10.0.0.1",
+		"k3s.public-tls-san":  "203.0.113.2,custom.example.com",
+	}
+	got := mergeK3sTlsSan(data)
+	if got != "10.0.0.1,custom.example.com,203.0.113.2" {
+		t.Fatalf("merged tls-san = %q", got)
+	}
+}

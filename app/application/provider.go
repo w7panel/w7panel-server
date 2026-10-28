@@ -166,6 +166,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		engine.GET("/docs/openapi", controller2.OpenAPI{}.Page)
 		engine.POST("/internal/agent-pod", middleware.Auth{}.ProcessServiceAccount, controller2.PodExec{}.RegisterAgentPodIP)
+		engine.GET("/internal/public-ip", middleware.Auth{}.ProcessServiceAccount, controller2.Nodes{}.LocalPublicIP)
 		engine.GET("/docs/openapi/spec", controller2.OpenAPI{}.Spec)
 		engine.GET("/openapi.json", controller2.OpenAPI{}.RedirectJSON)
 
@@ -177,6 +178,8 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			apiGroup.Any("/mcp", middleware.Auth{}.Process, gin.WrapH(mcpservice.McpHttpHandler()))
 			apiGroup.GET("/namespaces", middleware.Auth{}.Process, controller2.Namespaces{}.GetList)
 			apiGroup.GET("/cluster/nodes/:name/longhorn-replicas", middleware.Auth{}.Process, controller2.Nodes{}.GetLonghornReplicas)
+			apiGroup.GET("/cluster/nodes/:name/public-ip/detect", middleware.Auth{}.Process, controller2.Nodes{}.DetectPublicIP)
+			apiGroup.PUT("/cluster/nodes/:name/public-ip", middleware.Auth{}.Process, controller2.Nodes{}.SavePublicIP)
 			apiGroup.POST("/cluster/nodes/:name/longhorn-replicas/delete", middleware.Auth{}.Process, controller2.Nodes{}.DeleteLonghornReplicas)
 			apiGroup.DELETE("/cluster/nodes/:name", middleware.Auth{}.Process, controller2.Nodes{}.Delete)
 			apiGroup.GET("/helm/releases", middleware.Auth{}.Process, controller2.Helm{}.List)
