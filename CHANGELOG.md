@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-10-28
+
+- MCP 支持复用现有 OIDC 公共客户端的 OAuth 授权码登录，新增资源与授权服务器元数据、MCP 资源受众及 scope 校验，保留原面板 token 鉴权。影响模块：OIDC、MCP 鉴权与默认客户端配置。验证：定向 Go 测试与 `git diff --check` 通过。
+- 新增边缘节点公网入口检测接口，对已配置公网 IPv4 的 server 节点实际请求 `https://IP:6443/livez`，允许自签名证书并返回首个可达地址。影响模块：节点管理 API。验证：`make test TEST_PACKAGES=./app/application/http/controller` 与 `git diff --check` 通过。
+- 节点公网 IP 改为只读检测与提交保存接口；控制节点保存时同步独立的内置 tls-san 地址、触发 k3s 重启，配置失败回滚标签。K3sConfig 初始化保留内置与自定义地址，公网 IP 查询增加超时。影响模块：节点 API、权限、k3s 配置。验证：定向 `make test` 通过。
+
 ## 2026-10-16
 
 - 普通面板页面也读取默认 MicroAppSetting 并注入站点 LOGO 等配置，使站点设置保存的 LOGO 在登录页和导航栏生效；影响模块：HTML 页面中间件。验证：`make test TEST_PACKAGES=./common/middleware` 与 `git diff --check` 通过。

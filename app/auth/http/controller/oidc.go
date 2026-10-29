@@ -3,6 +3,7 @@ package controller
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
@@ -30,7 +31,50 @@ func (o Oidc) Handle(ctx *gin.Context) {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "oidc disabled"})
 		return
 	}
+	if ctx.Request.URL.Path == "/panel-api/v1/oidc/authorize" {
+		request, err := server.WithMCPResource(ctx.Request)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid_target", "error_description": err.Error()})
+			return
+		}
+		ctx.Request = request
+	}
 	server.ServeHTTP(ctx.Writer, ctx.Request)
+}
+
+func (o Oidc) MCPProtectedResource(ctx *gin.Context) {
+	server, err := oidcservice.GetServer()
+	if err != nil || server == nil || !server.Enabled() {
+		ctx.Status(http.StatusNotFound)
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"resource":                 server.MCPResource(ctx.Request),
+		"authorization_servers":    []string{server.Issuer(ctx.Request)},
+		"bearer_methods_supported": []string{"header"},
+		"scopes_supported":         []string{"mcp"},
+	})
+}
+
+func (o Oidc) OAuthAuthorizationServerMetadata(ctx *gin.Context) {
+	server, err := oidcservice.GetServer()
+	if err != nil || server == nil || !server.Enabled() {
+		ctx.Status(http.StatusNotFound)
+		return
+	}
+	issuer := server.Issuer(ctx.Request)
+	base := strings.TrimSuffix(server.MCPResource(ctx.Request), "/panel-api/v1/mcp")
+	ctx.JSON(http.StatusOK, gin.H{
+		"issuer":                                issuer,
+		"authorization_endpoint":                base + "/panel-api/v1/oidc/authorize",
+		"token_endpoint":                        base + "/panel-api/v1/oidc/token",
+		"jwks_uri":                              base + "/panel-api/v1/oidc/jwks",
+		"response_types_supported":              []string{"code"},
+		"grant_types_supported":                 []string{"authorization_code", "refresh_token"},
+		"token_endpoint_auth_methods_supported": server.TokenEndpointAuthMethods(),
+		"code_challenge_methods_supported":      []string{"S256"},
+		"scopes_supported":                      []string{"openid", "profile", "offline_access", "mcp"},
+	})
 }
 
 func (o Oidc) Discovery(ctx *gin.Context) {
