@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
@@ -32,17 +33,26 @@ func (self K3k) Info(http *gin.Context) {
 		return
 	}
 	result := user.ToArray()
-	group := user.Spec.Role
-	if group == "" {
-		group = user.Spec.UserMode
-	}
 	var existing []string
 	if err := json.Unmarshal([]byte(result["w7.cc/menu"]), &existing); err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	menu, _ := json.Marshal(policy.FilterMenus(group, existing))
+	clusterType := permissionservice.CurrentClusterType()
+	if http.GetString("ckm_namespace") != "" {
+		clusterType = permissionservice.ChildClusterType
+	}
+	menu, _ := json.Marshal(policy.FilterMenus(clusterType, existing))
 	result["w7.cc/menu"] = string(menu)
+	if helper.IsChildAgent() {
+		whiteList, err := permissionservice.LoadMainDomainWhiteList(http.Request.Context())
+		if err != nil {
+			self.JsonResponseWithServerError(http, err)
+			return
+		}
+		encoded, _ := json.Marshal(whiteList)
+		result["w7.cc/domain-white-list"] = string(encoded)
+	}
 	self.JsonResponseWithoutError(http, result)
 }
 

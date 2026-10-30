@@ -25,7 +25,7 @@ func processChildPanel(ctx *gin.Context) {
 		return
 	}
 	sdk := k8s.NewK8sClient().Sdk
-	if !allowExclusiveAPI(ctx, sdk, "normal") {
+	if !allowExclusiveAPI(ctx, sdk, permissionservice.ChildClusterType) {
 		return
 	}
 	review, err := sdk.ClientSet.AuthenticationV1().TokenReviews().Create(ctx.Request.Context(), &authv1.TokenReview{Spec: authv1.TokenReviewSpec{Token: raw}}, metav1.CreateOptions{})
@@ -62,7 +62,7 @@ func processCKMPanel(ctx *gin.Context, p panelauth.Principal) {
 		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"msg": "子面板会话不允许此操作"})
 		return
 	}
-	if !allowExclusiveAPI(ctx, k8s.NewK8sClient().Sdk, "normal") {
+	if !allowExclusiveAPI(ctx, k8s.NewK8sClient().Sdk, permissionservice.ChildClusterType) {
 		return
 	}
 	token, err := ckmsession.Credential(ctx.Request.Context(), p)

@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -14,13 +15,22 @@ import (
 )
 
 const ExclusiveConfigMapName = "w7panel-permission-exclusives"
+const MainClusterType = "main"
+const ChildClusterType = "child"
+
+func CurrentClusterType() string {
+	if helper.IsChildAgent() {
+		return ChildClusterType
+	}
+	return MainClusterType
+}
 
 // ExclusiveRule uses Permission menu paths and API rules; menuKeys covers old stored key values.
 type ExclusiveRule struct {
-	MenuRule        string                             `json:"menuRule"`
-	MenuKeys        []string                           `json:"menuKeys,omitempty"`
-	ExclusiveGroups []string                           `json:"exclusiveGroups"`
-	APIRules        []configv1alpha1.PermissionAPIRule `json:"apiRules,omitempty"`
+	MenuRule     string                             `json:"menuRule"`
+	MenuKeys     []string                           `json:"menuKeys,omitempty"`
+	ClusterTypes []string                           `json:"clusterTypes"`
+	APIRules     []configv1alpha1.PermissionAPIRule `json:"apiRules,omitempty"`
 }
 
 type ExclusivePolicy struct {
@@ -28,6 +38,13 @@ type ExclusivePolicy struct {
 }
 
 func LoadExclusivePolicy(ctx context.Context, sdk *k8s.Sdk) (ExclusivePolicy, error) {
+	if helper.IsChildAgent() {
+		remote, err := loadMainPanelPolicy(ctx)
+		if err != nil {
+			return ExclusivePolicy{}, err
+		}
+		return ParseExclusivePolicy(string(remote))
+	}
 	cm, err := sdk.ClientSet.CoreV1().ConfigMaps(sdk.GetNamespace()).Get(ctx, ExclusiveConfigMapName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		return ExclusivePolicy{Rules: []ExclusiveRule{}}, nil
@@ -58,7 +75,7 @@ func ParseExclusivePolicy(raw string) (ExclusivePolicy, error) {
 	seenKeys := map[string]bool{}
 	seenAPI := []string{}
 	for _, rule := range policy.Rules {
-		if rule.MenuRule == "" || strings.Trim(rule.MenuRule, "/ ") != rule.MenuRule || strings.Contains(rule.MenuRule, "//") || strings.Contains(rule.MenuRule, "*") || seen[rule.MenuRule] || len(rule.ExclusiveGroups) == 0 {
+		if rule.MenuRule == "" || strings.Trim(rule.MenuRule, "/ ") != rule.MenuRule || strings.Contains(rule.MenuRule, "//") || strings.Contains(rule.MenuRule, "*") || seen[rule.MenuRule] || len(rule.ClusterTypes) == 0 {
 			return ExclusivePolicy{}, fmt.Errorf("无效或重复的专属菜单规则 %q", rule.MenuRule)
 		}
 		seen[rule.MenuRule] = true
@@ -68,9 +85,9 @@ func ParseExclusivePolicy(raw string) (ExclusivePolicy, error) {
 			}
 			seenKeys[key] = true
 		}
-		for _, group := range rule.ExclusiveGroups {
-			if strings.TrimSpace(group) == "" {
-				return ExclusivePolicy{}, fmt.Errorf("专属菜单 %q 包含空用户组", rule.MenuRule)
+		for _, clusterType := range rule.ClusterTypes {
+			if clusterType != MainClusterType && clusterType != ChildClusterType {
+				return ExclusivePolicy{}, fmt.Errorf("专属菜单 %q 包含无效集群类型", rule.MenuRule)
 			}
 		}
 		for _, api := range rule.APIRules {
@@ -96,11 +113,11 @@ func ParseExclusivePolicy(raw string) (ExclusivePolicy, error) {
 	return policy, nil
 }
 
-func (p ExclusivePolicy) AllowsMenu(group, menu string) bool {
+func (p ExclusivePolicy) AllowsMenu(clusterType, menu string) bool {
 	menu = strings.Trim(menu, "/")
 	for _, rule := range p.Rules {
 		if menu == rule.MenuRule || containsExclusiveValue(rule.MenuKeys, menu) || menu == "*" || strings.HasSuffix(menu, "/*") && strings.HasPrefix(rule.MenuRule, strings.TrimSuffix(menu, "/*")+"/") {
-			if !containsExclusiveValue(rule.ExclusiveGroups, group) {
+			if !containsExclusiveValue(rule.ClusterTypes, clusterType) {
 				return false
 			}
 		}
@@ -108,24 +125,24 @@ func (p ExclusivePolicy) AllowsMenu(group, menu string) bool {
 	return true
 }
 
-func (p ExclusivePolicy) AllowsAPI(group, method, path string) bool {
+func (p ExclusivePolicy) AllowsAPI(clusterType, method, path string) bool {
 	for _, rule := range p.Rules {
-		if MatchAPI(APIRulesToMap(rule.APIRules), method, path) && !containsExclusiveValue(rule.ExclusiveGroups, group) {
+		if MatchAPI(APIRulesToMap(rule.APIRules), method, path) && !containsExclusiveValue(rule.ClusterTypes, clusterType) {
 			return false
 		}
 	}
 	return true
 }
 
-func (p ExclusivePolicy) ValidateGrant(group string, menus []string, apis []configv1alpha1.PermissionAPIRule) error {
+func (p ExclusivePolicy) ValidateGrant(clusterType string, menus []string, apis []configv1alpha1.PermissionAPIRule) error {
 	for _, rule := range p.Rules {
-		if containsExclusiveValue(rule.ExclusiveGroups, group) {
+		if containsExclusiveValue(rule.ClusterTypes, clusterType) {
 			continue
 		}
 		for _, selected := range menus {
 			selected = strings.Trim(selected, "/")
 			if selected == "*" || selected == rule.MenuRule || containsExclusiveValue(rule.MenuKeys, selected) || strings.HasSuffix(selected, "/*") && strings.HasPrefix(rule.MenuRule, strings.TrimSuffix(selected, "/*")+"/") {
-				return fmt.Errorf("用户组 %q 不允许授予菜单 %q", group, rule.MenuRule)
+				return fmt.Errorf("%s 集群不允许授予菜单 %q", clusterType, rule.MenuRule)
 			}
 		}
 		for _, api := range rule.APIRules {
@@ -136,7 +153,7 @@ func (p ExclusivePolicy) ValidateGrant(group string, menus []string, apis []conf
 					}
 					for _, selectedVerb := range selected.Method {
 						if selectedVerb == "*" || httpMethodForVerb(selectedVerb) == httpMethodForVerb(verb) {
-							return fmt.Errorf("用户组 %q 不允许授予 API %s", group, api.Path)
+							return fmt.Errorf("%s 集群不允许授予 API %s", clusterType, api.Path)
 						}
 					}
 				}
@@ -179,10 +196,10 @@ func apiPatternsOverlap(a, b string) bool {
 	return visit(0, 0)
 }
 
-func (p ExclusivePolicy) FilterMenus(group string, menus []string) []string {
+func (p ExclusivePolicy) FilterMenus(clusterType string, menus []string) []string {
 	result := make([]string, 0, len(menus))
 	for _, menu := range menus {
-		if p.AllowsMenu(group, menu) {
+		if p.AllowsMenu(clusterType, menu) {
 			result = append(result, menu)
 		}
 	}

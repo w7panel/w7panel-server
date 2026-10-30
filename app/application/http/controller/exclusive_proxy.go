@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strings"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
@@ -57,9 +58,6 @@ func checkExclusiveProxyWrite(ctx *gin.Context, path string) error {
 	if err != nil {
 		return err
 	}
-	if len(policy.Rules) == 0 {
-		return nil
-	}
 	body, err := io.ReadAll(io.LimitReader(ctx.Request.Body, 2<<20+1))
 	if err != nil || len(body) > 2<<20 {
 		return fmt.Errorf("权限请求体无效或过大")
@@ -76,35 +74,42 @@ func checkExclusiveProxyWrite(ctx *gin.Context, path string) error {
 			Name string `json:"name"`
 		} `json:"metadata"`
 		Spec struct {
-			Role           string                             `json:"role"`
-			UserMode       string                             `json:"userMode"`
-			PermissionName string                             `json:"permissionName"`
-			MenuRules      []string                           `json:"menuRules"`
-			APIRules       []configv1alpha1.PermissionAPIRule `json:"apiRules"`
+			Role            string                             `json:"role"`
+			UserMode        string                             `json:"userMode"`
+			PermissionName  string                             `json:"permissionName"`
+			MenuRules       []string                           `json:"menuRules"`
+			APIRules        []configv1alpha1.PermissionAPIRule `json:"apiRules"`
+			DomainWhiteList []configv1alpha1.DomainWhiteItem   `json:"domainWhiteList"`
 		} `json:"spec"`
 	}
 	if err := json.Unmarshal(body, &object); err != nil {
 		return err
 	}
-	group := object.Spec.Role
-	if group == "" {
-		group = object.Spec.UserMode
-	}
-	if group == "" && parts[3] == "permissions" {
-		group = permissionservice.NormalizePermissionName(object.Metadata.Name)
-	}
-	if group == "" {
-		group = permissionservice.NormalPermissionName
-	}
-	if err := policy.ValidateGrant(group, object.Spec.MenuRules, object.Spec.APIRules); err != nil {
+	clusterType := permissionservice.CurrentClusterType()
+	if err := policy.ValidateGrant(clusterType, object.Spec.MenuRules, object.Spec.APIRules); err != nil {
 		return err
+	}
+	if clusterType == permissionservice.ChildClusterType && parts[3] == "permissions" {
+		if ctx.Request.Method == http.MethodPost {
+			if len(object.Spec.DomainWhiteList) != 0 {
+				return fmt.Errorf("子集群域名白名单由主集群统一管理")
+			}
+		} else {
+			current, err := permissionservice.Get(ctx.Request.Context(), sdk, parts[4])
+			if err != nil {
+				return err
+			}
+			if !reflect.DeepEqual(current.Spec.DomainWhiteList, object.Spec.DomainWhiteList) && !(len(current.Spec.DomainWhiteList) == 0 && len(object.Spec.DomainWhiteList) == 0) {
+				return fmt.Errorf("子集群域名白名单由主集群统一管理")
+			}
+		}
 	}
 	if parts[3] == "users" && object.Spec.PermissionName != "" {
 		permission, err := permissionservice.Get(ctx.Request.Context(), sdk, permissionservice.NormalizePermissionName(object.Spec.PermissionName))
 		if err != nil {
 			return err
 		}
-		return policy.ValidateGrant(group, permission.Spec.MenuRules, permission.Spec.APIRules)
+		return policy.ValidateGrant(clusterType, permission.Spec.MenuRules, permission.Spec.APIRules)
 	}
 	return nil
 }

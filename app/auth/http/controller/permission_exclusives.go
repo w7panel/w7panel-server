@@ -12,5 +12,18 @@ func (self Auth) PermissionExclusives(ctx *gin.Context) {
 		self.JsonResponseWithServerError(ctx, err)
 		return
 	}
-	self.JsonResponseWithoutError(ctx, gin.H{"rules": policy.Rules, "group": ctx.GetString("user_mode")})
+	clusterType := permissionservice.CurrentClusterType()
+	if ctx.GetString("ckm_namespace") != "" {
+		clusterType = permissionservice.ChildClusterType
+	}
+	result := gin.H{"rules": policy.Rules, "clusterType": clusterType}
+	if clusterType == permissionservice.ChildClusterType {
+		whiteList, err := permissionservice.LoadMainDomainWhiteList(ctx.Request.Context())
+		if err != nil {
+			self.JsonResponseWithServerError(ctx, err)
+			return
+		}
+		result["domainWhiteList"] = whiteList
+	}
+	self.JsonResponseWithoutError(ctx, result)
 }

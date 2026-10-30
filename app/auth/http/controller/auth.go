@@ -67,21 +67,20 @@ func (self Auth) UserInfo(http *gin.Context) {
 			self.JsonResponseWithServerError(http, err)
 			return
 		}
-		filtered, _ := json.Marshal(policy.FilterMenus(sa.Labels[k3ktypes.W7_ROLE], menu))
+		clusterType := permissionservice.CurrentClusterType()
+		if http.GetString("ckm_namespace") != "" {
+			clusterType = permissionservice.ChildClusterType
+		}
+		filtered, _ := json.Marshal(policy.FilterMenus(clusterType, menu))
 		result[k3ktypes.W7_MENU] = string(filtered)
 	}
-	if http.GetString("ckm_namespace") != "" {
-		user, err := userservice.Get(http.Request.Context(), sdk, username)
+	if helper.IsChildAgent() || http.GetString("ckm_namespace") != "" {
+		mainWhiteList, err := permissionservice.LoadMainDomainWhiteList(http.Request.Context())
 		if err != nil {
 			self.JsonResponseWithServerError(http, err)
 			return
 		}
-		permission, err := userservice.ResolvePermission(http.Request.Context(), sdk, user)
-		if err != nil {
-			self.JsonResponseWithServerError(http, err)
-			return
-		}
-		whiteList, err := json.Marshal(permission.Spec.DomainWhiteList)
+		whiteList, err := json.Marshal(mainWhiteList)
 		if err != nil {
 			self.JsonResponseWithServerError(http, err)
 			return
