@@ -3,10 +3,12 @@ package pid
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"path"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/w7panel/w7panel/common/helper"
@@ -15,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 /**
@@ -267,12 +270,18 @@ func (m *MountFiles) updateFileContent(param UpdateMountFileParam) error {
 			if _, ok := cm.BinaryData[target.Key]; ok {
 				cm.BinaryData[target.Key] = []byte(param.Content)
 				_, err = m.ClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, cm, metav1.UpdateOptions{})
-				return err
+				if err != nil {
+					return err
+				}
+				return m.triggerMountFileRollout(param, namespace)
 			}
 		}
 		cm.Data[target.Key] = param.Content
 		_, err = m.ClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, cm, metav1.UpdateOptions{})
-		return err
+		if err != nil {
+			return err
+		}
+		return m.triggerMountFileRollout(param, namespace)
 	case "secret":
 		secret, err := m.ClientSet.CoreV1().Secrets(namespace).Get(ctx, target.SourceName, metav1.GetOptions{})
 		if err != nil {
@@ -283,10 +292,42 @@ func (m *MountFiles) updateFileContent(param UpdateMountFileParam) error {
 		}
 		secret.Data[target.Key] = []byte(param.Content)
 		_, err = m.ClientSet.CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{})
-		return err
+		if err != nil {
+			return err
+		}
+		return m.triggerMountFileRollout(param, namespace)
 	default:
 		return fmt.Errorf("path %s maps to unsupported source type %s", param.Path, target.SourceType)
 	}
+}
+
+func (m *MountFiles) triggerMountFileRollout(param UpdateMountFileParam, namespace string) error {
+	mapping, err := m.GetRestMapping(param.APIVersion, param.Kind)
+	if err != nil {
+		return err
+	}
+	patch, err := mountFilesRevisionPatch(time.Now().UTC().Format(time.RFC3339Nano))
+	if err != nil {
+		return err
+	}
+	ctx := m.Ctx
+	if ctx == nil {
+		ctx = context.TODO()
+	}
+	_, err = m.DynamicClient().Resource(mapping.Resource).Namespace(namespace).Patch(ctx, param.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+	return err
+}
+
+func mountFilesRevisionPatch(revision string) ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"spec": map[string]interface{}{
+			"template": map[string]interface{}{
+				"metadata": map[string]interface{}{
+					"annotations": map[string]string{"w7.cc/mountfiles-revision": revision},
+				},
+			},
+		},
+	})
 }
 
 func (m *MountFiles) deleteFile(param UpdateMountFileParam) error {
