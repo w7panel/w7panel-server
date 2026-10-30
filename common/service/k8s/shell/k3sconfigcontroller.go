@@ -265,7 +265,7 @@ func (s *k3sConfigController) initK3sConfig(node *v1.Node) error {
 		"k3s.datastore-endpoint": k3sConfig.DbUrl(),
 		"k3s.config":             (k3sConfig.k3sRawConfig),
 		"k3s.mode":               k3sConfig.GetMode(),
-		"k3s.default-tls-san":    strings.Join(k3sConfig.GetDefaultTlsSanIp(), ","),
+		"k3s.default-tls-san":    defaultK3sTlsSan(k3sConfig.GetDefaultTlsSanIp()),
 		"k3s.tls-san":            strings.Join(k3sConfig.GetConfigTlsSanIp(), ","),
 	}
 	existing, err := k8sClient.DynamicClient().Resource(k8s.K3sConfigGVR).Get(k8sClient.Ctx, k8s.K3sConfigName, metav1.GetOptions{})
@@ -426,6 +426,19 @@ func mergeK3sTlsSan(data map[string]string) string {
 		}
 	}
 	return strings.Join(addresses, ",")
+}
+
+func defaultK3sTlsSan(addresses []string) string {
+	value := strings.Join(addresses, ",")
+	if helper.IsChildAgent() {
+		if namespace := os.Getenv("K3K_NAMESPACE"); namespace != "" {
+			value = mergeK3sTlsSan(map[string]string{
+				"k3s.default-tls-san": value,
+				"k3s.tls-san":         helper.GetApiServerHost(namespace),
+			})
+		}
+	}
+	return value
 }
 
 func (s *k3sConfigController) restart(nodes *v1.NodeList) error {

@@ -653,3 +653,7 @@
 ## 2026-10-30 TAPD 1016210、1016213 回归修复
 
 - 挂载文件权限字符串统一按八进制解析，修复 `777` 等三位权限被当成十进制的问题；域名解析配置首次初始化为无地址的 A 记录，避免将服务器出网 IP 误作为解析目标，已有配置不改动。影响模块：挂载文件、域名配置初始化。验证：`make test TEST_PACKAGES='./app/application/console ./common/service/k8s ./common/service/k8s/pid'`、`git diff --check` 通过。
+
+## 2026-10-30 子集群 svc 地址加入 K3s tls-san
+
+- 子集群 K3sConfig 初始化时把现有 API Server svc 地址并入默认 tls-san，去重且不影响主集群。影响模块：K3s 配置同步。验证：`make test TEST_PACKAGES=./common/service/k8s/shell` 与 `git diff --check` 通过。

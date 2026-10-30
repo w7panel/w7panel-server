@@ -44,3 +44,20 @@ func TestMergeK3sTlsSan(t *testing.T) {
 		t.Fatalf("merged tls-san = %q", got)
 	}
 }
+
+func TestDefaultK3sTlsSanIncludesChildService(t *testing.T) {
+	t.Setenv("IS_CHILD", "true")
+	t.Setenv("K3K_NAMESPACE", "k3k-demo")
+	if got := defaultK3sTlsSan([]string{"10.0.0.1", "k3k-demo-service.k3k-demo"}); got != "10.0.0.1,k3k-demo-service.k3k-demo" {
+		t.Fatalf("child default tls-san = %q", got)
+	}
+	t.Setenv("K3K_NAMESPACE", "")
+	if got := defaultK3sTlsSan([]string{"10.0.0.1"}); got != "10.0.0.1" {
+		t.Fatalf("missing namespace default tls-san = %q", got)
+	}
+	t.Setenv("IS_CHILD", "false")
+	t.Setenv("K3K_NAMESPACE", "k3k-demo")
+	if got := defaultK3sTlsSan([]string{"10.0.0.1"}); got != "10.0.0.1" {
+		t.Fatalf("root default tls-san = %q", got)
+	}
+}
