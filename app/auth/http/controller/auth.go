@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -17,6 +18,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/site"
+	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	"github.com/w7panel/w7panel/common/service/panelauth"
 	userservice "github.com/w7panel/w7panel/common/service/user"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
@@ -52,6 +54,24 @@ func (self Auth) UserInfo(http *gin.Context) {
 	}
 	for key, value := range sa.GetAnnotations() {
 		result[key] = value
+	}
+	if http.GetString("ckm_namespace") != "" {
+		user, err := userservice.Get(http.Request.Context(), sdk, username)
+		if err != nil {
+			self.JsonResponseWithServerError(http, err)
+			return
+		}
+		permission, err := userservice.ResolvePermission(http.Request.Context(), sdk, user)
+		if err != nil {
+			self.JsonResponseWithServerError(http, err)
+			return
+		}
+		whiteList, err := json.Marshal(permission.Spec.DomainWhiteList)
+		if err != nil {
+			self.JsonResponseWithServerError(http, err)
+			return
+		}
+		result[k3ktypes.W7_DOMAIN_WHITE_LIST] = string(whiteList)
 	}
 	self.JsonResponseWithoutError(http, result)
 }
