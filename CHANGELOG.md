@@ -683,3 +683,7 @@
 ## 2026-10-30 CKM 子集群 API 权限初始化
 
 - 子集群 Agent 的 initContainer 在内置 `Permission/api` 缺失时创建它，保留已有权限配置；修复旧 CKM 集群仅同步 `founder` 权限、对外 API 报 `permissions.w7panel.w7.com "api" not found` 的问题。影响模块：子集群初始化脚本。验证：脚本语法检查与现场实例补齐验证。
+
+## 2026-10-30 对外 API Kubernetes 凭据
+
+- 对外 API 会话在已有 `Permission/api` 校验后，直接为内置 `api` ServiceAccount 签发短期 Kubernetes 凭据，避免因不存在 `User/api` 导致命名空间和 K8s 代理请求返回 500；普通面板用户仍按用户权限签发。影响模块：面板认证中间件及回归测试。验证：中间件 Go 测试通过，模拟缺少 `User/api` 时仍能取得 `ServiceAccount/api` 凭据；现场请求待部署后复测。

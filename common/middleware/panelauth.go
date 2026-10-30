@@ -90,7 +90,12 @@ func processPanelPrincipal(ctx *gin.Context, principal *panelauth.Principal) {
 	// server-side, never one supplied by the client.
 	if requiresLegacyK8sCredential(ctx.Request.URL.Path) {
 		aud := panelauth.GetAudience(*principal)
-		k8sToken, _, err := credential.IssueForPrincipalWithAudiences(ctx.Request.Context(), principal.Username, permission.Name, 10*time.Minute, aud)
+		var k8sToken string
+		if principal.TokenUse == panelauth.TokenUseExternalAPI {
+			k8sToken, err = sdk.CreateTokenRequest(permissionservice.APIPermissionName, int64((10 * time.Minute).Seconds()), aud)
+		} else {
+			k8sToken, _, err = credential.IssueForPrincipalWithAudiences(ctx.Request.Context(), principal.Username, permission.Name, 10*time.Minute, aud)
+		}
 		if err != nil {
 			slog.Error("生成 Kubernetes 凭据失败panelAuth.go", "error", err)
 			ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"code": http.StatusInternalServerError, "msg": "生成 Kubernetes 凭据失败"})
