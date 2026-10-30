@@ -341,7 +341,7 @@ func getConsoleApps() *types.Package {
 	}
 	// return nil
 
-	preInstall, err := repo.PreInstall()
+	preInstall, err := repo.PreInstall("")
 	if err != nil {
 		panic(err)
 	}

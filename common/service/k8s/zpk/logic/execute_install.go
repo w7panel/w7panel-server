@@ -123,7 +123,7 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 		// if (params.ClusterId == "") {
 		// 	params.ClusterId = config.MainW7Config.ClusterId
 		// }
-		preinstall, err := repo.PreInstall()
+		preinstall, err := repo.PreInstall(params.ReleaseName)
 		if err != nil {
 			return InstallResult{}, err
 		}

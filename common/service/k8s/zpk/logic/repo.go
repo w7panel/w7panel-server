@@ -208,12 +208,12 @@ func (self *repo) loadPackageByHelmMemory(uri string) (*types.ManifestPackage, e
 	return p, nil
 }
 
-func (self *repo) PreInstall() (*console.PreInstall, error) {
+func (self *repo) PreInstall(releaseName string) (*console.PreInstall, error) {
 	if !self.IsConsole {
 		return nil, errors.New("not console url")
 	}
 	consoleClient := console.NewConsoleCdClient(self.token)
-	return consoleClient.PreInstall(self.repoUrl)
+	return consoleClient.PreInstall(self.repoUrl, releaseName)
 
 }
 

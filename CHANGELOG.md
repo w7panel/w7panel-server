@@ -637,3 +637,7 @@
 
 - 压缩服务将文件管理传来的容器绝对路径映射到目标进程根目录，修复 `/tmp` 下压缩包解压时报找不到路径；已带根目录前缀的路径仍可使用。影响模块：文件压缩与解压。
 - 验证：`make test TEST_PACKAGES=./common/service/compress` 与 `git diff --check` 通过。
+
+## 2026-10-29 ZPK PreInstall releaseName 透传
+
+- 安装时将请求中的 `releaseName` 透传给 PHP `pre-install2`，由预安装流程复用已有 DeployItem 名称，避免免费版升级商业版时重新生成实例名。影响模块：ZPK 安装及控制台离线预安装。验证：两仓库 `git diff --check` 通过；未运行测试。
