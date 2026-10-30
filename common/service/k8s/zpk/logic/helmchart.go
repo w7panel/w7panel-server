@@ -214,13 +214,11 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 	atomic := false
 	set := fillHelmSet(packageApp, "", []string{"HELM_ATOMIC", "DOMAIN_URL"}, false) //pvc 站点管理 会新建一个名字出来
 
-	if !packageApp.IsHelm() {
-		for _, child := range children {
-			cname := child.Manifest.Application.Identifie
-			cname = strings.ReplaceAll(cname, "_", "-")
-			newSet := fillHelmSet(child, cname+".", []string{"HELM_ATOMIC", "DOMAIN_URL"}, true)
-			set += newSet
-		}
+	// Both Helm and native artifacts can declare child installation options.
+	for _, child := range children {
+		cname := strings.ReplaceAll(child.Manifest.Application.Identifie, "_", "-")
+		// Child values have their own prefix; preserve their resolved domain.
+		set += fillHelmSet(child, cname+".", []string{"HELM_ATOMIC"}, true)
 	}
 	if !packageApp.IsHelm() {
 
