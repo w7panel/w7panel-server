@@ -2,6 +2,18 @@ package shell
 
 import "testing"
 
+func TestK3sFirstNodeWithTokenKeepsTlsSan(t *testing.T) {
+	first := NewK3sConfig(`["server","--token","secret","--tls-san","10.43.196.114","--cluster-init"]`, `{"K3S_TOKEN":"secret"}`, nil)
+	if first.IsNotFirstNode() || len(first.GetDefaultTlsSanIp()) != 1 || first.GetDefaultTlsSanIp()[0] != "10.43.196.114" {
+		t.Fatalf("first server with token skipped or lost tls-san: %#v", first.GetDefaultTlsSanIp())
+	}
+	for _, args := range []string{`["server","--server","https://peer:6443","--token","secret"]`, `["server","--server=https://peer:6443","--token","secret"]`} {
+		if !NewK3sConfig(args, `{}`, nil).IsNotFirstNode() {
+			t.Fatalf("joining server not detected: %s", args)
+		}
+	}
+}
+
 func TestSetK3sTlsSan(t *testing.T) {
 	for _, tt := range []struct {
 		name  string
