@@ -26,6 +26,15 @@ func TestUsesPanelAuth(t *testing.T) {
 	}
 }
 
+func TestCKMSessionMainSettingsStaysOnHost(t *testing.T) {
+	if !ckmLocalMetadata("/panel-api/v1/auth/main-settings") {
+		t.Fatal("validated CKM session must read main settings on the host")
+	}
+	if ckmLocalMetadata("/panel-api/v1/auth/ckm-session") {
+		t.Fatal("CKM session creation must not bypass the target boundary")
+	}
+}
+
 func TestK8sProxyReceivesServerMintedCredential(t *testing.T) {
 	if !requiresLegacyK8sCredential("/k8s-proxy/v1/namespaces/default/pods") {
 		t.Fatal("k8s proxy must receive the server-minted Kubernetes credential")

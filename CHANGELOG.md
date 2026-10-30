@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-10-30
+
+- 1016214 交叉审查后将 CKM 主配置响应收紧为站点、域名及被引用 ConfigMap 键的展示字段，去除 Kubernetes metadata、status 和未引用内容；补充响应白名单与域名缺失测试。影响模块：主配置只读接口。验证：`make test TEST_PACKAGES=./app/auth/http/controller\ ./common/middleware` 通过。
+- 为已验证的 CKM 嵌入会话提供主集群站点与域名解析配置只读接口，仅返回站点引用的 ConfigMap 内容；阻止子面板本地会话读取宿主配置。影响模块：面板认证路由与 CKM 会话代理。验证：`make test TEST_PACKAGES=./app/auth/http/controller\ ./common/middleware` 通过。
+
 ## 2026-10-28
 
 - MCP 支持复用现有 OIDC 公共客户端的 OAuth 授权码登录，新增资源与授权服务器元数据、MCP 资源受众及 scope 校验，保留原面板 token 鉴权。影响模块：OIDC、MCP 鉴权与默认客户端配置。验证：定向 Go 测试与 `git diff --check` 通过。
