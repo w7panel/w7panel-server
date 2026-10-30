@@ -662,3 +662,7 @@
 ## 2026-10-30 子集群 svc 地址加入 K3s tls-san
 
 - 子集群 K3sConfig 初始化时把现有 API Server svc 地址并入默认 tls-san，去重且不影响主集群。影响模块：K3s 配置同步。验证：`make test TEST_PACKAGES=./common/service/k8s/shell` 与 `git diff --check` 通过。
+
+## 2026-10-30 TAPD 1016214 直接登录子集群读取主配置
+
+- 已认证的子集群本地面板会话经 CKM 同步认证通道读取主集群展示配置；不转发用户 token，响应只保留站点、公开引用内容和域名解析字段，读取失败不回退本地配置。影响模块：认证主配置接口。验证：`make test TEST_PACKAGES='./app/auth/http/controller ./common/middleware'`、`git diff --check` 通过。

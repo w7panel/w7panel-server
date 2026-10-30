@@ -1,7 +1,12 @@
 package controller
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
@@ -15,13 +20,25 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// MainSettings exposes only display data to a validated CKM session on the host.
+// MainSettings exposes only display data to authenticated panel sessions.
 type MainSettings struct{}
 
 func (MainSettings) Get(ctx *gin.Context) {
 	value, _ := ctx.Get("panel_principal")
 	principal, ok := value.(panelauth.Principal)
-	if !ok || principal.TokenUse != panelauth.TokenUseCKMPanel || helper.IsChildAgent() {
+	if !ok {
+		ctx.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+	if helper.IsChildAgent() {
+		if principal.TokenUse != panelauth.TokenUsePanel {
+			ctx.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+		childMainSettings(ctx)
+		return
+	}
+	if principal.TokenUse != panelauth.TokenUseCKMPanel {
 		ctx.AbortWithStatus(http.StatusForbidden)
 		return
 	}
@@ -61,6 +78,49 @@ func (MainSettings) Get(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"code": 200, "data": mainSettingsDisplay(setting, configMaps, domain)})
+}
+
+func childMainSettings(ctx *gin.Context) {
+	endpoint := strings.TrimRight(os.Getenv("CKM_SYNC_ENDPOINT"), "/")
+	token := os.Getenv("CKM_SYNC_TOKEN")
+	if endpoint == "" || token == "" {
+		ctx.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "主集群配置读取通道未配置"})
+		return
+	}
+	req, err := http.NewRequestWithContext(ctx.Request.Context(), http.MethodGet, endpoint+"/main-settings", nil)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "主集群配置读取地址无效"})
+		return
+	}
+	req.Header.Set("X-W7Panel-CKM-Sync-Token", token)
+	client := &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	resp, err := client.Do(req)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "读取主集群配置失败"})
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		ctx.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "读取主集群配置失败"})
+		return
+	}
+	var payload struct {
+		Code int                        `json:"code"`
+		Data map[string]json.RawMessage `json:"data"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 2<<20)).Decode(&payload); err != nil || payload.Code != http.StatusOK {
+		ctx.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "主集群配置响应无效"})
+		return
+	}
+	for _, key := range []string{"siteSetting", "configMaps", "domainParse"} {
+		if _, ok := payload.Data[key]; !ok {
+			ctx.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "主集群配置响应无效"})
+			return
+		}
+	}
+	ctx.JSON(http.StatusOK, gin.H{"code": http.StatusOK, "data": gin.H{
+		"siteSetting": payload.Data["siteSetting"], "configMaps": payload.Data["configMaps"], "domainParse": payload.Data["domainParse"],
+	}})
 }
 
 func mainSettingsDisplay(setting *microappsetting.MicroAppSetting, sources map[string]*corev1.ConfigMap, domain *unstructured.Unstructured) gin.H {

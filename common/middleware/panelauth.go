@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/credential"
 	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
@@ -50,7 +51,9 @@ func processPanelPrincipal(ctx *gin.Context, principal *panelauth.Principal) {
 		return
 	}
 	var allowed bool
-	if requiresRoutePermission(ctx.Request.Method, ctx.Request.URL.Path) {
+	if childMainSettingsReadAllowed(principal, ctx.Request) {
+		allowed = true
+	} else if requiresRoutePermission(ctx.Request.Method, ctx.Request.URL.Path) {
 		allowed, err = permissionservice.AuthorizeRouteWithPermission(permission, ctx.Request.Method, ctx.Request.URL.Path)
 	} else {
 		allowed, err = permissionservice.AuthorizePanelAPIWithPermission(ctx.Request.Context(), sdk, permission, ctx.Request.Method, ctx.Request.URL.Path)
@@ -82,6 +85,10 @@ func processPanelPrincipal(ctx *gin.Context, principal *panelauth.Principal) {
 	ctx.Next()
 }
 
+func childMainSettingsReadAllowed(principal *panelauth.Principal, req *http.Request) bool {
+	return helper.IsChildAgent() && principal.TokenUse == panelauth.TokenUsePanel && req.Method == http.MethodGet && req.URL.Path == "/panel-api/v1/auth/main-settings"
+}
+
 func panelToken(req *http.Request) string {
 	if strings.EqualFold(req.Header.Get("Upgrade"), "websocket") {
 		for _, protocol := range strings.Split(req.Header.Get("Sec-WebSocket-Protocol"), ",") {
@@ -105,7 +112,7 @@ func requiresLegacyK8sCredential(path string) bool {
 	if strings.HasPrefix(path, "/v2/") {
 		return false
 	}
-	if path == "/panel-api/v1/auth/ckm-session" {
+	if path == "/panel-api/v1/auth/ckm-session" || path == "/panel-api/v1/auth/main-settings" {
 		return false
 	}
 	if path == "/panel-api/v1/auth/k8s-credentials/token" || strings.HasPrefix(path, "/panel-api/v1/noauth/") {
