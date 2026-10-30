@@ -39,7 +39,11 @@ func processPanelPrincipal(ctx *gin.Context, principal *panelauth.Principal) {
 		permissionName = permissionservice.APIPermissionName
 	}
 	user, err := userservice.Get(ctx.Request.Context(), sdk, principal.Username)
-	if err == nil && principal.TokenUse == panelauth.TokenUsePanel {
+	if principal.TokenUse == panelauth.TokenUsePanel && err != nil {
+		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "msg": "没有权限"})
+		return
+	}
+	if principal.TokenUse == panelauth.TokenUsePanel {
 		permissionName = user.Spec.PermissionName
 		if permissionName == "" {
 			permissionName = principal.PermissionName
@@ -63,8 +67,16 @@ func processPanelPrincipal(ctx *gin.Context, principal *panelauth.Principal) {
 		return
 	}
 	role := principal.Role
-	if user != nil && role == "" {
+	if principal.TokenUse == panelauth.TokenUseExternalAPI {
+		role = permissionservice.APIPermissionName
+	} else if user != nil {
 		role = user.Spec.Role
+		if role == "" {
+			role = user.Spec.UserMode
+		}
+	}
+	if !allowExclusiveAPI(ctx, sdk, role) {
+		return
 	}
 	ctx.Set("panel_principal", *principal)
 	ctx.Set("username", principal.Username)

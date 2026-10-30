@@ -1,10 +1,13 @@
 package controller
 
 import (
+	"encoding/json"
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
@@ -23,7 +26,24 @@ func (self K3k) Info(http *gin.Context) {
 		self.JsonResponseWithoutError(http, map[string]string{})
 		return
 	}
-	self.JsonResponseWithoutError(http, user.ToArray())
+	policy, err := permissionservice.LoadExclusivePolicy(http.Request.Context(), k8s.NewK8sClient().Sdk)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	result := user.ToArray()
+	group := user.Spec.Role
+	if group == "" {
+		group = user.Spec.UserMode
+	}
+	var existing []string
+	if err := json.Unmarshal([]byte(result["w7.cc/menu"]), &existing); err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	menu, _ := json.Marshal(policy.FilterMenus(group, existing))
+	result["w7.cc/menu"] = string(menu)
+	self.JsonResponseWithoutError(http, result)
 }
 
 func (self K3k) SyncIngress(http *gin.Context) {

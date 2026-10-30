@@ -666,3 +666,7 @@
 ## 2026-10-30 TAPD 1016214 直接登录子集群读取主配置
 
 - 已认证的子集群本地面板会话经 CKM 同步认证通道读取主集群展示配置；不转发用户 token，响应只保留站点、公开引用内容和域名解析字段，读取失败不回退本地配置。影响模块：认证主配置接口。验证：`make test TEST_PACKAGES='./app/auth/http/controller ./common/middleware'`、`git diff --check` 通过。
+
+## 2026-10-30 TAPD 1016217 专属权限策略
+
+- 从独立 ConfigMap 读取可配置菜单、用户组及 API 规则；在权限写入代理、API 认证和菜单下发时强制检查，拦截旧父级通配规则及面板改写策略。影响模块：权限服务、认证与 K8s 代理。验证：相关 Go 包定向 `make test` 与 `git diff --check`。

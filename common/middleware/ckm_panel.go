@@ -23,6 +23,9 @@ func processChildPanel(ctx *gin.Context) {
 		return
 	}
 	sdk := k8s.NewK8sClient().Sdk
+	if !allowExclusiveAPI(ctx, sdk, "normal") {
+		return
+	}
 	review, err := sdk.ClientSet.AuthenticationV1().TokenReviews().Create(ctx.Request.Context(), &authv1.TokenReview{Spec: authv1.TokenReviewSpec{Token: raw}}, metav1.CreateOptions{})
 	if err != nil || review == nil || !review.Status.Authenticated || review.Status.Error != "" || review.Status.User.Username != "system:serviceaccount:"+sdk.GetNamespace()+":"+name {
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"msg": "目标集群凭据无效"})
@@ -41,6 +44,9 @@ func processCKMPanel(ctx *gin.Context, p panelauth.Principal) {
 	// Never allow a delegated session to mint another session or host credential.
 	if ctx.Request.URL.Path == "/panel-api/v1/auth/ckm-session" || ctx.Request.URL.Path == "/panel-api/v1/auth/k8s-credentials/token" || strings.HasPrefix(ctx.Request.URL.Path, "/panel-api/v1/oidc/") {
 		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"msg": "子面板会话不允许此操作"})
+		return
+	}
+	if !allowExclusiveAPI(ctx, k8s.NewK8sClient().Sdk, "normal") {
 		return
 	}
 	token, err := ckmsession.Credential(ctx.Request.Context(), p)

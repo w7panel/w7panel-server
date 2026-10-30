@@ -50,6 +50,10 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 	if self.proxyPanelAPI(http, path) {
 		return
 	}
+	if err := checkExclusiveProxyWrite(http, path); err != nil {
+		self.JsonResponseWithError(http, err, stdhttp.StatusForbidden)
+		return
+	}
 
 	// 修改请求路径
 	http.Request.URL.Path = path

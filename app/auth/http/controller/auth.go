@@ -17,6 +17,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/w7panel/w7panel/common/service/k8s/site"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	"github.com/w7panel/w7panel/common/service/panelauth"
@@ -54,6 +55,20 @@ func (self Auth) UserInfo(http *gin.Context) {
 	}
 	for key, value := range sa.GetAnnotations() {
 		result[key] = value
+	}
+	policy, err := permissionservice.LoadExclusivePolicy(http.Request.Context(), sdk)
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	if raw := result[k3ktypes.W7_MENU]; raw != "" {
+		menu := []string{}
+		if err := json.Unmarshal([]byte(raw), &menu); err != nil {
+			self.JsonResponseWithServerError(http, err)
+			return
+		}
+		filtered, _ := json.Marshal(policy.FilterMenus(sa.Labels[k3ktypes.W7_ROLE], menu))
+		result[k3ktypes.W7_MENU] = string(filtered)
 	}
 	if http.GetString("ckm_namespace") != "" {
 		user, err := userservice.Get(http.Request.Context(), sdk, username)

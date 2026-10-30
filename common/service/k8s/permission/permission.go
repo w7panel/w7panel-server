@@ -374,6 +374,9 @@ func AuthorizeRouteWithPermission(p *configv1alpha1.Permission, method, path str
 	if p == nil {
 		return false, fmt.Errorf("用户未关联权限")
 	}
+	if method == "GET" && path == "/panel-api/v1/auth/permission-exclusives" {
+		return true, nil
+	}
 	EnsureBuiltinDefaults(p)
 	return MatchAPI(APIMap(p), method, path), nil
 }
