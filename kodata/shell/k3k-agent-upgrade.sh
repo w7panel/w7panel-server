@@ -62,6 +62,10 @@ configure_panel_oidc_login() {
 
 configure_panel_oidc_login || exit 1
 
+if ! kubectl get permissions.w7panel.w7.com api >/dev/null 2>&1; then
+  kubectl create -f "$KO_DATA_PATH/yaml/permission/api.yaml" || exit 1
+fi
+
 if ! kubectl create -f - <<'EOF'; then
 kind: ConfigMap
 apiVersion: v1

@@ -679,3 +679,7 @@
 
 - 新增 `docs/longhorn-disk-default-test-2026-10-30.md`，记录独立 K3s server 上 `disk-default` 的首次创建、PVC 分配与回收、删除后不重建，以及安装后临时 Node 的模拟验证和真实新节点尚未验证的边界。影响模块：Longhorn 测试文档。
 - 验证：现场检查 Longhorn Node、StorageClass、PVC/PV 和临时节点状态；`make test TEST_PACKAGES=./common/service/k8s/longhorn` 通过。
+
+## 2026-10-30 CKM 子集群 API 权限初始化
+
+- 子集群 Agent 的 initContainer 在内置 `Permission/api` 缺失时创建它，保留已有权限配置；修复旧 CKM 集群仅同步 `founder` 权限、对外 API 报 `permissions.w7panel.w7.com "api" not found` 的问题。影响模块：子集群初始化脚本。验证：脚本语法检查与现场实例补齐验证。
