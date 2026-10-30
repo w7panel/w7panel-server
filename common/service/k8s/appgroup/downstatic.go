@@ -148,7 +148,8 @@ func fetchWebZipAndDownload(zpkUrl string, releaseName, version string, frontend
 	req := helper.RetryHttpClient().R()
 	microappservice.SetCloudAccessTokenHeader(req, panelToken)
 	if version != "" {
-		req.SetQueryParam("cur_version", version)
+		// 下载已安装版本的前端包，不参与升级判断。
+		req.SetQueryParam("version", version)
 		slog.Error("下载静态资源地址", "url", zpkUrl, "version", version)
 	}
 	resp, err := req.Get(zpkUrl)
