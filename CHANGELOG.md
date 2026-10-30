@@ -2,6 +2,10 @@
 
 ## 2026-10-30
 
+- 1016215 限制主权限费用套餐的宿主直连写入：主面板普通权限即使拥有 Cost RBAC 写规则，也不能通过 `/k8s-proxy` 管理费用套餐；仅实时解析为 founder 的主面板会话可写，CKM 嵌入会话一律拒绝。影响模块：面板认证中间件。验证：定向中间件测试与 `git diff --check` 通过。
+
+- 嵌入 CKM 会话逐次按实例绑定名称读取最新主面板普通权限，面板 API 使用现有 API 规则，Kubernetes 代理按资源、动词与子资源匹配 RBAC 规则，拒绝无效路径及缺失权限；内置 normal 明确只读的基础资源规则，历史无面板来源标记的实例保持原有快照行为。影响模块：CKM 宿主代理与权限判定。验证：权限与中间件定向测试通过。
+
 - 1016214 交叉审查后将 CKM 主配置响应收紧为站点、域名及被引用 ConfigMap 键的展示字段，去除 Kubernetes metadata、status 和未引用内容；补充响应白名单与域名缺失测试。影响模块：主配置只读接口。验证：`make test TEST_PACKAGES=./app/auth/http/controller\ ./common/middleware` 通过。
 - 为已验证的 CKM 嵌入会话提供主集群站点与域名解析配置只读接口，仅返回站点引用的 ConfigMap 内容；阻止子面板本地会话读取宿主配置。影响模块：面板认证路由与 CKM 会话代理。验证：`make test TEST_PACKAGES=./app/auth/http/controller\ ./common/middleware` 通过。
 

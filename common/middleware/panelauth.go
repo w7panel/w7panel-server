@@ -54,6 +54,10 @@ func processPanelPrincipal(ctx *gin.Context, principal *panelauth.Principal) {
 		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "msg": "没有权限"})
 		return
 	}
+	if mainCostProxyMutation(ctx.Request) && permission.Spec.Role != permissionservice.FounderPermissionName {
+		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "msg": "仅主面板创始人可管理权限费用套餐"})
+		return
+	}
 	var allowed bool
 	if childMainSettingsReadAllowed(principal, ctx.Request) {
 		allowed = true

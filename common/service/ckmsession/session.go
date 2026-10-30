@@ -60,6 +60,19 @@ func Audiences(p panelauth.Principal) []string {
 	return []string{p.Username, "normal", "", p.CVMName, p.K3KNamespace, "https://kubernetes.default.svc.cluster.local", "k3s"}
 }
 
+func executionAudiences(p panelauth.Principal) []string {
+	audiences := Audiences(p)
+	audiences[2] = "w7panel-ckm-embed:" + p.CKMUID
+	return audiences
+}
+
+func audiencesForBinding(p panelauth.Principal, source string) []string {
+	if source == "panel" {
+		return executionAudiences(p)
+	}
+	return Audiences(p)
+}
+
 // validateBootstrap is called only after Kubernetes has authenticated the token.
 func validateBootstrap(raw, reviewedSubject, saNamespace string, p panelauth.Principal, now time.Time) (time.Duration, error) {
 	if reviewedSubject != "system:serviceaccount:"+saNamespace+":normal" {
@@ -135,6 +148,10 @@ func Credential(ctx context.Context, p panelauth.Principal) (string, error) {
 	if err := Validate(ctx, p); err != nil {
 		return "", err
 	}
+	source, _, err := PermissionBinding(ctx, p)
+	if err != nil || source != "" && source != "panel" {
+		return "", ErrDenied
+	}
 	seconds := p.ExpiresAt - time.Now().Unix()
 	if seconds <= 0 {
 		return "", fmt.Errorf("%w: expired session", ErrDenied)
@@ -142,5 +159,15 @@ func Credential(ctx context.Context, p panelauth.Principal) (string, error) {
 	if seconds > 600 {
 		seconds = 600
 	}
-	return k8s.NewK8sClient().Sdk.CreateTokenRequest("normal", seconds, Audiences(p))
+	return k8s.NewK8sClient().Sdk.CreateTokenRequest("normal", seconds, audiencesForBinding(p, source))
+}
+
+// PermissionBinding reads the CKM's assigned permission after session validation.
+// Existing CKMs without a source marker continue to use their historical snapshot.
+func PermissionBinding(ctx context.Context, p panelauth.Principal) (string, string, error) {
+	obj, err := loadTarget(ctx, k8s.NewK8sClient().Sdk.DynamicClient(), p.K3KNamespace, p.CVMName)
+	if err != nil || string(obj.GetUID()) != p.CKMUID {
+		return "", "", ErrDenied
+	}
+	return obj.GetAnnotations()["w7.cc/permission-source"], obj.GetAnnotations()["w7.cc/menu-name"], nil
 }

@@ -8,7 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/service/ckmsession"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/w7panel/w7panel/common/service/panelauth"
+	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -40,7 +42,21 @@ func ckmLocalMetadata(path string) bool {
 	return path == "/panel-api/v1/auth/userinfo" || path == "/panel-api/v1/auth/console/info" || path == "/panel-api/v1/auth/main-settings"
 }
 
+func authorizeCKMPanelRequest(permission *configv1alpha1.Permission, req *http.Request) (bool, error) {
+	if ckmLocalMetadata(req.URL.Path) {
+		return true, nil
+	}
+	if strings.HasPrefix(req.URL.Path, "/k8s-proxy/") {
+		return permissionservice.AuthorizeCKMK8sProxy(permission, req), nil
+	}
+	return permissionservice.AuthorizeRouteWithPermission(permission, req.Method, req.URL.Path)
+}
+
 func processCKMPanel(ctx *gin.Context, p panelauth.Principal) {
+	if mainCostProxyMutation(ctx.Request) {
+		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"msg": "子面板会话不允许管理权限费用套餐"})
+		return
+	}
 	// Never allow a delegated session to mint another session or host credential.
 	if ctx.Request.URL.Path == "/panel-api/v1/auth/ckm-session" || ctx.Request.URL.Path == "/panel-api/v1/auth/k8s-credentials/token" || strings.HasPrefix(ctx.Request.URL.Path, "/panel-api/v1/oidc/") {
 		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"msg": "子面板会话不允许此操作"})
@@ -53,6 +69,27 @@ func processCKMPanel(ctx *gin.Context, p panelauth.Principal) {
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"msg": "CKM 会话已失效或无权访问"})
 		return
+	}
+	source, name, err := ckmsession.PermissionBinding(ctx.Request.Context(), p)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"msg": "CKM 权限绑定无效"})
+		return
+	}
+	if source != "" && source != "panel" {
+		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"msg": "CKM 权限来源无效"})
+		return
+	}
+	if source == "panel" {
+		permission, err := permissionservice.Get(ctx.Request.Context(), k8s.NewK8sClient().Sdk, name)
+		if err != nil || permission.Spec.Role != "normal" {
+			ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"msg": "主面板权限不可用"})
+			return
+		}
+		allowed, err := authorizeCKMPanelRequest(permission, ctx.Request)
+		if err != nil || !allowed {
+			ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"msg": "主面板权限不允许此操作"})
+			return
+		}
 	}
 	ctx.Set("panel_principal", p)
 	ctx.Set("username", p.Username)

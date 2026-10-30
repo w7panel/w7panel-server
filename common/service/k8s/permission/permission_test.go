@@ -458,8 +458,19 @@ func TestBuiltinNormalPermissionAllowsAccountBindingWithoutClusterRegistration(t
 	if len(MenuRules(p)) != 0 {
 		t.Fatalf("normal menuRules = %v, want empty", MenuRules(p))
 	}
-	if len(p.Spec.RBACRules) != 0 {
-		t.Fatalf("normal rbacRules = %v, want empty", p.Spec.RBACRules)
+	for _, item := range []struct{ group, resource, verb string }{
+		{"", "pods", "get"}, {"", "pods/log", "get"}, {"apps", "deployments", "list"},
+	} {
+		if !rbacAllows(p.Spec.RBACRules, item.group, item.resource, item.verb) {
+			t.Fatalf("normal permission missing %s %s %s", item.group, item.resource, item.verb)
+		}
+	}
+	for _, item := range []struct{ group, resource, verb string }{
+		{"", "secrets", "get"}, {"", "pods", "create"}, {"apps", "deployments", "patch"},
+	} {
+		if rbacAllows(p.Spec.RBACRules, item.group, item.resource, item.verb) {
+			t.Fatalf("normal permission unexpectedly grants %s %s %s", item.group, item.resource, item.verb)
+		}
 	}
 	if !MatchAPI(api, "GET", "/panel-api/v1/domain-parse") {
 		t.Fatal("normal permission should allow GET /panel-api/v1/domain-parse")

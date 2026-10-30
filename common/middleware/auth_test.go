@@ -4,6 +4,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
+	rbacv1 "k8s.io/api/rbac/v1"
 )
 
 func TestUsesPanelAuth(t *testing.T) {
@@ -38,6 +41,23 @@ func TestCKMSessionMainSettingsStaysOnHost(t *testing.T) {
 func TestK8sProxyReceivesServerMintedCredential(t *testing.T) {
 	if !requiresLegacyK8sCredential("/k8s-proxy/v1/namespaces/default/pods") {
 		t.Fatal("k8s proxy must receive the server-minted Kubernetes credential")
+	}
+}
+
+func TestCKMProxyUsesRBACRulesWithoutK8sProxyAPIRule(t *testing.T) {
+	p := &configv1alpha1.Permission{Spec: configv1alpha1.PermissionSpec{RBACRules: []rbacv1.PolicyRule{{APIGroups: []string{""}, Resources: []string{"pods"}, Verbs: []string{"list"}}}}}
+	for _, tc := range []struct {
+		method, path string
+		want         bool
+	}{
+		{http.MethodGet, "/k8s-proxy/api/v1/namespaces/demo/pods", true},
+		{http.MethodPost, "/k8s-proxy/api/v1/namespaces/demo/pods", false},
+		{http.MethodGet, "/panel-api/v1/microapp/top", false},
+	} {
+		got, err := authorizeCKMPanelRequest(p, httptest.NewRequest(tc.method, tc.path, nil))
+		if err != nil || got != tc.want {
+			t.Errorf("%s %s: allowed=%v, err=%v, want %v", tc.method, tc.path, got, err, tc.want)
+		}
 	}
 }
 
