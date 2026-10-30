@@ -674,3 +674,8 @@
 ## 2026-10-30 TAPD 1016217 专属权限策略
 
 - 从独立 ConfigMap 读取可配置菜单、用户组及 API 规则；在权限写入代理、API 认证和菜单下发时强制检查，拦截旧父级通配规则及面板改写策略。影响模块：权限服务、认证与 K8s 代理。验证：相关 Go 包定向 `make test` 与 `git diff --check`。
+
+## 2026-10-30 Longhorn 默认磁盘现场测试记录
+
+- 新增 `docs/longhorn-disk-default-test-2026-10-30.md`，记录独立 K3s server 上 `disk-default` 的首次创建、PVC 分配与回收、删除后不重建，以及安装后临时 Node 的模拟验证和真实新节点尚未验证的边界。影响模块：Longhorn 测试文档。
+- 验证：现场检查 Longhorn Node、StorageClass、PVC/PV 和临时节点状态；`make test TEST_PACKAGES=./common/service/k8s/longhorn` 通过。
