@@ -649,3 +649,7 @@
 ## 2026-10-30 挂载文件内容更新触发重建
 
 - ConfigMap 或 Secret 挂载文件内容更新成功后，通过合并补丁更新工作负载模板注解触发滚动更新；补充 mode 和注解补丁测试。影响模块：工作负载文件管理。验证：`make test TEST_PACKAGES=./common/service/k8s/pid` 与 `git diff --check` 通过。
+
+## 2026-10-30 TAPD 1016210、1016213 回归修复
+
+- 挂载文件权限字符串统一按八进制解析，修复 `777` 等三位权限被当成十进制的问题；域名解析配置首次初始化为无地址的 A 记录，避免将服务器出网 IP 误作为解析目标，已有配置不改动。影响模块：挂载文件、域名配置初始化。验证：`make test TEST_PACKAGES='./app/application/console ./common/service/k8s ./common/service/k8s/pid'`、`git diff --check` 通过。

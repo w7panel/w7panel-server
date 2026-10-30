@@ -124,6 +124,14 @@ func TestDomainParseConfigCRDSpecRoundTrip(t *testing.T) {
 	}
 }
 
+func TestDomainParseConfigEmptyAddress(t *testing.T) {
+	obj := NewDomainParseConfigCRD(DomainParseConfigName, DomainParseConfigCRDSpec{Type: "A"})
+	got := ParseDomainParseConfigCRDSpec(obj)
+	if got.Type != "A" || len(got.IPs) != 0 || got.Cname != "" {
+		t.Fatalf("expected empty A record, got %#v", got)
+	}
+}
+
 func TestContactConfigCRDSpecRoundTrip(t *testing.T) {
 	want := ContactConfigCRDSpec{
 		Type:     "qrcode",

@@ -16,7 +16,8 @@ func TestParseFileMode(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "octal", input: "0644", want: 0o644},
-		{name: "decimal", input: "420", want: 420},
+		{name: "three-digit octal", input: "777", want: 0o777},
+		{name: "invalid digit", input: "888", wantErr: true},
 		{name: "empty", input: "", wantErr: true},
 		{name: "invalid", input: "08ab", wantErr: true},
 	}

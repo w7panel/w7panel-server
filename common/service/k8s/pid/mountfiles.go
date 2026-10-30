@@ -1066,12 +1066,7 @@ func parseFileMode(raw string) (int32, error) {
 		return 0, fmt.Errorf("mode is required for chmod")
 	}
 
-	base := 10
-	if strings.HasPrefix(raw, "0") {
-		base = 8
-	}
-
-	val, err := strconv.ParseInt(raw, base, 32)
+	val, err := strconv.ParseInt(raw, 8, 32)
 	if err != nil {
 		return 0, fmt.Errorf("invalid mode %q", raw)
 	}
