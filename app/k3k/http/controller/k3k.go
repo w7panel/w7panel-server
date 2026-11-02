@@ -1,13 +1,10 @@
 package controller
 
 import (
-	"encoding/json"
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
-	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
 )
@@ -26,17 +23,7 @@ func (self K3k) Info(http *gin.Context) {
 		self.JsonResponseWithoutError(http, map[string]string{})
 		return
 	}
-	result := user.ToArray()
-	if helper.IsChildAgent() {
-		whiteList, err := permissionservice.LoadMainDomainWhiteList(http.Request.Context())
-		if err != nil {
-			self.JsonResponseWithServerError(http, err)
-			return
-		}
-		encoded, _ := json.Marshal(whiteList)
-		result["w7.cc/domain-white-list"] = string(encoded)
-	}
-	self.JsonResponseWithoutError(http, result)
+	self.JsonResponseWithoutError(http, user.ToArray())
 }
 
 func (self K3k) SyncIngress(http *gin.Context) {

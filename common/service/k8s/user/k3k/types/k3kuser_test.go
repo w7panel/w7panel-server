@@ -16,6 +16,9 @@ func TestToArrayCkmRequestRemovesZPKMenu(t *testing.T) {
 		},
 	})
 	user.SetCkmName("demo-ckm")
+	if _, ok := user.ToArray()[W7_DOMAIN_WHITE_LIST]; ok {
+		t.Fatal("login user info must not include the domain whitelist")
+	}
 
 	var menuRules []string
 	if err := json.Unmarshal([]byte(user.ToArray()[W7_MENU]), &menuRules); err != nil {

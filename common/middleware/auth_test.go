@@ -33,6 +33,9 @@ func TestCKMSessionMainSettingsStaysOnHost(t *testing.T) {
 	if !ckmLocalMetadata("/panel-api/v1/auth/main-settings") {
 		t.Fatal("validated CKM session must read main settings on the host")
 	}
+	if !ckmLocalMetadata("/panel-api/v1/auth/domain-white-list") {
+		t.Fatal("validated CKM session must read the main domain whitelist on the host")
+	}
 	if ckmLocalMetadata("/panel-api/v1/auth/ckm-session") {
 		t.Fatal("CKM session creation must not bypass the target boundary")
 	}

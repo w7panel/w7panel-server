@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-02 域名白名单按需读取
+
+- 登录信息、用户信息和 K3k 信息不再携带域名白名单；新增认证接口 `GET /panel-api/v1/auth/domain-white-list`，读取主集群普通权限套餐的白名单，供域名操作单独调用。影响模块：认证、K3k 信息和 CKM 会话路由。验证：相关 Go 包 `make test`、`git diff --check` 通过。
+
 ## 2026-11-02
 
 - 移除专属菜单/API 策略的路由、鉴权拦截和菜单过滤，解决子集群 OIDC 登录后 `/panel-api/v1/k3k/info` 因主策略无效返回 403；保留主集群域名白名单同步及子集群代理写入保护。影响模块：面板认证、权限、K3k 信息和 Kubernetes 代理。验证：定向 `make test` 与 `git diff --check` 通过。

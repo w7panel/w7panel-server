@@ -36,7 +36,7 @@ func processChildPanel(ctx *gin.Context) {
 }
 
 func ckmLocalMetadata(path string) bool {
-	return path == "/panel-api/v1/auth/userinfo" || path == "/panel-api/v1/auth/console/info" || path == "/panel-api/v1/auth/main-settings"
+	return path == "/panel-api/v1/auth/userinfo" || path == "/panel-api/v1/auth/domain-white-list" || path == "/panel-api/v1/auth/console/info" || path == "/panel-api/v1/auth/main-settings"
 }
 
 func authorizeCKMPanelRequest(permission *configv1alpha1.Permission, req *http.Request) (bool, error) {

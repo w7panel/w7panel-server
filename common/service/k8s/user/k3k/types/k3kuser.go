@@ -279,7 +279,6 @@ func (u *k3kUser) ToArray() map[string]string {
 		W7_MENU:          mustJSON(u.Spec.MenuRules),
 		// 前端没有使用不返回
 		// "w7.cc/api":          mustJSON(permissionservice.APIRulesToMap(u.Spec.APIRules)),
-		W7_DOMAIN_WHITE_LIST: mustJSON(u.Spec.DomainWhiteList),
 		W7_DEMO_USER:         boolString(u.Spec.DemoUser),
 		W7_ROLE:              role,
 		"w7.cc/has-password": boolString(u.Spec.PasswordHash != ""),
