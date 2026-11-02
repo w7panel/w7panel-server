@@ -189,9 +189,6 @@ func (self Auth) authorizeUserOrServiceAccount(ctx *gin.Context, name string) bo
 	if role == "" {
 		role = u.Spec.UserMode
 	}
-	if !allowExclusiveAPI(ctx, sdk, permissionservice.CurrentClusterType()) {
-		return false
-	}
 	if !requiresRoutePermission(ctx.Request.Method, ctx.Request.URL.Path) {
 		ctx.Set("user_mode", role)
 		return true
@@ -223,9 +220,6 @@ func (self Auth) authorizePanelAPI(ctx *gin.Context, saName string) bool {
 		return false
 	}
 	role := sa.Labels["w7.cc/role"]
-	if !allowExclusiveAPI(ctx, sdk, permissionservice.CurrentClusterType()) {
-		return false
-	}
 	ctx.Set("user_mode", role)
 	if !requiresRoutePermission(ctx.Request.Method, ctx.Request.URL.Path) {
 		return true

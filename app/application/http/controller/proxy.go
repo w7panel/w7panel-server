@@ -50,7 +50,7 @@ func (self Proxy) ProxyK8s(http *gin.Context) {
 	if self.proxyPanelAPI(http, path) {
 		return
 	}
-	if err := checkExclusiveProxyWrite(http, path); err != nil {
+	if err := checkChildWhitelistProxyWrite(http, path); err != nil {
 		self.JsonResponseWithError(http, err, stdhttp.StatusForbidden)
 		return
 	}

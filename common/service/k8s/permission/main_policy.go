@@ -20,7 +20,7 @@ func loadMainSync(ctx context.Context, path string, dst interface{}) error {
 	endpoint := strings.TrimRight(os.Getenv("CKM_SYNC_ENDPOINT"), "/")
 	token := os.Getenv("CKM_SYNC_TOKEN")
 	if endpoint == "" || token == "" {
-		return fmt.Errorf("主集群权限同步通道未配置")
+		return fmt.Errorf("主集群域名白名单同步通道未配置")
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+path, nil)
 	if err != nil {
@@ -34,22 +34,9 @@ func loadMainSync(ctx context.Context, path string, dst interface{}) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("主集群权限同步失败: HTTP %d", resp.StatusCode)
+		return fmt.Errorf("主集群域名白名单同步失败: HTTP %d", resp.StatusCode)
 	}
 	return json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(dst)
-}
-
-func loadMainPanelPolicy(ctx context.Context) (json.RawMessage, error) {
-	var response struct {
-		Policy json.RawMessage `json:"policy"`
-	}
-	if err := loadMainSync(ctx, "/panel-policy", &response); err != nil {
-		return nil, err
-	}
-	if len(response.Policy) == 0 {
-		return nil, fmt.Errorf("主集群菜单策略响应不完整")
-	}
-	return response.Policy, nil
 }
 
 func LoadMainDomainWhiteList(ctx context.Context) ([]configv1alpha1.DomainWhiteItem, error) {

@@ -70,7 +70,6 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.GET("/console/info", middleware.Auth{}.Process, controller2.Console{}.Info)
 
 			localApiGroup.GET("/userinfo", middleware.Auth{}.Process, controller2.Auth{}.UserInfo)
-			localApiGroup.GET("/permission-exclusives", middleware.Auth{}.Process, controller2.Auth{}.PermissionExclusives)
 			localApiGroup.GET("/main-settings", middleware.PanelAuth{}.Process, controller2.MainSettings{}.Get)
 			// 不需要创始人权限
 			// localApiGroup.GET("/console/code/:code", middleware.Auth{}.Process, controller2.Console{}.ProxyCouponCode)

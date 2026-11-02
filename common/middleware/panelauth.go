@@ -79,9 +79,6 @@ func processPanelPrincipal(ctx *gin.Context, principal *panelauth.Principal) {
 			role = user.Spec.UserMode
 		}
 	}
-	if !allowExclusiveAPI(ctx, sdk, permissionservice.CurrentClusterType()) {
-		return
-	}
 	ctx.Set("panel_principal", *principal)
 	ctx.Set("username", principal.Username)
 	ctx.Set("permission_name", permission.Name)

@@ -22,9 +22,6 @@ func TestExternalAPIUsesServiceAccountWithoutUser(t *testing.T) {
 			fmt.Fprint(w, `{"kind":"Status","apiVersion":"v1","status":"Failure","reason":"NotFound","code":404}`)
 		case "/apis/w7panel.w7.com/v1alpha1/permissions/api":
 			fmt.Fprint(w, `{"apiVersion":"w7panel.w7.com/v1alpha1","kind":"Permission","metadata":{"name":"api"},"spec":{"role":"api","apiRules":[{"path":"/panel-api/v1/namespaces","method":["get"]}]}}`)
-		case "/api/v1/namespaces/default/configmaps/w7panel-permission-exclusives":
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprint(w, `{"kind":"Status","apiVersion":"v1","status":"Failure","reason":"NotFound","code":404}`)
 		case "/api/v1/namespaces/default/serviceaccounts/api/token":
 			if r.Method != http.MethodPost {
 				t.Errorf("token request method = %s", r.Method)

@@ -56,24 +56,6 @@ func (self Auth) UserInfo(http *gin.Context) {
 	for key, value := range sa.GetAnnotations() {
 		result[key] = value
 	}
-	policy, err := permissionservice.LoadExclusivePolicy(http.Request.Context(), sdk)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	if raw := result[k3ktypes.W7_MENU]; raw != "" {
-		menu := []string{}
-		if err := json.Unmarshal([]byte(raw), &menu); err != nil {
-			self.JsonResponseWithServerError(http, err)
-			return
-		}
-		clusterType := permissionservice.CurrentClusterType()
-		if http.GetString("ckm_namespace") != "" {
-			clusterType = permissionservice.ChildClusterType
-		}
-		filtered, _ := json.Marshal(policy.FilterMenus(clusterType, menu))
-		result[k3ktypes.W7_MENU] = string(filtered)
-	}
 	if helper.IsChildAgent() || http.GetString("ckm_namespace") != "" {
 		mainWhiteList, err := permissionservice.LoadMainDomainWhiteList(http.Request.Context())
 		if err != nil {

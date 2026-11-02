@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
-	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
@@ -27,23 +26,7 @@ func (self K3k) Info(http *gin.Context) {
 		self.JsonResponseWithoutError(http, map[string]string{})
 		return
 	}
-	policy, err := permissionservice.LoadExclusivePolicy(http.Request.Context(), k8s.NewK8sClient().Sdk)
-	if err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
 	result := user.ToArray()
-	var existing []string
-	if err := json.Unmarshal([]byte(result["w7.cc/menu"]), &existing); err != nil {
-		self.JsonResponseWithServerError(http, err)
-		return
-	}
-	clusterType := permissionservice.CurrentClusterType()
-	if http.GetString("ckm_namespace") != "" {
-		clusterType = permissionservice.ChildClusterType
-	}
-	menu, _ := json.Marshal(policy.FilterMenus(clusterType, existing))
-	result["w7.cc/menu"] = string(menu)
 	if helper.IsChildAgent() {
 		whiteList, err := permissionservice.LoadMainDomainWhiteList(http.Request.Context())
 		if err != nil {
