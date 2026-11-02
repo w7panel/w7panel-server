@@ -94,10 +94,9 @@ kubectl delete permission tech --ignore-not-found
 kubectl delete configmap tech -n "${NAMESPACE:-default}" --ignore-not-found
 kubectl delete configmap k3k.permission.tech -n "${NAMESPACE:-default}" --ignore-not-found
 kubectl delete configmap permission.tech -n "${NAMESPACE:-default}" --ignore-not-found
-kubectl create -f $KO_DATA_PATH/yaml/permission || echo "已存在"
 
-# 系统内置权限直接替换，自定义权限不在该目录中
-kubectl apply -f $KO_DATA_PATH/yaml/permission
+# 更新内置规则时保留在线修改的域名白名单
+sh "$KO_DATA_PATH/shell/apply-builtin-permissions.sh"
 
 echo "迁移 cluster 用户为 normal"
 set +x
