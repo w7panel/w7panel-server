@@ -1,5 +1,10 @@
 # Repository Development Rules
 
+## 发布顺序
+
+- 发布前先在相邻的 `w7panel-ui` 目录运行 `./build.sh`，确认前端产物已写入本仓库的 `kodata`。
+- 随后在本仓库执行 `export IMAGE_TAG=v1.1.96.289 && make ko-push && ./pub.sh`。`make ko-push` 只打包现有 `kodata`，不会自动构建前端。
+
 ## 本地联调
 
 - 使用 `make dev` 启动本地服务；默认监听 `18000`，并通过 `~/.kube/218.config` 访问 218 集群。

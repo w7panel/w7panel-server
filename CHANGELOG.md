@@ -691,3 +691,8 @@
 ## 2026-10-30 TAPD 1016217 集群类型策略与主域名白名单
 
 - 专属菜单及关联 API 改按主/子集群控制；子集群从 CKM 同步读取主策略，旧用户组规则拒绝加载。子集群 Permission 的菜单/API 由本地维护，域名白名单只读主集群 `normal` 套餐，读取失败时拒绝相关响应。影响模块：权限服务、认证中间件、权限代理和用户信息。验证：权限相关 Go 包 `make test` 通过。
+
+## 2026-11-02
+
+- 补充服务端发布顺序：先由相邻 UI 仓库的 `./build.sh` 写入前端产物，再推送 `v1.1.96.289` 镜像并执行 Helm 发布。影响模块：开发说明。验证：核对 `build.sh`、`Makefile` 与 `pub.sh` 的构建及发布目标，`git diff --check` 通过。
+- Deployment 镜像支持可选 digest，重复推送同一 tag 时可用 Helm 固定新镜像，同时保留纯 tag 作为 `HELM_VERSION`。影响模块：离线面板 Helm Chart。验证：`helm template` 渲染检查与 `git diff --check` 通过。
