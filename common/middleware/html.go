@@ -16,7 +16,9 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/site"
 	microappsettingv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/microappsetting/v1alpha1"
 
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
@@ -155,6 +157,13 @@ func injectMicroAppScript(htmlContent []byte, microappConfig map[string]any) []b
 func loadMicroAppSiteConfig(ctx context.Context, microappConfig map[string]any) (map[string]any, error) {
 	name, _ := microappConfig["name"].(string)
 	name = strings.TrimSpace(name)
+	if helper.IsChildAgent() && (name == "" || name == globalMicroAppSettingName) {
+		data, err := site.FetchMainSettings(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return buildMainMicroAppSiteConfig(data)
+	}
 	if name == "" {
 		name = globalMicroAppSettingName
 	}
@@ -186,6 +195,51 @@ func loadMicroAppSiteConfig(ctx context.Context, microappConfig map[string]any) 
 		return buildMicroAppSiteConfig(ctx, sdk, setting, nil), nil
 	}
 	return buildMicroAppSiteConfig(ctx, sdk, setting, globalSetting), nil
+}
+
+func buildMainMicroAppSiteConfig(data map[string]json.RawMessage) (map[string]any, error) {
+	setting, err := site.MainSiteSetting(data)
+	if err != nil {
+		return nil, err
+	}
+	result := buildMicroAppSiteConfigFromSettings(setting)
+	if setting == nil {
+		return result, nil
+	}
+	var configMaps map[string]struct {
+		Data          map[string]string `json:"data"`
+		BinaryData    map[string][]byte `json:"binaryData"`
+		LogoImageType string            `json:"logoImageType"`
+	}
+	if err := json.Unmarshal(data["configMaps"], &configMaps); err != nil {
+		return nil, err
+	}
+	ref := setting.Spec.General.SiteLogo
+	cm := configMaps[ref.Name]
+	if logo := cm.Data[ref.Key]; logo != "" {
+		if strings.HasPrefix(logo, "data:") || strings.HasPrefix(logo, "http://") || strings.HasPrefix(logo, "https://") || strings.HasPrefix(logo, "/") {
+			result["logo"] = logo
+		} else {
+			result["logo"] = "data:" + mimeType(ref.Key) + ";base64," + logo
+		}
+	} else if logo := cm.BinaryData[ref.Key]; len(logo) > 0 {
+		prefix := cm.LogoImageType
+		if prefix == "" {
+			prefix = "data:" + mimeType(ref.Key) + ";base64,"
+		}
+		result["logo"] = prefix + base64.StdEncoding.EncodeToString(logo)
+	}
+	return result, nil
+}
+
+func buildMicroAppSiteConfigFromSettings(setting *microappsettingv1alpha1.MicroAppSetting) map[string]any {
+	general := microappGeneral(setting)
+	login := microappLogin(setting)
+	return map[string]any{
+		"siteName": general.SiteName, "siteDescription": general.SiteDescription,
+		"filing": microAppFilingConfig(general.Filing, microappsettingv1alpha1.FilingSettings{}),
+		"login":  map[string]any{"loginMode": login.LoginMode, "registrationEnabled": login.RegistrationEnabled, "indexPage": login.IndexPage},
+	}
 }
 
 func getMicroAppSetting(ctx context.Context, client sigclient.Client, namespace string, name string) (*microappsettingv1alpha1.MicroAppSetting, error) {

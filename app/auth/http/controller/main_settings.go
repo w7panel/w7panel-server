@@ -1,12 +1,8 @@
 package controller
 
 import (
-	"encoding/json"
-	"io"
+	"errors"
 	"net/http"
-	"os"
-	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
@@ -81,45 +77,17 @@ func (MainSettings) Get(ctx *gin.Context) {
 }
 
 func childMainSettings(ctx *gin.Context) {
-	endpoint := strings.TrimRight(os.Getenv("CKM_SYNC_ENDPOINT"), "/")
-	token := os.Getenv("CKM_SYNC_TOKEN")
-	if endpoint == "" || token == "" {
-		ctx.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "主集群配置读取通道未配置"})
-		return
-	}
-	req, err := http.NewRequestWithContext(ctx.Request.Context(), http.MethodGet, endpoint+"/main-settings", nil)
+	data, err := site.FetchMainSettings(ctx.Request.Context())
 	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "主集群配置读取地址无效"})
-		return
-	}
-	req.Header.Set("X-W7Panel-CKM-Sync-Token", token)
-	client := &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	resp, err := client.Do(req)
-	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "读取主集群配置失败"})
-		return
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		ctx.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "读取主集群配置失败"})
-		return
-	}
-	var payload struct {
-		Code int                        `json:"code"`
-		Data map[string]json.RawMessage `json:"data"`
-	}
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 2<<20)).Decode(&payload); err != nil || payload.Code != http.StatusOK {
-		ctx.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "主集群配置响应无效"})
-		return
-	}
-	for _, key := range []string{"siteSetting", "configMaps", "domainParse"} {
-		if _, ok := payload.Data[key]; !ok {
-			ctx.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "主集群配置响应无效"})
-			return
+		status := http.StatusBadGateway
+		if errors.Is(err, site.ErrMainSettingsUnavailable) {
+			status = http.StatusServiceUnavailable
 		}
+		ctx.AbortWithStatusJSON(status, gin.H{"error": err.Error()})
+		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"code": http.StatusOK, "data": gin.H{
-		"siteSetting": payload.Data["siteSetting"], "configMaps": payload.Data["configMaps"], "domainParse": payload.Data["domainParse"],
+		"siteSetting": data["siteSetting"], "configMaps": data["configMaps"], "domainParse": data["domainParse"],
 	}})
 }
 
@@ -130,7 +98,7 @@ func mainSettingsDisplay(setting *microappsetting.MicroAppSetting, sources map[s
 		general := setting.Spec.General
 		contacts := make([]gin.H, 0, len(general.ContactConfigs))
 		for _, contact := range general.ContactConfigs {
-			contacts = append(contacts, gin.H{"type": contact.Type, "name": contact.Name, "link": contact.Link, "text": contact.Text, "qrcode": contact.Qrcode})
+			contacts = append(contacts, gin.H{"type": contact.Type, "name": contact.Name, "link": contact.Link, "text": contact.Text, "showName": contact.ShowName, "selicon": contact.SelIcon, "icon": contact.Icon, "qrcode": contact.Qrcode, "style": contact.Style, "index": contact.Index})
 		}
 		result["siteSetting"] = gin.H{"spec": gin.H{
 			"login": gin.H{
