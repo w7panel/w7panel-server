@@ -111,7 +111,10 @@ func (z *Install) InstallOrUpgrade(name, namespace string) error {
 	}
 }
 
-func (z *Install) createHelmJob(myPack *types.PackageApp, shellType types.ShellType, children []*types.PackageApp) (v1alpha1.DeployItem, []*batchv1.Job, error) {
+// 主子应用已打包为一个 Chart；子应用仅提供带前缀的 Helm values。
+func (z *Install) createHelmPackageJob(shellType types.ShellType) (v1alpha1.DeployItem, []*batchv1.Job, error) {
+	myPack := z.pk.Root
+	children := z.pk.Children
 	jobs := []*batchv1.Job{}
 	job := toHelmInstallJob(myPack, children)
 	jobs = append(jobs, job)
@@ -158,7 +161,7 @@ func (z *Install) InstallUseJob(name, namespace string, shellType types.ShellTyp
 	groups := []*v1alpha1.AppGroup{}
 	// microApps := []*microapp.MicroApp{}
 	root := z.pk.Root
-	rootItem, rootjobs, err := z.createHelmJob(root, shellType, z.pk.Children)
+	rootItem, rootjobs, err := z.createHelmPackageJob(shellType)
 	if err != nil {
 		slog.Error("create helm job error", slog.String("error", err.Error()))
 		return err
@@ -171,21 +174,6 @@ func (z *Install) InstallUseJob(name, namespace string, shellType types.ShellTyp
 	items = append(items, rootItem)
 	jobs = append(jobs, rootjobs...)
 
-	for _, child := range z.pk.Children {
-		if !child.IsHelm() {
-			continue
-		}
-		if child.Replicas == 0 {
-			continue
-		}
-		childItem, childJobs, err := z.createHelmJob(child, shellType, []*types.PackageApp{})
-		if err != nil {
-			slog.Error("create child helm job error", slog.String("error", err.Error()))
-			return err
-		}
-		items = append(items, childItem)
-		jobs = append(jobs, childJobs...)
-	}
 	rootGroup := convert.ToAppGroup(root, items)
 	rootGroup.Spec.UpgradingVersion = rootGroup.Spec.Version
 	if err := z.applyParentGroup(rootGroup); err != nil {
