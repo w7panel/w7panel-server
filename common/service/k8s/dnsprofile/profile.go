@@ -31,6 +31,7 @@ var issuerGVR = schema.GroupVersionResource{Group: "cert-manager.io", Version: "
 
 type Profile struct {
 	ID       string `json:"id"`
+	Name     string `json:"name"`
 	Provider string `json:"provider"`
 	Zone     string `json:"zone"`
 	Issuer   string `json:"issuer"`
@@ -46,6 +47,7 @@ func ownerLabel(owner string) string {
 func profileFromSecret(secret *corev1.Secret) Profile {
 	return Profile{
 		ID:       strings.TrimPrefix(secret.Name, profilePrefix),
+		Name:     secret.Annotations["w7.cc/dns-name"],
 		Provider: secret.Annotations["w7.cc/dns-provider"],
 		Zone:     secret.Annotations["w7.cc/dns-zone"],
 		Issuer:   secret.Name,
@@ -88,7 +90,11 @@ func validID(id string) bool {
 	return err == nil
 }
 
-func (s Store) Create(ctx context.Context, owner, provider, zone string, values map[string]string) (Profile, error) {
+func (s Store) Create(ctx context.Context, owner, name, provider, zone string, values map[string]string) (Profile, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || len([]rune(name)) > 80 {
+		return Profile{}, errors.New("DNS 配置名称长度必须为 1 到 80 个字符")
+	}
 	zone = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(zone)), ".")
 	credentials, err := ProviderCredentials(provider, values)
 	if err != nil {
@@ -103,24 +109,24 @@ func (s Store) Create(ctx context.Context, owner, provider, zone string, values 
 		return Profile{}, err
 	}
 	id := hex.EncodeToString(idBytes)
-	name := profilePrefix + id
+	secretName := profilePrefix + id
 	data := make(map[string][]byte, len(credentials))
 	for key, value := range credentials {
 		data[key] = []byte(value)
 	}
 	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
-		Name: name, Namespace: secretNamespace,
+		Name: secretName, Namespace: secretNamespace,
 		Labels:      map[string]string{"w7.cc/dns-profile": "true", "w7.cc/dns-owner": ownerLabel(owner)},
-		Annotations: map[string]string{"w7.cc/dns-provider": provider, "w7.cc/dns-zone": zone},
+		Annotations: map[string]string{"w7.cc/dns-name": name, "w7.cc/dns-provider": provider, "w7.cc/dns-zone": zone},
 	}, Type: corev1.SecretTypeOpaque, Data: data}
 	if _, err := s.SDK.ClientSet.CoreV1().Secrets(secretNamespace).Create(ctx, secret, metav1.CreateOptions{}); err != nil {
 		return Profile{}, err
 	}
-	if err := s.createIssuer(ctx, name, provider); err != nil {
-		_ = s.SDK.ClientSet.CoreV1().Secrets(secretNamespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err := s.createIssuer(ctx, secretName, provider); err != nil {
+		_ = s.SDK.ClientSet.CoreV1().Secrets(secretNamespace).Delete(ctx, secretName, metav1.DeleteOptions{})
 		return Profile{}, err
 	}
-	return Profile{ID: id, Provider: provider, Zone: zone, Issuer: name}, nil
+	return Profile{ID: id, Name: name, Provider: provider, Zone: zone, Issuer: secret.Name}, nil
 }
 
 func (s Store) createIssuer(ctx context.Context, name, provider string) error {

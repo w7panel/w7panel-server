@@ -725,3 +725,7 @@
 
 - 补充服务端发布顺序：先由相邻 UI 仓库的 `./build.sh` 写入前端产物，再推送 `v1.1.96.289` 镜像并执行 Helm 发布。影响模块：开发说明。验证：核对 `build.sh`、`Makefile` 与 `pub.sh` 的构建及发布目标，`git diff --check` 通过。
 - Deployment 镜像支持可选 digest，重复推送同一 tag 时可用 Helm 固定新镜像，同时保留纯 tag 作为 `HELM_VERSION`。影响模块：离线面板 Helm Chart。验证：`helm template` 渲染检查与 `git diff --check` 通过。
+
+## 2026-11-03 DNS-01 配置名称
+
+- 创建 DNS-01 配置时验证并保存名称，列表返回名称以区分同平台同区域配置。影响模块：DNS 配置 API 与存储。验证：`make test TEST_PACKAGES=./common/service/k8s/dnsprofile`、`git diff --check` 通过。

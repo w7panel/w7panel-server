@@ -51,13 +51,14 @@ func (self DNSProfile) Create(ctx *gin.Context) {
 	store, ok := self.store(ctx); if !ok { return }
 	var request struct {
 		Namespace string `json:"namespace" binding:"required"`
+		Name string `json:"name" binding:"required"`
 		Provider string `json:"provider" binding:"required"`
 		Zone string `json:"zone" binding:"required"`
 		Credentials map[string]string `json:"credentials" binding:"required"`
 	}
 	if err := ctx.ShouldBindJSON(&request); err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()}); return }
 	if !self.canWriteIngress(ctx, request.Namespace) { return }
-	profile, err := store.Create(ctx.Request.Context(), ctx.GetString("username"), request.Provider, request.Zone, request.Credentials)
+	profile, err := store.Create(ctx.Request.Context(), ctx.GetString("username"), request.Name, request.Provider, request.Zone, request.Credentials)
 	if err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()}); return }
 	self.JsonResponseWithoutError(ctx, profile)
 }

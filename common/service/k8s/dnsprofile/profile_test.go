@@ -2,6 +2,7 @@ package dnsprofile
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -19,6 +20,21 @@ func TestWildcardInZone(t *testing.T) {
 	for _, host := range []string{"example.com", "*.other.com", "*.badexample.com", "*.*.example.com"} {
 		if WildcardInZone(host, "example.com") {
 			t.Fatalf("accepted %s", host)
+		}
+	}
+}
+
+func TestProfileName(t *testing.T) {
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Name:        profilePrefix + "0123456789abcdef01234567",
+		Annotations: map[string]string{"w7.cc/dns-name": "生产环境", "w7.cc/dns-provider": "alidns", "w7.cc/dns-zone": "example.com"},
+	}}
+	if got := profileFromSecret(secret).Name; got != "生产环境" {
+		t.Fatalf("profile name = %q", got)
+	}
+	for _, name := range []string{" ", strings.Repeat("字", 81)} {
+		if _, err := (Store{}).Create(context.Background(), "owner", name, "alidns", "example.com", nil); err == nil {
+			t.Fatalf("accepted invalid profile name %q", name)
 		}
 	}
 }
