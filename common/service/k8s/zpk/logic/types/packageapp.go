@@ -52,32 +52,33 @@ const (
 
 // 安装参数
 type InstallOption struct {
-	Identifie                string               `json:"identifie"`
-	PvcName                  string               `json:"pvcname"`
-	DockerRegistry           types.DockerRegistry `json:"registry"`
-	DockerRegistrySecretName string               `json:"dockerRegistrySecretName"`
-	Namespace                string               `json:"namespace"`
-	InstallId                string               `json:"installId"`   //安装的id
-	ReleaseName              string               `json:"releaseName"` //安装name
-	Suffix                   string               `json:"suffix"`      //安装后缀 //releasename = root.Identifie+"-"+root.Suffix
-	EnvKv                    []EnvKv              `json:"envkv"`
-	IngressSeletorName       string               `json:"ingressSelectorName"`  //IngressSelector前端选择的名称
-	IngressHost              string               `json:"ingressHost"`          //域名
-	IngressClassName         string               `json:"ingressClassName"`     //ingressclassname
-	IngressForceHttps        bool                 `json:"ingressForceHttps"`    //ingressclassname
-	Replicas                 int32                `json:"replicas"`             // 可选安装的数量为0
-	IsUpgrade                bool                 `json:"isUpgrade"`            //是否更新模式
-	Annotations              map[string]string    `json:"annotations"`          //注解
-	HelmValues               map[string]string    `json:"helmValues,omitempty"` //首次安装使用的 Helm 默认参数
-	ServiceAccountName       string               `json:"serviceAccountName"`   //ServiceAccountName
-	UserName                 string               `json:"userName"`             //ServiceAccountName
-	BuildImageSuccessUrl     string               `json:"buildImageSuccessUrl"` //ServiceAccountName
-	ParentReleaseName        string               `json:"parentReleaseName"`    // 父节点发布名
-	PreSubPath               map[string]string    `json:"preSubPath"`           // 上次安装的子路径
-	Cpu                      string               `json:"cpu"`
-	Memory                   string               `json:"memory"`
-	Volumes                  []corev1.Volume      `json:"volumes"`
-	VolumesMounts            []corev1.VolumeMount `json:"volumesMounts"`
+	Identifie                string                       `json:"identifie"`
+	PvcName                  string                       `json:"pvcname"`
+	DockerRegistry           types.DockerRegistry         `json:"registry"`
+	DockerRegistrySecretName string                       `json:"dockerRegistrySecretName"`
+	Namespace                string                       `json:"namespace"`
+	InstallId                string                       `json:"installId"`   //安装的id
+	ReleaseName              string                       `json:"releaseName"` //安装name
+	Suffix                   string                       `json:"suffix"`      //安装后缀 //releasename = root.Identifie+"-"+root.Suffix
+	EnvKv                    []EnvKv                      `json:"envkv"`
+	IngressSeletorName       string                       `json:"ingressSelectorName"` //IngressSelector前端选择的名称
+	IngressHost              string                       `json:"ingressHost"`         //域名
+	IngressClassName         string                       `json:"ingressClassName"`    //ingressclassname
+	IngressForceHttps        bool                         `json:"ingressForceHttps"`   //ingressclassname
+	DNSIngressAnnotations    map[string]map[string]string `json:"-"`
+	Replicas                 int32                        `json:"replicas"`             // 可选安装的数量为0
+	IsUpgrade                bool                         `json:"isUpgrade"`            //是否更新模式
+	Annotations              map[string]string            `json:"annotations"`          //注解
+	HelmValues               map[string]string            `json:"helmValues,omitempty"` //首次安装使用的 Helm 默认参数
+	ServiceAccountName       string                       `json:"serviceAccountName"`   //ServiceAccountName
+	UserName                 string                       `json:"userName"`             //ServiceAccountName
+	BuildImageSuccessUrl     string                       `json:"buildImageSuccessUrl"` //ServiceAccountName
+	ParentReleaseName        string                       `json:"parentReleaseName"`    // 父节点发布名
+	PreSubPath               map[string]string            `json:"preSubPath"`           // 上次安装的子路径
+	Cpu                      string                       `json:"cpu"`
+	Memory                   string                       `json:"memory"`
+	Volumes                  []corev1.Volume              `json:"volumes"`
+	VolumesMounts            []corev1.VolumeMount         `json:"volumesMounts"`
 	K8sToken                 *k8s.K8sToken
 	RealToken                string
 }
@@ -846,6 +847,8 @@ func (p *PackageApp) GetIngressSvcName(backendName string) string {
 	}
 	return GetDeployName(backendName, p.Suffix)
 }
+
+func (p *PackageApp) DNSAnnotations() map[string]map[string]string { return p.DNSIngressAnnotations }
 
 func (p *PackageApp) GetIngressHost() string {
 	return p.IngressHost

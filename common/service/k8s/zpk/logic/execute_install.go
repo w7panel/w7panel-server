@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"strings"
@@ -10,6 +11,8 @@ import (
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
+	"github.com/w7panel/w7panel/common/service/k8s/dnsprofile"
+	helm "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 )
 
@@ -41,12 +44,13 @@ type InstallRequest struct {
 	IngressSeletorName string                `json:"ingressSeletorName"` // 域名选择业务名称
 	IngressClassName   string                `json:"ingressClass"`       // 域名选择业务名称
 	IngressForceHttps  bool                  `json:"ingressForceHttps"`  // forceHttps
-	ThirdpartyCDToken  string                `json:"thirdpartyCDToken"`  // 域名选择业务名称
-	ClusterId          string                `json:"clusterId"`          // 集群ID
-	IsTrandition       bool                  `json:"isTrandition"`       // 是否传统应用
-	ZipUrl             string                `json:"zipUrl"`             // 代码包地址
-	PanelUrl           string                `json:"panelUrl"`           // 安装时候的面板地址
-	Reinstall          bool                  `json:"reinstall"`          // 强制覆盖旧安装绑定，仅允许非升级安装
+	DNSProfileID       string                `json:"dnsProfileId,omitempty"`
+	ThirdpartyCDToken  string                `json:"thirdpartyCDToken"` // 域名选择业务名称
+	ClusterId          string                `json:"clusterId"`         // 集群ID
+	IsTrandition       bool                  `json:"isTrandition"`      // 是否传统应用
+	ZipUrl             string                `json:"zipUrl"`            // 代码包地址
+	PanelUrl           string                `json:"panelUrl"`          // 安装时候的面板地址
+	Reinstall          bool                  `json:"reinstall"`         // 强制覆盖旧安装绑定，仅允许非升级安装
 }
 type InstallResult struct {
 	ReleaseName string `json:"releaseName"`
@@ -164,6 +168,24 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 	}
 	packageApps.Root.AppGroupDependencies = dependencies
 	packageApps.ForceHttps(params.IngressForceHttps)
+	if strings.HasPrefix(params.IngressHost, "*.") && packageApps.Root.RequireDomainHttps() {
+		if params.DNSProfileID == "" || k8sToken == nil {
+			return InstallResult{}, errors.New("泛域名自动 HTTPS 需要已验证的 DNS 配置")
+		}
+		owner, err := k8sToken.GetUserName()
+		if err != nil {
+			return InstallResult{}, err
+		}
+		store := dnsprofile.Store{SDK: client}
+		packageApps.Root.DNSIngressAnnotations = map[string]map[string]string{}
+		for _, ingress := range helm.ToIngresses(packageApps.Root) {
+			grant, err := store.Grant(context.Background(), owner, params.DNSProfileID, namespace, ingress.Name, params.IngressHost)
+			if err != nil {
+				return InstallResult{}, err
+			}
+			packageApps.Root.DNSIngressAnnotations[ingress.Name] = grant
+		}
+	}
 	realToken := ""
 	config, err := client.ToRESTConfig()
 	if err != nil {

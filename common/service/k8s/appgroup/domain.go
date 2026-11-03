@@ -60,7 +60,7 @@ func ingressDomains(ingress *networkingv1.Ingress) []string {
 		return []string{}
 	}
 	scheme := "http://"
-	if ingress.Annotations != nil && ingress.Annotations["cert-manager.io/cluster-issuer"] == "w7-letsencrypt-prod" {
+	if ingress.Annotations != nil && (ingress.Annotations["cert-manager.io/cluster-issuer"] == "w7-letsencrypt-prod" || strings.HasPrefix(ingress.Annotations["cert-manager.io/cluster-issuer"], "w7-dns-")) {
 		scheme = "https://"
 	}
 	domains := []string{}

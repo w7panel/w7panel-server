@@ -34,6 +34,10 @@ if kubectl get namespace cert-manager >/dev/null 2>&1 && kubectl get crd certifi
     --namespace cert-manager \
     --install \
     --wait
+  helm upgrade cert-manager-lego-webhook $KO_DATA_PATH/charts/cert-manager-lego-webhook-1.6.2.tgz \
+    --namespace cert-manager --install --wait --timeout 5m \
+    --set certManager.namespace=cert-manager \
+    --set certManager.serviceAccountName=cert-manager
 else
   echo "cert-manager未就绪，跳过webhook公共CA和CSI Driver"
 fi

@@ -3,6 +3,7 @@ package appgroup
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -57,7 +58,7 @@ func checkAutossl(client sigclient.Client, old *networkingv1.Ingress, new *netwo
 	if old.Spec.TLS != nil && len(old.Spec.TLS) == 0 {
 		return
 	}
-	if old.Annotations["cert-manager.io/cluster-issuer"] == "w7-letsencrypt-prod" {
+	if old.Annotations["cert-manager.io/cluster-issuer"] == "w7-letsencrypt-prod" || strings.HasPrefix(old.Annotations["cert-manager.io/cluster-issuer"], "w7-dns-") {
 		if new.Annotations == nil {
 			new.Annotations = make(map[string]string)
 		}

@@ -401,6 +401,7 @@ func ToIngresses(app K8sResourceIngressInterface) []networkingv1.Ingress {
 		if app.GetIngressSelectorName() == "" {
 			ing := toIngress(app, app.GetName(), app.GetFirstPort(), "/", requireHttps, "", "Prefix")
 			ing.Labels["group"] = app.GetReleaseName()
+			applyDNSIngressAnnotations(app, &ing)
 			return []networkingv1.Ingress{ing}
 		}
 	}
@@ -409,6 +410,7 @@ func ToIngresses(app K8sResourceIngressInterface) []networkingv1.Ingress {
 		if len(routes) == 0 {
 			ing := toIngress(app, app.GetName(), app.GetFirstPort(), "/", requireHttps, "", "Prefix")
 			ing.Labels["group"] = app.GetReleaseName()
+			applyDNSIngressAnnotations(app, &ing)
 			return []networkingv1.Ingress{ing}
 		} else if len(routes) > 0 {
 			var ingressList []networkingv1.Ingress
@@ -426,6 +428,7 @@ func ToIngresses(app K8sResourceIngressInterface) []networkingv1.Ingress {
 					ing.Labels["parents"] = parentIngName
 				}
 				ing.Labels["group"] = app.GetReleaseName()
+				applyDNSIngressAnnotations(app, &ing)
 				ingressList = append(ingressList, ing)
 			}
 			return ingressList
@@ -434,6 +437,16 @@ func ToIngresses(app K8sResourceIngressInterface) []networkingv1.Ingress {
 
 	return []networkingv1.Ingress{}
 
+}
+
+func applyDNSIngressAnnotations(app K8sResourceIngressInterface, ingress *networkingv1.Ingress) {
+	if source, ok := app.(interface {
+		DNSAnnotations() map[string]map[string]string
+	}); ok {
+		for key, value := range source.DNSAnnotations()[ingress.Name] {
+			ingress.Annotations[key] = value
+		}
+	}
 }
 
 func toIngress(app K8sResourceIngressInterface, svcName string, port int32, path string, requireHttps bool, ingName string, pathTypeStr string) networkingv1.Ingress {
@@ -448,7 +461,7 @@ func toIngress(app K8sResourceIngressInterface, svcName string, port int32, path
 		tls = []networkingv1.IngressTLS{
 			{
 				Hosts:      []string{app.GetIngressHost()},
-				SecretName: strings.ToLower(strings.ReplaceAll(app.GetIngressHost(), ".", "-")) + "-tls-secret",
+				SecretName: strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(app.GetIngressHost(), "*", "x"), ".", "-")) + "-tls-secret",
 			},
 		}
 	}

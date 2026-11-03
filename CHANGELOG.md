@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-03 泛域名 DNS-01 证书
+
+- 增加 DNS 凭据的真实 TXT 写入、查询和清理验证，按账号保存配置并签发绑定域名及 Ingress 的授权；Ingress 和 Certificate admission 校验授权，安装 DNS solver webhook，应用安装与子域名同步使用 DNS-01 签发器。影响模块：DNS 配置接口、证书签发、域名同步和 ZPK 安装。验证：定向 `make test`、Helm 模板渲染与 `git diff --check`。
+
 ## 2026-11-02 升级保留内置权限的域名白名单
 
 - 升级内置权限时按完整资源名读取并沿用集群中已有的 `domainWhiteList`，避免 `normal.yaml` 中的空数组在每次升级时清空在线配置，也避免与 CKM 的同名权限资源混淆；菜单、API 和 RBAC 等内置规则仍随版本更新。影响模块：升级脚本。验证：Shell 模拟升级检查、218 集群临时对象测试与 `git diff --check`。
