@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-03 DNS 配置验证缩短
+
+- DNS 配置验证在平台确认临时 TXT 写入后立即清理，不再等待公共 DNS 查询传播，避免创建请求被前端 30 秒超时中断。影响模块：DNS 配置创建。验证：`make test TEST_PACKAGES=./common/service/k8s/dnsprofile` 与 `git diff --check` 通过。
+
 ## 2026-11-03 域名白名单按账号权限读取
 
 - 主面板域名白名单接口读取当前账号绑定的 Permission；子集群仍使用主集群同步的 normal 白名单。影响模块：认证接口、权限服务。验证：定向 Go 测试与 `git diff --check`。

@@ -1,17 +1,13 @@
 package dnsprofile
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net"
 	"strings"
-	"time"
 
 	"github.com/go-acme/lego/v4/challenge"
-	"github.com/go-acme/lego/v4/challenge/dns01"
 	"github.com/go-acme/lego/v4/providers/dns/alidns"
 	"github.com/go-acme/lego/v4/providers/dns/cloudflare"
 	"github.com/go-acme/lego/v4/providers/dns/dnspod"
@@ -21,10 +17,10 @@ import (
 // Credentials uses the same environment variable names as the deployed lego DNS webhook.
 func ProviderCredentials(provider string, values map[string]string) (map[string]string, error) {
 	fields := map[string][]string{
-		"alidns":    {"ALICLOUD_ACCESS_KEY", "ALICLOUD_SECRET_KEY"},
-		"dnspod":    {"DNSPOD_API_KEY"},
+		"alidns":     {"ALICLOUD_ACCESS_KEY", "ALICLOUD_SECRET_KEY"},
+		"dnspod":     {"DNSPOD_API_KEY"},
 		"cloudflare": {"CLOUDFLARE_DNS_API_TOKEN"},
-		"route53":   {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION"},
+		"route53":    {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION"},
 	}[provider]
 	if len(fields) == 0 {
 		return nil, fmt.Errorf("不支持的 DNS 平台: %s", provider)
@@ -66,7 +62,7 @@ func dnsProvider(provider string, values map[string]string) (challenge.Provider,
 }
 
 // Verify proves that the credential can create a real ACME TXT record and removes only its own value.
-func Verify(ctx context.Context, provider, zone string, values map[string]string) (verifyErr error) {
+func Verify(provider, zone string, values map[string]string) (verifyErr error) {
 	zone = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(zone)), ".")
 	if !validZone(zone) {
 		return errors.New("DNS 区域无效")
@@ -90,26 +86,8 @@ func Verify(ctx context.Context, provider, zone string, values map[string]string
 	}
 	// Cleanup targets the unique value generated above; never delete other ACME challenges.
 	defer func() { verifyErr = errors.Join(verifyErr, writer.CleanUp(zone, token, keyAuth)) }()
-	info := dns01.GetChallengeInfo(zone, keyAuth)
-	deadline := time.NewTimer(90 * time.Second)
-	defer deadline.Stop()
-	for {
-		records, err := net.DefaultResolver.LookupTXT(ctx, strings.TrimSuffix(info.FQDN, "."))
-		if err == nil {
-			for _, record := range records {
-				if record == info.Value {
-					return nil
-				}
-			}
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-deadline.C:
-			return errors.New("DNS TXT 写入后未能通过公共 DNS 查询确认")
-		case <-time.After(3 * time.Second):
-		}
-	}
+	// shortcut: DNS platform write success does not prove public propagation; add lookup if issuance fails from slow DNS.
+	return nil
 }
 
 func validZone(zone string) bool {

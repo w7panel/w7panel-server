@@ -94,7 +94,7 @@ func (s Store) Create(ctx context.Context, owner, provider, zone string, values 
 	if err != nil {
 		return Profile{}, err
 	}
-	if err := Verify(ctx, provider, zone, credentials); err != nil {
+	if err := Verify(provider, zone, credentials); err != nil {
 		return Profile{}, err
 	}
 
