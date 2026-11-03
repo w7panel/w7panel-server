@@ -39,9 +39,12 @@ func loadMainSync(ctx context.Context, path string, dst interface{}) error {
 	return json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(dst)
 }
 
-func LoadMainDomainWhiteList(ctx context.Context) ([]configv1alpha1.DomainWhiteItem, error) {
+func LoadMainDomainWhiteList(ctx context.Context, permissionName string) ([]configv1alpha1.DomainWhiteItem, error) {
 	if !helper.IsChildAgent() {
-		permission, err := Get(ctx, k8s.NewK8sClient().Sdk, NormalPermissionName)
+		if permissionName == "" {
+			return nil, fmt.Errorf("当前用户权限未确定")
+		}
+		permission, err := Get(ctx, k8s.NewK8sClient().Sdk, permissionName)
 		if apierrors.IsNotFound(err) {
 			return []configv1alpha1.DomainWhiteItem{}, nil
 		}

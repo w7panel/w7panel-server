@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-03 域名白名单按账号权限读取
+
+- 主面板域名白名单接口读取当前账号绑定的 Permission；子集群仍使用主集群同步的 normal 白名单。影响模块：认证接口、权限服务。验证：定向 Go 测试与 `git diff --check`。
+
 ## 2026-11-03 泛域名 DNS-01 证书
 
 - 增加 DNS 凭据的真实 TXT 写入、查询和清理验证，按账号保存配置并签发绑定域名及 Ingress 的授权；Ingress 和 Certificate admission 校验授权，安装 DNS solver webhook，应用安装与子域名同步使用 DNS-01 签发器。影响模块：DNS 配置接口、证书签发、域名同步和 ZPK 安装。验证：定向 `make test`、Helm 模板渲染与 `git diff --check`。
