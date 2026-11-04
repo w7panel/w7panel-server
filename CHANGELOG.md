@@ -729,3 +729,7 @@
 ## 2026-11-03 DNS-01 配置名称
 
 - 创建 DNS-01 配置时验证并保存名称，列表返回名称以区分同平台同区域配置。影响模块：DNS 配置 API 与存储。验证：`make test TEST_PACKAGES=./common/service/k8s/dnsprofile`、`git diff --check` 通过。
+
+## 2026-11-04 AppGroup 恢复兼容
+
+- AppGroup 的顶层 status 改为可选，允许 Velero 创建恢复对象后再补回应用状态。影响模块：AppGroup CRD。验证：CRD 生成、schema 测试及 AppGroup 控制器测试通过。
