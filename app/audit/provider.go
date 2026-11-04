@@ -2,8 +2,8 @@ package audit
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/w7panel/w7panel/app/audit/http/controller"
 	"github.com/w7panel/w7panel/common/middleware"
+	"github.com/w7panel/w7panel/common/service/pluginproxy"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
 )
 
@@ -19,9 +19,10 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 		group := engine.Group("/panel-api/v1/audit")
 		group.Use(middleware.Auth{}.Process)
 		{
-			group.GET("/logs/status", controller.Audit{}.Status)
-			group.GET("/login-logs", controller.Audit{}.LoginLogs)
-			group.GET("/operation-logs", controller.Audit{}.OperationLogs)
+			proxy := pluginproxy.Handler("METRICS_AUDIT_URL", "http://metrics-audit.default.svc:8080", "/panel-api/v1/audit", "/api/v1/audit")
+			group.GET("/logs/status", proxy)
+			group.GET("/login-logs", proxy)
+			group.GET("/operation-logs", proxy)
 		}
 	})
 }

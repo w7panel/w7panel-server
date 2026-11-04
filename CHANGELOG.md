@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-04 审计与流量查询迁入监控插件
+
+- 将审计日志与流量监测的查询实现迁到 `metrics-plugins`，旧只读 API 改为认证后的插件代理；保留登录、操作事件的脱敏与 VictoriaLogs 写入。新增插件身份核验接口，普通用户仍由服务端限定查询范围。影响模块：审计、流量、权限。验证：定向 Go 测试与 Helm 渲染。
+
 ## 2026-11-03 DNS 配置验证缩短
 
 - DNS 配置验证在平台确认临时 TXT 写入后立即清理，不再等待公共 DNS 查询传播，避免创建请求被前端 30 秒超时中断。影响模块：DNS 配置创建。验证：`make test TEST_PACKAGES=./common/service/k8s/dnsprofile` 与 `git diff --check` 通过。
