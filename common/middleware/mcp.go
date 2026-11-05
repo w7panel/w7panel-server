@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/oidc"
 	"github.com/w7panel/w7panel/common/service/panelauth"
@@ -35,10 +34,6 @@ func (MCPAuth) Process(ctx *gin.Context) {
 			processPanelPrincipal(ctx, &panelauth.Principal{Username: username, TokenUse: panelauth.TokenUsePanel})
 			return
 		}
-	}
-	if helper.IsChildAgent() && ckmAuthMode() == K8sAuthMode {
-		Auth{}.Process(ctx)
-		return
 	}
 	if server != nil && server.Enabled() {
 		resource := server.MCPResource(ctx.Request)

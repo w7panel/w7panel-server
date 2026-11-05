@@ -18,7 +18,7 @@ func TestChildMainSettingsReadExceptionIsPanelGetOnly(t *testing.T) {
 	if requiresLegacyK8sCredential(request.URL.Path) {
 		t.Fatal("display-only settings must not mint a Kubernetes credential")
 	}
-	for _, use := range []string{panelauth.TokenUseExternalAPI, panelauth.TokenUseCKMPanel} {
+	for _, use := range []string{panelauth.TokenUseExternalAPI} {
 		if childMainSettingsReadAllowed(&panelauth.Principal{TokenUse: use}, request) {
 			t.Fatalf("token use %q bypassed route permission", use)
 		}

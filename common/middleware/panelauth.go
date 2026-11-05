@@ -124,7 +124,7 @@ func requiresLegacyK8sCredential(path string) bool {
 	if strings.HasPrefix(path, "/v2/") {
 		return false
 	}
-	if path == "/panel-api/v1/auth/ckm-session" || path == "/panel-api/v1/auth/main-settings" {
+	if path == "/panel-api/v1/auth/main-settings" {
 		return false
 	}
 	if path == "/panel-api/v1/auth/k8s-credentials/token" || strings.HasPrefix(path, "/panel-api/v1/noauth/") {

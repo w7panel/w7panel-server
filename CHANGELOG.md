@@ -741,3 +741,7 @@
 ## 2026-11-04 AppGroup 恢复兼容
 
 - AppGroup 的顶层 status 改为可选，允许 Velero 创建恢复对象后再补回应用状态。影响模块：AppGroup CRD。验证：CRD 生成、schema 测试及 AppGroup 控制器测试通过。
+
+## 2026-11-05 合并后 CKM 会话清理
+
+- 移除旧 CKM 嵌入会话和代理残留引用，保留子面板主站展示配置同步入口，修复 dev-v1-token 合并 dev-v1 后的 Go 编译错误。影响模块：认证中间件、MCP 鉴权、主站设置接口。验证：make test 全量 Go 包编译通过；已有 artifacturl、permission、ZPK logic 测试失败；git diff --check 通过。
