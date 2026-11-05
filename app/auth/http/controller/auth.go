@@ -264,13 +264,17 @@ func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Contex
 
 	rs := service.GetRefreshToken(u.Name, ckmName)
 	auditservice.RecordLoginSuccessUser(http, u.Name, loginMethod, u)
-	self.JsonResponseWithoutError(http, gin.H{
+	response := gin.H{
 		"token":         token,
 		"expire":        time.Now().Add(time.Duration(seconds) * time.Second).Unix(),
 		"isK3kUser":     false,
 		"isClusterUser": false,
 		"refreshToken":  rs.Token,
-	})
+	}
+	if id := http.GetString("login_auth_request_id"); id != "" {
+		response["authRequestID"] = id
+	}
+	self.JsonResponseWithoutError(http, response)
 }
 
 func (self Auth) RefreshToken2(http *gin.Context) {

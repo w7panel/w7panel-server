@@ -20,7 +20,6 @@ type k3kUser struct {
 	*userv1alpha1.User
 	Labels      map[string]string
 	Annotations map[string]string
-	ckmName     string
 	// *k3kUserBase
 	// *k3kUserOverSelling
 }
@@ -169,18 +168,6 @@ func (u *k3kUser) GetRole() string {
 	// return "normal"
 }
 
-func (u *k3kUser) GetTokenAud(cvmName string) []string {
-	return []string{
-		u.Name,
-		u.GetRole(),
-		u.Labels[W7_CONSOLE_ID],
-		cvmName,
-		u.GetK3kNamespace(),
-		"https://kubernetes.default.svc.cluster.local",
-		"k3s",
-	}
-}
-
 func (u *k3kUser) GetConsoleId() string {
 	return u.Spec.CloudId
 }
@@ -238,35 +225,8 @@ func (u *k3kUser) IsDemo() bool {
 	return u.Spec.DemoUser
 }
 
-// 当前用户是否支持cvm 购买 续费 扩容
-func (u *k3kUser) SupportCvm() bool {
-	if u.Labels != nil && u.Labels[W7_CVM_USER] == "true" {
-		return true
-	}
-	return false
-}
-
-// 是否是cvm请求用户 子集群请求用户
-func (u *k3kUser) IsCkmReqUser() bool {
-	return u.ckmName != ""
-}
-
-func (u *k3kUser) SetCkmName(name string) {
-	u.ckmName = name
-}
-
-func (u *k3kUser) GetCvmName() string {
-	return u.GetCkmName()
-}
-func (u *k3kUser) GetCkmName() string {
-	return u.ckmName
-}
-
 func (u *k3kUser) ToArray() map[string]string {
 	role := u.GetRole()
-	if u.IsCkmReqUser() {
-		role = "founder"
-	}
 	result := map[string]string{
 		K3K_USER_MODE:    u.Spec.UserMode,
 		"w7.cc/username": u.Name,
@@ -282,32 +242,6 @@ func (u *k3kUser) ToArray() map[string]string {
 		W7_DEMO_USER:         boolString(u.Spec.DemoUser),
 		W7_ROLE:              role,
 		"w7.cc/has-password": boolString(u.Spec.PasswordHash != ""),
-	}
-	if u.IsCkmReqUser() {
-		oldAndNewMenu := append([]string(nil), K3K_MENU_FOUNDER_RULES...)
-		oldAndNewMenu = append(oldAndNewMenu, u.Spec.MenuRules...)
-		oldAndNewMenu = withoutMenu(oldAndNewMenu, "zpk")
-		oldAndNewMenu = withoutMenu(oldAndNewMenu, "cluster/nodes-image-list")
-		oldAndNewMenu = withoutMenu(oldAndNewMenu, "cluster/nodes")
-		result["w7.cc/is-ckm-req"] = "true"
-		result[W7_CKM_NAME] = u.GetCkmName()
-		result["ckm-namespace"] = u.GetK3kNamespace()
-		// 面板升级 云主机未升级 兼容
-		result["w7.cc/is-ckm-req"] = "true"
-		result["w7.cc/cvm-name"] = u.GetCkmName()
-		result["w7.cc/cvm-namespace"] = u.GetK3kNamespace()
-		result["w7.cc/menu"] = mustJSON(oldAndNewMenu) // 兼容新 旧面板
-		result[W7_SERVER0_POD_NAME] = u.Annotations[W7_SERVER0_POD_NAME]
-	}
-	return result
-}
-
-func withoutMenu(menuRules []string, menu string) []string {
-	result := make([]string, 0, len(menuRules))
-	for _, rule := range menuRules {
-		if rule != menu {
-			result = append(result, rule)
-		}
 	}
 	return result
 }

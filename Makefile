@@ -21,7 +21,6 @@ TEST_PACKAGES ?= ./...
 GO_TOOLCHAIN_ROOT ?= /home/afan/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.0.linux-amd64
 GO_BIN ?= $(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT)/bin/go,go)
 DOCKER_RUN_ARGS ?=
-W7PANEL_AUTH_MODE ?= panel
 KO_GO_ENV = GOSUMDB=off GOPATH="$(LOCAL_GOPATH)" GOMODCACHE="$(LOCAL_GO_MODCACHE)" GOCACHE="$(LOCAL_GO_CACHE)" GOTMPDIR="$(LOCAL_GO_TMP)" GOROOT="$(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT),)" KO_GO_PATH="$(GO_BIN)"
 KO_LDFLAGS ?= -s -w
 
@@ -97,7 +96,6 @@ docker-run:
 		-p "$(HOST_PORT):$(CONTAINER_PORT)" \
 		-e "KUBECONFIG=/root/.kube/config" \
 		-e "OIDC_ISSUER=$(OIDC_ISSUER)" \
-		-e "W7PANEL_AUTH_MODE=$(W7PANEL_AUTH_MODE)" \
 		-e "W7PANEL_HTTP_SERVER_PORT=$(CONTAINER_PORT)" \
 		-v "$(KUBECONFIG_FILE):/root/.kube/config:ro" \
 		$(DOCKER_RUN_ARGS) \
@@ -116,7 +114,6 @@ local-run:
 	GOTMPDIR="$(LOCAL_GO_TMP)" \
 	GOROOT="$(if $(wildcard $(GO_TOOLCHAIN_ROOT)/bin/go),$(GO_TOOLCHAIN_ROOT),)" \
 	KUBECONFIG="$(KUBECONFIG_FILE)" \
-	W7PANEL_AUTH_MODE="$(W7PANEL_AUTH_MODE)" \
 	W7PANEL_HTTP_SERVER_PORT="$(LOCAL_PORT)" \
 	"$(GO_BIN)" run . server:start
 

@@ -30,10 +30,6 @@ func (PanelAuth) Process(ctx *gin.Context) {
 
 func processPanelPrincipal(ctx *gin.Context, principal *panelauth.Principal) {
 	sdk := k8s.NewK8sClient().Sdk
-	if principal.TokenUse == panelauth.TokenUseCKMPanel {
-		processCKMPanel(ctx, *principal)
-		return
-	}
 	var permissionName = principal.PermissionName
 	if principal.TokenUse == panelauth.TokenUseExternalAPI {
 		permissionName = permissionservice.APIPermissionName
@@ -115,10 +111,8 @@ func panelToken(req *http.Request) string {
 			}
 		}
 	}
-	if panelTokenHeaderEnabled() {
-		if token := strings.TrimSpace(req.Header.Get("X-W7Panel-Token")); token != "" {
-			return token
-		}
+	if token := strings.TrimSpace(req.Header.Get("X-W7Panel-Token")); token != "" {
+		return token
 	}
 	if auth := req.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
 		return strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))

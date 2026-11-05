@@ -27,6 +27,7 @@ const oidcLoginStateCookie = "w7panel_oidc_login_state"
 
 type oidcLoginState struct {
 	nonce, verifier string
+	authRequestID   string
 	expiresAt       time.Time
 }
 
@@ -68,7 +69,7 @@ func (LoginOIDC) Start(ctx *gin.Context) {
 			delete(oidcLoginStates.values, key)
 		}
 	}
-	oidcLoginStates.values[state] = oidcLoginState{nonce: nonce, verifier: verifier, expiresAt: time.Now().Add(5 * time.Minute)}
+	oidcLoginStates.values[state] = oidcLoginState{nonce: nonce, verifier: verifier, authRequestID: ctx.Query("authRequestID"), expiresAt: time.Now().Add(5 * time.Minute)}
 	oidcLoginStates.Unlock()
 	ctx.SetCookie(oidcLoginStateCookie, state, 300, "/", "", oidcSecure(ctx), true)
 	ctx.Redirect(http.StatusFound, rp.AuthURL(state, relyingParty,
@@ -141,6 +142,7 @@ func (LoginOIDC) Callback(ctx *gin.Context) {
 		ctx.JSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "error": "OIDC 用户未在当前集群创建"})
 		return
 	}
+	ctx.Set("login_auth_request_id", loginState.authRequestID)
 	Auth{}.dologinUser(sdk, user, ctx, "oidc", "")
 }
 

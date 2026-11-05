@@ -48,15 +48,6 @@ func setK8sToken(ctx *gin.Context, token string) {
 }
 
 func (self Auth) Process(ctx *gin.Context) {
-	path := ctx.Request.URL.Path
-	if strings.HasPrefix(path, "/panel-api/") && helper.IsChildAgent() && ckmAuthMode() == K8sAuthMode {
-		processChildPanel(ctx)
-		return
-	}
-	// Host panel APIs and the Kubernetes proxy share one panel authentication
-	// boundary. PanelAuth validates the panel principal and mints the short-lived
-	// Kubernetes credential consumed by ProxyK8s. Child panels in k8s mode keep
-	// their existing direct-token path above.
 	if shouldUsePanelAuth(ctx.Request) {
 		PanelAuth{}.Process(ctx)
 		return
@@ -172,7 +163,7 @@ func usesPanelAuth(path string) bool {
 }
 
 func shouldUsePanelAuth(req *http.Request) bool {
-	return req != nil && (usesPanelAuth(req.URL.Path) || (ckmAuthMode() == PanelAuthMode && IsRegistryWriteRequest(req)))
+	return req != nil && (usesPanelAuth(req.URL.Path) || IsRegistryWriteRequest(req))
 }
 
 func (self Auth) authorizeUserOrServiceAccount(ctx *gin.Context, name string) bool {

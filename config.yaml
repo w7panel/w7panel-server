@@ -47,8 +47,6 @@ buildimage:
 
 mcp:
   watch: ${MCP_WATCH-false}
-cvm:
-  enabled: ${CVM_ENABLED-false}   
 server:
   http:
     host: ${W7PANEL_HTTP_SERVER_HOST-0.0.0.0}

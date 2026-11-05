@@ -33,7 +33,7 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	Subprotocols:    []string{"w7panel-ckm", "w7panel-terminal"},
+	Subprotocols:    []string{"w7panel-terminal"},
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *stdhttp.Request) bool {
