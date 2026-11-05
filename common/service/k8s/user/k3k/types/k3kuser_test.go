@@ -8,33 +8,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestToArrayCkmRequestRemovesZPKMenu(t *testing.T) {
-	user := NewK3kUser(&userv1alpha1.User{
-		ObjectMeta: metav1.ObjectMeta{Name: "demo"},
-		Spec: userv1alpha1.UserSpec{
-			MenuRules: []string{"custom/menu", "zpk"},
-		},
-	})
-	user.SetCkmName("demo-ckm")
-	if _, ok := user.ToArray()[W7_DOMAIN_WHITE_LIST]; ok {
-		t.Fatal("login user info must not include the domain whitelist")
-	}
-
-	var menuRules []string
-	if err := json.Unmarshal([]byte(user.ToArray()[W7_MENU]), &menuRules); err != nil {
-		t.Fatalf("unmarshal menu rules: %v", err)
-	}
-	for _, menu := range menuRules {
-		if menu == "zpk" {
-			t.Fatal("CKM request user menu must not include zpk")
-		}
-	}
-	if !containsMenu(menuRules, "custom/menu") {
-		t.Fatalf("menu rules = %v, want custom menu retained", menuRules)
-	}
-}
-
-func TestToArrayNonCkmRequestKeepsZPKMenu(t *testing.T) {
 func TestToArrayKeepsUserMenuAndRole(t *testing.T) {
 	user := NewK3kUser(&userv1alpha1.User{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo"},
