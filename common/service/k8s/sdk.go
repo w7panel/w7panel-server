@@ -20,7 +20,6 @@ import (
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	openapi_v2 "github.com/google/gnostic-models/openapiv2"
 	"github.com/w7panel/w7panel/common/helper"
-	cvmv1alpha1 "github.com/w7panel/w7panel/common/service/k8s/ckm/api/v1alpha1"
 	higressextv1 "github.com/w7panel/w7panel/common/service/k8s/higress/client/pkg/apis/extensions/v1alpha1"
 	higressnetworkingv1 "github.com/w7panel/w7panel/common/service/k8s/higress/client/pkg/apis/networking/v1"
 	"github.com/w7panel/w7panel/common/service/k8s/terminal"
@@ -98,7 +97,6 @@ func init() {
 	_ = loginconfigv1alpha1.AddToScheme(scheme)
 	_ = buildimagev1alpha1.AddToScheme(scheme)
 	_ = bootstrapinstallationv1alpha1.AddToScheme(scheme)
-	_ = cvmv1alpha1.AddToScheme(scheme)
 	_ = oidcv1alpha1.AddToScheme(scheme)
 	_ = privatednsv1alpha1.AddToScheme(scheme)
 	_ = sitev1alpha1.AddToScheme(scheme)

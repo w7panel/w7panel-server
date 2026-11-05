@@ -73,7 +73,6 @@ const (
 	W7_ACCESS_TOKEN            = "w7.cc/access-token"        //访问令牌
 	W7_DOMAIN_WHITE_LIST       = "w7.cc/domain-white-list"   //域名白名单
 	W7_DEMO_USER               = "w7.cc/demo-user"           //演示用户
-	W7_CVM_USER                = "w7.cc/cvm-user"            //是否支持cvm购买
 	W7_SYS_STORAGE_PVC_NAME    = "w7.cc/sys-pvc-name"        //系统存储PVC名称
 	W7_RETURN_ORDER_INFO       = "w7.cc/return-order-info"   //需要退款处理的订单信息
 	W7_BASE_ORDER_SN           = "w7.cc/base-order-sn"       //基础订单号
@@ -92,112 +91,12 @@ const (
 	W7_OVER_RESOURCE      = "w7.cc/over-resource"      //
 	W7_OVER_BASE_RESOURCE = "w7.cc/over-base-resource" //首次购买资源
 	W7_LOGIN_TIME         = "w7.cc/login-time"
-	W7_CKM_NAME           = "w7.cc/ckm-name"         //当前请求中ckm名称
-	W7_CVM_NAME           = "w7.cc/cvm-name"         //当前请求中cvm名称
-	W7_SERVER0_POD_NAME   = "w7.cc/server0-pod-name" //当前请求中cvm名称
 )
 
 const Bandwidth v1.ResourceName = "bandwidth"
 const DataStorageSize v1.ResourceName = "data.storage"     // 数据存储大小
 const SysStorageSize v1.ResourceName = "sys.storage"       // 系统存储大小
 const ExpandStorageSize v1.ResourceName = "expand.storage" // 系统存储大小
-
-var K3K_MENU_FOUNDER_RULES = []string{
-	"cluster",
-	"cluster/panel",
-	"cluster/resource",
-	"cluster/dns",
-	"app",
-	"app/apps",
-	"app/apps/add",
-	"app/apps/edit",
-	"app/apps/delete",
-	"app/cronjob",
-	"app/cronjob/add",
-	"app/cronjob/edit",
-	"app/cronjob/delete",
-	"app/rvproxy",
-	"app/rvproxy/add",
-	"app/rvproxy/edit",
-	"app/rvproxy/delete",
-	"gateway",
-	"gateway/rvproxy",
-	"gateway/rvproxy/add",
-	"gateway/rvproxy/edit",
-	"gateway/rvproxy/delete",
-	"gateway/aiproxy",
-	"gateway/aiproxy/add",
-	"gateway/aiproxy/edit",
-	"gateway/aiproxy/delete",
-	"gateway/plugins",
-	"gateway/plugins/add",
-	"gateway/plugins/edit",
-	"gateway/plugins/delete",
-	"app/database",
-	"app/database/add",
-	"app/database/delete",
-	"app/gpustack",
-	"storage",
-	"storage/disk",
-	"storage/disk/add",
-	"storage/disk/edit",
-	"storage/disk/delete",
-	"storage/zone",
-	"zpk",
-	"system",
-	"system/cloud",
-	"system/audit",
-	"person/order-center",
-	"person/cost-center",
-	"cluster/nodes",
-	"cluster/nodes/add",
-	"cluster/nodes/registries",
-	"cluster/nodes-image-list",
-	"cluster/nodes/gpu",
-	"cluster/nodes/memory",
-	"usermanage/usermanage-whitedomain",
-	"usermanage",
-	"usermanage/users",
-	"usermanage/usergroup",
-	"usermanage/permission",
-	"usermanage/quota",
-	"usermanage/site-setting",
-	"usermanage/usermanage-system",
-}
-
-var OLD_MENU = []string{
-	"cluster",
-	"cluster-panel",
-	"app",
-	"app-apps",
-	"app-apps-add",
-	"app-apps-edit",
-	"app-apps-delete",
-	"app-cronjob",
-	"app-cronjob-add",
-	"app-cronjob-edit",
-	"app-cronjob-delete",
-	"app-rvproxy",
-	"app-rvproxy-add",
-	"app-rvproxy-edit",
-	"app-rvproxy-delete",
-	"app-dblist",
-	"app-dblist-add",
-	"app-dblist-delete",
-	"app-gpustack",
-	"storage",
-	"storage-node",
-	"storage-node-add",
-	"storage-node-edit",
-	"storage-node-delete",
-	"storage-zone",
-	"zpk",
-	"system",
-	"system-cloud",
-	"system-order-center",
-	"system-cost-center",
-	"system-license",
-}
 
 func boolToString(b bool) string {
 	if b {

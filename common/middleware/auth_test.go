@@ -54,15 +54,23 @@ func TestRegistryWriteClassification(t *testing.T) {
 	}
 }
 
-func TestRegistryWriteUsesConfiguredAuthMode(t *testing.T) {
+func TestRegistryWriteUsesPanelAuth(t *testing.T) {
 	req := httptest.NewRequest("PUT", "/v2/demo/manifests/latest", nil)
-	t.Setenv("W7PANEL_AUTH_MODE", PanelAuthMode)
 	if !shouldUsePanelAuth(req) {
-		t.Fatal("registry write must use panel auth in panel mode")
+		t.Fatal("registry writes must use panel auth")
 	}
-	t.Setenv("W7PANEL_AUTH_MODE", K8sAuthMode)
-	if shouldUsePanelAuth(req) {
-		t.Fatal("registry write must use Kubernetes auth in k8s mode")
+}
+
+func TestPanelAuthDoesNotFallBackToLegacyInstanceMode(t *testing.T) {
+	for _, mode := range []string{"", "k8s", "panel"} {
+		t.Run(mode, func(t *testing.T) {
+			t.Setenv("W7PANEL_AUTH_MODE", mode)
+			for _, path := range []string{"/panel-api/v1/k3k/info", "/panel-api/v1/callback-url", "/k8s-proxy/api/v1/pods"} {
+				if !shouldUsePanelAuth(httptest.NewRequest("GET", path, nil)) {
+					t.Fatalf("panel auth bypassed for %s", path)
+				}
+			}
+		})
 	}
 }
 
