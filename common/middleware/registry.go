@@ -61,5 +61,8 @@ func IsRegistryWrite(method, path string) bool {
 }
 
 func requiresRoutePermission(method, path string) bool {
+	if path == "/panel-api/v1/auth/exclusive-menus" {
+		return false
+	}
 	return strings.HasPrefix(path, "/panel-api/v1/") || IsRegistryWrite(method, path)
 }

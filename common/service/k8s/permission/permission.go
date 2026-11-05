@@ -537,6 +537,7 @@ func isAlwaysAllowed(path string) bool {
 		(path == "/panel-api/v1/dns-profiles" || strings.HasPrefix(path, "/panel-api/v1/dns-profiles/")) ||
 		path == "/panel-api/v1/auth/userinfo" ||
 		path == "/panel-api/v1/auth/domain-white-list" ||
+		path == "/panel-api/v1/auth/exclusive-menus" ||
 		path == "/panel-api/v1/auth/refresh-token2"
 }
 

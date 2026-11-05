@@ -70,6 +70,8 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 			localApiGroup.GET("/userinfo", middleware.Auth{}.Process, controller2.Auth{}.UserInfo)
 			localApiGroup.GET("/domain-white-list", middleware.Auth{}.Process, controller2.Auth{}.DomainWhiteList)
+			localApiGroup.GET("/exclusive-menus", middleware.Auth{}.Process, controller2.ExclusiveMenus{}.Get)
+			localApiGroup.PUT("/exclusive-menus", middleware.Auth{}.Process, controller2.ExclusiveMenus{}.Put)
 			localApiGroup.GET("/main-settings", middleware.PanelAuth{}.Process, controller2.MainSettings{}.Get)
 			// 不需要创始人权限
 			// localApiGroup.GET("/console/code/:code", middleware.Auth{}.Process, controller2.Console{}.ProxyCouponCode)
