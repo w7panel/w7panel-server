@@ -2,8 +2,15 @@
 
 ## 发布顺序
 
-- 发布前先在相邻的 `w7panel-ui` 目录运行 `./build.sh`，确认前端产物已写入本仓库的 `kodata`。
-- 随后在本仓库执行 `export IMAGE_TAG=v1.1.96.289 && make ko-push && ./pub.sh`。`make ko-push` 只打包现有 `kodata`，不会自动构建前端。
+- 每次向 218 部署测试版本，都先在相邻的 `w7panel-ui` 目录执行 `./build.sh`，确认前端产物已写入本仓库的 `kodata`。
+- 然后在本仓库指定本次镜像标签并依次推送、发布：
+
+  ```sh
+  export IMAGE_TAG=v1.1.96.xxx
+  make ko-push && ./pub.sh
+  ```
+
+- 每次使用新的 `IMAGE_TAG`；`make ko-push` 只打包现有 `kodata`，不会自动构建前端。`pub.sh` 是被 Git 忽略的本机脚本，执行前确认它将 `IMAGE_TAG` 传给 Helm 的 `image.tag`。发布后核对 Helm 实际使用的镜像标签与 `IMAGE_TAG` 一致。
 
 ## 本地联调
 
@@ -66,3 +73,7 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 2. Use `detect_changes_tool` for code review.
 3. Use `get_affected_flows_tool` to understand impact.
 4. Use `query_graph_tool` pattern="tests_for" to check coverage.
+
+## Worktree 合并后清理
+
+- 任务 worktree 的改动合并到主分支并完成提交后，确认主项目当前提交已包含全部任务改动，再在主项目目录执行 `$worktree-end 任务名` 删除该 worktree 和任务分支。如仍有未合并差异，停止清理；不得用 `--force` 跳过检查。
