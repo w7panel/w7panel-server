@@ -20,6 +20,25 @@ if [ -n "$higress_chart" ]; then
     meta.helm.sh/release-name=w7panel-higress \
     meta.helm.sh/release-namespace=default --overwrite
 fi
+
+echo "认领既有 cert-manager HelmChart"
+certmanager_chart=$(kubectl -n kube-system get helmchart cert-manager --ignore-not-found -o json)
+if [ -n "$certmanager_chart" ]; then
+  if ! printf '%s' "$certmanager_chart" | jq -e '
+    (.spec.chart | startswith("https://cdn.w7.cc/w7panel/charts/cert-manager-") and endswith(".tgz")) and
+    .spec.targetNamespace == "cert-manager" and
+    ((.metadata.labels["app.kubernetes.io/managed-by"] // "Helm") == "Helm") and
+    ((.metadata.annotations["meta.helm.sh/release-name"] // "w7panel-certmanager") == "w7panel-certmanager") and
+    ((.metadata.annotations["meta.helm.sh/release-namespace"] // "default") == "default")
+  ' >/dev/null; then
+    echo "现有 cert-manager HelmChart 与 w7panel-certmanager 不匹配，停止自动认领" >&2
+    exit 1
+  fi
+  kubectl -n kube-system label helmchart cert-manager app.kubernetes.io/managed-by=Helm --overwrite
+  kubectl -n kube-system annotate helmchart cert-manager \
+    meta.helm.sh/release-name=w7panel-certmanager \
+    meta.helm.sh/release-namespace=default --overwrite
+fi
 set -x
 
 echo "导入crd"

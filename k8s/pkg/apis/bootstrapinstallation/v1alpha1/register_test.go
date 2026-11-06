@@ -56,7 +56,7 @@ func TestBuiltinBootstrapInstallationsArePruneScoped(t *testing.T) {
 		}
 		if item.Name == "w7panel-default-certmanager" {
 			foundCertmanager = true
-			if item.Spec.Artifact.Identifie != "wpanel-certmanager" || item.Spec.Artifact.Source != "https://zpk.w7.cc/zpk/respo/info/wpanel-certmanager" || item.Spec.Target.ReleaseName != "wpanel-certmanager" || item.Spec.Target.Namespace != "default" {
+			if item.Spec.Artifact.Identifie != "w7panel-certmanager" || item.Spec.Artifact.Source != "https://zpk.w7.cc/zpk/respo/info/w7panel-certmanager" || item.Spec.Target.ReleaseName != "w7panel-certmanager" || item.Spec.Target.Namespace != "default" {
 				t.Fatalf("unexpected certmanager installation: %#v", item.Spec)
 			}
 		}
