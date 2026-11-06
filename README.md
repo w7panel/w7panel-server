@@ -177,7 +177,7 @@ w7panel privatedns-upgrade --overwrite
 升级脚本会应用 `kodata/yaml/bootstrap-installations.yaml`，安装以下内置应用：
 
 - `w7panel-higress`：Higress
-- `w7panel-cloudnoauth`：CloudNoAuth
+- `wpanel-certmanager`：CertManager
 
 默认清单不再预装插件类型应用。维护命令为：
 

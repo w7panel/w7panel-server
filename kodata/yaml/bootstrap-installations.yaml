@@ -17,3 +17,23 @@ spec:
   target:
     releaseName: w7panel-higress
     namespace: default
+---
+apiVersion: w7panel.w7.com/v1alpha1
+kind: BootstrapInstallation
+metadata:
+  name: w7panel-default-certmanager
+  labels:
+    w7.cc/bootstrap-builtin: "true"
+spec:
+  strategy:
+    maxConcurrent: 2
+    maxRetries: 3
+    timeoutPerArtifact: 10m
+  artifact:
+    name: certmanager
+    type: ZPK
+    identifie: wpanel-certmanager
+    source: https://zpk.w7.cc/zpk/respo/info/wpanel-certmanager
+  target:
+    releaseName: wpanel-certmanager
+    namespace: default

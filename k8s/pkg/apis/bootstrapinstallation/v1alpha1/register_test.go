@@ -38,6 +38,7 @@ func TestBuiltinBootstrapInstallationsArePruneScoped(t *testing.T) {
 	}
 	decoder := yamlutil.NewYAMLOrJSONDecoder(bytes.NewReader(manifest), 4096)
 	count := 0
+	foundCertmanager := false
 	for {
 		item := &installationv1.BootstrapInstallation{}
 		if err := decoder.Decode(item); err != nil {
@@ -53,9 +54,18 @@ func TestBuiltinBootstrapInstallationsArePruneScoped(t *testing.T) {
 		if item.Labels["w7.cc/bootstrap-builtin"] != "true" {
 			t.Fatalf("%s is missing the built-in prune label", item.Name)
 		}
+		if item.Name == "w7panel-default-certmanager" {
+			foundCertmanager = true
+			if item.Spec.Artifact.Identifie != "wpanel-certmanager" || item.Spec.Artifact.Source != "https://zpk.w7.cc/zpk/respo/info/wpanel-certmanager" || item.Spec.Target.ReleaseName != "wpanel-certmanager" || item.Spec.Target.Namespace != "default" {
+				t.Fatalf("unexpected certmanager installation: %#v", item.Spec)
+			}
+		}
 	}
 	if count == 0 {
 		t.Fatal("built-in BootstrapInstallation manifest is empty")
+	}
+	if !foundCertmanager {
+		t.Fatal("built-in certmanager BootstrapInstallation is missing")
 	}
 
 	upgradeScript, err := os.ReadFile(filepath.Join(root, "kodata", "shell", "upgrade.sh"))

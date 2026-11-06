@@ -32,7 +32,7 @@ helm lint kodata/charts/k8s-offline
 以下应用不再维护 `kodata/charts/w7panel-*` 本地 Chart，而是由 `kodata/yaml/bootstrap-installations.yaml` 声明并通过 ZPK 首次安装：
 
 - `w7panel-higress`
-- `w7panel-cloudnoauth`
+- `wpanel-certmanager`
 
 默认清单不再预装插件类型应用。
 
