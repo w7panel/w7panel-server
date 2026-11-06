@@ -30,10 +30,10 @@ spec:
     maxRetries: 3
     timeoutPerArtifact: 10m
   artifact:
-    name: certmanager
+    name: w7panel-certmanager
     type: ZPK
-    identifie: wpanel-certmanager
-    source: https://zpk.w7.cc/zpk/respo/info/wpanel-certmanager
+    identifie: w7panel-certmanager
+    source: https://zpk.w7.cc/zpk/respo/info/w7panel-certmanager
   target:
-    releaseName: wpanel-certmanager
+    releaseName: w7panel-certmanager
     namespace: default
