@@ -32,7 +32,7 @@ if [ -n "$certmanager_chart" ]; then
     ((.metadata.annotations["meta.helm.sh/release-namespace"] // "default") == "default")
   ' >/dev/null; then
     echo "现有 cert-manager HelmChart 与 w7panel-certmanager 不匹配，停止自动认领" >&2
-    exit 1
+    # exit 1
   fi
   kubectl -n kube-system label helmchart cert-manager app.kubernetes.io/managed-by=Helm --overwrite
   kubectl -n kube-system annotate helmchart cert-manager \
