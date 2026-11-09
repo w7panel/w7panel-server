@@ -577,3 +577,23 @@
 ## 2026-10-14
 
 - 撤回 93a95c34 的后端应用排序实现及后续未提交补充：移除 Manifest order、工作负载排序注解、AppGroup order/isMain 字段、收集排序及 CRD/DeepCopy 变更；改由 UI 将名称等于当前 AppGroup 的 Deployment 优先展示。原排序回归测试随实现移除。
+
+## 2026-11-04
+
+- 修复应用授权登录续接：控制台登录保留 authRequestID，外部 OIDC 将原授权请求绑定服务端登录 state，登录后优先完成原应用授权；失败时显示错误，不跳 CKM。验证结果见本次测试记录。
+
+- 定向验证：授权续接 6 项测试和三个登录页面 SFC 编译通过；前端全量构建因已有 @openuidev/vue-lang 依赖缺失失败。后端认证控制器测试使用项目内 Go 1.26.6 工具链验证。
+
+- 最终验证：6 项授权续接回归、3 个登录页面 SFC 编译通过；LOCAL_MOCK=true make test TEST_PACKAGES=./app/auth/http/controller 使用项目内 Go 1.26.6 工具链执行成功（控制器无可运行单测，验证编译）。全量前端构建受既有 @openuidev/vue-lang 依赖缺失阻挡；未执行浏览器登录联调或部署。
+
+## 2026-11-05（清理废弃 CKM 集成）
+
+- CKM 已独立且旧 K8s 实例登录已废弃：删除面板 CKM 专用会话、Token 类型、前端宿主注入和刷新、旧实例 K8s 登录分支、未调用的 CKM/CVM 列表详情、内置 CRD 类型和用户角色菜单覆盖；清理专用审计字段及 CVM_ENABLED/W7PANEL_AUTH_MODE 配置。
+- 保留 OIDC、通用微应用 Token、标准终端 WebSocket、用户信息、资源同步和当前普通用户默认应用入口；旧 ckm-panel Token 签发与解析均拒绝，Kubernetes audience 七段格式保持。
+- 验证：LOCAL_MOCK=true make test 覆盖 middleware、panelauth、audit、用户信息、auth/k3k、应用控制器及 OIDC，全部通过；前端 11 项回归与 3 个修改组件 SFC 编译通过。前端全量构建受已有 @openuidev/vue-lang 依赖无法解析阻挡。git diff --check 通过；未部署、未做浏览器联调。开发前拉取前后端最新代码及联网重试均因 GitHub 网络错误失败，基于当前工作区清理。
+
+### 2026-11-09 ZPK 新格式服务参数适配
+
+- 从 `platform.container-v2[].ports[].containerPort` 读取子应用端口，跳过初始化容器；启动参数使用 `platform.startParams`，贯通安装配置、赋值、占位符替换和 Helm values；旧制品转换由 `w7panel-zpk` 负责，面板不增加回退逻辑。
+- 安装页、子应用加载流程和 Service 命名规则保持原有行为，不增加 manifest 请求。
+- 验证：后端整体编译、types 包测试、新版 manifest 与 Helm 参数回归通过；前端完整构建因本地缺少 `@openuidev/vue-lang` 未通过，远端同步因 GitHub 连接超时未完成。

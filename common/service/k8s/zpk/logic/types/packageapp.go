@@ -369,7 +369,7 @@ func (p *PackageApp) GetLabels() map[string]string {
 
 func (p *PackageApp) GetAnnotations() map[string]string {
 
-	jsonParams, err := json.Marshal(p.Manifest.Platform.Container.StartParams)
+	jsonParams, err := json.Marshal(p.Manifest.Platform.StartParams)
 	if err != nil {
 		jsonParams = []byte{}
 	}
@@ -516,7 +516,7 @@ func (p *PackageApp) getDefaultDomain(defaultScheme string) string {
 		return domain
 	}
 
-	for _, param := range p.Manifest.Platform.Container.StartParams {
+	for _, param := range p.Manifest.Platform.StartParams {
 		paramName := strings.ToUpper(strings.TrimSpace(param.Name))
 		if paramName != "DOMAIN_URL" && paramName != "DOMAIN_SSL_URL" {
 			continue
@@ -780,7 +780,7 @@ func (p *PackageApp) GetEnv() []corev1.EnvVar {
 		})
 	}
 
-	for _, param := range p.Manifest.Platform.Container.StartParams {
+	for _, param := range p.Manifest.Platform.StartParams {
 		val := corev1.EnvVar{
 			Name:  param.Name,
 			Value: param.ValuesText,
@@ -812,10 +812,7 @@ func (p *PackageApp) GetEnv() []corev1.EnvVar {
 }
 
 func (p *PackageApp) GetFirstPort() int32 {
-	if len(p.Manifest.Platform.Container.Ports) == 0 {
-		return int32(p.Manifest.Platform.Container.ContainerPort)
-	}
-	return int32(p.Manifest.Platform.Container.Ports[0].Port)
+	return p.Manifest.GetFirstPort()
 }
 
 // 获取构建镜像地址

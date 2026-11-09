@@ -142,7 +142,7 @@ func (m *Manifest) RequireDomain() bool {
 			return true
 		}
 	}
-	for _, param := range m.Platform.Container.StartParams {
+	for _, param := range m.Platform.StartParams {
 		if strings.TrimSpace(param.ModuleName) != "" {
 			continue
 		}
@@ -159,7 +159,7 @@ func (m *Manifest) RequireDomainForce() bool {
 			return true
 		}
 	}
-	for _, param := range m.Platform.Container.StartParams {
+	for _, param := range m.Platform.StartParams {
 		if strings.TrimSpace(param.ModuleName) != "" {
 			continue
 		}
@@ -186,7 +186,7 @@ func (m *Manifest) RequireDomainHttps() bool {
 			return true
 		}
 	}
-	for _, param := range m.Platform.Container.StartParams {
+	for _, param := range m.Platform.StartParams {
 		if strings.TrimSpace(param.ModuleName) != "" {
 			continue
 		}
@@ -239,13 +239,13 @@ func (m *Manifest) GenVolumesName(preVolumesName map[string]string) {
 
 func (m *Manifest) AppendDomainStartParams() {
 	hasDomainConfig := false
-	for _, val := range m.Platform.Container.StartParams {
+	for _, val := range m.Platform.StartParams {
 		if val.ValuesText == "%DOMAIN_URL%" || val.ValuesText == "%DOMAIN_SSL_URL%" {
 			hasDomainConfig = true
 		}
 	}
 	if !hasDomainConfig {
-		m.Platform.Container.StartParams = append(m.Platform.Container.StartParams, StartParams{
+		m.Platform.StartParams = append(m.Platform.StartParams, StartParams{
 			Name:        "DOMAIN_URL",
 			Title:       "域名地址",
 			Description: "域名地址，例如：example.com",
@@ -461,13 +461,21 @@ func (m *Depends) GetLoadUrl(p *ManifestPackage) string {
 	return dependUrl
 }
 
+// ManifestContainer uses Kubernetes port fields in the current ZPK manifest.
+type ManifestContainer struct {
+	corev1.Container
+	IsInitContainer bool `json:"isInitContainer"`
+}
+
 type Platform struct {
-	Container Container   `json:"container"`
-	Depends   []Depends   `json:"depends"`
-	DependsOn []DependsOn `json:"dependsOn"`
-	Helm      Helm        `json:"helm"`
-	Supports  []string    `json:"supports"`
-	Ingress   []Ingress   `json:"ingress"`
+	Containers  []ManifestContainer `json:"container-v2,omitempty"`
+	StartParams []StartParams       `json:"startParams,omitempty"`
+	Container   Container           `json:"container"`
+	Depends     []Depends           `json:"depends"`
+	DependsOn   []DependsOn         `json:"dependsOn"`
+	Helm        Helm                `json:"helm"`
+	Supports    []string            `json:"supports"`
+	Ingress     []Ingress           `json:"ingress"`
 }
 
 type ZpkInfo struct {
@@ -627,7 +635,7 @@ func (m *Ingress) ReplaceSvcName(resource zpktype.K8sResourceIngressInterface) {
 }
 
 func (m *Manifest) RequireCreateDb() (bool, string) {
-	for _, v := range m.Platform.Container.StartParams {
+	for _, v := range m.Platform.StartParams {
 		if v.ModuleName == "w7_mysql.DB_NAME" || v.ModuleName == "w7_mysql5.DB_NAME" || v.ModuleName == "w7_mysql57.DB_NAME" {
 			return true, v.ValuesText
 		}
@@ -638,7 +646,7 @@ func (m *Manifest) RequireCreateDb() (bool, string) {
 func (m *Manifest) RequireCreateDbUser() (bool, string, string) {
 	uname := ""
 	password := ""
-	for _, v := range m.Platform.Container.StartParams {
+	for _, v := range m.Platform.StartParams {
 		if v.ModuleName == "w7_mysql.DB_USERNAME" || v.ModuleName == "w7_mysql5.DB_USERNAME" {
 			uname = v.ValuesText
 		}
@@ -660,7 +668,7 @@ func (m *Manifest) ReplaceShellJobName(name string) {
 
 func (m *Manifest) GetStartParamsModuleNames() []string {
 	result := []string{}
-	for _, v := range m.Platform.Container.StartParams {
+	for _, v := range m.Platform.StartParams {
 		if v.ModuleName != "" {
 			vm := v.ModuleName
 			if strings.Contains(v.ModuleName, ".") {
@@ -674,10 +682,17 @@ func (m *Manifest) GetStartParamsModuleNames() []string {
 }
 
 func (m *Manifest) GetFirstPort() int32 {
-	if len(m.Platform.Container.Ports) == 0 {
-		return int32(m.Platform.Container.ContainerPort)
+	for _, container := range m.Platform.Containers {
+		if container.IsInitContainer {
+			continue
+		}
+		for _, port := range container.Ports {
+			if port.ContainerPort > 0 {
+				return port.ContainerPort
+			}
+		}
 	}
-	return int32(m.Platform.Container.Ports[0].Port)
+	return 0
 }
 
 func (m *Manifest) IsHelm() bool {

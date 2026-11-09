@@ -81,9 +81,7 @@ func TestManifestDomainRequirementsIgnoreModuleStartParams(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			manifest := Manifest{
 				Application: tt.application,
-				Platform: Platform{Container: Container{
-					StartParams: tt.startParams,
-				}},
+				Platform:    Platform{StartParams: tt.startParams},
 			}
 			if got := manifest.RequireDomain(); got != tt.wantDomain {
 				t.Fatalf("RequireDomain() = %v, want %v", got, tt.wantDomain)
