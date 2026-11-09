@@ -50,7 +50,7 @@ func disabledNewPackageApps(t *testing.T) {
 		t.Error("NewPackageApps should return not empty")
 	}
 	for _, app := range apps {
-		t.Log(app.Manifest.Platform.Container.StartParams)
+		t.Log(app.Manifest.Platform.StartParams)
 	}
 
 }
@@ -112,7 +112,7 @@ func TestPackageAppDefaultDomainAnnotation(t *testing.T) {
 			app := &types.PackageApp{
 				ManifestPackage: &types.ManifestPackage{Manifest: types.Manifest{
 					Application: types.Application{Identifie: "plugin", Type: "app-plugin"},
-					Platform:    types.Platform{Container: types.Container{StartParams: tt.startParams}},
+					Platform:    types.Platform{StartParams: tt.startParams},
 				}},
 				InstallOption: &types.InstallOption{
 					ReleaseName:       "plugin-release",

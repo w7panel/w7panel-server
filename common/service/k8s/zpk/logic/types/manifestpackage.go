@@ -188,7 +188,7 @@ func (p *ManifestPackage) ToPackageAddConfig(releaseName string, requireLimit bo
 		RequireDomain:            p.Manifest.RequireDomain(),
 		RequireDomainHttps:       p.Manifest.RequireDomainHttps(),
 		RequireDomainForce:       p.Manifest.RequireDomainForce(),
-		StartParams:              p.Manifest.Platform.Container.StartParams,
+		StartParams:              p.Manifest.Platform.StartParams,
 		Ingress:                  p.Manifest.Platform.Ingress,
 		Icon:                     p.GetIcon(),
 		Version:                  p.GetVersion(),
@@ -268,9 +268,9 @@ func (p *ManifestPackage) GetChildren(moduleName string) (child *ManifestPackage
 }
 
 func (p *ManifestPackage) PutKv(kv EnvKv) {
-	for i, param := range p.Manifest.Platform.Container.StartParams {
+	for i, param := range p.Manifest.Platform.StartParams {
 		if param.Name == kv.Name {
-			p.Manifest.Platform.Container.StartParams[i].ValuesText = kv.Value
+			p.Manifest.Platform.StartParams[i].ValuesText = kv.Value
 		}
 	}
 }
@@ -282,7 +282,7 @@ func (p *ManifestPackage) PutEnvs(kv []EnvKv) {
 }
 
 func (p *ManifestPackage) GetKey(key string) StartParams {
-	params := p.Manifest.Platform.Container.StartParams
+	params := p.Manifest.Platform.StartParams
 	for _, param := range params {
 		if param.Name == key {
 			return param
@@ -294,7 +294,6 @@ func (p *ManifestPackage) GetKey(key string) StartParams {
 
 func (p *ManifestPackage) GetSvcName(suffix, namespace string) string {
 	return helper.ClusterDomain(strings.ReplaceAll(p.Manifest.Application.Identifie+"-"+suffix, "_", "-"), namespace)
-	// return strings.ReplaceAll(p.Manifest.Application.Identifie+"-"+releaseName, "_", "-") + "." + namespace + ".svc.cluster.local"
 }
 
 func (p *ManifestPackage) GetFirstPort() string {
@@ -306,28 +305,28 @@ func (p *ManifestPackage) GetFirstPort() string {
 }
 
 func (p *ManifestPackage) ReplaceStartParams(suffix string, root *ManifestPackage, namespace string) string {
-	params := p.Manifest.Platform.Container.StartParams
+	params := p.Manifest.Platform.StartParams
 	for i, param := range params {
 		if param.ModuleName != "" {
 			child, ok := root.Children[param.ModuleName]
 			if ok {
 				replaceVal := strings.ReplaceAll(param.ValuesText, "%HOST%", child.GetSvcName(suffix, namespace))
 				replaceVal = strings.ReplaceAll(replaceVal, "%PORT%", child.GetFirstPort())
-				replaceVal = p.ReplaceVal(replaceVal, child.Manifest.Platform.Container.StartParams)
-				p.Manifest.Platform.Container.StartParams[i].ValuesText = replaceVal
+				replaceVal = p.ReplaceVal(replaceVal, child.Manifest.Platform.StartParams)
+				p.Manifest.Platform.StartParams[i].ValuesText = replaceVal
 			}
 		}
 	}
 	return ""
 }
 func (p *ManifestPackage) ReplaceDefault(saName string) {
-	params := p.Manifest.Platform.Container.StartParams
+	params := p.Manifest.Platform.StartParams
 	for i, param := range params {
 		valuesTxt := param.ValuesText
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%USERNAME%", saName)
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%RANDOM%", helper.RandomString(10))
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%LARAVEL_APP_KEY%", helper.LaravelAppKey(32))
-		p.Manifest.Platform.Container.StartParams[i].ValuesText = valuesTxt
+		p.Manifest.Platform.StartParams[i].ValuesText = valuesTxt
 	}
 	envs := p.Manifest.Platform.Container.Env
 	for k, env := range envs {
@@ -339,7 +338,7 @@ func (p *ManifestPackage) ReplaceDefault(saName string) {
 	}
 }
 func (p *ManifestPackage) ReplaceCommon(host string) {
-	params := p.Manifest.Platform.Container.StartParams
+	params := p.Manifest.Platform.StartParams
 	for i, param := range params {
 		valuesTxt := param.ValuesText
 		if p.Manifest.IsHelm() {
@@ -352,7 +351,7 @@ func (p *ManifestPackage) ReplaceCommon(host string) {
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%DOMAIN_HOST%", host)
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%RANDOM%", helper.RandomString(10))
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%LARAVEL_APP_KEY%", helper.LaravelAppKey(32))
-		p.Manifest.Platform.Container.StartParams[i].ValuesText = valuesTxt
+		p.Manifest.Platform.StartParams[i].ValuesText = valuesTxt
 	}
 	envs := p.Manifest.Platform.Container.Env
 	for k, env := range envs {

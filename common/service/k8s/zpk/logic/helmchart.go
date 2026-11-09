@@ -70,7 +70,7 @@ func (h *HelmChart) toChartMetaYaml() ([]byte, error) {
 func (h *HelmChart) GetValues() (map[string]interface{}, error) {
 	settings := cli.New()
 	optValues := &values.Options{}
-	for _, params := range h.Root.Manifest.Platform.Container.StartParams {
+	for _, params := range h.Root.Manifest.Platform.StartParams {
 		optValues.Values = append(optValues.Values, params.Name+"="+params.ValuesText)
 	}
 	keys := make([]string, 0, len(h.Root.HelmValues))
@@ -109,7 +109,7 @@ func (h *HelmChart) ToHelmChartWithGroup() (*v1alpha1.AppGroup, *chart.Chart, er
 
 func fillHelmSet(packageApp *types.PackageApp, childName string, ignore []string, fillfullName bool) string {
 	set := ""
-	for _, params := range packageApp.Manifest.Platform.Container.StartParams {
+	for _, params := range packageApp.Manifest.Platform.StartParams {
 		if lo.Contains(ignore, params.Name) {
 			continue
 		}

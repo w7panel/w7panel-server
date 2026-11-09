@@ -11,22 +11,33 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type DNSProfile struct { controller.Abstract }
+type DNSProfile struct{ controller.Abstract }
 
 func (DNSProfile) canWriteIngress(ctx *gin.Context, namespace string) bool {
-	if namespace == "" { ctx.JSON(http.StatusBadRequest, gin.H{"msg": "缺少命名空间"}); return false }
+	if namespace == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"msg": "缺少命名空间"})
+		return false
+	}
 	token, ok := ctx.Get("k8s_token")
 	credential, ok := token.(string)
-	if !ok || credential == "" { ctx.JSON(http.StatusForbidden, gin.H{"msg": "无法验证域名管理权限"}); return false }
+	if !ok || credential == "" {
+		ctx.JSON(http.StatusForbidden, gin.H{"msg": "无法验证域名管理权限"})
+		return false
+	}
 	sdk, err := k8s.NewK8sClient().Channel(credential)
-	if err != nil { ctx.JSON(http.StatusForbidden, gin.H{"msg": "无法验证域名管理权限"}); return false }
+	if err != nil {
+		ctx.JSON(http.StatusForbidden, gin.H{"msg": "无法验证域名管理权限"})
+		return false
+	}
 	for _, verb := range []string{"create", "update"} {
 		review, err := sdk.ClientSet.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx.Request.Context(), &v1.SelfSubjectAccessReview{
 			Spec: v1.SelfSubjectAccessReviewSpec{ResourceAttributes: &v1.ResourceAttributes{
 				Namespace: namespace, Verb: verb, Group: "networking.k8s.io", Resource: "ingresses",
 			}},
 		}, metav1.CreateOptions{})
-		if err == nil && review.Status.Allowed { return true }
+		if err == nil && review.Status.Allowed {
+			return true
+		}
 	}
 	ctx.JSON(http.StatusForbidden, gin.H{"msg": "没有该命名空间的域名写入权限"})
 	return false
@@ -41,46 +52,78 @@ func (DNSProfile) store(ctx *gin.Context) (dnsprofile.Store, bool) {
 }
 
 func (self DNSProfile) List(ctx *gin.Context) {
-	store, ok := self.store(ctx); if !ok { return }
+	store, ok := self.store(ctx)
+	if !ok {
+		return
+	}
 	profiles, err := store.List(ctx.Request.Context(), ctx.GetString("username"))
-	if err != nil { self.JsonResponseWithServerError(ctx, err); return }
+	if err != nil {
+		self.JsonResponseWithServerError(ctx, err)
+		return
+	}
 	self.JsonResponseWithoutError(ctx, profiles)
 }
 
 func (self DNSProfile) Create(ctx *gin.Context) {
-	store, ok := self.store(ctx); if !ok { return }
+	store, ok := self.store(ctx)
+	if !ok {
+		return
+	}
 	var request struct {
-		Namespace string `json:"namespace" binding:"required"`
-		Name string `json:"name" binding:"required"`
-		Provider string `json:"provider" binding:"required"`
-		Zone string `json:"zone" binding:"required"`
+		Namespace   string            `json:"namespace" binding:"required"`
+		Name        string            `json:"name" binding:"required"`
+		Provider    string            `json:"provider" binding:"required"`
+		Zone        string            `json:"zone" binding:"required"`
 		Credentials map[string]string `json:"credentials" binding:"required"`
 	}
-	if err := ctx.ShouldBindJSON(&request); err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()}); return }
-	if !self.canWriteIngress(ctx, request.Namespace) { return }
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
+		return
+	}
+	if !self.canWriteIngress(ctx, request.Namespace) {
+		return
+	}
 	profile, err := store.Create(ctx.Request.Context(), ctx.GetString("username"), request.Name, request.Provider, request.Zone, request.Credentials)
-	if err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()}); return }
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
+		return
+	}
 	self.JsonResponseWithoutError(ctx, profile)
 }
 
 func (self DNSProfile) Delete(ctx *gin.Context) {
-	store, ok := self.store(ctx); if !ok { return }
+	store, ok := self.store(ctx)
+	if !ok {
+		return
+	}
 	if err := store.Delete(ctx.Request.Context(), ctx.GetString("username"), ctx.Param("id")); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()}); return
+		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
+		return
 	}
 	self.JsonResponseWithoutError(ctx, gin.H{"deleted": true})
 }
 
 func (self DNSProfile) Grant(ctx *gin.Context) {
-	store, ok := self.store(ctx); if !ok { return }
+	store, ok := self.store(ctx)
+	if !ok {
+		return
+	}
 	var request struct {
 		Namespace string `json:"namespace" binding:"required"`
-		Name string `json:"name" binding:"required"`
-		Host string `json:"host" binding:"required"`
+		Name      string `json:"name" binding:"required"`
+		Host      string `json:"host" binding:"required"`
 	}
-	if err := ctx.ShouldBindJSON(&request); err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()}); return }
-	if !self.canWriteIngress(ctx, request.Namespace) { return }
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
+		return
+	}
+	if !self.canWriteIngress(ctx, request.Namespace) {
+		return
+	}
 	annotations, err := store.Grant(ctx.Request.Context(), ctx.GetString("username"), ctx.Param("id"), request.Namespace, request.Name, request.Host)
-	if err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()}); return }
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
+		return
+	}
 	self.JsonResponseWithoutError(ctx, annotations)
 }

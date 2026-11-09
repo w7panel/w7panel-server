@@ -231,3 +231,7 @@ bash compress.sh
 面板仅保留通用 OIDC 登录、用户信息与实例资源同步；CKM 列表、详情和实例管理由 CKM 应用承担。删除内置 CKM CRD 类型、CKM/CVM 列表与详情 API、`/auth/ckm-session` 及旧实例 K8s Token 登录。实例面板通过 OIDC 获取 Panel Token；`W7PANEL_AUTH_MODE` 不再参与认证，Makefile 不再传递该变量。Registry 内部 ServiceAccount Basic 认证仍保留。
 
 - 同步移除没有代码读取的 `cvm.enabled` / `CVM_ENABLED` 配置。
+
+### 2026-11-09 新版 ZPK 服务参数
+
+制品启动参数使用 `platform.startParams`；端口从 `platform.container-v2[].ports[].containerPort` 读取，跳过初始化容器。内部应用通过 `module_name` 与 `%HOST%` / `%PORT%` 引用目标服务，安装页逻辑保持不变。回归方法见根目录 `tests/README.md` 的“新版 ZPK 子应用服务引用回归”。

@@ -17,9 +17,13 @@ func TestProviderCredentials(t *testing.T) {
 
 func TestValidZone(t *testing.T) {
 	for _, zone := range []string{"example.com", "sub.example.com"} {
-		if !validZone(zone) { t.Fatalf("valid zone rejected: %s", zone) }
+		if !validZone(zone) {
+			t.Fatalf("valid zone rejected: %s", zone)
+		}
 	}
 	for _, zone := range []string{"*.example.com", "-example.com", "example.com/other", "localhost", ""} {
-		if validZone(zone) { t.Fatalf("invalid zone accepted: %s", zone) }
+		if validZone(zone) {
+			t.Fatalf("invalid zone accepted: %s", zone)
+		}
 	}
 }

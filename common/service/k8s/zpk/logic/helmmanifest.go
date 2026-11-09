@@ -86,6 +86,7 @@ func HelmManifestApp(param *HelmMemory) zpktypes.Manifest {
 			Icon:        param.Icon,
 		},
 		Platform: zpktypes.Platform{
+			StartParams: params,
 			Container: zpktypes.Container{
 				Build: zpktypes.Build{},
 				Cmd:   []string{},
@@ -97,7 +98,6 @@ func HelmManifestApp(param *HelmMemory) zpktypes.Manifest {
 				MinNum:              1,
 				PolicyThreshold:     80,
 				PolicyType:          "cpu",
-				StartParams:         params,
 			},
 			Helm: zpktypes.Helm{
 				ChartName:  param.ChartName,

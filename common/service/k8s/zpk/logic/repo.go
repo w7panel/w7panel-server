@@ -370,7 +370,7 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 			p.Manifest.Application.Name = formula.Title
 			p.RequireInstall = formula.Required
 			p.Manifest.Platform.Container.RequirePvc = requirePvc
-			p.Manifest.Platform.Container.StartParams = startParams
+			p.Manifest.Platform.StartParams = startParams
 			p.Manifest.Platform.Container.Volumes = formula.Volumes
 			continue
 		}
@@ -383,7 +383,7 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 		copyPkg.Manifest.Application.Name = formula.Title
 		copyPkg.RequireInstall = formula.Required
 		copyPkg.Manifest.Platform.Container.RequirePvc = requirePvc
-		copyPkg.Manifest.Platform.Container.StartParams = startParams
+		copyPkg.Manifest.Platform.StartParams = startParams
 		copyPkg.Manifest.Platform.Container.Volumes = formula.Volumes
 
 		p.Children[formula.Name] = copyPkg
