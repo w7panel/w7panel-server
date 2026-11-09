@@ -109,6 +109,19 @@ func (self Site) SaveRegistries(http *gin.Context) {
 }
 
 func (self Site) Beian(http *gin.Context) {
+	if helper.IsChildAgent() {
+		setting, err := childSiteSetting(http)
+		if err != nil {
+			http.AbortWithStatus(stdhttp.StatusBadGateway)
+			return
+		}
+		if setting != nil {
+			self.JsonResponseWithoutError(http, microAppFilingResponse(setting.Spec.General.Filing))
+		} else {
+			self.JsonSuccessResponse(http)
+		}
+		return
+	}
 	sdk := k8s.NewK8sClient()
 	if setting, err := getGlobalMicroAppSetting(http, sdk.Sdk); err == nil && hasMicroAppFiling(setting.Spec.General.Filing) {
 		self.JsonResponseWithoutError(http, microAppFilingResponse(setting.Spec.General.Filing))
@@ -125,6 +138,10 @@ func (self Site) Beian(http *gin.Context) {
 }
 
 func (self Site) Beian2(http *gin.Context) {
+	if helper.IsChildAgent() {
+		self.Beian(http)
+		return
+	}
 	sdk := k8s.NewK8sClientInner()
 	if setting, err := getGlobalMicroAppSetting(http, sdk); err == nil && hasMicroAppFiling(setting.Spec.General.Filing) {
 		self.JsonResponseWithoutError(http, microAppFilingResponse(setting.Spec.General.Filing))
@@ -186,6 +203,19 @@ func hasMicroAppFiling(spec microappsettingv1alpha1.FilingSettings) bool {
 }
 
 func (self Site) K3kConfig(http *gin.Context) {
+	if helper.IsChildAgent() {
+		setting, err := childSiteSetting(http)
+		if err != nil {
+			http.AbortWithStatus(stdhttp.StatusBadGateway)
+			return
+		}
+		response := gin.H{}
+		if setting != nil && setting.Spec.Login.IndexPage != "" {
+			response["indexpage"] = setting.Spec.Login.IndexPage
+		}
+		self.JsonResponseWithoutError(http, response)
+		return
+	}
 	sdk := k8s.NewK8sClient()
 	response := gin.H{}
 	if setting, err := getGlobalMicroAppSetting(http, sdk.Sdk); err == nil && setting.Spec.Login.IndexPage != "" {
@@ -213,7 +243,11 @@ func (self Site) InitUser(http *gin.Context) {
 		response["captchaEnabled"] = "true"
 	}
 
-	if setting, err := getGlobalMicroAppSetting(http, sdk.Sdk); err == nil {
+	if helper.IsChildAgent() {
+		if setting, err := childSiteSetting(http); err == nil && setting != nil {
+			response["allowConsoleRegister"] = boolString(setting.Spec.Login.RegistrationEnabled)
+		}
+	} else if setting, err := getGlobalMicroAppSetting(http, sdk.Sdk); err == nil {
 		response["allowConsoleRegister"] = boolString(setting.Spec.Login.RegistrationEnabled)
 	}
 	self.JsonResponseWithoutError(http, response)
@@ -247,6 +281,19 @@ func getGlobalMicroAppSetting(http *gin.Context, sdk *k8s.Sdk) (*microappsetting
 }
 
 func (self Site) Lianxi(http *gin.Context) {
+	if helper.IsChildAgent() {
+		setting, err := childSiteSetting(http)
+		if err != nil {
+			http.AbortWithStatus(stdhttp.StatusBadGateway)
+			return
+		}
+		items := []gin.H{}
+		if setting != nil {
+			items = microAppContactItems(setting.Spec.General.ContactConfigs)
+		}
+		self.JsonResponseWithoutError(http, gin.H{"items": items})
+		return
+	}
 	sdk := k8s.NewK8sClient()
 	if setting, err := getGlobalMicroAppSetting(http, sdk.Sdk); err == nil && len(setting.Spec.General.ContactConfigs) > 0 {
 		self.JsonResponseWithoutError(http, gin.H{"items": microAppContactItems(setting.Spec.General.ContactConfigs)})
@@ -260,6 +307,14 @@ func (self Site) Lianxi(http *gin.Context) {
 	}
 	self.JsonResponseWithoutError(http, list)
 
+}
+
+func childSiteSetting(ctx *gin.Context) (*microappsettingv1alpha1.MicroAppSetting, error) {
+	data, err := site.FetchMainSettings(ctx.Request.Context())
+	if err != nil {
+		return nil, err
+	}
+	return site.MainSiteSetting(data)
 }
 
 func microAppContactItems(configs []microappsettingv1alpha1.ContactConfigSettings) []gin.H {

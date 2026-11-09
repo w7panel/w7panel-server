@@ -3,6 +3,7 @@ package shell
 import (
 	"encoding/json"
 	"log/slog"
+	"strings"
 
 	"github.com/w7panel/w7panel/common/helper"
 	v1 "k8s.io/api/core/v1"
@@ -55,13 +56,11 @@ func (self *k3sConfig) IsClusterInit() bool {
 }
 
 func (self *k3sConfig) IsNotFirstNode() bool {
-	for k, _ := range self.k3sNodeEnv {
-		if k == "K3S_URL" || k == "K3S_TOKEN" {
-			return true
-		}
+	if self.k3sNodeEnv["K3S_URL"] != "" {
+		return true
 	}
 	for _, v := range self.k3sNodeArgs {
-		if v == "--token" {
+		if v == "--server" || strings.HasPrefix(v, "--server=") {
 			return true
 		}
 	}

@@ -100,7 +100,7 @@ type AppGroup struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   AppGroupSpec   `json:"spec"`
-	Status AppGroupStatus `json:"status"`
+	Status AppGroupStatus `json:"status,omitempty"`
 }
 
 type ApplicationType string

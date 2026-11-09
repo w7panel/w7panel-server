@@ -478,10 +478,35 @@ func TestExtractTar(t *testing.T) {
 
 }
 
-func TestCompressorPathPreservesAbsolutePath(t *testing.T) {
-	compressor := NewCompressorRootPath(t.TempDir())
-	if got, want := compressor.path("/tmp/archive.tar"), "/tmp/archive.tar"; got != want {
+func TestCompressorPathResolvesContainerAbsolutePath(t *testing.T) {
+	root := t.TempDir()
+	compressor := NewCompressorRootPath(root)
+	if got, want := compressor.path("/tmp/archive.tar"), filepath.Join(root, "tmp/archive.tar"); got != want {
 		t.Fatalf("path() = %q, want %q", got, want)
+	}
+	if got, want := compressor.path(filepath.Join(root, "tmp/archive.tar")), filepath.Join(root, "tmp/archive.tar"); got != want {
+		t.Fatalf("path() = %q, want %q", got, want)
+	}
+}
+
+func TestCompressorExtractContainerAbsolutePath(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "tmp"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "tmp", "source.txt"), []byte("container file"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	compressor := NewCompressorRootPath(root)
+	if err := compressor.Compress([]string{"/tmp/source.txt"}, "/tmp/archive.zip"); err != nil {
+		t.Fatal(err)
+	}
+	if err := compressor.Extract("/tmp/archive.zip", "/tmp/out"); err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(filepath.Join(root, "tmp", "out", "source.txt"))
+	if err != nil || string(content) != "container file" {
+		t.Fatalf("extracted content = %q, err = %v", content, err)
 	}
 }
 

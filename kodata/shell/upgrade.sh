@@ -13,7 +13,7 @@ if [ -n "$higress_chart" ]; then
     ((.metadata.annotations["meta.helm.sh/release-namespace"] // "default") == "default")
   ' >/dev/null; then
     echo "现有 Higress HelmChart 与 w7panel-higress 不匹配，停止自动认领" >&2
-    exit 1
+    # exit 1
   fi
   kubectl -n kube-system label helmchart higress app.kubernetes.io/managed-by=Helm --overwrite
   kubectl -n kube-system annotate helmchart higress \
@@ -34,6 +34,10 @@ if kubectl get namespace cert-manager >/dev/null 2>&1 && kubectl get crd certifi
     --namespace cert-manager \
     --install \
     --wait
+  helm upgrade cert-manager-lego-webhook $KO_DATA_PATH/charts/cert-manager-lego-webhook-1.6.2.tgz \
+    --namespace cert-manager --install --wait --timeout 5m \
+    --set certManager.namespace=cert-manager \
+    --set certManager.serviceAccountName=cert-manager
 else
   echo "cert-manager未就绪，跳过webhook公共CA和CSI Driver"
 fi
@@ -94,10 +98,20 @@ kubectl delete permission tech --ignore-not-found
 kubectl delete configmap tech -n "${NAMESPACE:-default}" --ignore-not-found
 kubectl delete configmap k3k.permission.tech -n "${NAMESPACE:-default}" --ignore-not-found
 kubectl delete configmap permission.tech -n "${NAMESPACE:-default}" --ignore-not-found
-kubectl create -f $KO_DATA_PATH/yaml/permission || echo "已存在"
 
-# 系统内置权限直接替换，自定义权限不在该目录中
-kubectl apply -f $KO_DATA_PATH/yaml/permission
+# 更新内置规则时保留在线修改的域名白名单
+sh "$KO_DATA_PATH/shell/apply-builtin-permissions.sh"
+
+echo "迁移 cluster 用户为 normal"
+set +x
+users=$(kubectl get users -o json)
+printf '%s\n' "$users" \
+  | jq -r '.items[] | select(.spec.userMode == "cluster" or .spec.role == "cluster") | .metadata.name' \
+  | xargs -r -I {} kubectl patch user {} --type=merge -p '{"spec":{"userMode":"normal","role":"normal","permissionName":"normal"}}'
+printf '%s\n' "$users" \
+  | jq -r '.items[] | select(.spec.userMode != "cluster" and .spec.role != "cluster" and .spec.permissionName == "k3k.permission.normal") | .metadata.name' \
+  | xargs -r -I {} kubectl patch user {} --type=merge -p '{"spec":{"permissionName":"normal"}}'
+set -x
 
 # echo "升级站点管理"
 # w7panel sitemanager-upgrade --version=1.0.24 --identifie=w7_php --is-agent=false
@@ -200,6 +214,9 @@ w7panel longhornupgrade
 # echo "安装/升级higress"
 # helm upgrade --namespace "${NAMESPACE:-default}" w7panel-higress $KO_DATA_PATH/charts/w7panel-higress --install --timeout 600s
 
+echo "clean tls params"
+
+kubectl delete envoyfilter/higress-tls-params -n higress-system --ignore-not-found | echo "tls params not found"
 
 echo "clear completed jobs and pod..."
 

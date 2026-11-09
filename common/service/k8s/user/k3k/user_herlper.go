@@ -1,6 +1,7 @@
 package k3k
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/w7panel/w7panel/common/service/config"
@@ -10,6 +11,11 @@ import (
 
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 )
+
+func SignLastLoginTime(sdk *k8s.Sdk, user *types.K3kUser) error {
+	user.SetLoginTime()
+	return userservice.UpdateLoginTime(context.TODO(), sdk, user.Name, user.Spec.LoginTime)
+}
 
 func TokenToK3kUser(token string) (*types.K3kUser, error) {
 	rootSdk := k8s.NewK8sClient().Sdk

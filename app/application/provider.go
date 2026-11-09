@@ -20,6 +20,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	"github.com/w7panel/w7panel/common/service/k8s/shell"
+	mcpservice "github.com/w7panel/w7panel/common/service/mcp"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/console"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	httpserver "github.com/we7coreteam/w7-rangine-go/v2/src/http/server"
@@ -162,8 +163,10 @@ func (p Provider) syncSelfImageConfigMap() error {
 func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 	webdavMethods := []string{"PROPFIND", "PROPPATCH", "MKCOL", "COPY", "MOVE", "LOCK", "UNLOCK", "LINK", "UNLINK", "GET", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH", "POST"}
 	server.RegisterRouters(func(engine *gin.Engine) {
+
 		engine.GET("/docs/openapi", controller2.OpenAPI{}.Page)
 		engine.POST("/internal/agent-pod", middleware.Auth{}.ProcessServiceAccount, controller2.PodExec{}.RegisterAgentPodIP)
+		engine.GET("/internal/public-ip", middleware.Auth{}.ProcessServiceAccount, controller2.Nodes{}.LocalPublicIP)
 		engine.GET("/docs/openapi/spec", controller2.OpenAPI{}.Spec)
 		engine.GET("/openapi.json", controller2.OpenAPI{}.RedirectJSON)
 
@@ -172,8 +175,12 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			// copilotGroup := apiGroup.Group("/copilot", middleware.Auth{}.Process)
 			// copilotGroup.GET("/context", controller2.Copilot{}.Context)
 			// copilotGroup.POST("/stream", controller2.Copilot{}.Stream)
+			apiGroup.Any("/mcp", middleware.MCPAuth{}.Process, gin.WrapH(mcpservice.McpHttpHandler()))
 			apiGroup.GET("/namespaces", middleware.Auth{}.Process, controller2.Namespaces{}.GetList)
 			apiGroup.GET("/cluster/nodes/:name/longhorn-replicas", middleware.Auth{}.Process, controller2.Nodes{}.GetLonghornReplicas)
+			apiGroup.GET("/cluster/nodes/public-ip/check", middleware.Auth{}.Process, controller2.Nodes{}.CheckPublicIP)
+			apiGroup.GET("/cluster/nodes/:name/public-ip/detect", middleware.Auth{}.Process, controller2.Nodes{}.DetectPublicIP)
+			apiGroup.PUT("/cluster/nodes/:name/public-ip", middleware.Auth{}.Process, controller2.Nodes{}.SavePublicIP)
 			apiGroup.POST("/cluster/nodes/:name/longhorn-replicas/delete", middleware.Auth{}.Process, controller2.Nodes{}.DeleteLonghornReplicas)
 			apiGroup.DELETE("/cluster/nodes/:name", middleware.Auth{}.Process, controller2.Nodes{}.Delete)
 			apiGroup.GET("/helm/releases", middleware.Auth{}.Process, controller2.Helm{}.List)
@@ -215,6 +222,10 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/pinyin", middleware.Auth{}.Process, controller2.Util{}.Pinyin)                    // pinyin
 			localApiGroup.GET("/dnsip", middleware.Auth{}.Process, controller2.Util{}.DnsIp)
 			localApiGroup.GET("/dns-cname", middleware.Auth{}.Process, controller2.Util{}.DnsCName)
+			localApiGroup.GET("/dns-profiles", middleware.Auth{}.Process, controller2.DNSProfile{}.List)
+			localApiGroup.POST("/dns-profiles", middleware.Auth{}.Process, controller2.DNSProfile{}.Create)
+			localApiGroup.DELETE("/dns-profiles/:id", middleware.Auth{}.Process, controller2.DNSProfile{}.Delete)
+			localApiGroup.POST("/dns-profiles/:id/grant", middleware.Auth{}.Process, controller2.DNSProfile{}.Grant)
 			localApiGroup.GET("/myip", middleware.Auth{}.Process, controller2.Util{}.MyIp)
 			localApiGroup.POST("/db-conn-test", middleware.Auth{}.Process, controller2.Util{}.DbConnTest) // 数据库连接测试
 			localApiGroup.POST("/ping-etcd", middleware.Auth{}.Process, controller2.Util{}.PintEtcd)      // etcd连接测试

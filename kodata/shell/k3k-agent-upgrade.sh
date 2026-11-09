@@ -62,6 +62,10 @@ configure_panel_oidc_login() {
 
 configure_panel_oidc_login || exit 1
 
+if ! kubectl get permissions.w7panel.w7.com api >/dev/null 2>&1; then
+  kubectl create -f "$KO_DATA_PATH/yaml/permission/api.yaml" || exit 1
+fi
+
 if ! kubectl create -f - <<'EOF'; then
 kind: ConfigMap
 apiVersion: v1
@@ -136,6 +140,11 @@ if kubectl --kubeconfig=${KUBECONFIG_PATH} get namespace cert-manager >/dev/null
           --namespace cert-manager \
           --install \
           --wait
+     helm upgrade cert-manager-lego-webhook $KO_DATA_PATH/charts/cert-manager-lego-webhook-1.6.2.tgz \
+          --kubeconfig=${KUBECONFIG_PATH} \
+          --namespace cert-manager --install --wait --timeout 5m \
+          --set certManager.namespace=cert-manager \
+          --set certManager.serviceAccountName=cert-manager
 else
      echo "cert-manager未就绪，跳过webhook公共CA和CSI Driver"
 fi

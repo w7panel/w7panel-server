@@ -13,6 +13,9 @@ tmpCdToken: ""
 panelAuth:
   signingKey: ""
 
+mcp:
+  writeEnabled: false
+
 # HTTPS artifact hosts allowed for Helm metadata, chart archives and frontend
 # fallback resources. Private, loopback and link-local resolutions are always
 # rejected even when a hostname is listed here.
@@ -33,6 +36,7 @@ image:
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
+  digest: ""
 
 # This is for the secretes for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []

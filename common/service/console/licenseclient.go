@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/config"
@@ -234,6 +235,14 @@ func (c *LicenseClient) CreateLicenseSite(userName string, ignoreExits bool) (*L
 		"offlineUrl": config.OfflineUrl,
 		"sn":         clusterUniquId,
 	}
+	if helper.IsChildAgent() {
+		ckmName := os.Getenv("CKM_NAME")
+		// 域名必须唯一 先随机
+		data = map[string]string{
+			"offlineUrl": "http://w7panel-" + ckmName + ".w7panel.cc",
+			"sn":         helper.RandomString(10),
+		}
+	}
 	license, err := api.CreateLicenseSite(data)
 	if err != nil {
 		return nil, err
@@ -246,53 +255,6 @@ func (c *LicenseClient) CreateLicenseSite(userName string, ignoreExits bool) (*L
 		return nil, err
 	}
 	return license, nil
-
-}
-
-func (c *LicenseClient) ImportCert(pemData []byte, saName string) error {
-	license, err := c.GetLicense()
-	if err != nil {
-		return err
-	}
-
-	cert, err := helper.ParseX509(pemData)
-	if err != nil {
-		return err
-	}
-	// if cert.Issuer.Organization != nil && len(cert.Issuer.Organization) > 0 {
-	// 	if cert.Issuer.Organization[0] != license.AppId {
-	// 		return errors.New("证书颁发者与授权不符")
-	// 	}
-	// }
-	_, err = VerifyCert(cert)
-	if err != nil {
-		return err
-	}
-	// 兼容w7config license先
-	w7config, err := c.w7config.Get(saName)
-	if err != nil {
-		slog.Error("获取配置失败")
-	}
-	w7config.License = cert
-	err = c.w7config.Set(w7config)
-	if err != nil {
-		return err
-	}
-	config.MainW7Config = w7config
-	license.License = cert
-	// config.LicenseVerify = true
-	if cert != nil && len(cert.Subject.Province) > 0 {
-		// config.LicenseType = cert.Subject.Province[0]
-		// config.SetVerifyType(w7config.Name, cert.Subject.Province[0])
-
-	}
-
-	err = c.SetLicense(license)
-	if err != nil {
-		return err
-	}
-	SetCurrentLicense(license)
-	return nil
 
 }
 

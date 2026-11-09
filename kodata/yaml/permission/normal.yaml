@@ -83,6 +83,10 @@ spec:
         -
             method:
                 - get
+            path: /panel-api/v1/metrics/plugin-identity
+        -
+            method:
+                - get
             path: /panel-api/v1/traffic/domains
         -
             method:
@@ -119,6 +123,16 @@ spec:
         webshell: false
     menuRules: []
     parentPermission: ''
+    rbacRules:
+        - apiGroups: ['']
+          resources: [pods, services, configmaps, events, namespaces, nodes]
+          verbs: [get, list, watch]
+        - apiGroups: ['']
+          resources: [pods/log]
+          verbs: [get]
+        - apiGroups: [apps]
+          resources: [deployments, statefulsets, daemonsets, replicasets]
+          verbs: [get, list, watch]
     role: normal
     title: 普通用户
     type: builtin

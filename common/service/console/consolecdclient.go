@@ -139,11 +139,12 @@ func (c *ConsoleCdClient) CreateSite(domainUrl string, releaseName string) (*App
 	return secret, err
 }
 
-func (c *ConsoleCdClient) PreInstall(consoleurl string) (*PreInstall, error) {
+func (c *ConsoleCdClient) PreInstall(consoleurl, releaseName string) (*PreInstall, error) {
 	result := &PreInstall{}
 	errorResult := &ConsoleError{}
 	urlvalues := url.Values{}
 	urlvalues.Add("url", consoleurl)
+	urlvalues.Add("releaseName", releaseName)
 	// urlvalues.Add("cluster_id", clusterId)
 	updateUrl := ConsoleCDK8sOfflineApi + "/pre-install2"
 	// slog.Info("pre install", "url", updateUrl, "clusterId", clusterId)

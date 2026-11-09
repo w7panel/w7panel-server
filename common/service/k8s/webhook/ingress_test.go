@@ -2,14 +2,47 @@ package webhook
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
+	admissionv1 "k8s.io/api/admission/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
+
+func TestWildcardIngressRequiresDNSForAutomaticIssuer(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		issuer  string
+		allowed bool
+	}{
+		{"", true}, {"w7-letsencrypt-prod", false},
+	} {
+		ingress := testIngress("wildcard", "default", "*.example.com")
+		ingress.Spec.TLS = []networkingv1.IngressTLS{{Hosts: []string{"*.example.com"}, SecretName: "x-example-com-tls"}}
+		if tc.issuer != "" {
+			ingress.Annotations = map[string]string{"cert-manager.io/cluster-issuer": tc.issuer}
+		}
+		raw, err := json.Marshal(ingress)
+		if err != nil {
+			t.Fatal(err)
+		}
+		mutator := NewResourceMutator(fake.NewClientBuilder().WithScheme(scheme).Build(), nil)
+		response := mutator.handleIngress(context.Background(), admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+			Operation: admissionv1.Create, Object: runtime.RawExtension{Raw: raw},
+		}})
+		if response.Allowed != tc.allowed {
+			t.Fatalf("issuer %q allowed=%v, want %v: %v", tc.issuer, response.Allowed, tc.allowed, response.Result)
+		}
+	}
+}
 
 func TestFindIngressHostConflict(t *testing.T) {
 	scheme := runtime.NewScheme()

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/credential"
 	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
@@ -24,14 +25,21 @@ func (PanelAuth) Process(ctx *gin.Context) {
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "msg": "请登录"})
 		return
 	}
+	processPanelPrincipal(ctx, principal)
+}
 
+func processPanelPrincipal(ctx *gin.Context, principal *panelauth.Principal) {
 	sdk := k8s.NewK8sClient().Sdk
 	var permissionName = principal.PermissionName
 	if principal.TokenUse == panelauth.TokenUseExternalAPI {
 		permissionName = permissionservice.APIPermissionName
 	}
 	user, err := userservice.Get(ctx.Request.Context(), sdk, principal.Username)
-	if err == nil && principal.TokenUse == panelauth.TokenUsePanel {
+	if principal.TokenUse == panelauth.TokenUsePanel && err != nil {
+		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "msg": "没有权限"})
+		return
+	}
+	if principal.TokenUse == panelauth.TokenUsePanel {
 		permissionName = user.Spec.PermissionName
 		if permissionName == "" {
 			permissionName = principal.PermissionName
@@ -42,8 +50,14 @@ func (PanelAuth) Process(ctx *gin.Context) {
 		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "msg": "没有权限"})
 		return
 	}
+	if mainCostProxyMutation(ctx.Request) && permission.Spec.Role != permissionservice.FounderPermissionName {
+		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "msg": "仅主面板创始人可管理权限费用套餐"})
+		return
+	}
 	var allowed bool
-	if requiresRoutePermission(ctx.Request.Method, ctx.Request.URL.Path) {
+	if childMainSettingsReadAllowed(principal, ctx.Request) {
+		allowed = true
+	} else if requiresRoutePermission(ctx.Request.Method, ctx.Request.URL.Path) {
 		allowed, err = permissionservice.AuthorizeRouteWithPermission(permission, ctx.Request.Method, ctx.Request.URL.Path)
 	} else {
 		allowed, err = permissionservice.AuthorizePanelAPIWithPermission(ctx.Request.Context(), sdk, permission, ctx.Request.Method, ctx.Request.URL.Path)
@@ -53,8 +67,13 @@ func (PanelAuth) Process(ctx *gin.Context) {
 		return
 	}
 	role := principal.Role
-	if user != nil && role == "" {
+	if principal.TokenUse == panelauth.TokenUseExternalAPI {
+		role = permissionservice.APIPermissionName
+	} else if user != nil {
 		role = user.Spec.Role
+		if role == "" {
+			role = user.Spec.UserMode
+		}
 	}
 	ctx.Set("panel_principal", *principal)
 	ctx.Set("username", principal.Username)
@@ -64,15 +83,24 @@ func (PanelAuth) Process(ctx *gin.Context) {
 	// server-side, never one supplied by the client.
 	if requiresLegacyK8sCredential(ctx.Request.URL.Path) {
 		aud := panelauth.GetAudience(*principal)
-		k8sToken, _, err := credential.IssueForPrincipalWithAudiences(ctx.Request.Context(), principal.Username, permission.Name, 10*time.Minute, aud)
+		var k8sToken string
+		if principal.TokenUse == panelauth.TokenUseExternalAPI {
+			k8sToken, err = sdk.CreateTokenRequest(permissionservice.APIPermissionName, int64((10 * time.Minute).Seconds()), aud)
+		} else {
+			k8sToken, _, err = credential.IssueForPrincipalWithAudiences(ctx.Request.Context(), principal.Username, permission.Name, 10*time.Minute, aud)
+		}
 		if err != nil {
 			slog.Error("生成 Kubernetes 凭据失败panelAuth.go", "error", err)
 			ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"code": http.StatusInternalServerError, "msg": "生成 Kubernetes 凭据失败"})
 			return
 		}
-		ctx.Set("k8s_token", k8sToken)
+		setK8sToken(ctx, k8sToken)
 	}
 	ctx.Next()
+}
+
+func childMainSettingsReadAllowed(principal *panelauth.Principal, req *http.Request) bool {
+	return helper.IsChildAgent() && principal.TokenUse == panelauth.TokenUsePanel && req.Method == http.MethodGet && req.URL.Path == "/panel-api/v1/auth/main-settings"
 }
 
 func panelToken(req *http.Request) string {
@@ -94,6 +122,9 @@ func panelToken(req *http.Request) string {
 
 func requiresLegacyK8sCredential(path string) bool {
 	if strings.HasPrefix(path, "/v2/") {
+		return false
+	}
+	if path == "/panel-api/v1/auth/ckm-session" || path == "/panel-api/v1/auth/main-settings" {
 		return false
 	}
 	if path == "/panel-api/v1/auth/k8s-credentials/token" || strings.HasPrefix(path, "/panel-api/v1/noauth/") {

@@ -93,6 +93,8 @@ func (m *ResourceMutator) Handle(ctx context.Context, req admission.Request) adm
 		return m.handleDaemonset(ctx, req)
 	case "Ingress":
 		return m.handleIngress(ctx, req)
+	case "Certificate":
+		return m.handleCertificate(ctx, req)
 	// case "VirtualClusterPolicy":
 	// 	return m.handleVirtualClusterPolicy(ctx, req)
 	case "Pod":

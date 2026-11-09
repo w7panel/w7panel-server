@@ -113,9 +113,13 @@ func MyIp() (string, error) {
 	// if true {
 	// 	return "118.25.145.25", nil
 	// }
-	res, err := http.Get("https://ifconfig.io")
+	res, err := (&http.Client{Timeout: 10 * time.Second}).Get("https://ifconfig.io")
 	if err != nil {
 		return "", err
+	}
+	if res.StatusCode != http.StatusOK {
+		res.Body.Close()
+		return "", fmt.Errorf("public IP service returned %s", res.Status)
 	}
 	body := res.Body
 	defer body.Close()

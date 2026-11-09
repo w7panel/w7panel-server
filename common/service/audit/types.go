@@ -46,29 +46,3 @@ type OperationLog struct {
 	IP         string    `json:"ip"`
 	UserAgent  string    `json:"user_agent"`
 }
-
-type QueryParams struct {
-	Page      int
-	PageSize  int
-	Username  string
-	Tenant    string
-	Success   string
-	Method    string
-	Path      string
-	StartTime string
-	EndTime   string
-}
-
-type QueryResult struct {
-	List     any `json:"list"`
-	Total    int `json:"total"`
-	Page     int `json:"page"`
-	PageSize int `json:"pageSize"`
-}
-
-type Status struct {
-	Enabled   bool   `json:"enabled"`
-	Installed bool   `json:"installed"`
-	BaseURL   string `json:"baseUrl"`
-	Message   string `json:"message,omitempty"`
-}

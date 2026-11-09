@@ -8,6 +8,7 @@ import (
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
+	"github.com/w7panel/w7panel/common/service/k8s/dnsprofile"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,10 +68,12 @@ func (ing *ingress) IsEmptyChildDomain() bool {
 }
 
 type domain struct {
-	Name        string `json:"name"`
-	Host        string `json:"host"`
-	AutoSsl     bool   `json:"autoSsl"`     //自动申请证书
-	SslRedirect bool   `json:"sslRedirect"` //https强制跳转
+	Name         string `json:"name"`
+	Host         string `json:"host"`
+	AutoSsl      bool   `json:"autoSsl"`     //自动申请证书
+	SslRedirect  bool   `json:"sslRedirect"` //https强制跳转
+	DNSProfileID string `json:"dnsProfileId,omitempty"`
+	DNSGrant     string `json:"dnsGrant,omitempty"`
 }
 
 func newIngressSync(client sigclient.Client, ing *networkingv1.Ingress) ingressSync {
@@ -86,10 +89,14 @@ type ingressSync struct {
 }
 
 func (ing *ingressSync) Sync() {
+	var err error
 	if ing.ingress.IsChild() {
-		ing.syncChild()
+		err = ing.syncChild()
 	} else {
-		ing.syncRoot()
+		err = ing.syncRoot()
+	}
+	if err != nil {
+		slog.Error("sync child ingress failed", "ingress", ing.Name, "error", err)
 	}
 }
 
@@ -111,12 +118,16 @@ func (ing *ingressSync) syncRoot() error {
 		parentName := ing.Name + "-" + domain.Name
 		cloneIng := ing.Ingress.DeepCopy()
 		cloneIng.Name = parentName
-		syncIngress(ing.client, cloneIng, domain, "", ing.Name)
+		if _, err := syncIngress(ing.client, cloneIng, domain, "", ing.Name); err != nil {
+			return err
+		}
 		for _, child := range childs.Items {
 			parentName := ing.Name + "-" + domain.Name
 			cloneIng2 := child.DeepCopy()
 			cloneIng2.Name = child.Name + "-" + domain.Name
-			syncIngress(ing.client, cloneIng2, domain, parentName, ing.Name)
+			if _, err := syncIngress(ing.client, cloneIng2, domain, parentName, ing.Name); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -136,7 +147,9 @@ func (ing *ingressSync) syncChild() error {
 		parentName := originParentName + "-" + domain.Name
 		cloneIng := ing.Ingress.DeepCopy()
 		cloneIng.Name = ing.Name + "-" + domain.Name
-		syncIngress(ing.client, cloneIng, domain, parentName, originParentName)
+		if _, err := syncIngress(ing.client, cloneIng, domain, parentName, originParentName); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -219,7 +232,7 @@ func syncIngress(client sigclient.Client, ingress *networkingv1.Ingress, domain 
 		tls := []networkingv1.IngressTLS{
 			{
 				Hosts:      []string{domain.Host},
-				SecretName: strings.ToLower(strings.ReplaceAll(domain.Host, ".", "-")) + "-tls-secret",
+				SecretName: strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(domain.Host, "*", "x"), ".", "-")) + "-tls-secret",
 			},
 		}
 		newIngress.Spec.TLS = tls
@@ -237,11 +250,26 @@ func syncIngress(client sigclient.Client, ingress *networkingv1.Ingress, domain 
 		newIngress.Labels["w7.cc/ingress-rootname"] = fromName
 		newIngress.Labels["w7.cc/hide"] = "true"
 		if domain.AutoSsl {
-			newIngress.Annotations["cert-manager.io/cluster-issuer"] = "w7-letsencrypt-prod"
+			if strings.HasPrefix(domain.Host, "*.") {
+				grant, err := dnsprofile.DeriveChildGrant(context.TODO(), client, newIngress.Namespace,
+					fromName+"-"+domain.Name, newIngress.Name, domain.Host, domain.DNSProfileID, domain.DNSGrant)
+				if err != nil {
+					return err
+				}
+				for key, value := range grant {
+					newIngress.Annotations[key] = value
+				}
+			} else {
+				newIngress.Annotations["cert-manager.io/cluster-issuer"] = "w7-letsencrypt-prod"
+				delete(newIngress.Annotations, dnsprofile.ProfileAnnotation)
+				delete(newIngress.Annotations, dnsprofile.GrantAnnotation)
+			}
 			newIngress.Annotations["cert-manager.io/renew-before"] = "30m"
 		} else {
 			delete(newIngress.Annotations, "cert-manager.io/cluster-issuer")
 			delete(newIngress.Annotations, "cert-manager.io/renew-before")
+			delete(newIngress.Annotations, dnsprofile.ProfileAnnotation)
+			delete(newIngress.Annotations, dnsprofile.GrantAnnotation)
 		}
 		if domain.SslRedirect {
 			newIngress.Annotations["w7.cc/ssl-redirect"] = "true"

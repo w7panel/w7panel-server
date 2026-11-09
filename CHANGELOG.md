@@ -1,5 +1,57 @@
 # CHANGELOG
 
+## 2026-11-04 审计与流量查询迁入监控插件
+
+- 将审计日志与流量监测的查询实现迁到 `metrics-plugins`，旧只读 API 改为认证后的插件代理；保留登录、操作事件的脱敏与 VictoriaLogs 写入。新增插件身份核验接口，普通用户仍由服务端限定查询范围。影响模块：审计、流量、权限。验证：定向 Go 测试与 Helm 渲染。
+
+## 2026-11-03 DNS 配置验证缩短
+
+- DNS 配置验证在平台确认临时 TXT 写入后立即清理，不再等待公共 DNS 查询传播，避免创建请求被前端 30 秒超时中断。影响模块：DNS 配置创建。验证：`make test TEST_PACKAGES=./common/service/k8s/dnsprofile` 与 `git diff --check` 通过。
+
+## 2026-11-03 域名白名单按账号权限读取
+
+- 主面板域名白名单接口读取当前账号绑定的 Permission；子集群仍使用主集群同步的 normal 白名单。影响模块：认证接口、权限服务。验证：定向 Go 测试与 `git diff --check`。
+
+## 2026-11-03 泛域名 DNS-01 证书
+
+- 增加 DNS 凭据的真实 TXT 写入、查询和清理验证，按账号保存配置并签发绑定域名及 Ingress 的授权；Ingress 和 Certificate admission 校验授权，安装 DNS solver webhook，应用安装与子域名同步使用 DNS-01 签发器。影响模块：DNS 配置接口、证书签发、域名同步和 ZPK 安装。验证：定向 `make test`、Helm 模板渲染与 `git diff --check`。
+
+## 2026-11-02 升级保留内置权限的域名白名单
+
+- 升级内置权限时按完整资源名读取并沿用集群中已有的 `domainWhiteList`，避免 `normal.yaml` 中的空数组在每次升级时清空在线配置，也避免与 CKM 的同名权限资源混淆；菜单、API 和 RBAC 等内置规则仍随版本更新。影响模块：升级脚本。验证：Shell 模拟升级检查、218 集群临时对象测试与 `git diff --check`。
+
+## 2026-11-02 子集群展示主集群站点配置
+
+- 子集群 HTML 注入的站点名称、Logo、描述、备案和登录展示配置改为读取主集群同步数据；备案、联系方式、注册开关、首页配置和域名解析接口也读取主集群配置，不再回退到子集群本地站点配置。影响模块：HTML 页面、站点公开接口、域名解析与主配置同步。验证：定向 `make test` 与 `git diff --check`。
+
+## 2026-11-02 域名白名单按需读取
+
+- 登录信息、用户信息和 K3k 信息不再携带域名白名单；新增认证接口 `GET /panel-api/v1/auth/domain-white-list`，读取主集群普通权限套餐的白名单，供域名操作单独调用。影响模块：认证、K3k 信息和 CKM 会话路由。验证：相关 Go 包 `make test`、`git diff --check` 通过。
+
+## 2026-11-02
+
+- 移除专属菜单/API 策略的路由、鉴权拦截和菜单过滤，解决子集群 OIDC 登录后 `/panel-api/v1/k3k/info` 因主策略无效返回 403；保留主集群域名白名单同步及子集群代理写入保护。影响模块：面板认证、权限、K3k 信息和 Kubernetes 代理。验证：定向 `make test` 与 `git diff --check` 通过。
+
+
+## 2026-10-30
+
+- 1016215 限制主权限费用套餐的宿主直连写入：主面板普通权限即使拥有 Cost RBAC 写规则，也不能通过 `/k8s-proxy` 管理费用套餐；仅实时解析为 founder 的主面板会话可写，CKM 嵌入会话一律拒绝。影响模块：面板认证中间件。验证：定向中间件测试与 `git diff --check` 通过。
+
+- 嵌入 CKM 会话逐次按实例绑定名称读取最新主面板普通权限，面板 API 使用现有 API 规则，Kubernetes 代理按资源、动词与子资源匹配 RBAC 规则，拒绝无效路径及缺失权限；内置 normal 明确只读的基础资源规则，历史无面板来源标记的实例保持原有快照行为。影响模块：CKM 宿主代理与权限判定。验证：权限与中间件定向测试通过。
+
+- 1016214 交叉审查后将 CKM 主配置响应收紧为站点、域名及被引用 ConfigMap 键的展示字段，去除 Kubernetes metadata、status 和未引用内容；补充响应白名单与域名缺失测试。影响模块：主配置只读接口。验证：`make test TEST_PACKAGES=./app/auth/http/controller\ ./common/middleware` 通过。
+- 为已验证的 CKM 嵌入会话提供主集群站点与域名解析配置只读接口，仅返回站点引用的 ConfigMap 内容；阻止子面板本地会话读取宿主配置。影响模块：面板认证路由与 CKM 会话代理。验证：`make test TEST_PACKAGES=./app/auth/http/controller\ ./common/middleware` 通过。
+
+## 2026-10-28
+
+- MCP 支持复用现有 OIDC 公共客户端的 OAuth 授权码登录，新增资源与授权服务器元数据、MCP 资源受众及 scope 校验，保留原面板 token 鉴权。影响模块：OIDC、MCP 鉴权与默认客户端配置。验证：定向 Go 测试与 `git diff --check` 通过。
+- 新增边缘节点公网入口检测接口，对已配置公网 IPv4 的 server 节点实际请求 `https://IP:6443/livez`，允许自签名证书并返回首个可达地址。影响模块：节点管理 API。验证：`make test TEST_PACKAGES=./app/application/http/controller` 与 `git diff --check` 通过。
+- 节点公网 IP 改为只读检测与提交保存接口；控制节点保存时同步独立的内置 tls-san 地址、触发 k3s 重启，配置失败回滚标签。K3sConfig 初始化保留内置与自定义地址，公网 IP 查询增加超时。影响模块：节点 API、权限、k3s 配置。验证：定向 `make test` 通过。
+
+## 2026-10-16
+
+- 普通面板页面也读取默认 MicroAppSetting 并注入站点 LOGO 等配置，使站点设置保存的 LOGO 在登录页和导航栏生效；影响模块：HTML 页面中间件。验证：`make test TEST_PACKAGES=./common/middleware` 与 `git diff --check` 通过。
+
 ## 2026-10-14 Kubernetes 凭据签发日志
 
 - 为 Kubernetes 凭据生成失败增加 `slog` 错误日志，记录用户、权限、audience 和原始错误，便于定位签发失败；影响模块：认证 HTTP 控制器。
@@ -570,6 +622,16 @@
 
 - 验证结果：`LOCAL_MOCK=true` 下，本次 AppGroup 排序回归（生产文件 + order_test.go）通过，zpk/logic/types 和 AppGroup API 类型包测试通过，`git diff --check` 通过。完整 AppGroup 包测试被现有 eventqueue_test.go 引用缺失的 isDeletingAppGroupEvent 阻断；前端构建被现有 Copilot 页面缺少 @openuidev/vue-lang 阻断。开发前 fetch/pull 两次均因 GitHub 连接超时失败，变更基于本地代码。
 
+## 2026-10-15 升级时迁移 cluster 用户
+
+- 升级脚本在更新内置权限后，将 `spec.userMode` 或 `spec.role` 为 `cluster` 的 User 的 `userMode`、`role` 和 `permissionName` 统一设为 `normal`，避免旧角色继续影响登录权限；影响模块：用户升级脚本。
+- 验证：`sh -n kodata/shell/upgrade.sh`、`jq` 筛选样例及 `git diff --check` 通过；未对集群执行迁移。
+
+## 2026-10-15 旧普通用户权限名迁移
+
+- 升级脚本额外将 User 的 `spec.permissionName=k3k.permission.normal` 改为 `normal`，且不改动非 cluster 用户的角色字段；影响模块：用户升级脚本。
+- 验证：`sh -n kodata/shell/upgrade.sh` 与 `jq` 筛选样例通过；未对集群执行迁移。
+
 ## 2026-10-14
 
 - 移除 Chart 元数据中无效的应用排序注解；排序信息应写入工作负载 metadata.annotations，AppGroup 不从 Chart 元数据读取。同步调整回归断言。
@@ -578,22 +640,100 @@
 
 - 撤回 93a95c34 的后端应用排序实现及后续未提交补充：移除 Manifest order、工作负载排序注解、AppGroup order/isMain 字段、收集排序及 CRD/DeepCopy 变更；改由 UI 将名称等于当前 AppGroup 的 Deployment 优先展示。原排序回归测试随实现移除。
 
-## 2026-11-04
+## 2026-10-15 Kubernetes MCP 工具
 
-- 修复应用授权登录续接：控制台登录保留 authRequestID，外部 OIDC 将原授权请求绑定服务端登录 state，登录后优先完成原应用授权；失败时显示错误，不跳 CKM。验证结果见本次测试记录。
+- 实现 `common/service/mcp` 的 `k8s_proxy_request` 工具：使用当前请求的 Bearer 凭据执行只读 Kubernetes API GET，限制 `/api`、`/apis` 路径并拒绝 Secret、路径遍历和超大响应；影响模块：MCP Kubernetes 查询。
+- 验证：`make test TEST_PACKAGES=./common/service/mcp`、`git diff --check` 通过。
 
-- 定向验证：授权续接 6 项测试和三个登录页面 SFC 编译通过；前端全量构建因已有 @openuidev/vue-lang 依赖缺失失败。后端认证控制器测试使用项目内 Go 1.26.6 工具链验证。
+## 2026-10-15 MCP HTTP 路由
 
-- 最终验证：6 项授权续接回归、3 个登录页面 SFC 编译通过；LOCAL_MOCK=true make test TEST_PACKAGES=./app/auth/http/controller 使用项目内 Go 1.26.6 工具链执行成功（控制器无可运行单测，验证编译）。全量前端构建受既有 @openuidev/vue-lang 依赖缺失阻挡；未执行浏览器登录联调或部署。
+- 在应用 HTTP 路由中注册 `/mcp`，接入 Streamable HTTP MCP handler，并复用现有认证中间件；影响模块：应用 HTTP 服务、MCP。
+- 验证：`make test TEST_PACKAGES=./common/service/mcp` 通过；应用包定向测试被已有未提交的 `app/application/http/controller/mcp.go` 编译错误阻断；`git diff --check` 通过。
 
-## 2026-11-05（清理废弃 CKM 集成）
+## 2026-10-15 MCP Kubernetes 凭据上下文
 
-- CKM 已独立且旧 K8s 实例登录已废弃：删除面板 CKM 专用会话、Token 类型、前端宿主注入和刷新、旧实例 K8s 登录分支、未调用的 CKM/CVM 列表详情、内置 CRD 类型和用户角色菜单覆盖；清理专用审计字段及 CVM_ENABLED/W7PANEL_AUTH_MODE 配置。
-- 保留 OIDC、通用微应用 Token、标准终端 WebSocket、用户信息、资源同步和当前普通用户默认应用入口；旧 ckm-panel Token 签发与解析均拒绝，Kubernetes audience 七段格式保持。
-- 验证：LOCAL_MOCK=true make test 覆盖 middleware、panelauth、audit、用户信息、auth/k3k、应用控制器及 OIDC，全部通过；前端 11 项回归与 3 个修改组件 SFC 编译通过。前端全量构建受已有 @openuidev/vue-lang 依赖无法解析阻挡。git diff --check 通过；未部署、未做浏览器联调。开发前拉取前后端最新代码及联网重试均因 GitHub 网络错误失败，基于当前工作区清理。
+- 认证中间件将 `k8s_token` 同步写入标准请求 context，MCP 工具优先使用 context 中经认证的 Kubernetes 凭据；影响模块：认证中间件、MCP HTTP 服务。
+- 验证：`make test TEST_PACKAGES='./common/middleware ./common/service/mcp ./app/application'` 通过；`git diff --check` 通过。
 
-### 2026-11-09 ZPK 新格式服务参数适配
+## 2026-10-19 容器镜像推送认证
 
-- 从 `platform.container-v2[].ports[].containerPort` 读取子应用端口，跳过初始化容器；启动参数使用 `platform.startParams`，贯通安装配置、赋值、占位符替换和 Helm values；旧制品转换由 `w7panel-zpk` 负责，面板不增加回退逻辑。
-- 安装页、子应用加载流程和 Service 命名规则保持原有行为，不增加 manifest 请求。
-- 验证：后端整体编译、types 包测试、新版 manifest 与 Helm 参数回归通过；前端完整构建因本地缺少 `@openuidev/vue-lang` 未通过，远端同步因 GitHub 连接超时未完成。
+- 打包容器镜像时使用已认证请求的短期 Kubernetes 凭据，通过本机 HTTP 仓库推送；校验 UI 提供的仓库地址与当前 agent 一致，避免凭据发往其他地址。影响模块：容器镜像导出推送接口。
+- 验证：定向单元测试及 `git diff --check`。
+
+## 2026-10-26 Longhorn 默认磁盘仅首次安装创建
+
+- 首次安装 Longhorn 时仅为现有控制平面节点配置 `disk-default`，建盘后移除触发标签；启动时清理旧集群的面板默认磁盘配置，新增节点及重复安装不再补建磁盘。影响模块：Longhorn 安装接口、节点 Webhook、Longhorn 节点同步。
+- 验证：`make test TEST_PACKAGES='./common/service/k8s/longhorn ./common/service/k8s/webhook ./app/application/http/controller -run ^TestDefaultDisk'` 通过。
+
+## 2026-10-27 Longhorn 旧集群默认磁盘配置兼容
+
+- 按 JSON 内容识别旧节点的多行默认磁盘注解；已有 Longhorn manager DaemonSet 且无 K3s HelmChart 时安装接口直接返回，避免普通 Helm 安装的集群重复标记磁盘或创建第二套 HelmChart。影响模块：Longhorn 节点清理、安装接口。
+- 验证：定向 Go 测试与 `git diff --check`。
+
+## 2026-10-27 MCP Kubernetes 写入开关
+
+- MCP 默认仅提供查询工具；启用 `MCP_K8S_WRITE_ENABLED=true` 后注册独立写入工具，使用当前用户凭据和 Kubernetes RBAC 执行资源及子资源的 POST、PUT、PATCH、DELETE，支持 exec、attach 和 proxy，并限制 Secret 访问及请求和响应大小。Helm 增加默认关闭的 `mcp.writeEnabled`。影响模块：MCP 服务、离线 Chart。
+- 验证：`make test TEST_PACKAGES=./common/service/mcp`、Helm 默认及启用模板渲染、`git diff --check` 通过；未对集群执行写操作。
+
+## 2026-10-27 容器文件解压路径修复
+
+- 压缩服务将文件管理传来的容器绝对路径映射到目标进程根目录，修复 `/tmp` 下压缩包解压时报找不到路径；已带根目录前缀的路径仍可使用。影响模块：文件压缩与解压。
+- 验证：`make test TEST_PACKAGES=./common/service/compress` 与 `git diff --check` 通过。
+
+## 2026-10-29 ZPK PreInstall releaseName 透传
+
+- 安装时将请求中的 `releaseName` 透传给 PHP `pre-install2`，由预安装流程复用已有 DeployItem 名称，避免免费版升级商业版时重新生成实例名。影响模块：ZPK 安装及控制台离线预安装。验证：两仓库 `git diff --check` 通过；未运行测试。
+
+## 2026-10-30 子集群域名白名单读取主集群
+
+- 子集群会话的用户信息接口从主集群当前关联权限读取域名白名单，供域名管理使用。影响模块：认证用户信息接口。验证：静态检查与 `git diff --check`；未运行测试。
+
+## 2026-10-30 挂载文件内容更新触发重建
+
+- ConfigMap 或 Secret 挂载文件内容更新成功后，通过合并补丁更新工作负载模板注解触发滚动更新；补充 mode 和注解补丁测试。影响模块：工作负载文件管理。验证：`make test TEST_PACKAGES=./common/service/k8s/pid` 与 `git diff --check` 通过。
+
+## 2026-10-30 TAPD 1016210、1016213 回归修复
+
+- 挂载文件权限字符串统一按八进制解析，修复 `777` 等三位权限被当成十进制的问题；域名解析配置首次初始化为无地址的 A 记录，避免将服务器出网 IP 误作为解析目标，已有配置不改动。影响模块：挂载文件、域名配置初始化。验证：`make test TEST_PACKAGES='./app/application/console ./common/service/k8s ./common/service/k8s/pid'`、`git diff --check` 通过。
+
+## 2026-10-30 子集群 svc 地址加入 K3s tls-san
+
+- 子集群 K3sConfig 初始化时把现有 API Server svc 地址并入默认 tls-san，去重且不影响主集群。影响模块：K3s 配置同步。验证：`make test TEST_PACKAGES=./common/service/k8s/shell` 与 `git diff --check` 通过。
+
+## 2026-10-30 TAPD 1016214 直接登录子集群读取主配置
+
+- 已认证的子集群本地面板会话经 CKM 同步认证通道读取主集群展示配置；不转发用户 token，响应只保留站点、公开引用内容和域名解析字段，读取失败不回退本地配置。影响模块：认证主配置接口。验证：`make test TEST_PACKAGES='./app/auth/http/controller ./common/middleware'`、`git diff --check` 通过。
+
+## 2026-10-30 TAPD 1016217 专属权限策略
+
+- 从独立 ConfigMap 读取可配置菜单、用户组及 API 规则；在权限写入代理、API 认证和菜单下发时强制检查，拦截旧父级通配规则及面板改写策略。影响模块：权限服务、认证与 K8s 代理。验证：相关 Go 包定向 `make test` 与 `git diff --check`。
+
+## 2026-10-30 Longhorn 默认磁盘现场测试记录
+
+- 新增 `docs/longhorn-disk-default-test-2026-10-30.md`，记录独立 K3s server 上 `disk-default` 的首次创建、PVC 分配与回收、删除后不重建，以及安装后临时 Node 的模拟验证和真实新节点尚未验证的边界。影响模块：Longhorn 测试文档。
+- 验证：现场检查 Longhorn Node、StorageClass、PVC/PV 和临时节点状态；`make test TEST_PACKAGES=./common/service/k8s/longhorn` 通过。
+
+## 2026-10-30 CKM 子集群 API 权限初始化
+
+- 子集群 Agent 的 initContainer 在内置 `Permission/api` 缺失时创建它，保留已有权限配置；修复旧 CKM 集群仅同步 `founder` 权限、对外 API 报 `permissions.w7panel.w7.com "api" not found` 的问题。影响模块：子集群初始化脚本。验证：脚本语法检查与现场实例补齐验证。
+
+## 2026-10-30 对外 API Kubernetes 凭据
+
+- 对外 API 会话在已有 `Permission/api` 校验后，直接为内置 `api` ServiceAccount 签发短期 Kubernetes 凭据，避免因不存在 `User/api` 导致命名空间和 K8s 代理请求返回 500；普通面板用户仍按用户权限签发。影响模块：面板认证中间件及回归测试。验证：中间件 Go 测试通过，模拟缺少 `User/api` 时仍能取得 `ServiceAccount/api` 凭据；现场请求待部署后复测。
+
+## 2026-10-30 TAPD 1016217 集群类型策略与主域名白名单
+
+- 专属菜单及关联 API 改按主/子集群控制；子集群从 CKM 同步读取主策略，旧用户组规则拒绝加载。子集群 Permission 的菜单/API 由本地维护，域名白名单只读主集群 `normal` 套餐，读取失败时拒绝相关响应。影响模块：权限服务、认证中间件、权限代理和用户信息。验证：权限相关 Go 包 `make test` 通过。
+
+## 2026-11-02
+
+- 补充服务端发布顺序：先由相邻 UI 仓库的 `./build.sh` 写入前端产物，再推送 `v1.1.96.289` 镜像并执行 Helm 发布。影响模块：开发说明。验证：核对 `build.sh`、`Makefile` 与 `pub.sh` 的构建及发布目标，`git diff --check` 通过。
+- Deployment 镜像支持可选 digest，重复推送同一 tag 时可用 Helm 固定新镜像，同时保留纯 tag 作为 `HELM_VERSION`。影响模块：离线面板 Helm Chart。验证：`helm template` 渲染检查与 `git diff --check` 通过。
+
+## 2026-11-03 DNS-01 配置名称
+
+- 创建 DNS-01 配置时验证并保存名称，列表返回名称以区分同平台同区域配置。影响模块：DNS 配置 API 与存储。验证：`make test TEST_PACKAGES=./common/service/k8s/dnsprofile`、`git diff --check` 通过。
+
+## 2026-11-04 AppGroup 恢复兼容
+
+- AppGroup 的顶层 status 改为可选，允许 Velero 创建恢复对象后再补回应用状态。影响模块：AppGroup CRD。验证：CRD 生成、schema 测试及 AppGroup 控制器测试通过。

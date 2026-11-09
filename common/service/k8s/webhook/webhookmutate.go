@@ -56,6 +56,7 @@ func getMatchConditions() []admissionregistrationv1.MatchCondition {
 
 func getAgentOperations() []admissionregistrationv1.RuleWithOperations {
 	return []admissionregistrationv1.RuleWithOperations{
+		certificateMutationRule(),
 		podMutationRule(),
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE", "DELETE"},
@@ -100,6 +101,7 @@ func getAgentCrdOperations() []admissionregistrationv1.RuleWithOperations {
 
 func getDefaultOperations() []admissionregistrationv1.RuleWithOperations {
 	return []admissionregistrationv1.RuleWithOperations{
+		certificateMutationRule(),
 		{
 			Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
 			Rule: admissionregistrationv1.Rule{
@@ -185,6 +187,15 @@ func getDefaultOperations() []admissionregistrationv1.RuleWithOperations {
 				APIVersions: []string{"v1"},
 				Resources:   []string{"persistentvolumeclaims"},
 			},
+		},
+	}
+}
+
+func certificateMutationRule() admissionregistrationv1.RuleWithOperations {
+	return admissionregistrationv1.RuleWithOperations{
+		Operations: []admissionregistrationv1.OperationType{"CREATE", "UPDATE"},
+		Rule: admissionregistrationv1.Rule{
+			APIGroups: []string{"cert-manager.io"}, APIVersions: []string{"v1"}, Resources: []string{"certificates"},
 		},
 	}
 }

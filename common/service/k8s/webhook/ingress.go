@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s/dnsprofile"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	ingApi "github.com/w7panel/w7panel/common/service/k8s/webhook/ingress"
 	corev1 "k8s.io/api/core/v1"
@@ -63,6 +64,42 @@ func (m *ResourceMutator) handleIngress(ctx context.Context, req admission.Reque
 	ann := ingress.Annotations
 	if ann == nil {
 		return admission.Allowed("annotations empty")
+	}
+	if raw := ann["w7.cc/child-hosts"]; raw != "" {
+		var children []struct {
+			Name         string `json:"name"`
+			Host         string `json:"host"`
+			AutoSsl      bool   `json:"autoSsl"`
+			DNSProfileID string `json:"dnsProfileId"`
+			DNSGrant     string `json:"dnsGrant"`
+		}
+		if err := json.Unmarshal([]byte(raw), &children); err != nil {
+			return admission.Denied("子域名配置无效")
+		}
+		for _, child := range children {
+			if child.AutoSsl && len(child.Host) > 2 && child.Host[:2] == "*." {
+				if err := (dnsprofile.Store{SDK: m.sdk}).CheckIngressGrant(ctx, ingress.Namespace,
+					ingress.Name+"-"+child.Name, child.Host, "w7-dns-"+child.DNSProfileID,
+					child.DNSProfileID, child.DNSGrant); err != nil {
+					return admission.Denied(err.Error())
+				}
+			}
+		}
+	}
+	issuer := ann["cert-manager.io/cluster-issuer"]
+	for _, tls := range ingress.Spec.TLS {
+		for _, host := range tls.Hosts {
+			if len(host) < 2 || host[:2] != "*." {
+				continue
+			}
+			if err := (dnsprofile.Store{SDK: m.sdk}).CheckIngressGrant(ctx, ingress.Namespace, ingress.Name, host,
+				issuer, ann[dnsprofile.ProfileAnnotation], ann[dnsprofile.GrantAnnotation]); err != nil {
+				return admission.Denied(err.Error())
+			}
+			if issuer == "w7-letsencrypt-prod" {
+				return admission.Denied("泛域名自动 HTTPS 必须使用 DNS-01 签发器")
+			}
+		}
 	}
 
 	if !helper.IsChildAgent() { //子集群不处理

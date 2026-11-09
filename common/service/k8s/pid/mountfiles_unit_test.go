@@ -1,9 +1,11 @@
 package pid
 
 import (
+	"encoding/json"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 func TestParseFileMode(t *testing.T) {
@@ -14,7 +16,8 @@ func TestParseFileMode(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "octal", input: "0644", want: 0o644},
-		{name: "decimal", input: "420", want: 420},
+		{name: "three-digit octal", input: "777", want: 0o777},
+		{name: "invalid digit", input: "888", wantErr: true},
 		{name: "empty", input: "", wantErr: true},
 		{name: "invalid", input: "08ab", wantErr: true},
 	}
@@ -67,6 +70,24 @@ func TestApplyModeToMountedFileConfigMapItem(t *testing.T) {
 	got := podSpec.Volumes[0].ConfigMap.Items[0].Mode
 	if got == nil || *got != 0o600 {
 		t.Fatalf("expected item mode 0600, got %#v", got)
+	}
+}
+
+func TestMountFilesRevisionPatch(t *testing.T) {
+	patchBytes, err := mountFilesRevisionPatch("2026-10-30T12:00:00Z")
+	if err != nil {
+		t.Fatalf("build revision patch: %v", err)
+	}
+	patch := map[string]interface{}{}
+	if err := json.Unmarshal(patchBytes, &patch); err != nil {
+		t.Fatalf("decode revision patch: %v", err)
+	}
+	annotations, found, err := unstructured.NestedStringMap(patch, "spec", "template", "metadata", "annotations")
+	if err != nil {
+		t.Fatalf("read revision patch annotations: %v", err)
+	}
+	if !found || len(annotations) != 1 || annotations["w7.cc/mountfiles-revision"] != "2026-10-30T12:00:00Z" {
+		t.Fatalf("unexpected revision patch annotations: %#v", annotations)
 	}
 }
 
@@ -247,6 +268,9 @@ func TestAttachCreatedFileToPodSpec(t *testing.T) {
 	}
 	if podSpec.Volumes[1].ConfigMap.Items[0].Key != "new.yaml" || podSpec.Volumes[1].ConfigMap.Items[0].Path != "new.yaml" {
 		t.Fatalf("unexpected item: %#v", podSpec.Volumes[1].ConfigMap.Items[0])
+	}
+	if got := podSpec.Volumes[1].ConfigMap.Items[0].Mode; got == nil || *got != 0o640 {
+		t.Fatalf("expected item mode 0640, got %#v", got)
 	}
 	if len(podSpec.Containers[0].VolumeMounts) != 1 {
 		t.Fatalf("expected 1 volume mount, got %d", len(podSpec.Containers[0].VolumeMounts))

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	userservice "github.com/w7panel/w7panel/common/service/user"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/middleware"
 	"gopkg.in/yaml.v3"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 var (
@@ -26,6 +28,25 @@ type Auth struct {
 	middleware.Abstract
 }
 
+type k8sTokenContextKey struct{}
+
+// WithK8sToken carries the authenticated Kubernetes credential into handlers
+// that run through net/http rather than directly through Gin.
+func WithK8sToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, k8sTokenContextKey{}, token)
+}
+
+// K8sTokenFromContext returns the credential minted or validated by Auth.
+func K8sTokenFromContext(ctx context.Context) (string, bool) {
+	token, ok := ctx.Value(k8sTokenContextKey{}).(string)
+	return token, ok && token != ""
+}
+
+func setK8sToken(ctx *gin.Context, token string) {
+	ctx.Set("k8s_token", token)
+	ctx.Request = ctx.Request.WithContext(WithK8sToken(ctx.Request.Context(), token))
+}
+
 func (self Auth) Process(ctx *gin.Context) {
 	if shouldUsePanelAuth(ctx.Request) {
 		PanelAuth{}.Process(ctx)
@@ -36,7 +57,7 @@ func (self Auth) Process(ctx *gin.Context) {
 	if os.Getenv("LOCAL_MOCK") == "true" || os.Getenv("LOCAL_MOCK") == "1" {
 		// 尝试从 kubeconfig 读取有效 token
 		token := getMockToken()
-		ctx.Set("k8s_token", token)
+		setK8sToken(ctx, token)
 		ctx.Next()
 		return
 	}
@@ -57,7 +78,7 @@ func (self Auth) Process(ctx *gin.Context) {
 				return
 			}
 		}
-		ctx.Set("k8s_token", bearertoken)
+		setK8sToken(ctx, bearertoken)
 		ctx.Next()
 		return
 	}
@@ -79,7 +100,7 @@ func (self Auth) Process(ctx *gin.Context) {
 			return
 		}
 	}
-	ctx.Set("k8s_token", bearertoken)
+	setK8sToken(ctx, bearertoken)
 	// if facade.Config.GetBool("app.refresh_token_enable") {
 	// 	if ctx.Writer.Status() >= http.StatusOK && ctx.Writer.Status() < 300 {
 	// 		saName, date := k8s.GetTokenSaName(bearertoken)
@@ -120,7 +141,7 @@ func (self Auth) ProcessKubernetesToken(ctx *gin.Context, token string) {
 	if !self.authorizeUserOrServiceAccount(ctx, saName) {
 		return
 	}
-	ctx.Set("k8s_token", token)
+	setK8sToken(ctx, token)
 	ctx.Next()
 }
 
@@ -146,13 +167,22 @@ func shouldUsePanelAuth(req *http.Request) bool {
 }
 
 func (self Auth) authorizeUserOrServiceAccount(ctx *gin.Context, name string) bool {
-	if !requiresRoutePermission(ctx.Request.Method, ctx.Request.URL.Path) {
-		return true
-	}
 	sdk := k8s.NewK8sClient().Sdk
 	u, err := userservice.Get(ctx.Request.Context(), sdk, name)
 	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			ctx.AbortWithStatusJSON(403, gin.H{"code": 403, "msg": "没有权限"})
+			return false
+		}
 		return self.authorizePanelAPI(ctx, name)
+	}
+	role := u.Spec.Role
+	if role == "" {
+		role = u.Spec.UserMode
+	}
+	if !requiresRoutePermission(ctx.Request.Method, ctx.Request.URL.Path) {
+		ctx.Set("user_mode", role)
+		return true
 	}
 	p, err := userservice.ResolvePermission(ctx.Request.Context(), sdk, u)
 	if err != nil {
@@ -168,20 +198,24 @@ func (self Auth) authorizeUserOrServiceAccount(ctx *gin.Context, name string) bo
 		ctx.AbortWithStatusJSON(403, gin.H{"code": 403, "msg": "没有权限"})
 		return false
 	}
-	role := u.Spec.Role
-	if role == "" {
-		role = u.Spec.UserMode
-	}
 	ctx.Set("user_mode", role)
 	ctx.Set("permission_name", u.Spec.PermissionName)
 	return true
 }
 
 func (self Auth) authorizePanelAPI(ctx *gin.Context, saName string) bool {
+	sdk := k8s.NewK8sClient().Sdk
+	sa, err := sdk.GetServiceAccount(sdk.GetNamespace(), saName)
+	if err != nil {
+		ctx.AbortWithStatusJSON(403, gin.H{"code": 403, "msg": "没有权限"})
+		return false
+	}
+	role := sa.Labels["w7.cc/role"]
+	ctx.Set("user_mode", role)
 	if !requiresRoutePermission(ctx.Request.Method, ctx.Request.URL.Path) {
 		return true
 	}
-	allowed, err := permissionservice.AuthorizeRoute(ctx.Request.Context(), k8s.NewK8sClient().Sdk, saName, ctx.Request.Method, ctx.Request.URL.Path)
+	allowed, err := permissionservice.AuthorizeRoute(ctx.Request.Context(), sdk, saName, ctx.Request.Method, ctx.Request.URL.Path)
 	if err != nil {
 		ctx.AbortWithStatusJSON(403, gin.H{
 			"code": 403,

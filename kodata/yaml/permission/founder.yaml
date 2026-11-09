@@ -26,7 +26,6 @@ spec:
   - app/rvproxy/edit
   - app/rvproxy/delete
   - gateway
-  - gateway/traffic
   - gateway/rvproxy
   - gateway/rvproxy/add
   - gateway/rvproxy/edit
@@ -53,7 +52,6 @@ spec:
   - zpk
   - system
   - system/cloud
-  - system/audit
   - person/order-center
   - person/cost-center
   - cluster/nodes

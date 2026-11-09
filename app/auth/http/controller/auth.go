@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/config"
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	permissionservice "github.com/w7panel/w7panel/common/service/k8s/permission"
 	"github.com/w7panel/w7panel/common/service/k8s/site"
 	"github.com/w7panel/w7panel/common/service/panelauth"
 	userservice "github.com/w7panel/w7panel/common/service/user"
@@ -50,9 +52,21 @@ func (self Auth) UserInfo(http *gin.Context) {
 		result[key] = value
 	}
 	for key, value := range sa.GetAnnotations() {
+		if key == "w7.cc/domain-white-list" {
+			continue
+		}
 		result[key] = value
 	}
 	self.JsonResponseWithoutError(http, result)
+}
+
+func (self Auth) DomainWhiteList(http *gin.Context) {
+	whiteList, err := permissionservice.LoadMainDomainWhiteList(http.Request.Context(), http.GetString("permission_name"))
+	if err != nil {
+		self.JsonResponseWithServerError(http, err)
+		return
+	}
+	self.JsonResponseWithoutError(http, whiteList)
 }
 
 func (self Auth) Login(http *gin.Context) {
@@ -236,6 +250,18 @@ func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Contex
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
+
+	go func() {
+		err := console.RefreshCDTokenUseOpenid(u.Name)
+		if err != nil {
+			slog.Error("refresh openid error", "err", err)
+		}
+		// 以来thirdpartyToken 需要前置refreshToken
+		if u.Spec.Role == "founder" {
+			go console.RegisterLicenseSite(u.Name)
+		}
+	}()
+
 	rs := service.GetRefreshToken(u.Name, ckmName)
 	auditservice.RecordLoginSuccessUser(http, u.Name, loginMethod, u)
 	response := gin.H{
