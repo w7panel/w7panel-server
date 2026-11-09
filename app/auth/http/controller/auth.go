@@ -61,6 +61,19 @@ func (self Auth) UserInfo(http *gin.Context) {
 }
 
 func (self Auth) DomainWhiteList(http *gin.Context) {
+	if helper.IsChildAgent() {
+		user, err := userservice.Get(http.Request.Context(), k8s.NewK8sClient().Sdk, http.GetString("username"))
+		if err != nil {
+			self.JsonResponseWithServerError(http, err)
+			return
+		}
+		whiteList := user.Spec.DomainWhiteList
+		if whiteList == nil {
+			whiteList = []configv1alpha1.DomainWhiteItem{}
+		}
+		self.JsonResponseWithoutError(http, whiteList)
+		return
+	}
 	whiteList, err := permissionservice.LoadMainDomainWhiteList(http.Request.Context(), http.GetString("permission_name"))
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
