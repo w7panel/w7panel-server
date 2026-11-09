@@ -285,7 +285,9 @@ func (d *WorkloadManager) HandleWorkload(ds WorkloadWrapperInterface, delete boo
 
 	itemStatus := ds.ToItemStatus()
 	if itemStatus.Kind != "Job" {
-		d.fixSvc(ds, delete)
+		if err := d.fixSvc(ds, delete); err != nil {
+			return err
+		}
 	}
 	if delete {
 		return nil

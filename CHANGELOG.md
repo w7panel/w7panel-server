@@ -765,3 +765,7 @@
 ## 2026-11-06 cert-manager HelmChart 认领
 
 - 升级时核对并认领既有 `kube-system/cert-manager` HelmChart，归属 `default/w7panel-certmanager`；同步校正内置清单测试和文档中的 ZPK 名称。影响模块：升级脚本、BootstrapInstallation 测试和文档。验证：`sh -n`、定向 `make test`、218 现有 HelmChart 匹配及错误 Chart/归属拒绝检查、`git diff --check` 通过；未执行集群认领。
+
+## 2026-11-09 应用 Service 端口同步
+
+- 为未命名的容器端口生成 Service 端口名，避免新增端口时 Kubernetes 拒绝多端口 Service；Service 读写失败返回事件队列以便重试。影响模块：AppGroup 工作负载 Service 同步。验证：`make test TEST_PACKAGES=./common/service/k8s/appgroup`、218 集群复测。
