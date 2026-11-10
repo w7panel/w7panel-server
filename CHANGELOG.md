@@ -789,3 +789,7 @@
 ## 2026-11-10 面板独立 Service
 
 - 弃用 `w7.cc/create-svc` 自动创建普通 Service；增加按登录用户权限执行的端口编辑 Service 更新接口，使用工作负载 UID 生成独立名称并校验归属，保留 Helm 自带 Service。增加 AppGroup 关联 Service 查询接口，供域名后端选择。影响模块：AppGroup Service、面板 API。验证：定向 `make test` 通过，未在集群联调。
+
+## 2026-11-10 Worktree 分支仅本地使用
+
+- 明确任务 worktree 及其 `worktree/*` 分支不得推送到远端，共享改动先合入主项目再推送主分支。影响模块：仓库开发流程文档。验证：`git diff --check` 通过。
