@@ -38,6 +38,19 @@ func loadMainSync(ctx context.Context, path string, dst interface{}) error {
 	return json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(dst)
 }
 
+func FetchMainDomainWhiteList(ctx context.Context) ([]configv1alpha1.DomainWhiteItem, error) {
+	var response struct {
+		DomainWhiteList []configv1alpha1.DomainWhiteItem `json:"domainWhiteList"`
+	}
+	if err := loadMainSync(ctx, "/domain-white-list", &response); err != nil {
+		return nil, err
+	}
+	if response.DomainWhiteList == nil {
+		return nil, fmt.Errorf("主集群域名白名单响应不完整")
+	}
+	return response.DomainWhiteList, nil
+}
+
 func LoadMainDomainWhiteList(ctx context.Context, permissionName string) ([]configv1alpha1.DomainWhiteItem, error) {
 	if permissionName == "" {
 		return nil, fmt.Errorf("当前用户权限未确定")

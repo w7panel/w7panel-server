@@ -263,6 +263,15 @@ func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Contex
 		self.JsonResponseWithError(http, err, 500)
 		return
 	}
+	if helper.IsChildAgent() && loginMethod != "refresh" {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := syncChildDomainWhiteList(ctx, sdk, u.Name); err != nil {
+				slog.Warn("child domain whitelist sync failed", "user", u.Name, "err", err)
+			}
+		}()
+	}
 
 	go func() {
 		err := console.RefreshCDTokenUseOpenid(u.Name)
@@ -288,6 +297,14 @@ func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Contex
 		response["authRequestID"] = id
 	}
 	self.JsonResponseWithoutError(http, response)
+}
+
+func syncChildDomainWhiteList(ctx context.Context, sdk *k8s.Sdk, username string) error {
+	whiteList, err := permissionservice.FetchMainDomainWhiteList(ctx)
+	if err != nil {
+		return err
+	}
+	return userservice.UpdateDomainWhiteList(ctx, sdk, username, whiteList)
 }
 
 func (self Auth) RefreshToken2(http *gin.Context) {
