@@ -14,6 +14,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/console"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -384,6 +385,8 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 		copyPkg.RequireInstall = formula.Required
 		copyPkg.Manifest.Platform.Container.RequirePvc = requirePvc
 		copyPkg.Manifest.Platform.StartParams = startParams
+		// The copied parent containers do not describe this application.
+		copyPkg.Manifest.Platform.Containers = []types.ManifestContainer{{Container: corev1.Container{Ports: formula.Ports}}}
 		copyPkg.Manifest.Platform.Container.Volumes = formula.Volumes
 
 		p.Children[formula.Name] = copyPkg

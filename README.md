@@ -235,3 +235,7 @@ bash compress.sh
 ### 2026-11-09 新版 ZPK 服务参数
 
 制品启动参数使用 `platform.startParams`；端口从 `platform.container-v2[].ports[].containerPort` 读取，跳过初始化容器。内部应用通过 `module_name` 与 `%HOST%` / `%PORT%` 引用目标服务，安装页逻辑保持不变。回归方法见根目录 `tests/README.md` 的“新版 ZPK 子应用服务引用回归”。
+
+### 2026-11-10 安装参数与 Job 状态
+
+接收 ZPK `install_formulas[].ports` 获取目标子应用真实端口，避免 `%PORT%` 读到主应用端口；需配套更新 ZPK。AppGroup 对 Job 的失败判断使用 `Failed=True` 条件，创建及重试阶段不再提前报告失败。前端接口与状态字段保持不变。

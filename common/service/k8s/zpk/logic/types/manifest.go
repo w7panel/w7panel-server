@@ -508,12 +508,13 @@ type Data struct {
 }
 
 type InstallFormula struct {
-	Name        string        `json:"name"`
-	Title       string        `json:"title"`
-	Required    bool          `json:"required"`
-	RequirePvc  bool          `json:"requirepvc"`
-	StartParams []StartParams `json:"start_params"`
-	Volumes     []Volumes     `json:"volumes"`
+	Ports       []corev1.ContainerPort `json:"ports"`
+	Name        string                 `json:"name"`
+	Title       string                 `json:"title"`
+	Required    bool                   `json:"required"`
+	RequirePvc  bool                   `json:"requirepvc"`
+	StartParams []StartParams          `json:"start_params"`
+	Volumes     []Volumes              `json:"volumes"`
 }
 
 // backend start

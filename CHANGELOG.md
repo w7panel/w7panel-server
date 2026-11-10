@@ -769,3 +769,11 @@
 ## 2026-11-09 应用 Service 端口同步
 
 - 为未命名的容器端口生成 Service 端口名，避免新增端口时 Kubernetes 拒绝多端口 Service；Service 读写失败返回事件队列以便重试。影响模块：AppGroup 工作负载 Service 同步。验证：`make test TEST_PACKAGES=./common/service/k8s/appgroup`、218 集群复测。
+
+### 2026-11-10 子应用端口与安装状态修复
+
+- 配套 ZPK `install_formulas[].ports`，子应用 `%PORT%` 使用各自的端口列表，无端口时不继承主应用配置；不新增请求，需要配套更新 ZPK。
+- Job 失败改为依据 Kubernetes `Failed=True` 条件，避免创建或重试期间安装页提前显示失败；前端继续使用原有状态字段。
+- 新增安装 info 到地址解析及 Job 状态回归用例；测试结果完成后追加记录。
+
+- 2026-11-10 验证补充：ZPK 端口聚合与面板 info → 子应用地址解析回归通过；Job 状态回归通过。完整 appgroup 包测试被本地已有未跟踪 `eventqueue_test.go` 引用已删除的 `isDeletingAppGroupEvent` 阻断，保留原文件，通过临时 Go overlay 排除该文件完成本次 Job 状态测试。未发布或部署。
