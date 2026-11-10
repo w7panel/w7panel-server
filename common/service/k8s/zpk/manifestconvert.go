@@ -845,7 +845,7 @@ func ToHelmShellJob(p K8sResourceInterface, shell ManifestShellInterface) *batch
 	cmd := []string{"/bin/sh", "-c", shellStr}
 	jobName := p.GetHelmInstallJobName(shell.GetType())
 	var backofflimit int32
-	backofflimit = 1
+	backofflimit = 0
 	matchlabels := map[string]string{
 		"job": jobName,
 		// "job-random": helper.RandomString(10),
