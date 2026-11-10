@@ -74,7 +74,6 @@ func (d *WorkloadManager) delSvc(svcName, svcNamespace string) {
 
 func (d *WorkloadManager) fixSvc(ds WorkloadWrapperInterface, delete bool) error {
 	if delete {
-		d.delSvc(ds.Name(), ds.Namespace())
 		d.delSvc(ds.Name()+"-lb", ds.Namespace())
 		d.delSvc(ds.Name()+"-headless", ds.Namespace())
 		return nil
@@ -140,17 +139,12 @@ func (d *WorkloadManager) fixNoramlSvc(ds WorkloadWrapperInterface, delete bool)
 	createHdSvc, headlessOk := ds.Annotations()["w7.cc/create-headless-svc"]
 	if !headlessOk || createHdSvc != "true" {
 		d.delSvc(ds.Name()+"-headless", ds.Namespace())
-	}
-	createSvc, ok := ds.Annotations()["w7.cc/create-svc"]
-	if !ok {
-		return nil
-	}
-	if ok && createSvc == "false" {
 		return nil
 	}
 
 	ports := ds.ContainerPorts()
 	if len(ports) == 0 {
+		d.delSvc(ds.Name()+"-headless", ds.Namespace())
 		return nil
 	}
 	template := ds.PodTemplate()
@@ -168,19 +162,7 @@ func (d *WorkloadManager) fixNoramlSvc(ds WorkloadWrapperInterface, delete bool)
 			},
 		})
 	}
-	if len(servicePorts) == 0 {
-		d.delSvc(ds.Name(), ds.Namespace())
-		d.delSvc(ds.Name()+"-lb", ds.Namespace())
-		d.delSvc(ds.Name()+"-headless", ds.Namespace())
-		return nil
-	}
-	if err := d.createOrUpdateSvc(ds.Name(), ds.Namespace(), servicePorts, template.Labels, corev1.ServiceTypeClusterIP, false); err != nil {
-		return err
-	}
-	if headlessOk && createHdSvc == "true" {
-		return d.createOrUpdateSvc(ds.Name()+"-headless", ds.Namespace(), servicePorts, template.Labels, corev1.ServiceTypeClusterIP, true)
-	}
-	return nil
+	return d.createOrUpdateSvc(ds.Name()+"-headless", ds.Namespace(), servicePorts, template.Labels, corev1.ServiceTypeClusterIP, true)
 }
 
 func servicePortName(port corev1.ContainerPort) string {

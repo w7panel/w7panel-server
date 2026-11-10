@@ -781,3 +781,7 @@
 - 新增安装 info 到地址解析及 Job 状态回归用例；测试结果完成后追加记录。
 
 - 2026-11-10 验证补充：ZPK 端口聚合与面板 info → 子应用地址解析回归通过；Job 状态回归通过。完整 appgroup 包测试被本地已有未跟踪 `eventqueue_test.go` 引用已删除的 `isDeletingAppGroupEvent` 阻断，保留原文件，通过临时 Go overlay 排除该文件完成本次 Job 状态测试。未发布或部署。
+
+## 2026-11-10 面板独立 Service
+
+- 弃用 `w7.cc/create-svc` 自动创建普通 Service；增加按登录用户权限执行的端口编辑 Service 更新接口，使用工作负载 UID 生成独立名称并校验归属，保留 Helm 自带 Service。增加 AppGroup 关联 Service 查询接口，供域名后端选择。影响模块：AppGroup Service、面板 API。验证：定向 `make test` 通过，未在集群联调。

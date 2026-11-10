@@ -223,6 +223,8 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.GET("/dnsip", middleware.Auth{}.Process, controller2.Util{}.DnsIp)
 			localApiGroup.GET("/dns-cname", middleware.Auth{}.Process, controller2.Util{}.DnsCName)
 			localApiGroup.GET("/dns-profiles", middleware.Auth{}.Process, controller2.DNSProfile{}.List)
+			localApiGroup.POST("/namespaces/:namespace/workloads/:kind/:name/panel-service", middleware.Auth{}.Process, controller2.PanelService{}.Reconcile)
+			localApiGroup.GET("/namespaces/:namespace/appgroups/:group/services", middleware.Auth{}.Process, controller2.PanelService{}.List)
 			localApiGroup.POST("/dns-profiles", middleware.Auth{}.Process, controller2.DNSProfile{}.Create)
 			localApiGroup.DELETE("/dns-profiles/:id", middleware.Auth{}.Process, controller2.DNSProfile{}.Delete)
 			localApiGroup.POST("/dns-profiles/:id/grant", middleware.Auth{}.Process, controller2.DNSProfile{}.Grant)

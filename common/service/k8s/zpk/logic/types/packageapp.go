@@ -469,7 +469,6 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 		"w7.cc/bindings":     string(bindingsJson),
 		"w7.cc/static-url":   p.GetStaticUrl(p.GetReleaseName()),
 		"w7.cc/shells":       string(shellsJson),
-		// "w7.cc/create-svc":   "true",
 		// "w7.cc/domains":               string(domainsJson),
 		"w7.cc/ingress-config": string(ingressConfigJson),
 		// "w7.cc/ingress-domains":       string(ingressDomainsJson),

@@ -415,7 +415,6 @@ func replaceAppGroupAnnotations(current, desired map[string]string) map[string]s
 		"w7.cc/domains",
 		"w7.cc/ports",
 		"w7.cc/default-domain",
-		"w7.cc/create-svc",
 	}
 
 	result := make(map[string]string, len(desired)+len(preservedAppGroupAnnotationKeys))
