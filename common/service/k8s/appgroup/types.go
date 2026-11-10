@@ -457,8 +457,11 @@ func (d *JobWrapper) DeployStatus() string {
 		return v1alpha1.StatusDeployed
 	}
 
-	if d.Job.Status.Failed >= *d.Job.Spec.BackoffLimit {
-		return v1alpha1.StatusFailed
+	// Retry counts do not imply terminal failure; the Job controller owns it.
+	for _, condition := range d.Job.Status.Conditions {
+		if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
+			return v1alpha1.StatusFailed
+		}
 	}
 
 	return v1alpha1.StatusPendingInstall
