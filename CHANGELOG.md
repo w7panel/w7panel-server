@@ -777,3 +777,11 @@
 - 新增安装 info 到地址解析及 Job 状态回归用例；测试结果完成后追加记录。
 
 - 2026-11-10 验证补充：ZPK 端口聚合与面板 info → 子应用地址解析回归通过；Job 状态回归通过。完整 appgroup 包测试被本地已有未跟踪 `eventqueue_test.go` 引用已删除的 `isDeletingAppGroupEvent` 阻断，保留原文件，通过临时 Go overlay 排除该文件完成本次 Job 状态测试。未发布或部署。
+
+
+## 2026-11-11
+
+- 启动参数透传独立 options/unit 字段；Helm values 与安装任务转义字符串中的逗号、反斜杠和花括号，多选保持逗号分隔的单个 env 字符串。
+- 验证：待运行受影响包测试。
+
+- 2026-11-11 验证补充：通过 make test 使用仓库内 Go 1.26.6 工具链运行 TestStartParamsLiteralValues，验证逗号、花括号、反斜杠、单引号和多行文本的 SDK / Job 命令传值。types 包测试通过；logic 全包因已有域名/子应用断言和 TestLoadPackage 的外部依赖失败，域名失败经修改前源码覆盖对照确认可复现。

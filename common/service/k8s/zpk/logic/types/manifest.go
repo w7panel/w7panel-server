@@ -310,15 +310,17 @@ type SecurityContext struct {
 }
 
 type StartParams struct {
-	Description string `json:"description"`
-	ModuleName  string `json:"module_name"`
-	Name        string `json:"name"`
-	Required    bool   `json:"required"`
-	Title       string `json:"title"`
-	Type        string `json:"type"`
-	ValuesText  string `json:"values_text"`
-	Lock        bool   `json:"lock"` // 是否锁定 更新时候锁定
-	Hidden      bool   `json:"hidden,omitempty"`
+	Options     []string `json:"options"`
+	Unit        string   `json:"unit,omitempty"`
+	Description string   `json:"description"`
+	ModuleName  string   `json:"module_name"`
+	Name        string   `json:"name"`
+	Required    bool     `json:"required"`
+	Title       string   `json:"title"`
+	Type        string   `json:"type"`
+	ValuesText  string   `json:"values_text"`
+	Lock        bool     `json:"lock"` // 是否锁定 更新时候锁定
+	Hidden      bool     `json:"hidden,omitempty"`
 }
 type Volumes struct {
 	MountPath string `json:"mountPath"`
