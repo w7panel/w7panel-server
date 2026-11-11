@@ -71,7 +71,7 @@ func (h *HelmChart) GetValues() (map[string]interface{}, error) {
 	settings := cli.New()
 	optValues := &values.Options{}
 	for _, params := range h.Root.Manifest.Platform.StartParams {
-		optValues.Values = append(optValues.Values, params.Name+"="+params.ValuesText)
+		optValues.Values = append(optValues.Values, params.Name+"="+escapeHelmValue(params.ValuesText))
 	}
 	keys := make([]string, 0, len(h.Root.HelmValues))
 	for key := range h.Root.HelmValues {
@@ -79,7 +79,7 @@ func (h *HelmChart) GetValues() (map[string]interface{}, error) {
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		optValues.Values = append(optValues.Values, key+"="+h.Root.HelmValues[key])
+		optValues.Values = append(optValues.Values, key+"="+escapeHelmValue(h.Root.HelmValues[key]))
 	}
 	// for _, env := range h.Root.Manifest.Platform.Container.Env {
 	// 	optValues.Values = append(optValues.Values, env.Name+"="+env.Value)
@@ -113,10 +113,10 @@ func fillHelmSet(packageApp *types.PackageApp, childName string, ignore []string
 		if lo.Contains(ignore, params.Name) {
 			continue
 		}
-		set += " --set '" + childName + params.Name + "=" + params.ValuesText + "'"
+		set += " --set " + shellQuote(childName+params.Name+"="+escapeHelmValue(params.ValuesText))
 	}
 	for _, env := range packageApp.Manifest.Platform.Container.Env {
-		set += " --set '" + childName + env.Name + "=" + env.Value + "'"
+		set += " --set " + shellQuote(childName+env.Name+"="+escapeHelmValue(env.Value))
 	}
 	keys := make([]string, 0, len(packageApp.HelmValues))
 	for key := range packageApp.HelmValues {
@@ -124,7 +124,7 @@ func fillHelmSet(packageApp *types.PackageApp, childName string, ignore []string
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		set += " --set " + shellQuote(childName+key+"="+packageApp.HelmValues[key])
+		set += " --set " + shellQuote(childName+key+"="+escapeHelmValue(packageApp.HelmValues[key]))
 	}
 
 	if packageApp.PvcName != "" {
@@ -157,6 +157,11 @@ func fillHelmSet(packageApp *types.PackageApp, childName string, ignore []string
 		set += " --set " + childName + "fullnameOverride=" + packageApp.GetName()
 	}
 	return set
+}
+
+// escapeHelmValue keeps one literal value through Helm strvals parsing.
+func escapeHelmValue(value string) string {
+	return strings.NewReplacer("\\", "\\\\", ",", "\\,", "{", "\\{", "}", "\\}").Replace(value)
 }
 
 func shellQuote(value string) string {

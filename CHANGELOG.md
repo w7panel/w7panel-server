@@ -793,3 +793,10 @@
 ## 2026-11-10 Worktree 分支仅本地使用
 
 - 明确任务 worktree 及其 `worktree/*` 分支不得推送到远端，共享改动先合入主项目再推送主分支。影响模块：仓库开发流程文档。验证：`git diff --check` 通过。
+
+## 2026-11-11
+
+- 启动参数透传独立 options/unit 字段；Helm values 与安装任务转义字符串中的逗号、反斜杠和花括号，多选保持逗号分隔的单个 env 字符串。
+- 验证：待运行受影响包测试。
+
+- 2026-11-11 验证补充：通过 make test 使用仓库内 Go 1.26.6 工具链运行 TestStartParamsLiteralValues，验证逗号、花括号、反斜杠、单引号和多行文本的 SDK / Job 命令传值。types 包测试通过；logic 全包因已有域名/子应用断言和 TestLoadPackage 的外部依赖失败，域名失败经修改前源码覆盖对照确认可复现。
