@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"log/slog"
 	"os"
@@ -34,15 +33,15 @@ icon: {{ .Chart.Icon }}
 `
 
 type Helm struct {
-	sdk             *k8s.Sdk
-	atomic          bool
-	installationLog io.Writer
+	sdk                *k8s.Sdk
+	atomic             bool
+	installationLogger *slog.Logger
 }
 
 // InstallationLog merges Jobs created by this Helm operation into its output.
 // Other Helm callers keep their existing behavior unless they opt in.
-func (self *Helm) InstallationLog(output io.Writer) {
-	self.installationLog = output
+func (self *Helm) InstallationLog(logger *slog.Logger) {
+	self.installationLogger = logger
 }
 
 type releaseElement struct {

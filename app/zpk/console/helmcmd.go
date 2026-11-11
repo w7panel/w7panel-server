@@ -59,7 +59,7 @@ func (c HelmCmd) Handle(cmd *cobra.Command, args []string) {
 	time.Sleep(time.Second * 5) //appgroup未创建完成，延迟执行
 	sdk := k8s.NewK8sClient().Sdk
 	helmApi := helmservice.NewHelm(sdk)
-	helmApi.InstallationLog(os.Stdout)
+	helmApi.InstallationLog(slog.Default())
 	chart, err := logic.LocateChartByHelmZpk(helmOp.repository, helmOp.chartName, helmOp.zipUrl, helmOp.version)
 	if err != nil {
 		slog.Error("locate chart error", "error", err)

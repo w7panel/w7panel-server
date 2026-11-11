@@ -3,8 +3,8 @@ package helm
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"io"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -31,7 +31,7 @@ type installationLogClient struct {
 }
 
 func (h *Helm) collectInstallationLogs(ctx context.Context, cfg *action.Configuration, namespace string) func() {
-	if h.installationLog == nil {
+	if h.installationLogger == nil {
 		return func() {}
 	}
 	client, ok := cfg.KubeClient.(*kube.Client)
@@ -41,7 +41,7 @@ func (h *Helm) collectInstallationLogs(ctx context.Context, cfg *action.Configur
 	if namespace == "" {
 		namespace = h.sdk.GetNamespace()
 	}
-	logs := newInstallationJobLogs(ctx, h.sdk.ClientSet, namespace, h.installationLog)
+	logs := newInstallationJobLogs(ctx, h.sdk.ClientSet, namespace, h.installationLogger)
 	cfg.KubeClient = &installationLogClient{Client: client, logs: logs}
 	return logs.finish
 }
@@ -83,21 +83,24 @@ type installationJobLogs struct {
 	cancel    context.CancelFunc
 	client    kubernetes.Interface
 	namespace string
-	output    io.Writer
+	logger    *slog.Logger
 	mu        sync.Mutex
 	jobs      map[types.UID]chan struct{}
 	outputMu  sync.Mutex
 }
 
-func newInstallationJobLogs(ctx context.Context, client kubernetes.Interface, namespace string, output io.Writer) *installationJobLogs {
+func newInstallationJobLogs(ctx context.Context, client kubernetes.Interface, namespace string, logger *slog.Logger) *installationJobLogs {
 	ctx, cancel := context.WithCancel(ctx)
-	return &installationJobLogs{ctx: ctx, cancel: cancel, client: client, namespace: namespace, output: output, jobs: make(map[types.UID]chan struct{})}
+	return &installationJobLogs{ctx: ctx, cancel: cancel, client: client, namespace: namespace, logger: logger, jobs: make(map[types.UID]chan struct{})}
 }
 
 func (l *installationJobLogs) write(source, message string) {
 	l.outputMu.Lock()
 	defer l.outputMu.Unlock()
-	fmt.Fprintf(l.output, "[%s] %s\n", source, message)
+	if source != "" {
+		message = "[" + source + "] " + message
+	}
+	l.logger.Info(message)
 }
 
 func installationJobTitle(job metav1.Object) string {
@@ -219,7 +222,7 @@ func (l *installationJobLogs) collectJob(namespace, name string, uid types.UID, 
 			return
 		}
 		if !announced {
-			l.write(title, "开始收集任务日志")
+			l.write(title, "──────── 任务开始 ────────")
 			announced = true
 		}
 		requestCtx, requestCancel = context.WithTimeout(ctx, 5*time.Second)
@@ -258,9 +261,9 @@ func (l *installationJobLogs) collectJob(namespace, name string, uid types.UID, 
 				streams.Wait()
 				if ctx.Err() == nil {
 					if condition.Type == batchv1.JobFailed {
-						l.write(title, "任务失败："+condition.Reason)
+						l.write(title, "──────── 任务失败："+condition.Reason+" ────────")
 					} else {
-						l.write(title, "任务完成")
+						l.write(title, "──────── 任务完成 ────────")
 					}
 				}
 				return
@@ -275,7 +278,7 @@ func (l *installationJobLogs) collectJob(namespace, name string, uid types.UID, 
 }
 
 func (l *installationJobLogs) collectContainer(ctx context.Context, namespace, pod, container, title string) {
-	source := title + "/" + pod + "/" + container
+	source := title + "/" + container
 	cursor := installationLogCursor{}
 	failures := 0
 	for ctx.Err() == nil {
@@ -286,7 +289,7 @@ func (l *installationJobLogs) collectContainer(ctx context.Context, namespace, p
 		}
 		stream, err := l.client.CoreV1().Pods(namespace).GetLogs(pod, options).Stream(ctx)
 		if err == nil {
-			err = cursor.copy(stream, func(line string) { l.write(source, line) })
+			err = cursor.copy(stream, func(line string) { l.write("", line) })
 			stream.Close()
 		}
 		if ctx.Err() != nil {
