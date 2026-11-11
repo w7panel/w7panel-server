@@ -343,7 +343,7 @@ func (c *installationLogCursor) copy(input io.Reader, write func(string)) error 
 	scanner.Buffer(make([]byte, 4096), 1024*1024)
 	for scanner.Scan() {
 		line := scanner.Text()
-		stamp, _, ok := strings.Cut(line, " ")
+		stamp, message, ok := strings.Cut(line, " ")
 		parsed, err := time.Parse(time.RFC3339Nano, stamp)
 		if ok && err == nil {
 			second := parsed.Truncate(time.Second)
@@ -358,6 +358,8 @@ func (c *installationLogCursor) copy(input io.Reader, write func(string)) error 
 				continue
 			}
 			c.seen[line]++
+			// Keep the original record as the replay key, but display only its message.
+			line = message
 		}
 		write(line)
 	}
