@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -157,6 +158,15 @@ func UpdateSpec(ctx context.Context, sdk *k8s.Sdk, name string, spec Spec) (*Use
 		return nil, err
 	}
 	return FromUnstructured(updated)
+}
+
+func UpdateDomainWhiteList(ctx context.Context, sdk *k8s.Sdk, name string, whiteList []configv1alpha1.DomainWhiteItem) error {
+	patch, err := json.Marshal(map[string]interface{}{"spec": map[string]interface{}{"domainWhiteList": whiteList}})
+	if err != nil {
+		return err
+	}
+	_, err = sdk.DynamicClient().Resource(GVR).Patch(ctx, name, types.MergePatchType, patch, metav1.PatchOptions{})
+	return err
 }
 
 // UpdateLoginTime updates only spec.loginTime.  Login also refreshes the

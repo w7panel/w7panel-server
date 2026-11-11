@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	configv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/config/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -39,23 +38,7 @@ func loadMainSync(ctx context.Context, path string, dst interface{}) error {
 	return json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(dst)
 }
 
-func LoadMainDomainWhiteList(ctx context.Context, permissionName string) ([]configv1alpha1.DomainWhiteItem, error) {
-	if !helper.IsChildAgent() {
-		if permissionName == "" {
-			return nil, fmt.Errorf("当前用户权限未确定")
-		}
-		permission, err := Get(ctx, k8s.NewK8sClient().Sdk, permissionName)
-		if apierrors.IsNotFound(err) {
-			return []configv1alpha1.DomainWhiteItem{}, nil
-		}
-		if err != nil {
-			return nil, err
-		}
-		if permission.Spec.DomainWhiteList == nil {
-			return []configv1alpha1.DomainWhiteItem{}, nil
-		}
-		return permission.Spec.DomainWhiteList, nil
-	}
+func FetchMainDomainWhiteList(ctx context.Context) ([]configv1alpha1.DomainWhiteItem, error) {
 	var response struct {
 		DomainWhiteList []configv1alpha1.DomainWhiteItem `json:"domainWhiteList"`
 	}
@@ -66,4 +49,21 @@ func LoadMainDomainWhiteList(ctx context.Context, permissionName string) ([]conf
 		return nil, fmt.Errorf("主集群域名白名单响应不完整")
 	}
 	return response.DomainWhiteList, nil
+}
+
+func LoadMainDomainWhiteList(ctx context.Context, permissionName string) ([]configv1alpha1.DomainWhiteItem, error) {
+	if permissionName == "" {
+		return nil, fmt.Errorf("当前用户权限未确定")
+	}
+	permission, err := Get(ctx, k8s.NewK8sClient().Sdk, permissionName)
+	if apierrors.IsNotFound(err) {
+		return []configv1alpha1.DomainWhiteItem{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if permission.Spec.DomainWhiteList == nil {
+		return []configv1alpha1.DomainWhiteItem{}, nil
+	}
+	return permission.Spec.DomainWhiteList, nil
 }
