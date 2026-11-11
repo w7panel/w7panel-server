@@ -271,6 +271,13 @@ func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Contex
 				slog.Warn("child domain whitelist sync failed", "user", u.Name, "err", err)
 			}
 		}()
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := permissionservice.SyncExclusiveMenus(ctx, sdk); err != nil {
+				slog.Warn("child exclusive menus sync failed", "user", u.Name, "err", err)
+			}
+		}()
 	}
 
 	go func() {

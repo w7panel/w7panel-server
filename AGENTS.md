@@ -74,6 +74,10 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 3. Use `get_affected_flows_tool` to understand impact.
 4. Use `query_graph_tool` pattern="tests_for" to check coverage.
 
+## Worktree 分支
+
+- 任务 worktree 和对应的 `worktree/*` 分支仅在本地使用，不得推送到远端。需要共享任务改动时，先按 worktree 合并流程合入主项目，再推送主分支。
+
 ## Worktree 合并后清理
 
 - 任务 worktree 的改动合并到主分支并完成提交后，确认主项目当前提交已包含全部任务改动，再在主项目目录执行 `$worktree-end 任务名` 删除该 worktree 和任务分支。如仍有未合并差异，停止清理；不得用 `--force` 跳过检查。
