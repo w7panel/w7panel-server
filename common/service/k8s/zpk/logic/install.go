@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"strings"
 
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	convert "github.com/w7panel/w7panel/common/service/k8s/zpk"
@@ -260,7 +261,7 @@ func (z *Install) Install(name, namespace string) error {
 		return err
 	}
 	// }
-	helmApi := k8s.NewHelm(z.sdk)
+	helmApi := helmservice.NewHelm(z.sdk)
 	labels := z.fillLabelAndAnnation(chart)
 	_, err = helmApi.Install(z.sdk.Ctx, chart, vals, name, namespace, labels)
 	if err != nil {
@@ -283,7 +284,7 @@ func (z *Install) Upgrade(name, namespace string) error {
 		slog.Error("create or update group error", slog.String("error", err.Error()))
 		return err
 	}
-	helmApi := k8s.NewHelm(z.sdk)
+	helmApi := helmservice.NewHelm(z.sdk)
 	labels := z.fillLabelAndAnnation(chart)
 	vals := map[string]interface{}{}
 	if z.pk.IsHelm() {
@@ -367,7 +368,7 @@ func (z *Install) CreateOrUpdateGroup(namespace, name string, items []v1alpha1.D
 }
 
 func (z *Install) UnInstall(name, namespace string) error {
-	helmApi := k8s.NewHelm(z.sdk)
+	helmApi := helmservice.NewHelm(z.sdk)
 	_, err := helmApi.UnInstall(name, namespace)
 	if err != nil {
 		return err
@@ -376,7 +377,7 @@ func (z *Install) UnInstall(name, namespace string) error {
 }
 
 func (z *Install) Get(name, namespace string) (*release.Release, error) {
-	helmApi := k8s.NewHelm(z.sdk)
+	helmApi := helmservice.NewHelm(z.sdk)
 	return helmApi.Info(name, namespace)
 }
 

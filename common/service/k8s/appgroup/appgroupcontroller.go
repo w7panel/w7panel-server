@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/w7panel/w7panel/common/helper"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	applicationversiond "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/clientset/versioned"
@@ -26,7 +27,7 @@ type AppController struct {
 	*k8s.Sdk
 	KubeInformerFactory        informers.SharedInformerFactory
 	ApplicationInformerFactory appInformer.SharedInformerFactory
-	HelmApi                    *k8s.Helm
+	HelmApi                    *helmservice.Helm
 	AppGroupClientSet          *applicationversiond.Clientset
 	AppGroupApi                *AppGroupApi
 	WorkloadManager            *WorkloadManager
@@ -75,7 +76,7 @@ func NewAppController(sdk *k8s.Sdk) (*AppController, error) {
 	}
 	// nodeLister := kubeInformerFactory.Core().V1().Nodes().Lister()
 	applicationInformerFactory := appInformer.NewSharedInformerFactory(appClientset, 0)
-	helmApi := k8s.NewHelm(sdk)
+	helmApi := helmservice.NewHelm(sdk)
 
 	gctrl := &AppController{
 		Sdk:                        sdk,

@@ -84,7 +84,7 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 	k8sToken := execution.Identity
 	client := execution.SDK
 	params.ReleaseName = strings.ReplaceAll(strings.ToLower(params.ReleaseName), "_", "-")
-	// helmApi := k8s.NewHelm(client)
+	// helmApi := helmservice.NewHelm(client)
 	appgroupObj, err := appgroup.GetAppgroupUseSdk(params.ReleaseName, client.GetNamespace(), client)
 
 	repo := NewRepo(repoUrl, params.ThirdpartyCDToken, "")

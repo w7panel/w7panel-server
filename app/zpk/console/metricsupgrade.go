@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/longhorn"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
@@ -25,7 +26,7 @@ func (c MetricsUpgrade) GetName() string {
 
 func (c MetricsUpgrade) Handle(cmd *cobra.Command, args []string) {
 	sdk := k8s.NewK8sClient().Sdk
-	helmApi := k8s.NewHelm(sdk)
+	helmApi := helmservice.NewHelm(sdk)
 	_, err := helmApi.Info("vm-operator", "w7-system")
 	if err != nil {
 		if errors.Is(err, driver.ErrReleaseNotFound) {

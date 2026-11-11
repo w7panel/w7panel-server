@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/w7panel/w7panel/common/helper"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
@@ -32,7 +33,7 @@ func (c LonghornUpgrade) GetName() string {
 
 func (c LonghornUpgrade) Handle(cmd *cobra.Command, args []string) {
 	sdk := k8s.NewK8sClient().Sdk
-	helmApi := k8s.NewHelm(sdk)
+	helmApi := helmservice.NewHelm(sdk)
 
 	release, err := helmApi.Info(longhornReleaseName, longhornNamespace)
 	if errors.Is(err, driver.ErrReleaseNotFound) {

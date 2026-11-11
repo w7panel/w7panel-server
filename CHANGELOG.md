@@ -797,3 +797,13 @@
 - 验证：待运行受影响包测试。
 
 - 2026-11-11 验证补充：通过 make test 使用仓库内 Go 1.26.6 工具链运行 TestStartParamsLiteralValues，验证逗号、花括号、反斜杠、单引号和多行文本的 SDK / Job 命令传值。types 包测试通过；logic 全包因已有域名/子应用断言和 TestLoadPackage 的外部依赖失败，域名失败经修改前源码覆盖对照确认可复现。
+
+## 2026-11-11 安装任务合并 Job 日志
+
+- helmgo 显式启用 Job 日志合并，跟踪本次 Helm 操作新建 Job，按标题（空值回退 Job 名称）、Pod 与容器输出到标准输出，安装日志框直接复用原通道。保留 hook 删除和任务重试语义，限时收尾、断流去重并回收日志协程。补充 LOCAL_MOCK 模拟 Kubernetes API 回归和相关文档；验证结果见后续补充。
+
+## 2026-11-11 Helm 服务目录整理
+
+- 将 k8s 根目录的 Helm 客户端、升级渲染器、PVC 渲染器、安装日志采集及对应测试迁入 common/service/helm；同步所有调用方的构造、类型与 Chart 定位引用，不保留旧包转发层，不改变外部 API 和安装操作。更新目录说明与回归命令；验证结果见后续补充。
+
+- 2026-11-11 验证补充：迁移后的 Helm 包在 LOCAL_MOCK=true 下通过日志采集、断流恢复、取消回收、升级渲染和 PVC 容量保留的 -race 定向回归；后端主程序完整编译通过，ZPK、GPU、应用/监控/制品接口及维护命令调用方均编译通过。扩大检查时 AppGroup 包被原有未跟踪 eventqueue_test.go 引用不存在的 isDeletingAppGroupEvent 阻断；该测试未修改。前端未改代码，完整构建被现有依赖缺失 @openuidev/vue-lang 阻断；差异检查通过，未部署或发布。

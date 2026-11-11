@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	helmclientSet "github.com/k3s-io/helm-controller/pkg/generated/clientset/versioned"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	v1alpha1Types "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	gpuclassv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/gpuclass/v1alpha1"
@@ -40,7 +41,7 @@ type GpuResponse struct {
 type GpuManager struct {
 	sdk            *k8s.Sdk
 	helmchartsdk   *helmclientSet.Clientset
-	helmReleaseApi *k8s.Helm
+	helmReleaseApi *helmservice.Helm
 	gpuClassApi    gpuclassclientset.Interface
 	gpuClassName   string
 	namespace      string
@@ -115,7 +116,7 @@ func NewGpuManager(sdk *k8s.Sdk, namespace string, gpuClassName string) (*GpuMan
 	return &GpuManager{
 		sdk:            sdk,
 		helmchartsdk:   hsdk,
-		helmReleaseApi: k8s.NewHelm(sdk),
+		helmReleaseApi: helmservice.NewHelm(sdk),
 		gpuClassApi:    gpuClassApi,
 		gpuClassName:   gpuClassName,
 		appgroupClient: appgroupClient,

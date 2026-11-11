@@ -239,3 +239,11 @@ bash compress.sh
 ### 2026-11-10 安装参数与 Job 状态
 
 接收 ZPK `install_formulas[].ports` 获取目标子应用真实端口，避免 `%PORT%` 读到主应用端口；需配套更新 ZPK。AppGroup 对 Job 的失败判断使用 `Failed=True` 条件，创建及重试阶段不再提前报告失败。前端接口与状态字段保持不变。
+
+### 安装任务 Job 日志
+
+`helmgo` 开启 `Helm.InstallationLog(os.Stdout)`，将本次 Helm 安装/升级实际新建 Job 的日志合并进主安装 Pod 标准输出，现有安装日志框直接显示。来源取 Job 注解 `w7.cc/title`，没有标题则取 Job 名称；包含 Pod、容器和时间戳。hook 删除前限时收尾，普通 Job 不增加 Helm 等待语义；暂停手动任务和历史 Job 不采集。不新增 API 或永久日志存储。
+
+### Helm 服务源码
+
+`common/service/helm/` 集中维护 Helm 客户端、Chart 定位、Release 操作、升级渲染及安装 Job 日志，Kubernetes 连接由同级 `common/service/k8s/` 提供。对应测试与实现同目录；原 k8s 根目录的 Helm 文件已迁移。内部调用统一使用 `helmservice.NewHelm(sdk)`。

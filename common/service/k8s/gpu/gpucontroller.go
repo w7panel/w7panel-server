@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/w7panel/w7panel/common/helper"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	gpuclassv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/gpuclass/v1alpha1"
 	gpuclassclientset "github.com/w7panel/w7panel/k8s/pkg/client/gpuclass/clientset/versioned"
@@ -20,7 +21,7 @@ type GpuController struct {
 	*k8s.Sdk
 	factory         informers.SharedInformerFactory
 	gpuClassApi     gpuclassclientset.Interface
-	helmApi         *k8s.Helm
+	helmApi         *helmservice.Helm
 	gpuclassFactory gpuinformer.SharedInformerFactory
 }
 
@@ -44,7 +45,7 @@ func NewGpuController(sdk *k8s.Sdk) (*GpuController, error) {
 	if err != nil {
 		return nil, err
 	}
-	helmApi := k8s.NewHelm(sdk)
+	helmApi := helmservice.NewHelm(sdk)
 	return &GpuController{
 		Sdk:             sdk,
 		factory:         informers.NewSharedInformerFactory(sdk.ClientSet, 0),
@@ -52,7 +53,7 @@ func NewGpuController(sdk *k8s.Sdk) (*GpuController, error) {
 		helmApi:         helmApi,
 		gpuclassFactory: gpuinformer.NewSharedInformerFactory(gpuClassApi, 0),
 		// gpuClassApi:     gpuClassApi,
-		// helmApi:         &k8s.Helm{Sdk: sdk},
+		// helmApi:         &helmservice.Helm{Sdk: sdk},
 	}, nil
 }
 

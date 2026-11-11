@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/w7panel/w7panel/common/helper"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +39,7 @@ func (c MetricsInstall) GetDescription() string {
 
 func (c MetricsInstall) Handle(cmd *cobra.Command, args []string) {
 	sdk := k8s.NewK8sClientInner()
-	helm := k8s.NewHelm(sdk)
+	helm := helmservice.NewHelm(sdk)
 	release, err := helm.Info(inOp.vmHelmname, inOp.namespace)
 	isInstalled := false
 	if err != nil {

@@ -1,9 +1,10 @@
-package k8s
+package helm
 
 import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -32,8 +34,15 @@ icon: {{ .Chart.Icon }}
 `
 
 type Helm struct {
-	sdk    *Sdk
-	atomic bool
+	sdk             *k8s.Sdk
+	atomic          bool
+	installationLog io.Writer
+}
+
+// InstallationLog merges Jobs created by this Helm operation into its output.
+// Other Helm callers keep their existing behavior unless they opt in.
+func (self *Helm) InstallationLog(output io.Writer) {
+	self.installationLog = output
 }
 
 type releaseElement struct {
@@ -51,7 +60,7 @@ type releaseElement struct {
 	ZpkUrl      string `json:"zpk_url"`
 }
 
-func NewHelm(sdk *Sdk) *Helm {
+func NewHelm(sdk *k8s.Sdk) *Helm {
 	return &Helm{sdk: sdk}
 }
 
@@ -147,6 +156,8 @@ func (self *Helm) Install(context context.Context, chart *chart.Chart, vals map[
 		return nil, err
 	}
 	installAction := action.NewInstall(cfg)
+	finishLogs := self.collectInstallationLogs(context, cfg, namespace)
+	defer finishLogs()
 	installAction.ReleaseName = releaseName
 	installAction.Namespace = namespace
 	installAction.Replace = true
@@ -171,6 +182,8 @@ func (self *Helm) Upgrade(context context.Context, chart *chart.Chart, vals map[
 		return nil, err
 	}
 	action := action.NewUpgrade(cfg)
+	finishLogs := self.collectInstallationLogs(context, cfg, namespace)
+	defer finishLogs()
 	action.PostRenderer = self.newUpgradePostRenderer(context, namespace)
 	action.Namespace = namespace
 	// action.Force = true

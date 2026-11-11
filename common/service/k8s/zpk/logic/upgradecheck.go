@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/w7panel/w7panel/common/service/artifacturl"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	appv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
@@ -41,7 +42,7 @@ var NotUpgrade = &UpgradeInfo{
 type UpgradeCheck struct {
 	sdk               *k8s.Sdk
 	groupApi          *appgroup.AppGroupApi
-	helmApi           *k8s.Helm
+	helmApi           *helmservice.Helm
 	thirdPartyCDToken string
 	panelToken        string
 }
@@ -51,7 +52,7 @@ func NewUpgradeCheck(sdk *k8s.Sdk) *UpgradeCheck {
 	if err != nil {
 		return nil
 	}
-	helmApi := k8s.NewHelm(sdk)
+	helmApi := helmservice.NewHelm(sdk)
 	return &UpgradeCheck{
 		sdk:      sdk,
 		groupApi: groupApi,

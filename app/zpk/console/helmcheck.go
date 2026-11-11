@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 	"golang.org/x/mod/semver"
@@ -46,7 +47,7 @@ func (c HelmCheckCmd) Configure(cmd *cobra.Command) {
 func (c HelmCheckCmd) Handle(cmd *cobra.Command, args []string) {
 
 	sdk := k8s.NewK8sClient().Sdk
-	helmApi := k8s.NewHelm(sdk)
+	helmApi := helmservice.NewHelm(sdk)
 	helmInfo, err := helmApi.Info(helmCOp.releaseName, helmCOp.namespace)
 	if err != nil {
 		slog.Error("not found", "releasename", helmCOp.releaseName)

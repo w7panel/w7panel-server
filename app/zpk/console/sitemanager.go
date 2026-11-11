@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/w7panel/w7panel/common/helper"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic"
@@ -41,7 +42,7 @@ func (c SiteManagerCmd) Configure(cmd *cobra.Command) {
 func (c SiteManagerCmd) Handle(cmd *cobra.Command, args []string) {
 
 	sdk := k8s.NewK8sClient().Sdk
-	helmApi := k8s.NewHelm(sdk)
+	helmApi := helmservice.NewHelm(sdk)
 	api, err := appgroup.NewAppGroupApi(sdk)
 	if err != nil {
 		slog.Error("not find sitemanager api", "error", err, "identifie", sOp.identifie)

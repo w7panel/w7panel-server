@@ -8,6 +8,7 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/w7panel/w7panel/common/helper"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
@@ -22,7 +23,7 @@ import (
 
 type DependEnv struct {
 	*k8s.Sdk
-	*k8s.Helm
+	*helmservice.Helm
 	*appgroup.AppGroupApi
 }
 
@@ -34,7 +35,7 @@ func NewDependEnv(client *k8s.Sdk) *DependEnv {
 	}
 	return &DependEnv{
 		Sdk:         client,
-		Helm:        k8s.NewHelm(client),
+		Helm:        helmservice.NewHelm(client),
 		AppGroupApi: groupApi,
 		//Kubectl: k8s.NewKubectl(client),
 	}

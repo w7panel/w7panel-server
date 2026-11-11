@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
@@ -30,7 +31,7 @@ func (self Helm) List(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	helmApi := k8s.NewHelm(client)
+	helmApi := helmservice.NewHelm(client)
 	releases, err := helmApi.List(params.Namespace, params.LabelSelector)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
@@ -59,7 +60,7 @@ func (self Helm) Info(http *gin.Context) {
 			"msg":  "401",
 		})
 	}
-	helmApi := k8s.NewHelm(client)
+	helmApi := helmservice.NewHelm(client)
 	releases, err := helmApi.Info(http.Param("name"), params.Namespace)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
@@ -81,7 +82,7 @@ func (self Helm) UnInstall(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	helmApi := k8s.NewHelm(client)
+	helmApi := helmservice.NewHelm(client)
 	releases, err := helmApi.UnInstall(http.Param("name"), params.Namespace)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
@@ -109,14 +110,14 @@ func (self Helm) InstallUseRepo(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	helmApi := k8s.NewHelm(client)
+	helmApi := helmservice.NewHelm(client)
 	registry, err := registry.NewClient(registry.ClientOptPlainHTTP())
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
 
-	chart, err := k8s.LocateChart(params.Repository, params.ChartName, true, registry, params.Version)
+	chart, err := helmservice.LocateChart(params.Repository, params.ChartName, true, registry, params.Version)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
@@ -172,7 +173,7 @@ func (self Helm) ReUseValues(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	helmApi := k8s.NewHelm(client)
+	helmApi := helmservice.NewHelm(client)
 	releases, err := helmApi.ReUseValues(client.Ctx, params.Vals, http.Param("name"), params.Namespace)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/w7panel/w7panel/common/helper"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/user/k3k"
 	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -63,7 +64,7 @@ var oldAppGroupGVR = schema.GroupVersionResource{
 
 type WorkloadManager struct {
 	groupApi                    *AppGroupApi
-	helm                        *k8s.Helm
+	helm                        *helmservice.Helm
 	sdk                         *k8s.Sdk
 	AppGroupLister              v1alpha1Lister.AppGroupLister
 	DeploymentLister            appsv1lister.DeploymentLister
@@ -78,7 +79,7 @@ type WorkloadManager struct {
 
 func NewWorkLoadTestManager() *WorkloadManager {
 	sdk := k8s.NewK8sClientInner()
-	helm := k8s.NewHelm(sdk)
+	helm := helmservice.NewHelm(sdk)
 	groupApi, err := NewAppGroupApi(sdk)
 	if err != nil {
 		panic(fmt.Errorf("init appgroup api error: %v", err))
@@ -88,7 +89,7 @@ func NewWorkLoadTestManager() *WorkloadManager {
 
 }
 
-func NewWorkloadManager(groupApi *AppGroupApi, helm *k8s.Helm) *WorkloadManager {
+func NewWorkloadManager(groupApi *AppGroupApi, helm *helmservice.Helm) *WorkloadManager {
 	return &WorkloadManager{
 		groupApi:                    groupApi,
 		helm:                        helm,
@@ -102,7 +103,7 @@ func (d *WorkloadManager) SetGroupLister(lister v1alpha1Lister.AppGroupLister) {
 	d.AppGroupLister = lister
 }
 
-func NewWorkloadManagerWithLister(groupApi *AppGroupApi, helm *k8s.Helm,
+func NewWorkloadManagerWithLister(groupApi *AppGroupApi, helm *helmservice.Helm,
 	groupLister v1alpha1Lister.AppGroupLister,
 	deployment appsv1lister.DeploymentLister,
 	statefulset appsv1lister.StatefulSetLister,

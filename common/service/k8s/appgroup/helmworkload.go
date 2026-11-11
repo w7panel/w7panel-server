@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/w7panel/w7panel/common/service/k8s"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/types"
 	appv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	v1alpha1Types "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
@@ -18,12 +18,12 @@ import (
 
 type HelmWorkload struct {
 	appGroupLister v1alpha1.AppGroupLister
-	helmApi        *k8s.Helm
+	helmApi        *helmservice.Helm
 	groupApi       *AppGroupApi
 	queue          *EventQueue
 }
 
-func NewHelmWorkload(helm *k8s.Helm, appGroupLister v1alpha1Lister.AppGroupLister, queue *EventQueue, groupApi *AppGroupApi) *HelmWorkload {
+func NewHelmWorkload(helm *helmservice.Helm, appGroupLister v1alpha1Lister.AppGroupLister, queue *EventQueue, groupApi *AppGroupApi) *HelmWorkload {
 	if appGroupLister == nil {
 		slog.Error("app group lister is nil")
 		panic("app group lister is nil")

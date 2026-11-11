@@ -319,7 +319,7 @@ func disabledIngressesApps(t *testing.T) {
 
 	sdk := k8s.NewK8sClientInner()
 
-	// helmApi := k8s.NewHelm(sdk)
+	// helmApi := helmservice.NewHelm(sdk)
 
 	apps := getIngressesApp()
 	install := NewInstall(sdk, apps)
@@ -402,7 +402,7 @@ func disabledConsoleApp(t *testing.T) {
 	// os.Setenv("USER_AGENT", "we7test-beta")
 	sdk := k8s.NewK8sClientInner()
 
-	// helmApi := k8s.NewHelm(sdk)
+	// helmApi := helmservice.NewHelm(sdk)
 
 	apps := getConsoleApps()
 	// getConsoleApps()

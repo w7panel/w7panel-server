@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/metrics"
 	"github.com/we7coreteam/w7-rangine-go/v2/src/http/controller"
@@ -72,7 +73,7 @@ func (self Metrics) VmOperatorInstalled(http *gin.Context) {
 		Installed: false,
 		Namespace: namespace,
 	}
-	helmApi := k8s.NewHelm(sdk)
+	helmApi := helmservice.NewHelm(sdk)
 	_, err := helmApi.Info(releaseName, result.Namespace)
 
 	if err != nil {
@@ -105,7 +106,7 @@ func (self Metrics) MetricsState(http *gin.Context) {
 	}
 	releaseName := "w7panel-metrics"
 	sdk := rootSdk.Sdk
-	helmApi := k8s.NewHelm(sdk)
+	helmApi := helmservice.NewHelm(sdk)
 	_, err := helmApi.Info(releaseName, "default")
 	rootInstalled := err == nil
 	state.CanShowClusterMetrics = rootInstalled

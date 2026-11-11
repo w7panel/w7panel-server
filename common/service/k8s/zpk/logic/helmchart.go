@@ -12,7 +12,7 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/w7panel/w7panel/common/helper"
-	"github.com/w7panel/w7panel/common/service/k8s"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s/higress"
 	"github.com/w7panel/w7panel/common/service/k8s/microapp"
 	helm "github.com/w7panel/w7panel/common/service/k8s/zpk"
@@ -48,7 +48,7 @@ func LocateChartByHelm(respo, chartName, version string) (*chart.Chart, error) {
 	if err != nil {
 		return nil, err
 	}
-	return k8s.LocateChart(respo, chartName, true, client, version)
+	return helmservice.LocateChart(respo, chartName, true, client, version)
 }
 
 type HelmChart struct {
@@ -318,7 +318,7 @@ func (h *HelmChart) helmChart() (*chart.Chart, error) {
 		if err != nil {
 			return nil, err
 		}
-		return k8s.LocateChart(helmConfig.Repository, helmConfig.ChartName, true, client, helmConfig.Version)
+		return helmservice.LocateChart(helmConfig.Repository, helmConfig.ChartName, true, client, helmConfig.Version)
 	}
 }
 

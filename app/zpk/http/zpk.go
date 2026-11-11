@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	zpkk8s "github.com/w7panel/w7panel/common/service/k8s/zpk"
@@ -153,7 +154,7 @@ func (self Zpk) GetConfig(http *gin.Context) {
 	repo.SetAppIdentify(params.ReleaseName)
 	repo.SetReinstall(params.Reinstall)
 	repo.SetRuntimeContext(params.RuntimeContext)
-	// helmApi := k8s.NewHelm(client)
+	// helmApi := helmservice.NewHelm(client)
 	// _, err = helmApi.Info(params.ReleaseName, client.GetNamespace())
 	var dependsEnv *logic.DependEnv
 	upgrade := false
@@ -228,7 +229,7 @@ func (self Zpk) List(http *gin.Context) {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
-	helmApi := k8s.NewHelm(client)
+	helmApi := helmservice.NewHelm(client)
 	releases, err := helmApi.List(params.Namespace, "source=zpk")
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)

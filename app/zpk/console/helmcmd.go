@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
@@ -57,7 +58,8 @@ func (c HelmCmd) Handle(cmd *cobra.Command, args []string) {
 	slog.Info("helmgo start")
 	time.Sleep(time.Second * 5) //appgroup未创建完成，延迟执行
 	sdk := k8s.NewK8sClient().Sdk
-	helmApi := k8s.NewHelm(sdk)
+	helmApi := helmservice.NewHelm(sdk)
+	helmApi.InstallationLog(os.Stdout)
 	chart, err := logic.LocateChartByHelmZpk(helmOp.repository, helmOp.chartName, helmOp.zipUrl, helmOp.version)
 	if err != nil {
 		slog.Error("locate chart error", "error", err)
