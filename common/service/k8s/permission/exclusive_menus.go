@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -72,13 +71,6 @@ func containsClusterType(types []string, target string) bool {
 }
 
 func LoadExclusiveMenus(ctx context.Context, sdk *k8s.Sdk) (ExclusiveMenus, error) {
-	if helper.IsChildAgent() {
-		var policy ExclusiveMenus
-		if err := loadMainSync(ctx, "/exclusive-menus", &policy); err != nil {
-			return policy, err
-		}
-		return policy, policy.Validate()
-	}
 	cm, err := sdk.ClientSet.CoreV1().ConfigMaps(sdk.GetNamespace()).Get(ctx, ExclusiveMenusConfigMap, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		return ExclusiveMenus{Rules: []ExclusiveMenuRule{}}, nil
@@ -92,6 +84,27 @@ func LoadExclusiveMenus(ctx context.Context, sdk *k8s.Sdk) (ExclusiveMenus, erro
 	}
 	policy.ResourceVersion = cm.ResourceVersion
 	return policy, policy.Validate()
+}
+
+// SyncExclusiveMenus refreshes the child cache only after a complete, valid response.
+func SyncExclusiveMenus(ctx context.Context, sdk *k8s.Sdk) error {
+	var policy ExclusiveMenus
+	if err := loadMainSync(ctx, "/exclusive-menus", &policy); err != nil {
+		return err
+	}
+	if err := policy.Validate(); err != nil {
+		return err
+	}
+	cm, err := sdk.ClientSet.CoreV1().ConfigMaps(sdk.GetNamespace()).Get(ctx, ExclusiveMenusConfigMap, metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	policy.ResourceVersion = ""
+	if err == nil {
+		policy.ResourceVersion = cm.ResourceVersion
+	}
+	_, err = SaveExclusiveMenus(ctx, sdk, policy)
+	return err
 }
 
 func SaveExclusiveMenus(ctx context.Context, sdk *k8s.Sdk, policy ExclusiveMenus) (ExclusiveMenus, error) {
