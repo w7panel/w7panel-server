@@ -11,9 +11,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	appgroupv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	appgrouplister "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +27,29 @@ import (
 type mockWorkloadWrapper struct {
 	isHelm bool
 	name   string
+}
+
+func TestRemainingCRDDependent(t *testing.T) {
+	groups := []appgroupv1alpha1.AppGroup{{
+		ObjectMeta: metav1.ObjectMeta{Name: "new-dependent"},
+		Spec:       appgroupv1alpha1.AppGroupSpec{Dependencies: []appgroupv1alpha1.AppGroupDependency{{Name: "root"}}},
+	}}
+	if got := remainingCRDDependent(groups, map[string]bool{"root": true}, "default"); got != "new-dependent" {
+		t.Fatalf("new dependent not detected: %q", got)
+	}
+	if got := remainingCRDDependent(groups, map[string]bool{"root": true, "new-dependent": true}, "default"); got != "" {
+		t.Fatalf("selected dependent was rejected: %q", got)
+	}
+}
+
+func TestHelmLookupBlocksCRDCleanup(t *testing.T) {
+	group := &appgroupv1alpha1.AppGroup{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+		helmservice.CRDCleanupAnnotation: `["widgets.example.com"]`,
+	}}}
+	assert.True(t, helmLookupBlocksCRDCleanup(group, errors.New("cannot read release")))
+	assert.False(t, helmLookupBlocksCRDCleanup(group, driver.ErrReleaseNotFound))
+	delete(group.Annotations, helmservice.CRDCleanupAnnotation)
+	assert.False(t, helmLookupBlocksCRDCleanup(group, errors.New("cannot read release")))
 }
 
 type roundTripFunc func(*http.Request) (*http.Response, error)

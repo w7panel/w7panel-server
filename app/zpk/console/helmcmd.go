@@ -1,6 +1,7 @@
 package console
 
 import (
+	"errors"
 	"log/slog"
 	"os"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
+	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/getter"
@@ -20,17 +22,18 @@ type HelmCmd struct {
 }
 
 type helmOption struct {
-	version     string
-	releaseName string
-	repository  string
-	chartName   string
-	namespace   string
-	set         []string
-	setJson     []string
-	atomic      bool              // 原子安装
-	zipUrl      string            // 压缩包地址 应用市场用zip 存helm包
-	annotations map[string]string // 注解信息
-	labels      map[string]string // 标签数据
+	version             string
+	releaseName         string
+	repository          string
+	chartName           string
+	namespace           string
+	set                 []string
+	setJson             []string
+	atomic              bool   // 原子安装
+	zipUrl              string // 压缩包地址 应用市场用zip 存helm包
+	chartApprovalDigest string
+	annotations         map[string]string // 注解信息
+	labels              map[string]string // 标签数据
 }
 
 var helmOp = helmOption{}
@@ -48,6 +51,7 @@ func (c HelmCmd) Configure(cmd *cobra.Command) {
 	cmd.Flags().StringArrayVar(&helmOp.set, "set", []string{}, "set参数")
 	cmd.Flags().StringArrayVar(&helmOp.setJson, "set-json", []string{}, "set-json参数")
 	cmd.Flags().StringVar(&helmOp.zipUrl, "zipUrl", "", "zip包地址")
+	cmd.Flags().StringVar(&helmOp.chartApprovalDigest, "chartApprovalDigest", "", "已确认的 Chart 摘要")
 	cmd.Flags().BoolVar(&helmOp.atomic, "atomic", false, "原子安装")
 	cmd.Flags().StringToStringVar(&helmOp.annotations, "anno", map[string]string{}, "annotations参数")
 	cmd.Flags().StringToStringVar(&helmOp.labels, "labels", map[string]string{}, "labels参数")
@@ -63,6 +67,11 @@ func (c HelmCmd) Handle(cmd *cobra.Command, args []string) {
 	chart, err := logic.LocateChartByHelmZpk(helmOp.repository, helmOp.chartName, helmOp.zipUrl, helmOp.version)
 	if err != nil {
 		slog.Error("locate chart error", "error", err)
+		os.Exit(1)
+		return
+	}
+	if err := verifyChartApproval(chart, helmOp.chartApprovalDigest); err != nil {
+		slog.Error("chart approval error", "error", err)
 		os.Exit(1)
 		return
 	}
@@ -91,6 +100,13 @@ func (c HelmCmd) Handle(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 		return
 	}
+	if helmOp.chartApprovalDigest != "" {
+		if err := helmservice.ProcessChartDependencies(chart, helmOp.set, helmOp.setJson); err != nil {
+			slog.Error("process chart dependencies error", "err", err)
+			os.Exit(1)
+			return
+		}
+	}
 
 	info, err := helmApi.Info(helmOp.releaseName, helmOp.namespace)
 	helmApi.Atomic(helmOp.atomic)
@@ -111,4 +127,18 @@ func (c HelmCmd) Handle(cmd *cobra.Command, args []string) {
 	}
 	slog.Info("helmgo install success")
 
+}
+
+func verifyChartApproval(chart *chart.Chart, digest string) error {
+	if digest == "" {
+		return nil
+	}
+	actual, err := helmservice.ChartDigest(chart)
+	if err != nil {
+		return err
+	}
+	if actual != digest {
+		return errors.New("Chart changed since CRD confirmation; check the upgrade again")
+	}
+	return nil
 }

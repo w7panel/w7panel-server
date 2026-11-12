@@ -9,11 +9,14 @@ import (
 
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/console"
+	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/w7panel/w7panel/common/service/k8s/dnsprofile"
 	helm "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 type DependencyBinding struct {
@@ -51,6 +54,7 @@ type InstallRequest struct {
 	ZipUrl             string                `json:"zipUrl"`            // 代码包地址
 	PanelUrl           string                `json:"panelUrl"`          // 安装时候的面板地址
 	Reinstall          bool                  `json:"reinstall"`         // 强制覆盖旧安装绑定，仅允许非升级安装
+	CRDApprovalDigest  string                `json:"crdApprovalDigest,omitempty"`
 }
 type InstallResult struct {
 	ReleaseName string `json:"releaseName"`
@@ -71,10 +75,7 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 	if execution.SDK == nil {
 		return InstallResult{}, errors.New("installation SDK is required")
 	}
-	params.IngressHost = strings.ToLower(params.IngressHost)
-	params.IngressHost = strings.ReplaceAll(params.IngressHost, "https://", "")
-	params.IngressHost = strings.ReplaceAll(params.IngressHost, "http://", "")
-	params.IngressHost = strings.ReplaceAll(params.IngressHost, "/", "")
+	params.IngressHost = normalizeInstallIngressHost(params.IngressHost)
 
 	repoUrl := params.RepoUrl
 	if repoUrl == "" {
@@ -85,7 +86,11 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 	client := execution.SDK
 	params.ReleaseName = strings.ReplaceAll(strings.ToLower(params.ReleaseName), "_", "-")
 	// helmApi := helmservice.NewHelm(client)
-	appgroupObj, err := appgroup.GetAppgroupUseSdk(params.ReleaseName, client.GetNamespace(), client)
+	appgroupObj, err := appgroup.GetAppgroupUseSdk(params.ReleaseName, params.Namespace, client)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return InstallResult{}, err
+	}
+	isUpgrade := err == nil && appgroupObj != nil
 
 	repo := NewRepo(repoUrl, params.ThirdpartyCDToken, "")
 	repo.SetDomain(installRequestDomain(params))
@@ -103,6 +108,9 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 	namespace := params.Namespace
 	mPackage, err := repo.Load()
 	if err != nil {
+		return InstallResult{}, err
+	}
+	if err := validateRootInstallOption(mPackage, params.InstallOptions); err != nil {
 		return InstallResult{}, err
 	}
 	if mPackage.Manifest.IsHelm() {
@@ -148,16 +156,28 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 		mPackage.ZipUrl = params.ZipUrl
 
 	}
-
 	//随机k8s deployment name
 	installId := execution.InstallID
 	if installId == "" {
 		installId = helper.RandomString(5)
 	}
 	// releaseName = params.ReleaseName
-
 	packageApps := types.NewPackage(mPackage, params.InstallOptions, releaseName, installId, namespace,
 		params.IngressHost, params.IngressSeletorName, params.IngressClassName)
+	var upgradeCRDs map[string]*unstructured.Unstructured
+	if isUpgrade {
+		check, crds, err := upgradeChartCRDs(client.Ctx, client, mPackage, packageApps)
+		if err != nil {
+			return InstallResult{}, err
+		}
+		if err := requireUpgradeCRDApproval(check, params.CRDApprovalDigest); err != nil {
+			return InstallResult{}, err
+		}
+		packageApps.Root.ChartApprovalDigest = check.Digest
+		if len(check.Names) > 0 {
+			upgradeCRDs = crds
+		}
+	}
 	dependencies, err := appgroup.ResolveDependencies(
 		client,
 		namespace,
@@ -233,6 +253,11 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 		parent := types.NewPackageApp(packageApps.Root.ManifestPackage.Parent, &types.InstallOption{ReleaseName: packageApps.Root.ParentReleaseName})
 		packageApps.Root.Parent = parent
 	}
+	if len(upgradeCRDs) > 0 {
+		if err := helmservice.ApplyCRDs(client.Ctx, client, upgradeCRDs); err != nil {
+			return InstallResult{}, err
+		}
+	}
 	helper.Set(releaseName, installId, time.Minute*30) //site.go 注册站点 installId 要匹配
 	if execution.install != nil {
 		err = execution.install(packageApps, releaseName, namespace)
@@ -248,6 +273,13 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 		return InstallResult{}, err
 	}
 	return InstallResult{ReleaseName: releaseName, InstallID: installId, Namespace: namespace}, nil
+}
+
+func normalizeInstallIngressHost(host string) string {
+	host = strings.ToLower(host)
+	host = strings.ReplaceAll(host, "https://", "")
+	host = strings.ReplaceAll(host, "http://", "")
+	return strings.ReplaceAll(host, "/", "")
 }
 
 func installRequestDomain(params InstallRequest) string {

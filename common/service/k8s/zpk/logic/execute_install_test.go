@@ -6,16 +6,24 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/rest"
 )
 
 func TestExecuteInstallSharedPreparation(t *testing.T) {
+	var denyAppGroup atomic.Bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		if denyAppGroup.Load() && strings.Contains(r.URL.Path, "/appgroups/") {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"kind":"Status","apiVersion":"v1","status":"Failure","reason":"Forbidden","code":403}`))
+			return
+		}
 		switch r.URL.Path {
 		case "/api":
 			w.Write([]byte(`{"kind":"APIVersions","apiVersion":"v1","versions":["v1"]}`))
@@ -70,6 +78,13 @@ func TestExecuteInstallSharedPreparation(t *testing.T) {
 				t.Fatalf("%+v %v", result, err)
 			}
 		})
+	}
+	denyAppGroup.Store(true)
+	called := false
+	_, err = ExecuteInstall(InstallRequest{Namespace: "target", RepoUrl: "memory://shared-test", ReleaseName: "My_APP"},
+		InstallExecution{SDK: sdk, install: func(types.Package, string, string) error { called = true; return nil }})
+	if !apierrors.IsForbidden(err) || called {
+		t.Fatalf("AppGroup lookup error did not stop install: %v, called=%v", err, called)
 	}
 }
 

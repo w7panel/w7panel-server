@@ -3,6 +3,7 @@ package appgroup
 import (
 	"context"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	appv1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	microapp "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
 	v1alpha1Lister "github.com/w7panel/w7panel/k8s/pkg/client/appgroup/listers/appgroup/v1alpha1"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -504,6 +506,60 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 		if err := d.cleanAppGroup(group); err != nil {
 			return newAppGroupCleanupRetryError(err)
 		}
+		if raw := group.Annotations[helmservice.CRDCleanupAnnotation]; raw != "" {
+			children, err := d.groupApi.GetAppGroupListByLabel(group.Namespace, "w7.cc/parent="+group.Name)
+			if err != nil {
+				return newAppGroupCleanupRetryError(err)
+			}
+			if len(children.Items) > 0 {
+				for _, child := range children.Items {
+					if child.DeletionTimestamp == nil {
+						if err := d.groupApi.DeleteAppGroup(child.Namespace, child.Name); err != nil {
+							return newAppGroupCleanupRetryError(err)
+						}
+					}
+				}
+				return newAppGroupCleanupRetryError(fmt.Errorf("waiting for child applications of %s/%s before CRD cleanup", group.Namespace, group.Name))
+			}
+			var after []string
+			if err := json.Unmarshal([]byte(group.Annotations[helmservice.CRDCleanupAfterGroupsAnnotation]), &after); err != nil {
+				return newAppGroupCleanupRetryError(err)
+			}
+			forceShared := group.Annotations[helmservice.CRDCleanupForceSharedAnnotation]
+			if (forceShared != "true" && forceShared != "false") || !helmservice.VerifyCRDCleanupSignature(group.Namespace, string(group.UID), raw+"\n"+group.Annotations[helmservice.CRDCleanupAfterGroupsAnnotation]+"\n"+forceShared, group.Annotations[helmservice.CRDCleanupSignatureAnnotation]) {
+				return newAppGroupCleanupRetryError(fmt.Errorf("invalid CRD cleanup authorization for %s/%s", group.Namespace, group.Name))
+			}
+			for _, name := range after {
+				if _, err := d.groupApi.GetAppGroup(group.Namespace, name); err == nil {
+					return newAppGroupCleanupRetryError(fmt.Errorf("waiting for dependent application %s/%s to uninstall before CRD cleanup", group.Namespace, name))
+				} else if !k8serrors.IsNotFound(err) {
+					return newAppGroupCleanupRetryError(err)
+				}
+			}
+			groups, err := d.groupApi.GetAppGroupList(group.Namespace)
+			if err != nil {
+				return newAppGroupCleanupRetryError(err)
+			}
+			selected := map[string]bool{group.Name: true}
+			for _, name := range after {
+				selected[name] = true
+			}
+			if remaining := remainingCRDDependent(groups.Items, selected, group.Namespace); remaining != "" {
+				return newAppGroupCleanupRetryError(fmt.Errorf("waiting for dependent application %s/%s before CRD cleanup", group.Namespace, remaining))
+			}
+			var names []string
+			if err := json.Unmarshal([]byte(raw), &names); err != nil {
+				return newAppGroupCleanupRetryError(err)
+			}
+			if forceShared != "true" {
+				if risks := d.helm.SharedCRDRisks(d.sdk.Ctx, names, group.Name, group.Namespace); len(risks) > 0 {
+					return newAppGroupCleanupRetryError(fmt.Errorf("CRD cleanup needs shared-resource confirmation: %s", strings.Join(risks, "; ")))
+				}
+			}
+			if err := helmservice.DeleteCRDs(d.sdk.Ctx, d.sdk, names); err != nil {
+				return newAppGroupCleanupRetryError(err)
+			}
+		}
 		_, isChild := group.Labels["w7.cc/parent"]
 		if isChild {
 			if removeManagedAppGroupFinalizers(group) {
@@ -582,6 +638,20 @@ func (d *WorkloadManager) HandleAppGroup(group *v1alpha1.AppGroup, delete bool, 
 
 	return nil
 }
+
+func remainingCRDDependent(groups []appv1.AppGroup, selected map[string]bool, namespace string) string {
+	for _, group := range groups {
+		if selected[group.Name] {
+			continue
+		}
+		for _, dependency := range group.Spec.Dependencies {
+			if (dependency.Namespace == "" || dependency.Namespace == namespace) && selected[dependency.Name] {
+				return group.Name
+			}
+		}
+	}
+	return ""
+}
 func removeManagedAppGroupFinalizers(group *v1alpha1.AppGroup) bool {
 	if group == nil || len(group.Finalizers) == 0 {
 		return false
@@ -602,6 +672,10 @@ func skipHelmCleanup(group *v1alpha1.AppGroup) bool {
 	return group.Name == "longhorn" || group.Name == "w7panel-offline"
 }
 
+func helmLookupBlocksCRDCleanup(group *v1alpha1.AppGroup, err error) bool {
+	return err != nil && group.Annotations[helmservice.CRDCleanupAnnotation] != "" && !stderrors.Is(err, driver.ErrReleaseNotFound)
+}
+
 func (d *WorkloadManager) cleanHelm(group *v1alpha1.AppGroup) error {
 	if skipHelmCleanup(group) { //LonghornUpgrade 之前版本有bug 暂时不清理
 		return nil
@@ -618,6 +692,9 @@ func (d *WorkloadManager) cleanAppGroup(group *appv1.AppGroup) error {
 
 	helmInfo, err := d.helm.Info(group.Name, group.Namespace)
 	if err != nil {
+		if helmLookupBlocksCRDCleanup(group, err) {
+			return fmt.Errorf("check Helm release before CRD cleanup: %w", err)
+		}
 		slog.Error("failed to get helm info", slog.String("error", err.Error()))
 	}
 	if helmInfo != nil { //如果云端应用也是helm 资源

@@ -1,6 +1,7 @@
 package logic
 
 import (
+	stderrors "errors"
 	"log/slog"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -105,11 +107,13 @@ func (z *Install) applyParentGroup(group *v1alpha1.AppGroup) error {
 
 func (z *Install) InstallOrUpgrade(name, namespace string) error {
 	_, err := z.Get(name, namespace)
-	if err != nil {
+	if stderrors.Is(err, driver.ErrReleaseNotFound) {
 		return z.Install(name, namespace)
-	} else {
-		return z.Upgrade(name, namespace)
 	}
+	if err != nil {
+		return err
+	}
+	return z.Upgrade(name, namespace)
 }
 
 // 主子应用已打包为一个 Chart；子应用仅提供带前缀的 Helm values。
@@ -272,6 +276,16 @@ func (z *Install) Install(name, namespace string) error {
 
 func (z *Install) Upgrade(name, namespace string) error {
 	if z.NeedHelmInstall() {
+		if z.pk.Root.ChartApprovalDigest == "" {
+			check, _, err := upgradeChartCRDs(z.sdk.Ctx, z.sdk, z.pk.Root.ManifestPackage, z.pk)
+			if err != nil {
+				return err
+			}
+			if err := requireUpgradeCRDApproval(check, ""); err != nil {
+				return err
+			}
+			z.pk.Root.ChartApprovalDigest = check.Digest
+		}
 		return z.InstallUseJob(name, namespace, types.ShellUpgrade)
 	}
 	helmchart := NewHelmChart(z.pk, types.ShellUpgrade)

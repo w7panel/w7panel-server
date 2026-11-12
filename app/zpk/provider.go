@@ -29,9 +29,13 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 
 		localApiGroup := engine.Group("/panel-api/v1/zpk").Use(middleware.Cors{}.Process)
 		{
-			localApiGroup.GET("/config", middleware.Auth{}.Process, controller.Zpk{}.GetConfig)                      //ManifestPackge RequireLimit 判断是否共享环境
-			localApiGroup.GET("/", middleware.Auth{}.Process, controller.Zpk{}.List)                                 //安装列表
-			localApiGroup.PUT("/install", middleware.Auth{}.Process, controller.Zpk{}.Install)                       // 安装或更新
+			localApiGroup.GET("/config", middleware.Auth{}.Process, controller.Zpk{}.GetConfig) //ManifestPackge RequireLimit 判断是否共享环境
+			localApiGroup.GET("/", middleware.Auth{}.Process, controller.Zpk{}.List)            //安装列表
+			localApiGroup.PUT("/install", middleware.Auth{}.Process, controller.Zpk{}.Install)  // 安装或更新
+			localApiGroup.POST("/crds/upgrade-check", middleware.Auth{}.Process, controller.Zpk{}.UpgradeCRDs)
+			localApiGroup.POST("/crds/uninstall-check", middleware.Auth{}.Process, controller.Zpk{}.UninstallCRDCheck)
+			localApiGroup.POST("/crds/prepare-uninstall", middleware.Auth{}.Process, controller.Zpk{}.PrepareUninstallCRDs)
+			localApiGroup.POST("/crds/uninstall", middleware.Auth{}.Process, controller.Zpk{}.UninstallWithCRDs)
 			localApiGroup.GET("/upgrade-info", middleware.Auth{}.Process, controller.Zpk{}.UpgradeInfo)              // 更新信息
 			localApiGroup.Any("/build-image-success", controller.Zpk{}.BuildImageSuccess)                            // 不做任何处理 直接返回200 构建镜像成功回调
 			localApiGroup.GET("/trandition/env", middleware.Auth{}.Process, controller.Zpk{}.TranditionList)         // 传统应用环境

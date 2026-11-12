@@ -231,6 +231,7 @@ type PackageApp struct {
 	*ManifestPackage
 	*InstallOption
 	ThirdpartyCDToken       string
+	ChartApprovalDigest     string
 	AppGroupInstallResult   *v1alpha1.DeployItem
 	AppGroupDependencies    []v1alpha1.AppGroupDependency
 	PanelRegistryServerHost string

@@ -109,14 +109,22 @@ func (h *HelmChart) ToHelmChartWithGroup() (*v1alpha1.AppGroup, *chart.Chart, er
 
 func fillHelmSet(packageApp *types.PackageApp, childName string, ignore []string, fillfullName bool) string {
 	set := ""
+	for _, assignment := range helmSetAssignments(packageApp, childName, ignore, fillfullName) {
+		set += " --set " + shellQuote(assignment)
+	}
+	return set
+}
+
+func helmSetAssignments(packageApp *types.PackageApp, childName string, ignore []string, fillfullName bool) []string {
+	assignments := []string{}
 	for _, params := range packageApp.Manifest.Platform.StartParams {
 		if lo.Contains(ignore, params.Name) {
 			continue
 		}
-		set += " --set " + shellQuote(childName+params.Name+"="+escapeHelmValue(params.ValuesText))
+		assignments = append(assignments, childName+params.Name+"="+escapeHelmValue(params.ValuesText))
 	}
 	for _, env := range packageApp.Manifest.Platform.Container.Env {
-		set += " --set " + shellQuote(childName+env.Name+"="+escapeHelmValue(env.Value))
+		assignments = append(assignments, childName+env.Name+"="+escapeHelmValue(env.Value))
 	}
 	keys := make([]string, 0, len(packageApp.HelmValues))
 	for key := range packageApp.HelmValues {
@@ -124,39 +132,18 @@ func fillHelmSet(packageApp *types.PackageApp, childName string, ignore []string
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		set += " --set " + shellQuote(childName+key+"="+escapeHelmValue(packageApp.HelmValues[key]))
+		assignments = append(assignments, childName+key+"="+escapeHelmValue(packageApp.HelmValues[key]))
 	}
 
 	if packageApp.PvcName != "" {
-		// set += " --set PVC_NAME=" + (packageApp.PvcName)
-		set += " --set " + childName + "PVC_NAME=" + (packageApp.PvcName)
+		assignments = append(assignments, childName+"PVC_NAME="+packageApp.PvcName)
 	}
 
-	set += " --set " + "replicas=" + strconv.Itoa(int(packageApp.Replicas))
-	// 正常应该 完全交给helm 外部不干预 只提供PVC_NAME
-	// 目前因为subPath问题，需要直接传volumes volumeMounts
-	// 子应用无法获取原始volume volumes 配置
-	//
-	// if packageApp.GetVolumeMounts() != nil && len(packageApp.GetVolumeMounts()) > 0 {
-	// 	jsonstr, err := helper.ToJson(packageApp.GetVolumeMounts())
-	// 	if err != nil {
-	// 		slog.Error("helm install job", "error", err)
-	// 	} else {
-	// 		set += " --set-json '" + childName + "volumeMounts=" + jsonstr + "'"
-	// 	}
-	// }
-	// if packageApp.GetVolumes() != nil && len(packageApp.GetVolumes()) > 0 {
-	// 	jsonstr, err := helper.ToJson(packageApp.GetVolumes())
-	// 	if err != nil {
-	// 		slog.Error("helm install job", "error", err)
-	// 	} else {
-	// 		set += " --set-json '" + childName + "volumes=" + jsonstr + "'"
-	// 	}
-	// }
+	assignments = append(assignments, "replicas="+strconv.Itoa(int(packageApp.Replicas)))
 	if fillfullName {
-		set += " --set " + childName + "fullnameOverride=" + packageApp.GetName()
+		assignments = append(assignments, childName+"fullnameOverride="+packageApp.GetName())
 	}
-	return set
+	return assignments
 }
 
 // escapeHelmValue keeps one literal value through Helm strvals parsing.
@@ -197,6 +184,9 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 	}
 
 	shellCmd := "/ko-app/w7panel helmgo --chartName=" + shellQuote(helmConfig.ChartName) + " --namespace=" + shellQuote(packageApp.Namespace) + " --repository=" + shellQuote(helmConfig.Repository) + " --zipUrl=" + shellQuote(packageApp.ZipUrl) + " --releaseName=" + shellQuote(releaseName)
+	if packageApp.ChartApprovalDigest != "" {
+		shellCmd += " --chartApprovalDigest=" + shellQuote(packageApp.ChartApprovalDigest)
+	}
 	setArg := func(key, value string) { shellCmd += " --set " + shellQuote(key+"="+value) }
 	setArg("global.panel.image", helper.SelfImage())
 	setArg("global.panel.thirdPartyCDToken", packageApp.ThirdpartyCDToken)
