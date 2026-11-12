@@ -28,6 +28,19 @@ func TestRejectDuplicateRuleID(t *testing.T) {
 	}
 }
 
+func TestCompileVisualRuleForms(t *testing.T) {
+	rules := []Rule{
+		{ID: 1000001, Rule: `SecRule REQUEST_URI "@streq /admin" "id:1000001,phase:1,deny,status:403"`, Source: "visual"},
+		{ID: 1000002, Rule: `SecRule REQUEST_URI "@contains /private" "id:1000002,phase:1,deny,status:403"`, Source: "visual"},
+		{ID: 1000003, Rule: `SecRule REQUEST_METHOD "@streq POST" "id:1000003,phase:1,deny,status:403"`, Source: "visual"},
+		{ID: 1000004, Rule: `SecRule REMOTE_ADDR "@ipMatch 192.0.2.0/24" "id:1000004,phase:1,deny,status:403"`, Source: "visual"},
+		{ID: 1000005, Rule: `SecRule REQUEST_HEADERS:User-Agent "@contains badbot" "id:1000005,phase:1,deny,status:403"`, Source: "visual"},
+	}
+	if _, err := Compile(Policy{CustomRules: rules}, nil, nil); err != nil {
+		t.Fatalf("visual rule syntax is invalid: %v", err)
+	}
+}
+
 func TestCompileCanDisableInheritedLegacyRule(t *testing.T) {
 	global := Policy{}
 	overrides := &Policy{DisabledGlobalIDs: []int{101}}

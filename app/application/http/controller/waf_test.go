@@ -1,6 +1,18 @@
 package controller
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/w7panel/w7panel/common/service/waf"
+)
+
+func TestWAFPolicyRoundTripKeepsVisualRuleSource(t *testing.T) {
+	want := waf.Policy{CustomRules: []waf.Rule{{ID: 1000001, Rule: `SecRule REQUEST_URI "@streq /admin" "id:1000001,phase:1,deny,status:403"`, Source: "visual"}}}
+	got := policyFrom(policyMap(want))
+	if len(got.CustomRules) != 1 || got.CustomRules[0] != want.CustomRules[0] {
+		t.Fatalf("WAF policy round-trip lost visual rule source: %+v", got.CustomRules)
+	}
+}
 
 func TestParseWAFLogsFiltersExactDomainAndStripsQuery(t *testing.T) {
 	data := []byte(`{"authority":"example.com","path":"/login?token=secret","response_code":403,"response_code_details":"waf","request_id":"12345678-1234-1234-1234-123456789012","start_time":"2026-11-12T00:00:00Z","x_forwarded_for":"192.0.2.1, 10.0.0.1"}` + "\n" +

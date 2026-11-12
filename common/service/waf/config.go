@@ -23,8 +23,9 @@ var Categories = map[string]string{
 }
 
 type Rule struct {
-	ID   int    `json:"id"`
-	Rule string `json:"rule"`
+	ID     int    `json:"id"`
+	Rule   string `json:"rule"`
+	Source string `json:"source,omitempty"`
 }
 
 type Policy struct {
