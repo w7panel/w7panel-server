@@ -218,6 +218,21 @@ func (self *repo) PreInstall(releaseName string) (*console.PreInstall, error) {
 
 }
 
+func (self *repo) FreshChartURLs(releaseName string) (string, string, error) {
+	if self.IsConsole {
+		preinstall, err := self.PreInstall(releaseName)
+		if err != nil {
+			return "", "", err
+		}
+		return preinstall.ZipURL, "", nil
+	}
+	pack, err := self.Load()
+	if err != nil {
+		return "", "", err
+	}
+	return pack.ZipUrl, pack.HelmUrl, nil
+}
+
 func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token string, isParent bool) (*types.ManifestPackage, error) {
 	// 发送http请求 从uri获取json 数据
 	requestURI := helper.RemoveQueryParam(uri, "reinstall")

@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -11,6 +12,29 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 	zpktypes "github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 )
+
+func TestFreshChartURLsReloadZPKConfig(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"data":{"manifest":"{}","zip_url":"https://example.com/zip/%d","helm_url":"https://example.com/chart/%d"}}`, requests, requests)
+	}))
+	defer server.Close()
+
+	repository := NewRepo(server.URL+"/zpk/respo/info/demo", "", "")
+	first, err := repository.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	zipURL, helmURL, err := repository.FreshChartURLs("demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.ZipUrl != "https://example.com/zip/1" || zipURL != "https://example.com/zip/2" || first.HelmUrl != "https://example.com/chart/1" || helmURL != "https://example.com/chart/2" || requests != 2 {
+		t.Fatalf("first=%q,%q fresh=%q,%q requests=%d", first.ZipUrl, first.HelmUrl, zipURL, helmURL, requests)
+	}
+}
 
 func TestZPKRequestDoesNotForwardPanelToken(t *testing.T) {
 	header := make(chan string, 1)

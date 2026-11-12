@@ -174,6 +174,24 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 			return InstallResult{}, err
 		}
 		packageApps.Root.ChartApprovalDigest = check.Digest
+		// ZPK Chart URLs can be single-use; the CRD check has consumed this one.
+		if mPackage.HelmUrl != "" || (mPackage.Manifest.IsHelm() && mPackage.Manifest.Platform.Helm.Repository == "" && mPackage.Manifest.Platform.Helm.ChartName == "") {
+			zipURL, helmURL, err := repo.FreshChartURLs(params.ReleaseName)
+			if err != nil {
+				return InstallResult{}, err
+			}
+			if mPackage.HelmUrl != "" {
+				if helmURL == "" {
+					return InstallResult{}, errors.New("fresh Helm Chart download URL is missing")
+				}
+				mPackage.HelmUrl = helmURL
+			} else {
+				if zipURL == "" {
+					return InstallResult{}, errors.New("fresh Helm Chart zip URL is missing")
+				}
+				mPackage.ZipUrl = zipURL
+			}
+		}
 		if len(check.Names) > 0 {
 			upgradeCRDs = crds
 		}
