@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-12 CRD 实测 Skill
+
+- 新增独立测试 Chart 生成脚本与浏览器、Helm、Kubernetes 验证流程，覆盖 CRD 安装、升级差异确认与卸载清理。影响目录：`skills/w7panel-crd-smoke`。验证：Skill 格式校验、Chart 生成与 Helm 读取。
+
 ## 2026-11-12 一次性 ZPK Chart 下载地址
 
 - 升级前复核 CRD 后为 Helm Job 重新获取 Chart 下载地址，避免一次性地址被复核消耗；保留 Chart 摘要校验。影响模块：ZPK、Helm 升级。验证：定向测试和 218 升级。
