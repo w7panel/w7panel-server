@@ -1,0 +1,13 @@
+package controller
+
+import "testing"
+
+func TestParseWAFLogsFiltersExactDomainAndStripsQuery(t *testing.T) {
+	data := []byte(`{"authority":"example.com","path":"/login?token=secret","response_code":403,"response_code_details":"waf","request_id":"12345678-1234-1234-1234-123456789012","start_time":"2026-11-12T00:00:00Z","x_forwarded_for":"192.0.2.1, 10.0.0.1"}` + "\n" +
+		`{"authority":"other.example.com","path":"/","response_code_details":"waf","request_id":"other"}` + "\n" +
+		`{"authority":"example.com","path":"/normal","response_code_details":"via_upstream","request_id":"normal"}` + "\n")
+	logs := parseWAFLogs(data, "example.com")
+	if len(logs) != 1 || logs[0].Path != "/login" || logs[0].ClientIP != "192.0.2.1" {
+		t.Fatalf("unexpected WAF logs: %+v", logs)
+	}
+}
