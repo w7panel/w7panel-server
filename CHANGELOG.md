@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-12 Helm 上传包 CRD 升级票据
+
+- 扩展上传 Chart 下载票据的可用次数，覆盖升级前的 CRD 差异检查、安装前复核和 Helm Job 下载。验证：票据边界测试与 218 测试 Chart 升级。
+
 ## 2026-11-11 应用更新与卸载的 CRD 检测和清理
 
 - 更新前比较标准 Helm `crds/` 定义，执行时复核已确认的 Chart 指纹并先应用 CRD；卸载时检查已安装 Chart 的 CRD 与共享风险，按签名确认的选择在 AppGroup 清理中删除。影响模块：ZPK、Helm、AppGroup。验证：Helm 和 AppGroup 定向测试、ZPK 编译与差异检查。

@@ -10,12 +10,12 @@ func TestTicketIsBoundAndLimited(t *testing.T) {
 	if Consume(token, "upload/other.zip") {
 		t.Fatal("ticket must be path-bound")
 	}
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 8; i++ {
 		if !Consume(token, "upload/a.zip") {
 			t.Fatalf("use %d rejected", i+1)
 		}
 	}
 	if Consume(token, "upload/a.zip") {
-		t.Fatal("fifth use must be rejected")
+		t.Fatal("ninth use must be rejected")
 	}
 }

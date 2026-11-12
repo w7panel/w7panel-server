@@ -29,12 +29,12 @@ func Issue(path string) (string, time.Time, error) {
 	expires := time.Now().Add(5 * time.Minute)
 	store.Lock()
 	defer store.Unlock()
-	store.grants[token] = grant{path: path, expires: expires, remaining: 4}
+	store.grants[token] = grant{path: path, expires: expires, remaining: 8}
 	return token, expires, nil
 }
 
 // Consume is deliberately atomic, has a five-minute lifetime and permits no
-// more than four transfers. It is called before opening the requested file.
+// more than eight transfers. CRD upgrade checks read the Chart before the Job does.
 func Consume(token, path string) bool {
 	store.Lock()
 	defer store.Unlock()
