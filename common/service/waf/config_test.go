@@ -20,6 +20,26 @@ func TestCompileInheritedPolicy(t *testing.T) {
 	}
 }
 
+func TestCompileUseCRSOverrideKeepsCustomRules(t *testing.T) {
+	on, off := true, false
+	global := Policy{UseCRS: &off, Categories: map[string]bool{"protocol": false}, CustomRules: []Rule{{ID: 1000001, Rule: `SecRule REQUEST_URI "@streq /admin" "id:1000001,phase:1,deny"`}}}
+	config, err := Compile(global, nil, nil)
+	if err != nil || config["useCRS"] != false || len(config["secRules"].([]string)) != 2 {
+		t.Fatalf("CRS off must retain custom rules: config=%v, err=%v", config, err)
+	}
+	if _, err := coraza.NewWAF(coraza.NewWAFConfig().WithDirectives("SecRuleEngine On\n" + strings.Join(config["secRules"].([]string), "\n"))); err != nil {
+		t.Fatalf("CRS off directives rejected: %v", err)
+	}
+	config, err = Compile(global, &Policy{UseCRS: &on}, nil)
+	if err != nil || config["useCRS"] != true {
+		t.Fatalf("domain CRS override failed: config=%v, err=%v", config, err)
+	}
+	config, err = Compile(Policy{UseCRS: &on}, &Policy{UseCRS: &off}, nil)
+	if err != nil || config["useCRS"] != false {
+		t.Fatalf("domain CRS disable failed: config=%v, err=%v", config, err)
+	}
+}
+
 func TestRejectDuplicateRuleID(t *testing.T) {
 	global := Policy{CustomRules: []Rule{{ID: 1000001, Rule: `SecRule REQUEST_URI "@streq /a" "id:1000001,phase:1,deny"`}}}
 	overrides := &Policy{CustomRules: []Rule{{ID: 1000001, Rule: `SecRule REQUEST_URI "@streq /b" "id:1000001,phase:1,deny"`}}}

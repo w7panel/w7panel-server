@@ -30,6 +30,7 @@ type Rule struct {
 }
 
 type Policy struct {
+	UseCRS            *bool           `json:"useCRS,omitempty"`
 	Categories        map[string]bool `json:"categories"`
 	SystemRules       map[string]bool `json:"systemRules,omitempty"`
 	CustomRules       []Rule          `json:"customRules"`
@@ -105,6 +106,13 @@ func rulesOf(policy *Policy) []Rule {
 func Compile(global Policy, overrides *Policy, legacy []string) (map[string]interface{}, error) {
 	if err := Validate(global, overrides); err != nil {
 		return nil, err
+	}
+	useCRS := true
+	if global.UseCRS != nil {
+		useCRS = *global.UseCRS
+	}
+	if overrides != nil && overrides.UseCRS != nil {
+		useCRS = *overrides.UseCRS
 	}
 	for _, old := range legacy {
 		match := ruleID.FindStringSubmatch(old)
@@ -186,5 +194,5 @@ func Compile(global Policy, overrides *Policy, legacy []string) (map[string]inte
 	for _, rule := range rulesOf(overrides) {
 		secRules = append(secRules, strings.TrimSpace(rule.Rule))
 	}
-	return map[string]interface{}{"useCRS": true, "secRules": secRules}, nil
+	return map[string]interface{}{"useCRS": useCRS, "secRules": secRules}, nil
 }
