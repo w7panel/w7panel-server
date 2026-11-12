@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/corazawaf/coraza/v3"
@@ -30,6 +31,7 @@ type Rule struct {
 
 type Policy struct {
 	Categories        map[string]bool `json:"categories"`
+	SystemRules       map[string]bool `json:"systemRules,omitempty"`
 	CustomRules       []Rule          `json:"customRules"`
 	DisabledGlobalIDs []int           `json:"disabledGlobalIds,omitempty"`
 	LegacyRules       []string        `json:"legacyRules,omitempty"`
@@ -47,6 +49,12 @@ func Validate(global Policy, overrides *Policy) error {
 				return fmt.Errorf("unknown CRS category %q", name)
 			}
 		}
+		for value := range policy.SystemRules {
+			id, err := strconv.Atoi(value)
+			if err != nil || strconv.Itoa(id) != value || !systemRuleIDs[id] {
+				return fmt.Errorf("unknown CRS rule ID %q", value)
+			}
+		}
 	}
 	seen := make(map[int]bool)
 	allRules := append(append([]Rule{}, global.CustomRules...), rulesOf(overrides)...)
@@ -55,11 +63,16 @@ func Validate(global Policy, overrides *Policy) error {
 	}
 	for _, rule := range allRules {
 		text := strings.TrimSpace(rule.Rule)
-		if len(text) > 8192 || !strings.HasPrefix(text, "SecRule ") || strings.ContainsAny(text, "\r\n") {
-			return errors.New("custom rule must be a single SecRule directive of at most 8192 bytes")
+		if len(text) > 8192 || strings.Contains(text, "\r") {
+			return errors.New("custom rule must contain SecRule directives of at most 8192 bytes")
 		}
-		match := ruleID.FindStringSubmatch(text)
-		if len(match) != 2 || fmt.Sprint(rule.ID) != match[1] || rule.ID < 1000000 || seen[rule.ID] {
+		for _, line := range strings.Split(text, "\n") {
+			if !strings.HasPrefix(strings.TrimSpace(line), "SecRule ") {
+				return errors.New("custom rule may only contain SecRule directives")
+			}
+		}
+		matches := ruleID.FindAllStringSubmatch(text, -1)
+		if len(matches) != 1 || fmt.Sprint(rule.ID) != matches[0][1] || rule.ID < 1000000 || seen[rule.ID] {
 			return fmt.Errorf("invalid or duplicate custom rule ID %d", rule.ID)
 		}
 		if _, err := coraza.NewWAF(coraza.NewWAFConfig().WithDirectives("SecRuleEngine On\n" + text)); err != nil {
@@ -68,6 +81,16 @@ func Validate(global Policy, overrides *Policy) error {
 		seen[rule.ID] = true
 	}
 	return nil
+}
+
+func systemRuleCategory(id int) string {
+	for name, value := range Categories {
+		var start, end int
+		if _, err := fmt.Sscanf(value, "%d-%d", &start, &end); err == nil && id >= start && id <= end {
+			return name
+		}
+	}
+	return ""
 }
 
 func rulesOf(policy *Policy) []Rule {
@@ -103,6 +126,15 @@ func Compile(global Policy, overrides *Policy, legacy []string) (map[string]inte
 			active[id] = value
 		}
 	}
+	systemRules := make(map[string]bool, len(global.SystemRules))
+	for id, value := range global.SystemRules {
+		systemRules[id] = value
+	}
+	if overrides != nil {
+		for id, value := range overrides.SystemRules {
+			systemRules[id] = value
+		}
+	}
 	ids := make([]string, 0, len(Categories))
 	for id := range Categories {
 		ids = append(ids, id)
@@ -130,6 +162,21 @@ func Compile(global Policy, overrides *Policy, legacy []string) (map[string]inte
 		if value, ok := active[id]; ok && !value {
 			secRules = append(secRules, "SecRuleRemoveById "+Categories[id])
 		}
+	}
+	disabledSystemIDs := make([]int, 0, len(systemRules))
+	for value, enabled := range systemRules {
+		id, _ := strconv.Atoi(value)
+		if enabled {
+			continue
+		}
+		if categoryEnabled, ok := active[systemRuleCategory(id)]; ok && !categoryEnabled {
+			continue
+		}
+		disabledSystemIDs = append(disabledSystemIDs, id)
+	}
+	sort.Ints(disabledSystemIDs)
+	for _, id := range disabledSystemIDs {
+		secRules = append(secRules, fmt.Sprintf("SecRuleRemoveById %d", id))
 	}
 	for _, rule := range global.CustomRules {
 		if !disabled[rule.ID] {
