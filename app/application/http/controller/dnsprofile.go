@@ -70,13 +70,14 @@ func (self DNSProfile) Create(ctx *gin.Context) {
 		return
 	}
 	var request struct {
-		Namespace   string            `json:"namespace" binding:"required"`
-		Host        string            `json:"host"`
-		Mode        string            `json:"mode"`
-		Name        string            `json:"name"`
-		Provider    string            `json:"provider" binding:"required"`
-		Zone        string            `json:"zone"`
-		Credentials map[string]string `json:"credentials" binding:"required"`
+		Namespace       string            `json:"namespace" binding:"required"`
+		Host            string            `json:"host"`
+		Mode            string            `json:"mode"`
+		Name            string            `json:"name"`
+		Provider        string            `json:"provider"`
+		Zone            string            `json:"zone"`
+		Credentials     map[string]string `json:"credentials"`
+		SourceProfileID string            `json:"sourceProfileId"`
 	}
 	if err := ctx.ShouldBindJSON(&request); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
@@ -101,7 +102,17 @@ func (self DNSProfile) Create(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"msg": "缺少泛域名"})
 		return
 	}
-	profile, err := store.Create(ctx.Request.Context(), ctx.GetString("username"), request.Name, request.Provider, request.Zone, request.Credentials)
+	var profile dnsprofile.Profile
+	var err error
+	if request.SourceProfileID != "" {
+		if request.Provider != "" || len(request.Credentials) != 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"msg": "复用配置时不能提交 DNS 密钥"})
+			return
+		}
+		profile, err = store.CreateFromProfile(ctx.Request.Context(), ctx.GetString("username"), request.SourceProfileID, request.Name, request.Zone)
+	} else {
+		profile, err = store.Create(ctx.Request.Context(), ctx.GetString("username"), request.Name, request.Provider, request.Zone, request.Credentials)
+	}
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
 		return

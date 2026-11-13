@@ -69,17 +69,41 @@ func (s Store) List(ctx context.Context, owner string) ([]Profile, error) {
 }
 
 func (s Store) Get(ctx context.Context, owner, id string) (Profile, error) {
-	if !validID(id) {
-		return Profile{}, errors.New("DNS 配置不存在")
-	}
-	secret, err := s.SDK.ClientSet.CoreV1().Secrets(secretNamespace).Get(ctx, profilePrefix+id, metav1.GetOptions{})
+	secret, err := s.getSecret(ctx, owner, id)
 	if err != nil {
 		return Profile{}, err
 	}
-	if secret.Labels["w7.cc/dns-profile"] != "true" || secret.Labels["w7.cc/dns-owner"] != ownerLabel(owner) {
-		return Profile{}, errors.New("无权使用该 DNS 配置")
-	}
 	return profileFromSecret(secret), nil
+}
+
+func (s Store) getSecret(ctx context.Context, owner, id string) (*corev1.Secret, error) {
+	if !validID(id) {
+		return nil, errors.New("DNS 配置不存在")
+	}
+	secret, err := s.SDK.ClientSet.CoreV1().Secrets(secretNamespace).Get(ctx, profilePrefix+id, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	if !ownedSecret(secret, owner) {
+		return nil, errors.New("无权使用该 DNS 配置")
+	}
+	return secret, nil
+}
+
+func ownedSecret(secret *corev1.Secret, owner string) bool {
+	return secret.Labels["w7.cc/dns-profile"] == "true" && secret.Labels["w7.cc/dns-owner"] == ownerLabel(owner)
+}
+
+func (s Store) CreateFromProfile(ctx context.Context, owner, sourceID, name, zone string) (Profile, error) {
+	secret, err := s.getSecret(ctx, owner, sourceID)
+	if err != nil {
+		return Profile{}, err
+	}
+	values := make(map[string]string, len(secret.Data))
+	for key, value := range secret.Data {
+		values[key] = string(value)
+	}
+	return s.Create(ctx, owner, name, secret.Annotations["w7.cc/dns-provider"], zone, values)
 }
 
 func validID(id string) bool {
