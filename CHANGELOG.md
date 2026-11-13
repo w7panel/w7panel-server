@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-13 microapp 前端缓存持久化
+
+- Helm 默认将每个 release 的 microapp 前端缓存挂载到节点主机目录；服务重启后识别已完整下载的版本并跳过重复 ZIP 下载。影响模块：Helm 部署、AppGroup 静态资源下载。验证：定向 Go 测试、Helm 模板渲染与差异检查。
+
 ## 2026-11-12 CRD 实测 Skill
 
 - 新增独立测试 Chart 生成脚本与浏览器、Helm、Kubernetes 验证流程，覆盖 CRD 安装、升级差异确认与卸载清理。影响目录：`skills/w7panel-crd-smoke`。验证：Skill 格式校验、Chart 生成与 Helm 读取。

@@ -133,21 +133,24 @@ spec:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- if or .Values.storage.enabled (and .Values.webhook.enabled .Values.webhook.certManager.enabled) }}
           volumeMounts:
           {{- if .Values.storage.enabled }}
           - name: data
             mountPath: /data
             subPath: data
           {{- end }}
+          - name: microapp-cache
+            mountPath: /data/microapp
           {{- if and .Values.webhook.enabled .Values.webhook.certManager.enabled }}
           - name: webhook-cert
             mountPath: /tmp/k8s-webhook-server/serving-certs
             readOnly: true
           {{- end }}
-          {{- end }}    
-      {{- if or .Values.storage.enabled (and .Values.webhook.enabled .Values.webhook.certManager.enabled) }}
       volumes:
+      - name: microapp-cache
+        hostPath:
+          path: {{ printf "%s/%s" (trimSuffix "/" .Values.static.hostCachePath) .Release.Name | quote }}
+          type: DirectoryOrCreate
       {{- if .Values.storage.enabled }}
       - name: data
         persistentVolumeClaim:
@@ -159,7 +162,6 @@ spec:
           secretName: {{ printf "%s-webhook-tls" (include "helm.fullname" .) | quote }}
           optional: false
       {{- end }}
-      {{- end }}    
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
