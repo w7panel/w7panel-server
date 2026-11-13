@@ -92,7 +92,7 @@ func validID(id string) bool {
 
 func (s Store) Create(ctx context.Context, owner, name, provider, zone string, values map[string]string) (Profile, error) {
 	name = strings.TrimSpace(name)
-	if name == "" || len([]rune(name)) > 80 {
+	if name != "" && len([]rune(name)) > 80 {
 		return Profile{}, errors.New("DNS 配置名称长度必须为 1 到 80 个字符")
 	}
 	zone = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(zone)), ".")
@@ -109,6 +109,9 @@ func (s Store) Create(ctx context.Context, owner, name, provider, zone string, v
 		return Profile{}, err
 	}
 	id := hex.EncodeToString(idBytes)
+	if name == "" {
+		name = "*." + zone + "-" + id[:8]
+	}
 	secretName := profilePrefix + id
 	data := make(map[string][]byte, len(credentials))
 	for key, value := range credentials {
@@ -161,11 +164,21 @@ func (s Store) createIssuer(ctx context.Context, name, provider string) error {
 	return err
 }
 
-func WildcardInZone(host, zone string) bool {
+func WildcardZone(host string) (string, error) {
 	host = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(host), "."))
+	if !strings.HasPrefix(host, "*.") || !validZone(host[2:]) {
+		return "", errors.New("泛域名无效")
+	}
+	return host[2:], nil
+}
+
+func WildcardInZone(host, zone string) bool {
+	base, err := WildcardZone(host)
+	if err != nil {
+		return false
+	}
 	zone = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(zone), "."))
-	return strings.HasPrefix(host, "*.") && validZone(host[2:]) &&
-		(host[2:] == zone || strings.HasSuffix(host[2:], "."+zone))
+	return base == zone || strings.HasSuffix(base, "."+zone)
 }
 
 func (s Store) Delete(ctx context.Context, owner, id string) error {

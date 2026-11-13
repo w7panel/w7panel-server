@@ -71,16 +71,34 @@ func (self DNSProfile) Create(ctx *gin.Context) {
 	}
 	var request struct {
 		Namespace   string            `json:"namespace" binding:"required"`
-		Name        string            `json:"name" binding:"required"`
+		Host        string            `json:"host"`
+		Mode        string            `json:"mode"`
+		Name        string            `json:"name"`
 		Provider    string            `json:"provider" binding:"required"`
-		Zone        string            `json:"zone" binding:"required"`
+		Zone        string            `json:"zone"`
 		Credentials map[string]string `json:"credentials" binding:"required"`
 	}
 	if err := ctx.ShouldBindJSON(&request); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
 		return
 	}
+	if request.Mode != "" && request.Mode != "dns-01" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"msg": "当前签发器不支持所选验证模式"})
+		return
+	}
 	if !self.canWriteIngress(ctx, request.Namespace) {
+		return
+	}
+	if request.Host != "" {
+		zone, err := dnsprofile.WildcardZone(request.Host)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
+			return
+		}
+		request.Zone = zone
+		request.Name = ""
+	} else if request.Name == "" || request.Zone == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"msg": "缺少泛域名"})
 		return
 	}
 	profile, err := store.Create(ctx.Request.Context(), ctx.GetString("username"), request.Name, request.Provider, request.Zone, request.Credentials)

@@ -12,6 +12,14 @@ import (
 )
 
 func TestWildcardInZone(t *testing.T) {
+	if zone, err := WildcardZone(" *.Example.COM. "); err != nil || zone != "example.com" {
+		t.Fatalf("wildcard zone = %q, %v", zone, err)
+	}
+	for _, host := range []string{"example.com", "*.", "*.bad_domain.com", "*.*.example.com"} {
+		if _, err := WildcardZone(host); err == nil {
+			t.Fatalf("accepted invalid wildcard host %q", host)
+		}
+	}
 	for _, host := range []string{"*.example.com", "*.sub.example.com"} {
 		if !WildcardInZone(host, "example.com") {
 			t.Fatalf("rejected %s", host)
@@ -32,7 +40,7 @@ func TestProfileName(t *testing.T) {
 	if got := profileFromSecret(secret).Name; got != "生产环境" {
 		t.Fatalf("profile name = %q", got)
 	}
-	for _, name := range []string{" ", strings.Repeat("字", 81)} {
+	for _, name := range []string{strings.Repeat("字", 81)} {
 		if _, err := (Store{}).Create(context.Background(), "owner", name, "alidns", "example.com", nil); err == nil {
 			t.Fatalf("accepted invalid profile name %q", name)
 		}
