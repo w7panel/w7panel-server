@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-13 远端 Codex Chrome 扩展 Skill
+
+- 新增从本机经 SSH/MCP 使用 149 上 Codex Chrome 扩展的连接与检查说明，并在本地 UI 测试 Skill 中区分扩展连接和共享 CDP。影响目录：`skills/w7panel-chrome-extension`、`skills/w7panel-local-ui-test`。验证：Skill 格式校验与差异检查。
+
 ## 2026-11-13 microapp 前端缓存持久化
 
 - Helm 默认将每个 release 的 microapp 前端缓存挂载到节点主机目录；服务重启后识别已完整下载的版本并跳过重复 ZIP 下载。影响模块：Helm 部署、AppGroup 静态资源下载。验证：定向 Go 测试、Helm 模板渲染与差异检查。
