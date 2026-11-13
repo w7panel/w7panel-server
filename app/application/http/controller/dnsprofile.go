@@ -156,3 +156,26 @@ func (self DNSProfile) Grant(ctx *gin.Context) {
 	}
 	self.JsonResponseWithoutError(ctx, annotations)
 }
+
+func (self DNSProfile) EnsureRecord(ctx *gin.Context) {
+	store, ok := self.store(ctx)
+	if !ok {
+		return
+	}
+	var request struct {
+		Namespace string `json:"namespace" binding:"required"`
+		Host      string `json:"host" binding:"required"`
+	}
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
+		return
+	}
+	if !self.canWriteIngress(ctx, request.Namespace) {
+		return
+	}
+	if err := store.EnsureRecord(ctx.Request.Context(), ctx.GetString("username"), ctx.Param("id"), request.Host); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
+		return
+	}
+	self.JsonResponseWithoutError(ctx, gin.H{"resolved": true})
+}

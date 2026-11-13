@@ -231,6 +231,7 @@ func (p Provider) RegisterHttpRoutes(server *httpserver.Server) {
 			localApiGroup.POST("/dns-profiles", middleware.Auth{}.Process, controller2.DNSProfile{}.Create)
 			localApiGroup.DELETE("/dns-profiles/:id", middleware.Auth{}.Process, controller2.DNSProfile{}.Delete)
 			localApiGroup.POST("/dns-profiles/:id/grant", middleware.Auth{}.Process, controller2.DNSProfile{}.Grant)
+			localApiGroup.POST("/dns-profiles/:id/records/ensure", middleware.Auth{}.Process, controller2.DNSProfile{}.EnsureRecord)
 			localApiGroup.GET("/myip", middleware.Auth{}.Process, controller2.Util{}.MyIp)
 			localApiGroup.POST("/db-conn-test", middleware.Auth{}.Process, controller2.Util{}.DbConnTest) // 数据库连接测试
 			localApiGroup.POST("/ping-etcd", middleware.Auth{}.Process, controller2.Util{}.PintEtcd)      // etcd连接测试

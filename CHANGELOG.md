@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-13 泛域名自动解析
+
+- 新增泛域名解析记录接口，按系统 A/CNAME 配置写入阿里云 DNS、DNSPod、Cloudflare 或 Route53；已有不同记录时停止，多值写入失败时回滚本次新增记录。应用安装成功后的解析失败作为部分失败返回或记录，不撤销安装。验证：DNS、安装及控制器定向测试通过；安装逻辑整包测试被现有 TestLoadPackage 空指针中断。
+
 ## 2026-11-13 远端 Codex Chrome 扩展 Skill
 
 - 新增从本机经 SSH/MCP 使用 149 上 Codex Chrome 扩展的连接与检查说明，并在本地 UI 测试 Skill 中区分扩展连接和共享 CDP。影响目录：`skills/w7panel-chrome-extension`、`skills/w7panel-local-ui-test`。验证：Skill 格式校验与差异检查。
