@@ -110,14 +110,17 @@ func GetCloudAccessToken(openId string) (string, error) {
 // Invalid or incomplete panel tokens are ignored to preserve public ZPK access.
 func SetCloudAccessTokenHeader(req *resty.Request, panelToken string) {
 	if req == nil || panelToken == "" {
+		slog.Error("req nil or panelToken nil", "panelToken", panelToken)
 		return
 	}
 	replace, err := NewMicroAppReplace(panelToken)
 	if err != nil || replace.GetConsoleOpenId() == "" {
+		slog.Error("replace err", "err", err)
 		return
 	}
 	cloudAccessToken, err := GetCloudAccessToken(replace.GetConsoleOpenId())
 	if err != nil {
+		slog.Error("GetCloudAccessToken err", "err", err)
 		return
 	}
 	req.SetHeader("X-Cloud-AccessToken", cloudAccessToken)
