@@ -115,12 +115,12 @@ func SetCloudAccessTokenHeader(req *resty.Request, panelToken string) {
 	}
 	replace, err := NewMicroAppReplace(panelToken)
 	if err != nil || replace.GetConsoleOpenId() == "" {
-		slog.Error("replace err", "err", err)
+		slog.Error("replace err", "err", err, "panelToken", panelToken)
 		return
 	}
 	cloudAccessToken, err := GetCloudAccessToken(replace.GetConsoleOpenId())
 	if err != nil {
-		slog.Error("GetCloudAccessToken err", "err", err)
+		slog.Error("GetCloudAccessToken err", "err", err, "panelToken", panelToken)
 		return
 	}
 	req.SetHeader("X-Cloud-AccessToken", cloudAccessToken)
