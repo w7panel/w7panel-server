@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-16 子集群面板 HelmChart 模式
+
+- 离线 Chart 增加子集群模式，仅渲染 CKM 提供的面板 DaemonSet 和配套资源，保留 `IS_CHILD=true`；普通安装仍渲染原 Deployment 和代理 DaemonSet。Chart 包版本与子面板镜像版本分开，迁移现有实例时保留运行版本，AppGroup 按实际镜像版本提示升级；现有手动升级入口经 CKM 同步接口更新 HelmChart 配置，避免普通 ZPK 升级丢失子集群配置。影响模块：离线 Chart、ZPK 安装逻辑、AppGroup 版本同步。验证：Helm lint、两种模式渲染及 Go 定向测试；安装逻辑整包测试被现有 `TestLoadPackage` 空指针中断。
+
 ## 2026-11-16 修复一次性 Chart 地址重复下载
 
 - 无 CRD 变化时也保留预检摘要，避免升级阶段再次下载已续取的一次性 Chart 地址。影响模块：ZPK 升级、Helm Job。验证：定向测试通过。

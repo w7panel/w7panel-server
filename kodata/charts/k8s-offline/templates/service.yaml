@@ -1,3 +1,4 @@
+{{- if not .Values.childPanel.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -17,3 +18,5 @@ spec:
       name: https
   selector:
     {{- include "helm.selectorLabels" . | nindent 4 }}
+
+{{- end }}

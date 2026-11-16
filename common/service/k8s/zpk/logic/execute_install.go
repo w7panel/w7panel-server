@@ -111,6 +111,12 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 	if err != nil {
 		return InstallResult{}, err
 	}
+	if isCKMChildPanelUpgrade(params, mPackage) {
+		if err := requestCKMChildPanelUpgrade(client.Ctx, params.ReleaseName, mPackage.Version.Name); err != nil {
+			return InstallResult{}, err
+		}
+		return InstallResult{ReleaseName: params.ReleaseName, Namespace: params.Namespace}, nil
+	}
 	if err := validateRootInstallOption(mPackage, params.InstallOptions); err != nil {
 		return InstallResult{}, err
 	}

@@ -1,3 +1,4 @@
+{{- if not .Values.childPanel.enabled }}
 {{- if .Values.daemonset.create -}}
 apiVersion: apps/v1
 kind: DaemonSet
@@ -112,4 +113,6 @@ spec:
               mountPropagation: HostToContainer
             - name: host-root
               mountPath: /host  
+{{- end }}
+
 {{- end }}
