@@ -510,6 +510,7 @@ type Data struct {
 }
 
 type InstallFormula struct {
+	Ingress     []Ingress              `json:"ingress,omitempty"`
 	Ports       []corev1.ContainerPort `json:"ports"`
 	Name        string                 `json:"name"`
 	Title       string                 `json:"title"`

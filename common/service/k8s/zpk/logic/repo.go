@@ -388,6 +388,9 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 			p.Manifest.Platform.Container.RequirePvc = requirePvc
 			p.Manifest.Platform.StartParams = startParams
 			p.Manifest.Platform.Container.Volumes = formula.Volumes
+			if formula.Ingress != nil {
+				p.Manifest.Platform.Ingress = formula.Ingress
+			}
 			continue
 		}
 		target, err := deepcopy.Anything(p)
@@ -403,6 +406,9 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 		// The copied parent containers do not describe this application.
 		copyPkg.Manifest.Platform.Containers = []types.ManifestContainer{{Container: corev1.Container{Ports: formula.Ports}}}
 		copyPkg.Manifest.Platform.Container.Volumes = formula.Volumes
+		// Missing metadata from old ZPKs must not copy the parent domain groups.
+		// Legacy default-domain inputs are still detected from this child's start parameters.
+		copyPkg.Manifest.Platform.Ingress = formula.Ingress
 
 		p.Children[formula.Name] = copyPkg
 	}
