@@ -30,8 +30,9 @@ func (r *helmPostRenderer) Run(input *bytes.Buffer) (*bytes.Buffer, error) {
 }
 
 // newUpgradePostRenderer is the registration point for upgrade renderers.
-func (h *Helm) newUpgradePostRenderer(ctx context.Context, namespace string) postrender.PostRenderer {
+func (h *Helm) newUpgradePostRenderer(ctx context.Context, namespace, releaseName string) postrender.PostRenderer {
 	return &helmPostRenderer{renderers: []postrender.PostRenderer{
 		&preservePVCStorageRenderer{ctx: ctx, client: h.sdk.ClientSet.CoreV1(), namespace: namespace},
+		h.newIngressPostRenderer(ctx, namespace, releaseName),
 	}}
 }

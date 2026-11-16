@@ -98,6 +98,9 @@ func CheckUpgradeCRDs(ctx context.Context, sdk *k8s.Sdk, panelToken string, para
 	if err := validateRootInstallOption(pack, params.InstallOptions); err != nil {
 		return UpgradeCRDResult{}, err
 	}
+	if err := prepareInstallDomainGroups(pack, &params); err != nil {
+		return UpgradeCRDResult{}, err
+	}
 	releaseName := params.ReleaseName
 	if pack.Manifest.IsOnce() {
 		releaseName = strings.ToLower(strings.ReplaceAll(pack.Manifest.Application.Identifie, "_", "-"))
@@ -116,8 +119,9 @@ func CheckUpgradeCRDs(ctx context.Context, sdk *k8s.Sdk, panelToken string, para
 	if pack.Manifest.IsHelm() && pack.Manifest.GetHelmNamespce() != "" {
 		namespace = pack.Manifest.GetHelmNamespce()
 	}
+	primaryDomain := primaryInstallDomain(pack.Manifest.Application.Identifie, params)
 	apps := types.NewPackage(pack, params.InstallOptions, releaseName, "crd-check", namespace,
-		params.IngressHost, params.IngressSeletorName, params.IngressClassName)
+		primaryDomain.Host, params.IngressSeletorName, params.IngressClassName)
 	result, _, err := upgradeChartCRDs(ctx, sdk, pack, apps)
 	return result, err
 }

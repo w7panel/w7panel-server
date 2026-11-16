@@ -219,7 +219,7 @@ func SyncIngress(params *K3kSync) error {
 				k == "higress.io/resource-definer" ||
 				// k == "cert-manager.io/renew-before" ||
 				k == "higress.io/ssl-redirect" ||
-				k == "w7.cc/ssl-redirect" || k == "w7.cc/filecache" || k == "k3k.io/name" || k == "k3k.io/namespace" {
+				k == "w7.cc/ssl-redirect" || k == "w7.cc/deny-delete" || k == "w7.cc/require-https" || k == "w7.cc/filecache" || k == "k3k.io/name" || k == "k3k.io/namespace" {
 				newAnnations[k] = v
 			}
 		}

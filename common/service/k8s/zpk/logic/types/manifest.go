@@ -625,8 +625,11 @@ func (m *Routes) GetIngName() string {
 }
 
 type Ingress struct {
-	Name   string   `json:"name"`
-	Routes []Routes `json:"routes"`
+	DomainParam string   `json:"domainParam,omitempty"`
+	AutoSSL     bool     `json:"autoSSL,omitempty"`
+	Required    *bool    `json:"required,omitempty"`
+	Name        string   `json:"name"`
+	Routes      []Routes `json:"routes"`
 }
 
 func (m *Ingress) ReplaceSvcName(resource zpktype.K8sResourceIngressInterface) {

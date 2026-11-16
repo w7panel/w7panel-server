@@ -13,7 +13,6 @@ import (
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/appgroup"
 	"github.com/w7panel/w7panel/common/service/k8s/dnsprofile"
-	helm "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic/types"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -122,6 +121,10 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 		}
 	}
 
+	if err := prepareInstallDomainGroups(mPackage, &params); err != nil {
+		return InstallResult{}, err
+	}
+
 	_, errns := client.CreateNamespace(namespace)
 	if errns != nil {
 		slog.Warn("create namespace error", "err", err)
@@ -164,8 +167,9 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 		installId = helper.RandomString(5)
 	}
 	// releaseName = params.ReleaseName
+	primaryDomain := primaryInstallDomain(mPackage.Manifest.Application.Identifie, params)
 	packageApps := types.NewPackage(mPackage, params.InstallOptions, releaseName, installId, namespace,
-		params.IngressHost, params.IngressSeletorName, params.IngressClassName)
+		primaryDomain.Host, params.IngressSeletorName, params.IngressClassName)
 	var upgradeCRDs map[string]*unstructured.Unstructured
 	if isUpgrade {
 		check, crds, err := upgradeChartCRDs(client.Ctx, client, mPackage, packageApps)
@@ -207,25 +211,34 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 		return InstallResult{}, err
 	}
 	packageApps.Root.AppGroupDependencies = dependencies
-	packageApps.ForceHttps(params.IngressForceHttps)
-	if strings.HasPrefix(params.IngressHost, "*.") && packageApps.Root.RequireDomainHttps() {
-		if params.DNSProfileID == "" || k8sToken == nil {
-			return InstallResult{}, errors.New("泛域名自动 HTTPS 需要已验证的 DNS 配置")
+	packageApps.ForceHttps(primaryDomain.AutoSSL)
+
+	for _, app := range append([]*types.PackageApp{packageApps.Root}, packageApps.Children...) {
+		if app.Replicas == 0 {
+			continue
 		}
-		owner, err := k8sToken.GetUserName()
-		if err != nil {
-			return InstallResult{}, err
-		}
-		store := dnsprofile.Store{SDK: client}
-		packageApps.Root.DNSIngressAnnotations = map[string]map[string]string{}
-		for _, ingress := range helm.ToIngresses(packageApps.Root) {
-			grant, err := store.Grant(context.Background(), owner, params.DNSProfileID, namespace, ingress.Name, params.IngressHost)
+		for _, binding := range app.DomainGroups {
+			if binding.Host == "" || !binding.AutoSSL || !strings.HasPrefix(binding.Host, "*.") {
+				continue
+			}
+			if k8sToken == nil {
+				return InstallResult{}, errors.New("泛域名自动 HTTPS 需要用户身份")
+			}
+			owner, err := k8sToken.GetUserName()
 			if err != nil {
 				return InstallResult{}, err
 			}
-			packageApps.Root.DNSIngressAnnotations[ingress.Name] = grant
+			store := dnsprofile.Store{SDK: client}
+			grant, err := store.Grant(context.Background(), owner, binding.DNSProfileID, namespace, dnsprofile.HelmGrantScope(releaseName), binding.Host)
+			if err != nil {
+				return InstallResult{}, err
+			}
+			packageApps.Root.IngressDNSGrants = append(packageApps.Root.IngressDNSGrants, dnsprofile.HelmGrant{
+				Host: binding.Host, ProfileID: binding.DNSProfileID, Signature: grant[dnsprofile.GrantAnnotation],
+			})
 		}
 	}
+
 	realToken := ""
 	config, err := client.ToRESTConfig()
 	if err != nil {
@@ -260,7 +273,7 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 	}
 
 	if execution.CallbackHost != "" {
-		packageApps.Root.InstallOption.BuildImageSuccessUrl = "http://" + execution.CallbackHost + "/panel-api/v1/zpk/build-image-success?namespace=" + params.Namespace + "&releaseName=" + releaseName + "&domainHost=" + params.IngressHost + "&deploymentName=" + packageApps.Root.GetName() + "&thirdpartyCDToken=" + params.ThirdpartyCDToken + "&api-token=" + token
+		packageApps.Root.InstallOption.BuildImageSuccessUrl = "http://" + execution.CallbackHost + "/panel-api/v1/zpk/build-image-success?namespace=" + params.Namespace + "&releaseName=" + releaseName + "&domainHost=" + primaryDomain.Host + "&deploymentName=" + packageApps.Root.GetName() + "&thirdpartyCDToken=" + params.ThirdpartyCDToken + "&api-token=" + token
 	}
 	packageApps.Root.ThirdpartyCDToken = params.ThirdpartyCDToken
 
@@ -293,12 +306,12 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 		return InstallResult{}, err
 	}
 	result := InstallResult{ReleaseName: releaseName, InstallID: installId, Namespace: namespace}
-	if params.AutoResolve && strings.HasPrefix(params.IngressHost, "*.") {
-		if params.DNSProfileID == "" || k8sToken == nil {
+	if params.AutoResolve && strings.HasPrefix(primaryDomain.Host, "*.") {
+		if primaryDomain.DNSProfileID == "" || k8sToken == nil {
 			result.DNSResolveError = "缺少已验证的 DNS 配置"
 		} else if owner, ownerErr := k8sToken.GetUserName(); ownerErr != nil {
 			result.DNSResolveError = ownerErr.Error()
-		} else if resolveErr := (dnsprofile.Store{SDK: client}).EnsureRecord(context.Background(), owner, params.DNSProfileID, params.IngressHost); resolveErr != nil {
+		} else if resolveErr := (dnsprofile.Store{SDK: client}).EnsureRecord(context.Background(), owner, primaryDomain.DNSProfileID, primaryDomain.Host); resolveErr != nil {
 			result.DNSResolveError = resolveErr.Error()
 		}
 	}
@@ -317,6 +330,14 @@ func installRequestDomain(params InstallRequest) string {
 		return params.IngressHost
 	}
 
+	if len(params.InstallOptions) > 0 && len(params.InstallOptions[0].DomainGroups) > 0 {
+		for _, binding := range params.InstallOptions[0].DomainGroups {
+			if host := normalizeInstallDomainHost(binding.Host); host != "" {
+				return host
+			}
+		}
+		return ""
+	}
 	for _, option := range params.InstallOptions {
 		for _, env := range option.EnvKv {
 			name := strings.ToUpper(strings.TrimSpace(env.Name))
@@ -340,4 +361,82 @@ func normalizeInstallDomainHost(value string) string {
 		return ""
 	}
 	return strings.ToLower(parsed.Host)
+}
+
+// primaryInstallDomain adapts the primary group's data for legacy callers without
+// overwriting request fields or the configuration of any other domain group.
+func primaryInstallDomain(rootIdentifie string, params InstallRequest) types.DomainBinding {
+	for _, option := range params.InstallOptions {
+		if option.Identifie != rootIdentifie || len(option.DomainGroups) == 0 {
+			continue
+		}
+		for _, binding := range option.DomainGroups {
+			if binding.Host != "" {
+				return binding
+			}
+		}
+		return types.DomainBinding{}
+	}
+	return types.DomainBinding{Param: types.DefaultDomainGroup, Host: params.IngressHost, AutoSSL: params.IngressForceHttps, DNSProfileID: params.DNSProfileID}
+}
+
+// Validate grouped input before creating namespaces or installation resources.
+func prepareInstallDomainGroups(pack *types.ManifestPackage, params *InstallRequest) error {
+	rootIndex := -1
+	seen := map[string]bool{}
+	for i, option := range params.InstallOptions {
+		manifest := pack.GetChildren(option.Identifie)
+		if manifest == nil {
+			return errors.New("安装选项包含未知应用")
+		}
+		identifie := manifest.Manifest.Application.Identifie
+		if seen[identifie] {
+			return errors.New("安装应用不能重复")
+		}
+		seen[identifie] = true
+		if manifest == pack {
+			rootIndex = i
+		}
+	}
+	if rootIndex < 0 {
+		return errors.New("缺少主应用安装选项")
+	}
+
+	root := &params.InstallOptions[rootIndex]
+	rootRequest := *params
+	rootRequest.InstallOptions = []types.InstallOption{*root}
+	authorizedDomain := normalizeInstallDomainHost(installRequestDomain(rootRequest))
+	if err := types.PrepareDomainGroups(pack.Manifest, root, authorizedDomain, params.IngressForceHttps, params.DNSProfileID); err != nil {
+		return err
+	}
+	primary := primaryInstallDomain(pack.Manifest.Application.Identifie, *params)
+	if len(root.DomainGroups) > 0 && primary.Host != authorizedDomain {
+		return errors.New("授权域名与首个已填写的域名分组不一致")
+	}
+
+	for i := range params.InstallOptions {
+		if i == rootIndex {
+			continue
+		}
+		option := &params.InstallOptions[i]
+		manifest := pack.GetChildren(option.Identifie)
+		// Normalize old children once at the input boundary. Explicit bindings
+		// and declared groups keep their independent configuration.
+		namedGroups := false
+		for _, group := range manifest.Manifest.Platform.Ingress {
+			if group.DomainParam != "" && len(group.Routes) > 0 {
+				namedGroups = true
+				break
+			}
+		}
+		if !namedGroups && manifest.Manifest.RequireDomain() && len(option.DomainGroups) == 0 {
+			binding := primary
+			binding.Param = types.DefaultDomainGroup
+			option.DomainGroups = []types.DomainBinding{binding}
+		}
+		if err := types.PrepareDomainGroups(manifest.Manifest, option, "", false, ""); err != nil {
+			return err
+		}
+	}
+	return nil
 }

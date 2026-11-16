@@ -107,3 +107,36 @@ func TestDeriveChildGrant(t *testing.T) {
 		t.Fatal("accepted another zone")
 	}
 }
+
+func TestHelmGrantScopeAndDerivation(t *testing.T) {
+	id := "0123456789abcdef01234567"
+	issuer := profilePrefix + id
+	key := []byte("0123456789abcdef0123456789abcdef")
+	scheme := runtime.NewScheme()
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	c := clientfake.NewClientBuilder().WithScheme(scheme).WithObjects(
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: secretNamespace, Name: issuer, Labels: map[string]string{"w7.cc/dns-profile": "true"}, Annotations: map[string]string{"w7.cc/dns-zone": "example.com"}}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: secretNamespace, Name: grantKeyName}, Data: map[string][]byte{"key": key}},
+	).Build()
+	signature := signGrant(key, "apps", HelmGrantScope("bundle"), "*.example.com", issuer)
+	for _, tt := range []struct {
+		namespace, release, host, id string
+		wantErr                      bool
+	}{
+		{"apps", "bundle", "*.example.com", id, false},
+		{"other", "bundle", "*.example.com", id, true},
+		{"apps", "other", "*.example.com", id, true},
+		{"apps", "bundle", "*.sub.example.com", id, true},
+		{"apps", "bundle", "*.example.com", "fedcba9876543210fedcba98", true},
+	} {
+		grant, err := DeriveChildGrant(context.Background(), c, tt.namespace, HelmGrantScope(tt.release), "chart-actual-name", tt.host, tt.id, signature)
+		if (err != nil) != tt.wantErr {
+			t.Fatal(tt, err)
+		}
+		if err == nil && grant[GrantAnnotation] != signGrant(key, "apps", "chart-actual-name", "*.example.com", issuer) {
+			t.Fatal(grant)
+		}
+	}
+}

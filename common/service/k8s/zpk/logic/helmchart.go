@@ -3,6 +3,7 @@ package logic
 import (
 	"bytes"
 	"context"
+	stdjson "encoding/json"
 	"errors"
 	"log/slog"
 	"path/filepath"
@@ -85,6 +86,9 @@ func (h *HelmChart) GetValues() (map[string]interface{}, error) {
 	// 	optValues.Values = append(optValues.Values, env.Name+"="+env.Value)
 	// }
 
+	for key, value := range h.Root.DomainGroupValues() {
+		optValues.Values = append(optValues.Values, key+"="+escapeHelmValue(value))
+	}
 	provider := getter.All(settings)
 	vals, err := optValues.MergeValues(provider)
 	if err != nil {
@@ -143,7 +147,20 @@ func helmSetAssignments(packageApp *types.PackageApp, childName string, ignore [
 	if fillfullName {
 		assignments = append(assignments, childName+"fullnameOverride="+packageApp.GetName())
 	}
+	domainValues := packageApp.DomainGroupValues()
+	for _, key := range sortedDomainValueKeys(domainValues) {
+		assignments = append(assignments, childName+key+"="+escapeHelmValue(domainValues[key]))
+	}
 	return assignments
+}
+
+func sortedDomainValueKeys(values map[string]string) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // escapeHelmValue keeps one literal value through Helm strvals parsing.
@@ -186,6 +203,18 @@ func toHelmInstallJob(packageApp *types.PackageApp, children []*types.PackageApp
 	shellCmd := "/ko-app/w7panel helmgo --chartName=" + shellQuote(helmConfig.ChartName) + " --namespace=" + shellQuote(packageApp.Namespace) + " --repository=" + shellQuote(helmConfig.Repository) + " --zipUrl=" + shellQuote(packageApp.ZipUrl) + " --releaseName=" + shellQuote(releaseName)
 	if packageApp.ChartApprovalDigest != "" {
 		shellCmd += " --chartApprovalDigest=" + shellQuote(packageApp.ChartApprovalDigest)
+	}
+	autoSSLHosts := packageApp.AutoSSLHosts()
+	for _, child := range children {
+		autoSSLHosts = append(autoSSLHosts, child.AutoSSLHosts()...)
+	}
+	if len(autoSSLHosts) > 0 {
+		shellCmd += " --auto-ssl-hosts=" + shellQuote(strings.Join(autoSSLHosts, ","))
+	}
+	if len(packageApp.IngressDNSGrants) > 0 {
+		// HelmGrant only contains strings, so marshaling cannot fail.
+		grants, _ := stdjson.Marshal(packageApp.IngressDNSGrants)
+		shellCmd += " --ingress-dns-grants=" + shellQuote(string(grants))
 	}
 	setArg := func(key, value string) { shellCmd += " --set " + shellQuote(key+"="+value) }
 	setArg("global.panel.image", helper.SelfImage())
