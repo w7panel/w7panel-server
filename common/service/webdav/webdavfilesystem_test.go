@@ -28,6 +28,23 @@ func TestWebDAVFileSystemCreateUsesParentPermissions(t *testing.T) {
 	if err := os.Chmod(parentPath, 0o750); err != nil {
 		t.Fatal(err)
 	}
+	groups, err := os.Getgroups()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, group := range groups {
+		if group != os.Getgid() {
+			if err := os.Chown(parentPath, -1, group); err != nil {
+				t.Logf("cannot test a different parent group here: %v", err)
+			}
+			break
+		}
+	}
+	parentInfo, err := os.Stat(parentPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parentOwner := parentInfo.Sys().(*syscall.Stat_t)
 
 	fs := NewWebDAVFileSystem(webdav.Dir(tmpDir), tmpDir)
 	ctx := context.Background()
@@ -69,6 +86,10 @@ func TestWebDAVFileSystemCreateUsesParentPermissions(t *testing.T) {
 		if got.Mode().Perm() != want.Mode().Perm() {
 			t.Errorf("%s permissions = %04o, want %04o", name, got.Mode().Perm(), want.Mode().Perm())
 		}
+		owner := got.Sys().(*syscall.Stat_t)
+		if owner.Uid != parentOwner.Uid || owner.Gid != parentOwner.Gid {
+			t.Errorf("%s owner = %d:%d, want %d:%d", name, owner.Uid, owner.Gid, parentOwner.Uid, parentOwner.Gid)
+		}
 	}
 }
 
@@ -82,6 +103,10 @@ func TestWebDAVFileSystemOverwriteKeepsExistingPermissions(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.Chmod(name, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.Stat(name)
+	if err != nil {
 		t.Fatal(err)
 	}
 	fs := NewWebDAVFileSystem(webdav.Dir(tmpDir), tmpDir)
@@ -98,6 +123,10 @@ func TestWebDAVFileSystemOverwriteKeepsExistingPermissions(t *testing.T) {
 	}
 	if info.Mode().Perm() != 0o600 {
 		t.Fatalf("existing file permissions = %04o, want 0600", info.Mode().Perm())
+	}
+	owner, originalOwner := info.Sys().(*syscall.Stat_t), before.Sys().(*syscall.Stat_t)
+	if owner.Uid != originalOwner.Uid || owner.Gid != originalOwner.Gid {
+		t.Fatalf("existing file owner changed from %d:%d to %d:%d", originalOwner.Uid, originalOwner.Gid, owner.Uid, owner.Gid)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"strconv"
 	"time"
 
@@ -286,8 +287,12 @@ func (self Auth) dologinUser(sdk *k8s.Sdk, u *userservice.User, http *gin.Contex
 			slog.Error("refresh openid error", "err", err)
 		}
 		// 以来thirdpartyToken 需要前置refreshToken
-		if u.Spec.Role == "founder" {
-			go console.RegisterLicenseSite(u.Name)
+		if (!helper.IsChildAgent() && u.Spec.Role == "founder") || (helper.IsChildAgent() && u.Name == os.Getenv("K3K_NAME")) {
+			go func() {
+				if err := console.RegisterLicenseSite(u.Name); err != nil {
+					slog.Error("register license site failed", "user", u.Name, "err", err)
+				}
+			}()
 		}
 	}()
 

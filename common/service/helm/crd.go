@@ -104,19 +104,8 @@ func ChartCRDs(ch *chart.Chart) (map[string]*unstructured.Unstructured, error) {
 	return result, nil
 }
 
-func ChartDigest(ch *chart.Chart) (string, error) {
-	if ch == nil {
-		return "", errors.New("Helm chart is missing")
-	}
-	var content func(*chart.Chart) interface{}
-	content = func(current *chart.Chart) interface{} {
-		dependencies := make([]interface{}, 0, len(current.Dependencies()))
-		for _, dependency := range current.Dependencies() {
-			dependencies = append(dependencies, content(dependency))
-		}
-		return []interface{}{current.Metadata, current.Lock, current.Templates, current.Values, current.Schema, current.Files, dependencies}
-	}
-	encoded, err := json.Marshal(content(ch))
+func CRDDigest(crds map[string]*unstructured.Unstructured) (string, error) {
+	encoded, err := json.Marshal(crds)
 	if err != nil {
 		return "", err
 	}

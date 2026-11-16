@@ -9,13 +9,15 @@ import (
 
 func TestWAFPolicyRoundTripKeepsVisualRuleSource(t *testing.T) {
 	off := false
-	want := waf.Policy{UseCRS: &off, SystemRules: map[string]bool{"942100": false}, CustomRules: []waf.Rule{{ID: 1000001, Rule: `SecRule REQUEST_URI "@streq /admin" "id:1000001,phase:1,deny,status:403"`, Source: "visual"}}}
-	got := policyFrom(policyMap(want))
+	want := waf.Policy{UseCRS: &off, CustomRules: []waf.Rule{{ID: 1000001, Rule: `SecRule REQUEST_URI "@streq /admin" "id:1000001,phase:1,deny,status:403"`, Source: "visual"}}}
+	old := policyMap(want)
+	old["systemRules"] = map[string]bool{"942100": false}
+	got := policyFrom(old)
 	if len(got.CustomRules) != 1 || got.CustomRules[0] != want.CustomRules[0] {
 		t.Fatalf("WAF policy round-trip lost visual rule source: %+v", got.CustomRules)
 	}
-	if got.SystemRules["942100"] != false || len(got.SystemRules) != 1 {
-		t.Fatalf("WAF policy round-trip lost system rule override: %+v", got.SystemRules)
+	if _, exists := policyMap(got)["systemRules"]; exists {
+		t.Fatal("old single-rule setting survived policy round-trip")
 	}
 	if got.UseCRS == nil || *got.UseCRS {
 		t.Fatalf("WAF policy round-trip lost CRS switch: %+v", got.UseCRS)

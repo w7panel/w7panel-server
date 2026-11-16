@@ -48,9 +48,6 @@ func TestChangedCRDsOnlyReturnsNewOrChangedDefinitions(t *testing.T) {
 }
 
 func TestChartCRDsAndCleanupSignature(t *testing.T) {
-	if _, err := ChartDigest(nil); err == nil {
-		t.Fatal("missing Chart accepted")
-	}
 	ch := &chart.Chart{Metadata: &chart.Metadata{Name: "demo", Version: "1.0.0"}, Files: []*chart.File{
 		{Name: "crds/widgets.yaml", Data: []byte("apiVersion: apiextensions.k8s.io/v1\nkind: CustomResourceDefinition\nmetadata:\n  name: widgets.example.com\nspec:\n  group: example.com\n")},
 		{Name: "templates/ignored.yaml", Data: []byte("invalid")},
@@ -59,14 +56,19 @@ func TestChartCRDsAndCleanupSignature(t *testing.T) {
 	if err != nil || len(crds) != 1 || crds["widgets.example.com"] == nil {
 		t.Fatalf("expected one standard CRD, got %v: %v", crds, err)
 	}
-	digest, err := ChartDigest(ch)
+	digest, err := CRDDigest(crds)
 	if err != nil || digest == "" {
-		t.Fatalf("expected Chart digest: %v", err)
+		t.Fatalf("expected CRD digest: %v", err)
 	}
 	ch.Templates = []*chart.File{{Name: "templates/pod.yaml", Data: []byte("changed")}}
-	changedDigest, err := ChartDigest(ch)
+	unchangedDigest, err := CRDDigest(crds)
+	if err != nil || unchangedDigest != digest {
+		t.Fatal("template change affected CRD digest")
+	}
+	crds["widgets.example.com"].Object["spec"] = map[string]interface{}{"group": "changed.example.com"}
+	changedDigest, err := CRDDigest(crds)
 	if err != nil || changedDigest == digest {
-		t.Fatal("Chart digest did not change with template content")
+		t.Fatal("CRD digest did not change with CRD content")
 	}
 	desiredSpec := map[string]interface{}{"group": "example.com", "names": map[string]interface{}{"kind": "Widget", "plural": "widgets"}}
 	liveSpec := map[string]interface{}{"group": "example.com", "names": map[string]interface{}{"kind": "Widget", "plural": "widgets", "singular": "widget", "listKind": "WidgetList"}, "conversion": map[string]interface{}{"strategy": "None"}}
@@ -84,6 +86,17 @@ func TestChartCRDsAndCleanupSignature(t *testing.T) {
 		VerifyCRDCleanupSignature("default", "uid-1", `["widgets.example.com"]`+"\n"+`[]`+"\nfalse", signature) ||
 		VerifyCRDCleanupSignature("default", "uid-1", `["widgets.example.com"]`+"\n"+`["dependency"]`+"\ntrue", signature) {
 		t.Fatal("tampered cleanup authorization was accepted")
+	}
+}
+
+func TestCRDDigestEmptyChart(t *testing.T) {
+	first, err := CRDDigest(map[string]*unstructured.Unstructured{})
+	if err != nil || first == "" {
+		t.Fatalf("empty CRDs must retain a checked digest: %q, %v", first, err)
+	}
+	second, err := CRDDigest(map[string]*unstructured.Unstructured{})
+	if err != nil || second != first {
+		t.Fatalf("empty CRD digest changed: %q, %v", second, err)
 	}
 }
 
