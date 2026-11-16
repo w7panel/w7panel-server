@@ -267,6 +267,7 @@ func (self WAF) SaveConfig(ctx *gin.Context) {
 			for key, value := range compiled {
 				config[key] = value
 			}
+			config["w7Overrides"] = policyMap(overrides)
 		}
 		if err := unstructured.SetNestedMap(plugin.Object, jsonMap(defaultConfig), "spec", "defaultConfig"); err != nil {
 			self.JsonResponseWithServerError(ctx, err)

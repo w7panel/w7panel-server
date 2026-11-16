@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/corazawaf/coraza/v3"
@@ -32,7 +31,6 @@ type Rule struct {
 type Policy struct {
 	UseCRS            *bool           `json:"useCRS,omitempty"`
 	Categories        map[string]bool `json:"categories"`
-	SystemRules       map[string]bool `json:"systemRules,omitempty"`
 	CustomRules       []Rule          `json:"customRules"`
 	DisabledGlobalIDs []int           `json:"disabledGlobalIds,omitempty"`
 	LegacyRules       []string        `json:"legacyRules,omitempty"`
@@ -48,12 +46,6 @@ func Validate(global Policy, overrides *Policy) error {
 		for name := range policy.Categories {
 			if _, ok := Categories[name]; !ok {
 				return fmt.Errorf("unknown CRS category %q", name)
-			}
-		}
-		for value := range policy.SystemRules {
-			id, err := strconv.Atoi(value)
-			if err != nil || strconv.Itoa(id) != value || !systemRuleIDs[id] {
-				return fmt.Errorf("unknown CRS rule ID %q", value)
 			}
 		}
 	}
@@ -82,16 +74,6 @@ func Validate(global Policy, overrides *Policy) error {
 		seen[rule.ID] = true
 	}
 	return nil
-}
-
-func systemRuleCategory(id int) string {
-	for name, value := range Categories {
-		var start, end int
-		if _, err := fmt.Sscanf(value, "%d-%d", &start, &end); err == nil && id >= start && id <= end {
-			return name
-		}
-	}
-	return ""
 }
 
 func rulesOf(policy *Policy) []Rule {
@@ -134,15 +116,6 @@ func Compile(global Policy, overrides *Policy, legacy []string) (map[string]inte
 			active[id] = value
 		}
 	}
-	systemRules := make(map[string]bool, len(global.SystemRules))
-	for id, value := range global.SystemRules {
-		systemRules[id] = value
-	}
-	if overrides != nil {
-		for id, value := range overrides.SystemRules {
-			systemRules[id] = value
-		}
-	}
 	ids := make([]string, 0, len(Categories))
 	for id := range Categories {
 		ids = append(ids, id)
@@ -170,21 +143,6 @@ func Compile(global Policy, overrides *Policy, legacy []string) (map[string]inte
 		if value, ok := active[id]; ok && !value {
 			secRules = append(secRules, "SecRuleRemoveById "+Categories[id])
 		}
-	}
-	disabledSystemIDs := make([]int, 0, len(systemRules))
-	for value, enabled := range systemRules {
-		id, _ := strconv.Atoi(value)
-		if enabled {
-			continue
-		}
-		if categoryEnabled, ok := active[systemRuleCategory(id)]; ok && !categoryEnabled {
-			continue
-		}
-		disabledSystemIDs = append(disabledSystemIDs, id)
-	}
-	sort.Ints(disabledSystemIDs)
-	for _, id := range disabledSystemIDs {
-		secRules = append(secRules, fmt.Sprintf("SecRuleRemoveById %d", id))
 	}
 	for _, rule := range global.CustomRules {
 		if !disabled[rule.ID] {
