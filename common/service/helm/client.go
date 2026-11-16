@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/dnsprofile"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -19,8 +20,11 @@ import (
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/release"
+	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var DefaultChartYaml = `
@@ -33,15 +37,38 @@ icon: {{ .Chart.Icon }}
 `
 
 type Helm struct {
-	sdk                *k8s.Sdk
-	atomic             bool
-	installationLogger *slog.Logger
+	sdk                 *k8s.Sdk
+	atomic              bool
+	installationLogger  *slog.Logger
+	ingressDNSGrants    []dnsprofile.HelmGrant
+	ingressAutoSSLHosts []string
 }
 
 // InstallationLog merges Jobs created by this Helm operation into its output.
 // Other Helm callers keep their existing behavior unless they opt in.
 func (self *Helm) InstallationLog(logger *slog.Logger) {
 	self.installationLogger = logger
+}
+
+func (h *Helm) IngressDNSGrants(grants []dnsprofile.HelmGrant) { h.ingressDNSGrants = grants }
+
+// IngressAutoSSLHosts identifies installation domains that opt in to panel certificates.
+func (h *Helm) IngressAutoSSLHosts(hosts []string) { h.ingressAutoSSLHosts = hosts }
+
+func (h *Helm) newIngressPostRenderer(ctx context.Context, namespace, releaseName string) postrender.PostRenderer {
+	return &ingressCertificateRenderer{
+		namespace: namespace, releaseName: releaseName, grants: h.ingressDNSGrants, autoSSLHosts: h.ingressAutoSSLHosts,
+		derive: func(namespace, authorizedName, targetName, host, id, signature string) (map[string]string, error) {
+			c, err := h.sdk.ToSigClient()
+			if err != nil {
+				return nil, err
+			}
+			return dnsprofile.DeriveChildGrant(ctx, c, namespace, authorizedName, targetName, host, id, signature)
+		},
+		existing: func(namespace, name string) (*networkingv1.Ingress, error) {
+			return h.sdk.ClientSet.NetworkingV1().Ingresses(namespace).Get(ctx, name, metav1.GetOptions{})
+		},
+	}
 }
 
 type releaseElement struct {
@@ -166,6 +193,7 @@ func (self *Helm) Install(context context.Context, chart *chart.Chart, vals map[
 	installAction.IsUpgrade = true
 	installAction.Labels = labels
 	installAction.CreateNamespace = true
+	installAction.PostRenderer = self.newIngressPostRenderer(context, namespace, releaseName)
 	// installAction.Replace = true
 	result, err := installAction.RunWithContext(context, chart, vals)
 	if err != nil {
@@ -183,7 +211,7 @@ func (self *Helm) Upgrade(context context.Context, chart *chart.Chart, vals map[
 	action := action.NewUpgrade(cfg)
 	finishLogs := self.collectInstallationLogs(context, cfg, namespace)
 	defer finishLogs()
-	action.PostRenderer = self.newUpgradePostRenderer(context, namespace)
+	action.PostRenderer = self.newUpgradePostRenderer(context, namespace, releaseName)
 	action.Namespace = namespace
 	// action.Force = true
 	// action.Recreate = true

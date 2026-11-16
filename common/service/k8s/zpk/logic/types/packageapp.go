@@ -10,6 +10,7 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	"github.com/w7panel/w7panel/common/helper"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/dnsprofile"
 	helm "github.com/w7panel/w7panel/common/service/k8s/zpk"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/types"
 	v1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
@@ -52,33 +53,34 @@ const (
 
 // 安装参数
 type InstallOption struct {
-	Identifie                string                       `json:"identifie"`
-	PvcName                  string                       `json:"pvcname"`
-	DockerRegistry           types.DockerRegistry         `json:"registry"`
-	DockerRegistrySecretName string                       `json:"dockerRegistrySecretName"`
-	Namespace                string                       `json:"namespace"`
-	InstallId                string                       `json:"installId"`   //安装的id
-	ReleaseName              string                       `json:"releaseName"` //安装name
-	Suffix                   string                       `json:"suffix"`      //安装后缀 //releasename = root.Identifie+"-"+root.Suffix
-	EnvKv                    []EnvKv                      `json:"envkv"`
-	IngressSeletorName       string                       `json:"ingressSelectorName"` //IngressSelector前端选择的名称
-	IngressHost              string                       `json:"ingressHost"`         //域名
-	IngressClassName         string                       `json:"ingressClassName"`    //ingressclassname
-	IngressForceHttps        bool                         `json:"ingressForceHttps"`   //ingressclassname
-	DNSIngressAnnotations    map[string]map[string]string `json:"-"`
-	Replicas                 int32                        `json:"replicas"`             // 可选安装的数量为0
-	IsUpgrade                bool                         `json:"isUpgrade"`            //是否更新模式
-	Annotations              map[string]string            `json:"annotations"`          //注解
-	HelmValues               map[string]string            `json:"helmValues,omitempty"` //首次安装使用的 Helm 默认参数
-	ServiceAccountName       string                       `json:"serviceAccountName"`   //ServiceAccountName
-	UserName                 string                       `json:"userName"`             //ServiceAccountName
-	BuildImageSuccessUrl     string                       `json:"buildImageSuccessUrl"` //ServiceAccountName
-	ParentReleaseName        string                       `json:"parentReleaseName"`    // 父节点发布名
-	PreSubPath               map[string]string            `json:"preSubPath"`           // 上次安装的子路径
-	Cpu                      string                       `json:"cpu"`
-	Memory                   string                       `json:"memory"`
-	Volumes                  []corev1.Volume              `json:"volumes"`
-	VolumesMounts            []corev1.VolumeMount         `json:"volumesMounts"`
+	DomainGroups             []DomainBinding        `json:"domainGroups,omitempty"`
+	Identifie                string                 `json:"identifie"`
+	PvcName                  string                 `json:"pvcname"`
+	DockerRegistry           types.DockerRegistry   `json:"registry"`
+	DockerRegistrySecretName string                 `json:"dockerRegistrySecretName"`
+	Namespace                string                 `json:"namespace"`
+	InstallId                string                 `json:"installId"`   //安装的id
+	ReleaseName              string                 `json:"releaseName"` //安装name
+	Suffix                   string                 `json:"suffix"`      //安装后缀 //releasename = root.Identifie+"-"+root.Suffix
+	EnvKv                    []EnvKv                `json:"envkv"`
+	IngressSeletorName       string                 `json:"ingressSelectorName"` //IngressSelector前端选择的名称
+	IngressHost              string                 `json:"ingressHost"`         //域名
+	IngressClassName         string                 `json:"ingressClassName"`    //ingressclassname
+	IngressForceHttps        bool                   `json:"ingressForceHttps"`   //ingressclassname
+	IngressDNSGrants         []dnsprofile.HelmGrant `json:"-"`
+	Replicas                 int32                  `json:"replicas"`             // 可选安装的数量为0
+	IsUpgrade                bool                   `json:"isUpgrade"`            //是否更新模式
+	Annotations              map[string]string      `json:"annotations"`          //注解
+	HelmValues               map[string]string      `json:"helmValues,omitempty"` //首次安装使用的 Helm 默认参数
+	ServiceAccountName       string                 `json:"serviceAccountName"`   //ServiceAccountName
+	UserName                 string                 `json:"userName"`             //ServiceAccountName
+	BuildImageSuccessUrl     string                 `json:"buildImageSuccessUrl"` //ServiceAccountName
+	ParentReleaseName        string                 `json:"parentReleaseName"`    // 父节点发布名
+	PreSubPath               map[string]string      `json:"preSubPath"`           // 上次安装的子路径
+	Cpu                      string                 `json:"cpu"`
+	Memory                   string                 `json:"memory"`
+	Volumes                  []corev1.Volume        `json:"volumes"`
+	VolumesMounts            []corev1.VolumeMount   `json:"volumesMounts"`
 	K8sToken                 *k8s.K8sToken
 	RealToken                string
 }
@@ -239,6 +241,12 @@ type PackageApp struct {
 func NewPackageApp(manifestPackage *ManifestPackage, installOption *InstallOption) *PackageApp {
 	p := &PackageApp{ManifestPackage: manifestPackage, InstallOption: installOption}
 	p.PutEnvs(installOption.EnvKv)
+	for _, binding := range p.DomainGroups {
+		if binding.Param == DefaultDomainGroup {
+			p.IngressHost = binding.Host
+			p.IngressForceHttps = binding.AutoSSL
+		}
+	}
 	return p
 }
 
@@ -413,10 +421,34 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 			ingressDomainsJson, _ = json.Marshal(arr)
 		}
 	}
+
+	if len(p.DomainGroups) > 0 && p.DomainGroups[0].Param != DefaultDomainGroup {
+		domains := []string{}
+		for _, binding := range p.DomainGroups {
+			if binding.Host == "" {
+				continue
+			}
+			scheme := "http://"
+			if binding.AutoSSL {
+				scheme = "https://"
+			}
+			domains = append(domains, scheme+binding.Host)
+		}
+		domainsJson, _ = json.Marshal(domains)
+		ingressDomainsJson = []byte("[]")
+	}
 	ingressConfigJson := []byte{}
 	if p.Manifest.Platform.Ingress != nil {
 
-		ingressConfigJson, err = json.Marshal(p.Manifest.Platform.Ingress)
+		// Named domain groups are already materialized as Ingress resources.
+		// Keep the legacy configuration cards only for legacy ingress definitions.
+		configs := []Ingress{}
+		for _, config := range p.Manifest.Platform.Ingress {
+			if config.DomainParam == "" {
+				configs = append(configs, config)
+			}
+		}
+		ingressConfigJson, err = json.Marshal(configs)
 		if err != nil {
 			ingressConfigJson = []byte{}
 		}
@@ -511,7 +543,68 @@ func (p *PackageApp) GetAnnotations() map[string]string {
 	return result
 }
 
+// ReplaceCommon selects the application's legacy domain and delegates all
+// placeholder replacement to the existing implementation.
+func (p *PackageApp) ReplaceCommon(host string) {
+	if len(p.DomainGroups) > 0 && p.DomainGroups[0].Param == DefaultDomainGroup {
+		host = p.DomainGroups[0].Host
+	}
+	p.ManifestPackage.ReplaceCommon(host)
+}
+
+// AutoSSLHosts carries installation choices without inspecting Chart resource names.
+func (p *PackageApp) AutoSSLHosts() []string {
+	if p.Replicas == 0 {
+		return nil
+	}
+	hosts := []string{}
+	for _, binding := range p.DomainGroups {
+		if binding.AutoSSL && binding.Host != "" {
+			hosts = append(hosts, binding.Host)
+		}
+	}
+	if len(p.DomainGroups) == 0 && p.RequireDomainHttps() && p.IngressHost != "" {
+		hosts = append(hosts, p.IngressHost)
+	}
+	return hosts
+}
+
+func (p *PackageApp) DomainGroupValues() map[string]string {
+	values := map[string]string{}
+	for _, binding := range p.DomainGroups {
+		if binding.Param == DefaultDomainGroup {
+			values["ingressHost"] = binding.Host
+			values["ingressForceHttps"] = strconv.FormatBool(binding.AutoSSL)
+			continue
+		}
+		prefix := "domainGroups." + binding.Param + "."
+		values[prefix+"host"] = binding.Host
+		values[prefix+"dnsProfileId"] = binding.DNSProfileID
+		values[prefix+"autoSSL"] = strconv.FormatBool(binding.AutoSSL)
+		value := ""
+		if binding.Host != "" {
+			scheme := "http://"
+			if binding.AutoSSL {
+				scheme = "https://"
+			}
+			value = scheme + binding.Host
+		}
+		values[binding.Param] = value
+	}
+
+	return values
+}
+
 func (p *PackageApp) getDefaultDomain(defaultScheme string) string {
+	for _, binding := range p.DomainGroups {
+		if binding.Host != "" {
+			scheme := "http://"
+			if binding.AutoSSL {
+				scheme = "https://"
+			}
+			return scheme + binding.Host
+		}
+	}
 	if domain := normalizeDefaultDomain(p.IngressHost, defaultScheme); domain != "" {
 		return domain
 	}
@@ -843,8 +936,6 @@ func (p *PackageApp) GetIngressSvcName(backendName string) string {
 	}
 	return GetDeployName(backendName, p.Suffix)
 }
-
-func (p *PackageApp) DNSAnnotations() map[string]map[string]string { return p.DNSIngressAnnotations }
 
 func (p *PackageApp) GetIngressHost() string {
 	return p.IngressHost

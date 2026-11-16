@@ -262,6 +262,12 @@ func (z *Install) Install(name, namespace string) error {
 	}
 	// }
 	helmApi := helmservice.NewHelm(z.sdk)
+	helmApi.IngressDNSGrants(z.pk.Root.IngressDNSGrants)
+	autoSSLHosts := z.pk.Root.AutoSSLHosts()
+	for _, child := range z.pk.Children {
+		autoSSLHosts = append(autoSSLHosts, child.AutoSSLHosts()...)
+	}
+	helmApi.IngressAutoSSLHosts(autoSSLHosts)
 	labels := z.fillLabelAndAnnation(chart)
 	_, err = helmApi.Install(z.sdk.Ctx, chart, vals, name, namespace, labels)
 	if err != nil {
@@ -285,6 +291,12 @@ func (z *Install) Upgrade(name, namespace string) error {
 		return err
 	}
 	helmApi := helmservice.NewHelm(z.sdk)
+	helmApi.IngressDNSGrants(z.pk.Root.IngressDNSGrants)
+	autoSSLHosts := z.pk.Root.AutoSSLHosts()
+	for _, child := range z.pk.Children {
+		autoSSLHosts = append(autoSSLHosts, child.AutoSSLHosts()...)
+	}
+	helmApi.IngressAutoSSLHosts(autoSSLHosts)
 	labels := z.fillLabelAndAnnation(chart)
 	vals := map[string]interface{}{}
 	if z.pk.IsHelm() {

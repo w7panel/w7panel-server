@@ -37,6 +37,16 @@ type Profile struct {
 	Issuer   string `json:"issuer"`
 }
 
+// HelmGrant authorizes one wildcard host for a Helm release. It is not a Chart value.
+type HelmGrant struct {
+	Host      string `json:"host"`
+	ProfileID string `json:"profileId"`
+	Signature string `json:"signature"`
+}
+
+// The colon makes this scope distinct from every valid Kubernetes resource name.
+func HelmGrantScope(releaseName string) string { return "helm-release:" + releaseName }
+
 type Store struct{ SDK *k8s.Sdk }
 
 func ownerLabel(owner string) string {

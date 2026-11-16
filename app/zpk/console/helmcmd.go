@@ -1,6 +1,7 @@
 package console
 
 import (
+	"encoding/json"
 	"log/slog"
 	"os"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	helmservice "github.com/w7panel/w7panel/common/service/helm"
 	"github.com/w7panel/w7panel/common/service/k8s"
+	"github.com/w7panel/w7panel/common/service/k8s/dnsprofile"
 	"github.com/w7panel/w7panel/common/service/k8s/zpk/logic"
 	console2 "github.com/we7coreteam/w7-rangine-go/v2/src/console"
 	"helm.sh/helm/v3/pkg/cli"
@@ -20,17 +22,19 @@ type HelmCmd struct {
 }
 
 type helmOption struct {
-	version     string
-	releaseName string
-	repository  string
-	chartName   string
-	namespace   string
-	set         []string
-	setJson     []string
-	atomic      bool              // 原子安装
-	zipUrl      string            // 压缩包地址 应用市场用zip 存helm包
-	annotations map[string]string // 注解信息
-	labels      map[string]string // 标签数据
+	ingressDNSGrants string
+	autoSSLHosts     []string
+	version          string
+	releaseName      string
+	repository       string
+	chartName        string
+	namespace        string
+	set              []string
+	setJson          []string
+	atomic           bool              // 原子安装
+	zipUrl           string            // 压缩包地址 应用市场用zip 存helm包
+	annotations      map[string]string // 注解信息
+	labels           map[string]string // 标签数据
 }
 
 var helmOp = helmOption{}
@@ -51,6 +55,8 @@ func (c HelmCmd) Configure(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&helmOp.atomic, "atomic", false, "原子安装")
 	cmd.Flags().StringToStringVar(&helmOp.annotations, "anno", map[string]string{}, "annotations参数")
 	cmd.Flags().StringToStringVar(&helmOp.labels, "labels", map[string]string{}, "labels参数")
+	cmd.Flags().StringSliceVar(&helmOp.autoSSLHosts, "auto-ssl-hosts", nil, "启用自动证书的域名")
+	cmd.Flags().StringVar(&helmOp.ingressDNSGrants, "ingress-dns-grants", "", "安装泛域名授权")
 	cmd.MarkFlagRequired("releaseName")
 }
 
@@ -60,6 +66,16 @@ func (c HelmCmd) Handle(cmd *cobra.Command, args []string) {
 	sdk := k8s.NewK8sClient().Sdk
 	helmApi := helmservice.NewHelm(sdk)
 	helmApi.InstallationLog(slog.Default())
+	helmApi.IngressAutoSSLHosts(helmOp.autoSSLHosts)
+	if helmOp.ingressDNSGrants != "" {
+		var grants []dnsprofile.HelmGrant
+		if err := json.Unmarshal([]byte(helmOp.ingressDNSGrants), &grants); err != nil {
+			slog.Error("invalid ingress DNS grants")
+			os.Exit(1)
+			return
+		}
+		helmApi.IngressDNSGrants(grants)
+	}
 	chart, err := logic.LocateChartByHelmZpk(helmOp.repository, helmOp.chartName, helmOp.zipUrl, helmOp.version)
 	if err != nil {
 		slog.Error("locate chart error", "error", err)
