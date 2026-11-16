@@ -48,6 +48,7 @@ type InstallRequest struct {
 	IngressClassName   string                `json:"ingressClass"`       // 域名选择业务名称
 	IngressForceHttps  bool                  `json:"ingressForceHttps"`  // forceHttps
 	DNSProfileID       string                `json:"dnsProfileId,omitempty"`
+	AutoResolve        bool                  `json:"autoResolve,omitempty"`
 	ThirdpartyCDToken  string                `json:"thirdpartyCDToken"` // 域名选择业务名称
 	ClusterId          string                `json:"clusterId"`         // 集群ID
 	IsTrandition       bool                  `json:"isTrandition"`      // 是否传统应用
@@ -57,9 +58,10 @@ type InstallRequest struct {
 	CRDApprovalDigest  string                `json:"crdApprovalDigest,omitempty"`
 }
 type InstallResult struct {
-	ReleaseName string `json:"releaseName"`
-	InstallID   string `json:"installId"`
-	Namespace   string `json:"namespace"`
+	ReleaseName     string `json:"releaseName"`
+	InstallID       string `json:"installId"`
+	Namespace       string `json:"namespace"`
+	DNSResolveError string `json:"dnsResolveError,omitempty"`
 }
 type InstallExecution struct {
 	SDK          *k8s.Sdk
@@ -290,7 +292,17 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 		// panic(err)
 		return InstallResult{}, err
 	}
-	return InstallResult{ReleaseName: releaseName, InstallID: installId, Namespace: namespace}, nil
+	result := InstallResult{ReleaseName: releaseName, InstallID: installId, Namespace: namespace}
+	if params.AutoResolve && strings.HasPrefix(params.IngressHost, "*.") {
+		if params.DNSProfileID == "" || k8sToken == nil {
+			result.DNSResolveError = "缺少已验证的 DNS 配置"
+		} else if owner, ownerErr := k8sToken.GetUserName(); ownerErr != nil {
+			result.DNSResolveError = ownerErr.Error()
+		} else if resolveErr := (dnsprofile.Store{SDK: client}).EnsureRecord(context.Background(), owner, params.DNSProfileID, params.IngressHost); resolveErr != nil {
+			result.DNSResolveError = resolveErr.Error()
+		}
+	}
+	return result, nil
 }
 
 func normalizeInstallIngressHost(host string) string {

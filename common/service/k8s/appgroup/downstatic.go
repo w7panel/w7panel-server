@@ -19,6 +19,7 @@ import (
 	microappservice "github.com/w7panel/w7panel/common/service/k8s/microapp"
 	"github.com/w7panel/w7panel/k8s/pkg/apis/appgroup/v1alpha1"
 	microappv1 "github.com/w7panel/w7panel/k8s/pkg/apis/microapp/v1alpha1"
+	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	sig "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -88,10 +89,59 @@ func DownStaticStatus(identifie, version, releaseName string) string {
 		cacheKey = staticDownloadCacheKey + releaseName
 	}
 	val, ok := helper.Get(cacheKey)
-	if !ok {
-		return NO_DOWN
+	if ok {
+		return val.(string)
 	}
-	return val.(string)
+	microappPath := microappCacheRoot()
+	parts := []string{identifie, version}
+	if version == "" {
+		parts = []string{releaseName}
+	}
+	if hasCompleteMarker(microappPath, parts...) {
+		helper.Set(cacheKey, DOWNLOAD_SUCCESS, time.Hour*24)
+		return DOWNLOAD_SUCCESS
+	}
+	return NO_DOWN
+}
+
+const completeMarkerName = ".w7panel-cache-complete"
+
+func microappCacheRoot() string {
+	if path := os.Getenv("MICROAPP_PATH"); path != "" {
+		return path
+	}
+	return facade.Config.GetString("static.microapp_path")
+}
+
+func completeMarkerPath(root string, parts ...string) (string, error) {
+	if root == "" {
+		return "", errors.New("microapp cache path is empty")
+	}
+	path := root
+	for _, part := range parts {
+		if part == "" || part == "." || part == ".." || strings.ContainsAny(part, `/\\`) {
+			return "", fmt.Errorf("invalid microapp cache path component: %q", part)
+		}
+		path = filepath.Join(path, part)
+	}
+	return filepath.Join(path, completeMarkerName), nil
+}
+
+func hasCompleteMarker(root string, parts ...string) bool {
+	path, err := completeMarkerPath(root, parts...)
+	if err != nil {
+		return false
+	}
+	content, err := os.ReadFile(path)
+	return err == nil && string(content) == "ok"
+}
+
+func writeCompleteMarker(root string, parts ...string) error {
+	path, err := completeMarkerPath(root, parts...)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte("ok"), 0644)
 }
 func DownStatic(appgroup *v1alpha1.AppGroup, microAppClient sig.Client, panelToken string) {
 	downEnv := os.Getenv("STATIC_DOWN_ENABLED")
@@ -177,9 +227,9 @@ func fetchWebZipAndDownload(zpkUrl string, releaseName, version string, frontend
 	}
 	zpkInfo.Data.Manifest = manifest
 	webzipUrl := zpkInfo.Data.WebZipURL
-	microappPath := os.Getenv("MICROAPP_PATH") //facade.Config.GetString("static.microapp_path")
+	microappPath := microappCacheRoot()
 	if len(webzipUrl) > 0 {
-		downStaticMap(webzipUrl, frontendVersions, releaseName, microappPath, version)
+		return downStaticMap(webzipUrl, frontendVersions, releaseName, microappPath, version)
 	}
 	return nil
 	// if zpkInfo.Data.Manifest.V <= 1 {
@@ -328,6 +378,10 @@ func downStaticMap(webzipUrl, frontendVersions map[string]string, releaseName, m
 				return fmt.Errorf("下载前端包失败: identifie=%s, version=%s, code=%d", kName, version, code)
 			}
 		}
+		if err := writeCompleteMarker(microappPath, releaseName); err != nil {
+			helper.Set(staticDownloadCacheKey+releaseName, NO_DOWN, time.Hour*24)
+			return fmt.Errorf("mark microapp release cache complete: %w", err)
+		}
 	}
 	return nil
 }
@@ -354,6 +408,11 @@ func downAndUnzip(k string, version string, microappPath string, releaseName str
 	mu.Lock()
 	defer mu.Unlock()
 	defer releaseDownloadMutex(lockKey)
+	if version != "" && hasCompleteMarker(microappPath, kName, version) && hasCompleteMarker(microappPath, releaseName) {
+		helper.Set(cacheKey, DOWNLOAD_SUCCESS, time.Hour*24)
+		helper.Set(cacheKeyOld, DOWNLOAD_SUCCESS, time.Hour*24)
+		return 0
+	}
 
 	err := os.MkdirAll(filepath.Join(microappPath, releaseName), os.ModePerm)
 	if err != nil {
@@ -415,6 +474,14 @@ func downAndUnzip(k string, version string, microappPath string, releaseName str
 
 	// 清理临时 zip 文件
 	os.Remove(tempZipFile)
+	if version != "" {
+		if err := writeCompleteMarker(microappPath, kName, version); err != nil {
+			slog.Error("标记静态资源缓存完成失败", "error", err)
+			helper.Set(cacheKey, NO_DOWN, time.Hour*24)
+			helper.Set(cacheKeyOld, NO_DOWN, time.Hour*24)
+			return 5
+		}
+	}
 	helper.Set(cacheKey, DOWNLOAD_SUCCESS, time.Hour*24)
 	helper.Set(cacheKeyOld, DOWNLOAD_SUCCESS, time.Hour*24)
 	return 0

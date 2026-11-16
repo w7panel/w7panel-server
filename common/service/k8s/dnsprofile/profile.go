@@ -69,17 +69,41 @@ func (s Store) List(ctx context.Context, owner string) ([]Profile, error) {
 }
 
 func (s Store) Get(ctx context.Context, owner, id string) (Profile, error) {
-	if !validID(id) {
-		return Profile{}, errors.New("DNS 配置不存在")
-	}
-	secret, err := s.SDK.ClientSet.CoreV1().Secrets(secretNamespace).Get(ctx, profilePrefix+id, metav1.GetOptions{})
+	secret, err := s.getSecret(ctx, owner, id)
 	if err != nil {
 		return Profile{}, err
 	}
-	if secret.Labels["w7.cc/dns-profile"] != "true" || secret.Labels["w7.cc/dns-owner"] != ownerLabel(owner) {
-		return Profile{}, errors.New("无权使用该 DNS 配置")
-	}
 	return profileFromSecret(secret), nil
+}
+
+func (s Store) getSecret(ctx context.Context, owner, id string) (*corev1.Secret, error) {
+	if !validID(id) {
+		return nil, errors.New("DNS 配置不存在")
+	}
+	secret, err := s.SDK.ClientSet.CoreV1().Secrets(secretNamespace).Get(ctx, profilePrefix+id, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	if !ownedSecret(secret, owner) {
+		return nil, errors.New("无权使用该 DNS 配置")
+	}
+	return secret, nil
+}
+
+func ownedSecret(secret *corev1.Secret, owner string) bool {
+	return secret.Labels["w7.cc/dns-profile"] == "true" && secret.Labels["w7.cc/dns-owner"] == ownerLabel(owner)
+}
+
+func (s Store) CreateFromProfile(ctx context.Context, owner, sourceID, name, zone string) (Profile, error) {
+	secret, err := s.getSecret(ctx, owner, sourceID)
+	if err != nil {
+		return Profile{}, err
+	}
+	values := make(map[string]string, len(secret.Data))
+	for key, value := range secret.Data {
+		values[key] = string(value)
+	}
+	return s.Create(ctx, owner, name, secret.Annotations["w7.cc/dns-provider"], zone, values)
 }
 
 func validID(id string) bool {
@@ -92,7 +116,7 @@ func validID(id string) bool {
 
 func (s Store) Create(ctx context.Context, owner, name, provider, zone string, values map[string]string) (Profile, error) {
 	name = strings.TrimSpace(name)
-	if name == "" || len([]rune(name)) > 80 {
+	if name != "" && len([]rune(name)) > 80 {
 		return Profile{}, errors.New("DNS 配置名称长度必须为 1 到 80 个字符")
 	}
 	zone = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(zone)), ".")
@@ -109,6 +133,9 @@ func (s Store) Create(ctx context.Context, owner, name, provider, zone string, v
 		return Profile{}, err
 	}
 	id := hex.EncodeToString(idBytes)
+	if name == "" {
+		name = "*." + zone + "-" + id[:8]
+	}
 	secretName := profilePrefix + id
 	data := make(map[string][]byte, len(credentials))
 	for key, value := range credentials {
@@ -161,11 +188,21 @@ func (s Store) createIssuer(ctx context.Context, name, provider string) error {
 	return err
 }
 
-func WildcardInZone(host, zone string) bool {
+func WildcardZone(host string) (string, error) {
 	host = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(host), "."))
+	if !strings.HasPrefix(host, "*.") || !validZone(host[2:]) {
+		return "", errors.New("泛域名无效")
+	}
+	return host[2:], nil
+}
+
+func WildcardInZone(host, zone string) bool {
+	base, err := WildcardZone(host)
+	if err != nil {
+		return false
+	}
 	zone = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(zone), "."))
-	return strings.HasPrefix(host, "*.") && validZone(host[2:]) &&
-		(host[2:] == zone || strings.HasSuffix(host[2:], "."+zone))
+	return base == zone || strings.HasSuffix(base, "."+zone)
 }
 
 func (s Store) Delete(ctx context.Context, owner, id string) error {

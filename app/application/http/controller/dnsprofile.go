@@ -70,20 +70,49 @@ func (self DNSProfile) Create(ctx *gin.Context) {
 		return
 	}
 	var request struct {
-		Namespace   string            `json:"namespace" binding:"required"`
-		Name        string            `json:"name" binding:"required"`
-		Provider    string            `json:"provider" binding:"required"`
-		Zone        string            `json:"zone" binding:"required"`
-		Credentials map[string]string `json:"credentials" binding:"required"`
+		Namespace       string            `json:"namespace" binding:"required"`
+		Host            string            `json:"host"`
+		Mode            string            `json:"mode"`
+		Name            string            `json:"name"`
+		Provider        string            `json:"provider"`
+		Zone            string            `json:"zone"`
+		Credentials     map[string]string `json:"credentials"`
+		SourceProfileID string            `json:"sourceProfileId"`
 	}
 	if err := ctx.ShouldBindJSON(&request); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
 		return
 	}
+	if request.Mode != "" && request.Mode != "dns-01" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"msg": "当前签发器不支持所选验证模式"})
+		return
+	}
 	if !self.canWriteIngress(ctx, request.Namespace) {
 		return
 	}
-	profile, err := store.Create(ctx.Request.Context(), ctx.GetString("username"), request.Name, request.Provider, request.Zone, request.Credentials)
+	if request.Host != "" {
+		zone, err := dnsprofile.WildcardZone(request.Host)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
+			return
+		}
+		request.Zone = zone
+		request.Name = ""
+	} else if request.Name == "" || request.Zone == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"msg": "缺少泛域名"})
+		return
+	}
+	var profile dnsprofile.Profile
+	var err error
+	if request.SourceProfileID != "" {
+		if request.Provider != "" || len(request.Credentials) != 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"msg": "复用配置时不能提交 DNS 密钥"})
+			return
+		}
+		profile, err = store.CreateFromProfile(ctx.Request.Context(), ctx.GetString("username"), request.SourceProfileID, request.Name, request.Zone)
+	} else {
+		profile, err = store.Create(ctx.Request.Context(), ctx.GetString("username"), request.Name, request.Provider, request.Zone, request.Credentials)
+	}
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
 		return
@@ -126,4 +155,27 @@ func (self DNSProfile) Grant(ctx *gin.Context) {
 		return
 	}
 	self.JsonResponseWithoutError(ctx, annotations)
+}
+
+func (self DNSProfile) EnsureRecord(ctx *gin.Context) {
+	store, ok := self.store(ctx)
+	if !ok {
+		return
+	}
+	var request struct {
+		Namespace string `json:"namespace" binding:"required"`
+		Host      string `json:"host" binding:"required"`
+	}
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
+		return
+	}
+	if !self.canWriteIngress(ctx, request.Namespace) {
+		return
+	}
+	if err := store.EnsureRecord(ctx.Request.Context(), ctx.GetString("username"), ctx.Param("id"), request.Host); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
+		return
+	}
+	self.JsonResponseWithoutError(ctx, gin.H{"resolved": true})
 }

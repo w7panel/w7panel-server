@@ -52,6 +52,8 @@ npm run dev -- --host 0.0.0.0 --port 8011
 
 ## 浏览器检查
 
+需要通过 `149` 的 Codex Chrome 扩展访问其 `Default` 配置中的已登录页面时，使用 [w7panel-chrome-extension](../w7panel-chrome-extension/SKILL.md)。下方 CDP 连接使用独立的共享 Chrome 配置。
+
 共享 Chrome CDP 固定为 `http://172.16.1.149:9222`：
 
 ```bash

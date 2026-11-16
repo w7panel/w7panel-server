@@ -210,6 +210,8 @@ controller:
   appWatch: true
 static:
   downEnabled: true
+  # Host cache is local to each node; releases use separate subdirectories.
+  hostCachePath: /var/lib/w7panel/microapp
 gpustack:
   watch: true
 log:

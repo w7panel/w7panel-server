@@ -165,6 +165,19 @@ func TestZpkInstallExecutesOnceAcrossControllers(t *testing.T) {
 	}
 }
 
+func TestZpkInstallDNSPartialFailure(t *testing.T) {
+	r, req := fixture(t, func(_ context.Context, task *api.ZpkInstall) (logic.InstallResult, error) {
+		return logic.InstallResult{ReleaseName: "app", Namespace: "default", InstallID: task.Status.InstallID, DNSResolveError: "provider secret"}, nil
+	})
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	status := getTask(t, r, req).Status
+	if status.Phase != "Succeeded" || status.Reason != "DNSResolveFailed" || strings.Contains(status.Message, "provider secret") {
+		t.Fatalf("unexpected partial failure status: %+v", status)
+	}
+}
+
 func TestZpkInstallFailureAndPanicAreTerminalAndRedacted(t *testing.T) {
 	for _, panicExec := range []bool{false, true} {
 		t.Run(map[bool]string{false: "error", true: "panic"}[panicExec], func(t *testing.T) {

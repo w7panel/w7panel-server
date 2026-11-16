@@ -171,6 +171,10 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		} else {
 			current.Status.Phase, current.Status.Reason = "Succeeded", "InstallationSubmitted"
 			current.Status.Message = "Installation submitted; application readiness is tracked by AppGroup and Jobs."
+			if result.DNSResolveError != "" {
+				current.Status.Reason = "DNSResolveFailed"
+				current.Status.Message = "Application installed, but automatic DNS resolution failed; inspect the domain record manually."
+			}
 			current.Status.ReleaseName, current.Status.Namespace, current.Status.InstallID = result.ReleaseName, result.Namespace, result.InstallID
 		}
 	})

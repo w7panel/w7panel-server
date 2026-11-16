@@ -137,6 +137,10 @@ func wafConfig(plugin *unstructured.Unstructured) (waf.Policy, []string, map[str
 		return waf.Policy{}, nil, nil, err
 	}
 	global := policyFrom(config["w7Policy"])
+	if global.UseCRS == nil {
+		useCRS, _ := config["useCRS"].(bool)
+		global.UseCRS = &useCRS
+	}
 	legacy := stringSlice(config["w7LegacyRules"])
 	if config["w7Policy"] == nil {
 		legacy = stringSlice(config["secRules"])
@@ -174,6 +178,11 @@ func (self WAF) Config(ctx *gin.Context) {
 			rule := rules[index].(map[string]interface{})
 			config, _ := rule["config"].(map[string]interface{})
 			overrides = policyFrom(config["w7Overrides"])
+			if config["w7Overrides"] == nil {
+				if useCRS, ok := config["useCRS"].(bool); ok && useCRS != *global.UseCRS {
+					overrides.UseCRS = &useCRS
+				}
+			}
 		}
 	}
 	global.LegacyRules = legacy
@@ -225,6 +234,10 @@ func (self WAF) SaveConfig(ctx *gin.Context) {
 			legacy = request.Policy.LegacyRules
 		}
 		global = request.Policy
+		if global.UseCRS == nil {
+			useCRS := defaultConfig["useCRS"] == true
+			global.UseCRS = &useCRS
+		}
 		global.LegacyRules = nil
 		compiled, err := waf.Compile(global, nil, legacy)
 		if err != nil {

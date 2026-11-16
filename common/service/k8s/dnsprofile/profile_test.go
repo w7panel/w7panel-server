@@ -8,10 +8,34 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	clientfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+func TestOwnedSecret(t *testing.T) {
+	id := "0123456789abcdef01234567"
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Namespace: secretNamespace, Name: profilePrefix + id,
+		Labels:      map[string]string{"w7.cc/dns-profile": "true", "w7.cc/dns-owner": ownerLabel("alice")},
+		Annotations: map[string]string{"w7.cc/dns-provider": "alidns"},
+	}, Data: map[string][]byte{"ALICLOUD_ACCESS_KEY": []byte("test-secret")}}
+	if ownedSecret(secret, "bob") || !ownedSecret(secret, "alice") {
+		t.Fatal("DNS credential ownership check failed")
+	}
+	secret.Labels["w7.cc/dns-profile"] = "false"
+	if ownedSecret(secret, "alice") {
+		t.Fatal("non-profile secret was accepted")
+	}
+}
+
 func TestWildcardInZone(t *testing.T) {
+	if zone, err := WildcardZone(" *.Example.COM. "); err != nil || zone != "example.com" {
+		t.Fatalf("wildcard zone = %q, %v", zone, err)
+	}
+	for _, host := range []string{"example.com", "*.", "*.bad_domain.com", "*.*.example.com"} {
+		if _, err := WildcardZone(host); err == nil {
+			t.Fatalf("accepted invalid wildcard host %q", host)
+		}
+	}
 	for _, host := range []string{"*.example.com", "*.sub.example.com"} {
 		if !WildcardInZone(host, "example.com") {
 			t.Fatalf("rejected %s", host)
@@ -32,7 +56,7 @@ func TestProfileName(t *testing.T) {
 	if got := profileFromSecret(secret).Name; got != "生产环境" {
 		t.Fatalf("profile name = %q", got)
 	}
-	for _, name := range []string{" ", strings.Repeat("字", 81)} {
+	for _, name := range []string{strings.Repeat("字", 81)} {
 		if _, err := (Store{}).Create(context.Background(), "owner", name, "alidns", "example.com", nil); err == nil {
 			t.Fatalf("accepted invalid profile name %q", name)
 		}
@@ -62,7 +86,7 @@ func TestDeriveChildGrant(t *testing.T) {
 	if err := corev1.AddToScheme(scheme); err != nil {
 		t.Fatal(err)
 	}
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+	c := clientfake.NewClientBuilder().WithScheme(scheme).WithObjects(
 		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: secretNamespace, Name: issuer,
 			Labels: map[string]string{"w7.cc/dns-profile": "true"}, Annotations: map[string]string{"w7.cc/dns-zone": "example.com"}}},
 		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: secretNamespace, Name: grantKeyName}, Data: map[string][]byte{"key": key}},
