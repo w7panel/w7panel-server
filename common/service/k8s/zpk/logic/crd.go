@@ -21,8 +21,11 @@ type UpgradeCRDResult struct {
 }
 
 func requireUpgradeCRDApproval(result UpgradeCRDResult, approvedDigest string) error {
+	if len(result.Names) == 0 {
+		return nil
+	}
 	if approvedDigest != "" && approvedDigest != result.Digest {
-		return errors.New("Chart changed since CRD confirmation; check the upgrade again")
+		return errors.New("CRDs changed since confirmation; check the upgrade again")
 	}
 	if len(result.Names) > 0 && approvedDigest == "" {
 		return errors.New("CRD update requires confirmation")
@@ -56,24 +59,24 @@ func upgradeChartCRDs(ctx context.Context, sdk *k8s.Sdk, pack *types.ManifestPac
 		prefix := strings.ReplaceAll(child.Manifest.Application.Identifie, "_", "-") + "."
 		assignments = append(assignments, helmSetAssignments(child, prefix, []string{"HELM_ATOMIC"}, true)...)
 	}
-	digest, crds, err := upgradeCRDsFromChart(chart, assignments)
+	crds, err := upgradeCRDsFromChart(chart, assignments)
 	if err != nil {
 		return UpgradeCRDResult{}, nil, err
 	}
 	names, err := helmservice.ChangedCRDs(ctx, sdk, crds)
+	if err != nil {
+		return UpgradeCRDResult{}, nil, err
+	}
+	// Keep the CRD digest even without changes so Upgrade knows this Chart was checked.
+	digest, err := helmservice.CRDDigest(crds)
 	return UpgradeCRDResult{Names: names, Digest: digest}, crds, err
 }
 
-func upgradeCRDsFromChart(ch *chart.Chart, assignments []string) (string, map[string]*unstructured.Unstructured, error) {
-	digest, err := helmservice.ChartDigest(ch)
-	if err != nil {
-		return "", nil, err
-	}
+func upgradeCRDsFromChart(ch *chart.Chart, assignments []string) (map[string]*unstructured.Unstructured, error) {
 	if err := helmservice.ProcessChartDependencies(ch, assignments, nil); err != nil {
-		return "", nil, err
+		return nil, err
 	}
-	crds, err := helmservice.ChartCRDs(ch)
-	return digest, crds, err
+	return helmservice.ChartCRDs(ch)
 }
 
 // CheckUpgradeCRDs resolves the same remote artifact that installation uses.
