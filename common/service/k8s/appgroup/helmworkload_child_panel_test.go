@@ -16,6 +16,13 @@ func TestChildPanelAppGroupUsesRunningImageVersion(t *testing.T) {
 	if got := (&HelmWorkload{}).releaseToAppGroup(installed).Spec.Version; got != "1.1.109" {
 		t.Fatalf("child panel version = %q", got)
 	}
+	installed.Config = map[string]interface{}{
+		"childPanel": map[string]interface{}{"enabled": true},
+		"image":      map[string]interface{}{"tag": "1.1.111"},
+	}
+	if got := (&HelmWorkload{}).releaseToAppGroup(installed).Spec.Version; got != "1.1.111" {
+		t.Fatalf("child panel image.tag version = %q", got)
+	}
 	installed.Config = nil
 	if got := (&HelmWorkload{}).releaseToAppGroup(installed).Spec.Version; got != "1.1.110" {
 		t.Fatalf("regular panel version = %q", got)

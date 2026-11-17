@@ -944,3 +944,11 @@
 ## 2026-11-17 子面板复用 9090 LoadBalancer 入口
 
 - `k8s-offline` Chart 在子面板模式下也创建既有的 LoadBalancer Service，将 9090 转发到面板 Deployment 的 8000 端口。此前子面板模式跳过该 Service，CKM 泛域名入口连接 K3s 节点时没有 9090 监听并返回 502；现在主面板与子面板复用同一套 LB 模板和端口约定。影响模块：离线 Chart 子面板网络入口。验证：Helm 主面板与子面板模式渲染。
+
+## 2026-11-17 容器打包镜像推送完成后正常退出
+
+- 容器 rootfs 改为边读取边压缩上传，不再同时把未压缩 tar 和压缩层缓存在内存；持续消费镜像仓库推送进度直到通道关闭，客户端断开后也继续排空进度，避免进度写满缓冲区使请求永久卡住。此前打包较大容器会耗尽 K3k Server 内存并拖慢子集群 API，首个上传对象完成或客户端断开也可能触发死锁。影响模块：容器 rootfs 打包及本地镜像仓库推送。验证：定向测试与 218 子面板真实容器打包。
+- 用户信息接口改从 User CRD 读取并兼容原有 ServiceAccount 元数据响应格式，同时过滤密码哈希。此前移除子集群代理路径的重构重新直接查询登录用户名对应的 ServiceAccount，OIDC 子集群已迁移到共享执行账号后会因 `console-*` ServiceAccount 不存在而返回 500；兼容转换还会把历史 `password` annotation 返回给浏览器。现在登录用户信息不再依赖同名 ServiceAccount，也不暴露密码哈希。影响模块：认证用户信息。验证：认证包测试与 218 子面板 OIDC 会话。
+- 子面板 AppGroup 版本同步在旧的 `childPanel.imageTag` 不存在时读取统一 Chart 的 `image.tag`，使 AppGroup 自身状态与实际运行镜像一致。此前复用 `k8s-offline` Chart 后仍只读取已移除的专用字段，更新镜像后 AppGroup 会继续显示旧版本。影响模块：AppGroup Helm release 同步。验证：AppGroup 定向测试与 218 子面板版本收敛。
+- 启用子面板 WebDAV 与文件权限 UID/GID 映射分支测试，确保 Sysbox 子集群直接使用容器内 ID，不套用宿主 user namespace 映射。影响模块：WebDAV 与文件权限测试。验证：应用控制器定向测试。
+- 增加子面板 webhook 规则测试，确保统一 Chart 下子面板不会监听宿主专用的 Deployment、DaemonSet、StatefulSet、Service 和 ConfigMap。影响模块：webhook 测试。验证：webhook 定向测试。
