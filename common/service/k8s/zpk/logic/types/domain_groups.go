@@ -114,21 +114,13 @@ func PrepareDomainGroups(manifest Manifest, option *InstallOption, legacyHost st
 			return fmt.Errorf("泛域名自动 HTTPS 需要已验证的 DNS 配置")
 		}
 		if binding.Param != DefaultDomainGroup {
-			value := ""
-			if host != "" {
-				scheme := "http://"
-				if binding.AutoSSL {
-					scheme = "https://"
-				}
-				value = scheme + host
-			}
 			filtered := option.EnvKv[:0]
 			for _, item := range option.EnvKv {
 				if item.Name != binding.Param {
 					filtered = append(filtered, item)
 				}
 			}
-			option.EnvKv = append(filtered, EnvKv{Name: binding.Param, Value: value})
+			option.EnvKv = append(filtered, EnvKv{Name: binding.Param, Value: host})
 		}
 		resolved = append(resolved, binding)
 	}

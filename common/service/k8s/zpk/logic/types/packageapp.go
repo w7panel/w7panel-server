@@ -582,15 +582,7 @@ func (p *PackageApp) DomainGroupValues() map[string]string {
 		values[prefix+"host"] = binding.Host
 		values[prefix+"dnsProfileId"] = binding.DNSProfileID
 		values[prefix+"autoSSL"] = strconv.FormatBool(binding.AutoSSL)
-		value := ""
-		if binding.Host != "" {
-			scheme := "http://"
-			if binding.AutoSSL {
-				scheme = "https://"
-			}
-			value = scheme + binding.Host
-		}
-		values[binding.Param] = value
+		values[binding.Param] = binding.Host
 	}
 
 	return values

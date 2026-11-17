@@ -49,10 +49,10 @@ func TestHelmSetAssignmentsIncludeDomainGroups(t *testing.T) {
 		DomainGroups: []types.DomainBinding{{Param: "DOMAIN_URL", Host: "app.example.com", AutoSSL: true}},
 	}}
 	assignments := helmSetAssignments(root, "", nil, false)
-	if !strings.Contains(strings.Join(assignments, " "), "DOMAIN_URL=https://app.example.com") {
+	if !strings.Contains(strings.Join(assignments, " "), "DOMAIN_URL=app.example.com") {
 		t.Fatalf("domain group missing from CRD check values: %v", assignments)
 	}
-	if !strings.Contains(fillHelmSet(root, "", nil, false), "--set 'DOMAIN_URL=https://app.example.com'") {
+	if !strings.Contains(fillHelmSet(root, "", nil, false), "--set 'DOMAIN_URL=app.example.com'") {
 		t.Fatal("domain group missing from install Job values")
 	}
 }
