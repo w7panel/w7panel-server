@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-17 子集群按宿主模式拆分面板与节点代理
+
+- 子集群 Deployment 统一运行 AppGroup、BuildImage、Higress、Site、Kubernetes controller-runtime 和 webhook，DaemonSet 只保留节点终端、文件、containerd 与本地镜像仓库能力；避免同一控制器在两个 Pod 中并发调谐。镜像构建 Job 改用 Chart 实际创建的 `w7panel-offline` ServiceAccount，升级 Job 在新 webhook 就绪后清理旧 Agent webhook。Chart 版本升级为 `1.1.113`。验证：Helm lint、普通与子集群模式渲染、Go 定向测试。
+
 ## 2026-11-17 子集群升级脚本改由 Job 执行
 
 - 子集群模式由离线 Chart 的升级 Job 单次执行 `k3k-agent-upgrade.sh`，DaemonSet 不再为每个节点通过 init container 重复执行集群级 CRD、Higress、cert-manager 和初始化操作；普通面板升级 Job 仍执行 `upgrade.sh`。Chart 版本升级为 `1.1.112`。验证：Helm lint、普通与子集群模式渲染。

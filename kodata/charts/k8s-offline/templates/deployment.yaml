@@ -78,45 +78,12 @@ spec:
             value: {{ .Values.childPanel.syncToken | quote }}
           - name: CKM_SYNC_ENABLED
             value: {{ .Values.childPanel.syncEnabled | quote }}
-          - name: SERVICE_ACCOUNT_NAME
-            value: {{ .Values.childPanel.k3kName | quote }}
-          - name: HELM_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          - name: RELEASE_NAME_SUFFIX
-            value: {{ .Release.Name | quote }}
-          - name: DEPLOYMENT_NAME
-            value: {{ include "helm.fullname" . | quote }}
-          - name: APP_WATCH
-            value: "true"
-          - name: HIGRESS_WATCH
-            value: "true"
-          - name: K8S_WATCH
-            value: "true"
-          - name: SITE_ENABLED
-            value: "true"
-          - name: STATIC_DOWN_ENABLED
-            value: "true"
-          - name: BUILDIMGAGE_ENABLED
-            value: "true"
-          - name: MICROAPP_PATH
-            value: /data/microapp
-          - name: ARTIFACT_ALLOWED_HOSTS
-            value: {{ join "," .Values.artifact.allowedHosts | quote }}
-          - name: LOG_LEVEL
-            value: {{ .Values.log.level | quote }}
-          - name: TZ
-            value: {{ .Values.timezone | quote }}
-          - name: POD_IP
-            valueFrom:
-              fieldRef:
-                fieldPath: status.podIP
-          - name: WEBHOOK_ENABLED
-            value: "false"
-          - name: WEBHOOK_CERT_MANAGER_ENABLED
-            value: "false"
+          - name: UPGRADE_ENABLE
+            value: {{ .Values.childPanel.upgradeEnabled | quote }}
           {{- else }}
+          - name: W7PANEL_AUTH_MODE
+            value: "panel"
+          {{- end }}
           - name: ARTIFACT_ALLOWED_HOSTS
             value: {{ join "," .Values.artifact.allowedHosts | quote }}
           # - name: GOGC
@@ -135,8 +102,6 @@ spec:
             value: {{ .Values.controller.appWatch | quote }}  
           - name: HIGRESS_WATCH
             value: "true"     
-          - name: W7PANEL_AUTH_MODE
-            value: "panel"  
           - name: MCP_K8S_WRITE_ENABLED
             value: {{ .Values.mcp.writeEnabled | quote }}
           - name: GPUSTACK_WATCH
@@ -170,7 +135,11 @@ spec:
           - name: WEBHOOK_ENABLED
             value: {{ .Values.webhook.enabled | quote }} 
           - name: WEBHOOK_CERT_MANAGER_ENABLED
+            {{- if .Values.childPanel.enabled }}
+            value: "false"
+            {{- else }}
             value: {{ .Values.webhook.certManager.enabled | quote }}
+            {{- end }}
           - name: WEBHOOK_CERT_MANAGER_CERTIFICATE_NAME
             value: {{ default (printf "%s-webhook-tls" (include "helm.fullname" .)) .Values.webhook.certManager.certificate.name | quote }}
           - name: STATIC_DOWN_ENABLED
@@ -181,7 +150,6 @@ spec:
             value: {{ .Values.timezone | quote }} 
           - name: PRIVATEDNS_ENABLED
             value: {{ .Values.privatedns.enabled | quote }} 
-          {{- end }}
           - name: HELM_VERSION
             value: {{ .Values.image.tag | default .Chart.AppVersion | quote }}
           - name: IMAGE_REPO
@@ -199,18 +167,15 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
-            {{- if not .Values.childPanel.enabled }}
             - name: webhook
               containerPort: 9443
               protocol: TCP
-            {{- end }}
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- if not .Values.childPanel.enabled }}
           volumeMounts:
           {{- if .Values.storage.enabled }}
           - name: data
@@ -219,13 +184,11 @@ spec:
           {{- end }}
           - name: microapp-cache
             mountPath: /data/microapp
-          {{- if and .Values.webhook.enabled .Values.webhook.certManager.enabled }}
+          {{- if and (not .Values.childPanel.enabled) .Values.webhook.enabled .Values.webhook.certManager.enabled }}
           - name: webhook-cert
             mountPath: /tmp/k8s-webhook-server/serving-certs
             readOnly: true
           {{- end }}
-          {{- end }}
-      {{- if not .Values.childPanel.enabled }}
       volumes:
       - name: microapp-cache
         hostPath:
@@ -236,12 +199,11 @@ spec:
         persistentVolumeClaim:
           claimName: {{ include "helm.fullname" . }}
       {{- end }}
-      {{- if and .Values.webhook.enabled .Values.webhook.certManager.enabled }}
+      {{- if and (not .Values.childPanel.enabled) .Values.webhook.enabled .Values.webhook.certManager.enabled }}
       - name: webhook-cert
         secret:
           secretName: {{ printf "%s-webhook-tls" (include "helm.fullname" .) | quote }}
           optional: false
-      {{- end }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

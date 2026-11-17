@@ -13,12 +13,6 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
-    {{- if .Values.childPanel.enabled }}
-    - port: 9443
-      targetPort: webhook
-      protocol: TCP
-      name: https
-    {{- end }}
   selector:
     app: {{ include "helm.fullname" . }}-agent
     {{- with .Values.daemonset.podLabels }}

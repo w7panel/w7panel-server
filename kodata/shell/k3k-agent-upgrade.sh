@@ -228,6 +228,24 @@ EOF
 # w7panel sitemanager-upgrade --version=1.0.25 --identifie=w7_sitemanager --is-agent=true
 # add k3sconfigs/config
 
+if [[ -n "${DEPLOYMENT_NAME:-}" ]]; then
+  echo "等待面板 Deployment 和新 webhook 就绪"
+  kubectl rollout status deployment/"${DEPLOYMENT_NAME}" --timeout=300s || exit 1
+  for _ in $(seq 1 60); do
+    if kubectl get mutatingwebhookconfiguration "${DEPLOYMENT_NAME}-webhook" >/dev/null 2>&1 && \
+       kubectl get mutatingwebhookconfiguration "${DEPLOYMENT_NAME}-crd-webhook" >/dev/null 2>&1; then
+      break
+    fi
+    sleep 2
+  done
+  kubectl get mutatingwebhookconfiguration "${DEPLOYMENT_NAME}-webhook" >/dev/null 2>&1 || exit 1
+  kubectl get mutatingwebhookconfiguration "${DEPLOYMENT_NAME}-crd-webhook" >/dev/null 2>&1 || exit 1
+  kubectl delete mutatingwebhookconfiguration \
+    "${DEPLOYMENT_NAME}-agent-webhook" \
+    "${DEPLOYMENT_NAME}-agent-crd-webhook" \
+    --ignore-not-found
+fi
+
 kubectl get jobs -n default -o json \
   | jq -r '.items[]
     | select(

@@ -11,11 +11,9 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
-    {{- if not .Values.childPanel.enabled }}
     - port: 9443
       targetPort: webhook
       protocol: TCP
       name: https
-    {{- end }}
   selector:
     {{- include "helm.selectorLabels" . | nindent 4 }}
