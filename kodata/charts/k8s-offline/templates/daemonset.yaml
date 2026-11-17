@@ -67,15 +67,6 @@ spec:
         effect: NoSchedule   
       - key: node.kubernetes.io/storage
         effect: NoSchedule       
-      {{- if .Values.childPanel.enabled }}
-      initContainers:
-        - name: w7panel-agent-init
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: Always
-          command: ["sh", "-c", "${KO_DATA_PATH}/shell/k3k-agent-upgrade.sh"]
-          env:
-            {{- include "helm.childAgentEnv" . | nindent 10 }}
-      {{- end }}
       containers:
         - name: k8s-offline-ds
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"

@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-17 子集群升级脚本改由 Job 执行
+
+- 子集群模式由离线 Chart 的升级 Job 单次执行 `k3k-agent-upgrade.sh`，DaemonSet 不再为每个节点通过 init container 重复执行集群级 CRD、Higress、cert-manager 和初始化操作；普通面板升级 Job 仍执行 `upgrade.sh`。Chart 版本升级为 `1.1.112`。验证：Helm lint、普通与子集群模式渲染。
+
 ## 2026-11-17 子集群复用 Deployment 与 DaemonSet
 
 - 离线 Chart 的子集群模式直接复用现有 Deployment、DaemonSet、Service 和 RBAC 模板，不再接收 `childPanel.resources` 资源数组；固定 release 创建 `w7panel-offline` 面板和 `w7panel-offline-agent` 节点代理。Deployment 不再挂载节点目录或 containerd socket，本机 kubeconfig 与 `registries.yaml` 操作改经主节点 Agent 执行；DaemonSet 保留特权、K3s 配置、containerd socket、runtime 挂载、升级 init container 和 webhook 端口。此前只有 Agent DaemonSet 同时承担面板入口与节点操作，Agent 异常会导致整个面板不可用；现在面板与节点能力分别运行。Chart 版本升级为 `1.1.111`。验证：Helm lint、普通与子集群模式渲染、Go 定向测试。
