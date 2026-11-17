@@ -55,7 +55,7 @@ func (c HelmCmd) Configure(cmd *cobra.Command) {
 	cmd.Flags().StringArrayVar(&helmOp.set, "set", []string{}, "set参数")
 	cmd.Flags().StringArrayVar(&helmOp.setJson, "set-json", []string{}, "set-json参数")
 	cmd.Flags().StringVar(&helmOp.zipUrl, "zipUrl", "", "zip包地址")
-	cmd.Flags().StringVar(&helmOp.chartApprovalDigest, "chartApprovalDigest", "", "已确认的 Chart 摘要")
+	cmd.Flags().StringVar(&helmOp.chartApprovalDigest, "chartApprovalDigest", "", "已确认的 CRD 摘要")
 	cmd.Flags().BoolVar(&helmOp.atomic, "atomic", false, "原子安装")
 	cmd.Flags().StringToStringVar(&helmOp.annotations, "anno", map[string]string{}, "annotations参数")
 	cmd.Flags().StringToStringVar(&helmOp.labels, "labels", map[string]string{}, "labels参数")
@@ -83,11 +83,6 @@ func (c HelmCmd) Handle(cmd *cobra.Command, args []string) {
 	chart, err := logic.LocateChartByHelmZpk(helmOp.repository, helmOp.chartName, helmOp.zipUrl, helmOp.version)
 	if err != nil {
 		slog.Error("locate chart error", "error", err)
-		os.Exit(1)
-		return
-	}
-	if err := verifyChartApproval(chart, helmOp.chartApprovalDigest); err != nil {
-		slog.Error("chart approval error", "error", err)
 		os.Exit(1)
 		return
 	}
@@ -122,6 +117,11 @@ func (c HelmCmd) Handle(cmd *cobra.Command, args []string) {
 			os.Exit(1)
 			return
 		}
+		if err := verifyCRDApproval(chart, helmOp.chartApprovalDigest); err != nil {
+			slog.Error("CRD approval error", "error", err)
+			os.Exit(1)
+			return
+		}
 	}
 
 	info, err := helmApi.Info(helmOp.releaseName, helmOp.namespace)
@@ -145,16 +145,20 @@ func (c HelmCmd) Handle(cmd *cobra.Command, args []string) {
 
 }
 
-func verifyChartApproval(chart *chart.Chart, digest string) error {
+func verifyCRDApproval(chart *chart.Chart, digest string) error {
 	if digest == "" {
 		return nil
 	}
-	actual, err := helmservice.ChartDigest(chart)
+	crds, err := helmservice.ChartCRDs(chart)
+	if err != nil {
+		return err
+	}
+	actual, err := helmservice.CRDDigest(crds)
 	if err != nil {
 		return err
 	}
 	if actual != digest {
-		return errors.New("Chart changed since CRD confirmation; check the upgrade again")
+		return errors.New("CRDs changed since confirmation; check the upgrade again")
 	}
 	return nil
 }

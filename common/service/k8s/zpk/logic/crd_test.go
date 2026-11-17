@@ -31,14 +31,14 @@ func TestUpgradeCRDsRespectDisabledSubchart(t *testing.T) {
 	if !strings.Contains(fillHelmSet(root, "", []string{"HELM_ATOMIC", "DOMAIN_URL"}, false), "--set 'child.enabled=false'") {
 		t.Fatal("install Job did not receive the dependency condition")
 	}
-	_, disabled, err := upgradeCRDsFromChart(disabledChart, assignments)
+	disabled, err := upgradeCRDsFromChart(disabledChart, assignments)
 	if err != nil || len(disabled) != 0 {
 		t.Fatalf("disabled subchart CRD was included: %v, %v", disabled, err)
 	}
 	if err := chartutil.ProcessDependenciesWithMerge(disabledChart, map[string]interface{}{"child": map[string]interface{}{"enabled": "false"}}); err != nil || len(disabledChart.CRDObjects()) != 0 {
 		t.Fatalf("Helm reintroduced a disabled subchart: %v, %v", disabledChart.CRDObjects(), err)
 	}
-	_, enabled, err := upgradeCRDsFromChart(makeChart(), []string{"child.enabled=true"})
+	enabled, err := upgradeCRDsFromChart(makeChart(), []string{"child.enabled=true"})
 	if err != nil || enabled["widgets.example.com"] == nil {
 		t.Fatalf("enabled subchart CRD was missing: %v, %v", enabled, err)
 	}
@@ -80,7 +80,7 @@ func TestRequireUpgradeCRDApproval(t *testing.T) {
 		t.Fatal(err)
 	}
 	result.Names = nil
-	if err := requireUpgradeCRDApproval(result, ""); err != nil {
+	if err := requireUpgradeCRDApproval(result, "stale"); err != nil {
 		t.Fatal(err)
 	}
 }

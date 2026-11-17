@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"golang.org/x/net/webdav"
 )
@@ -24,11 +25,22 @@ func (fs WebDAVFileSystem) OpenFile(ctx context.Context, name string, flag int, 
 		return nil, err
 	}
 	perm = parent.Mode().Perm()
+	created := false
+	if flag&os.O_CREATE != 0 {
+		_, statErr := fs.FileSystem.Stat(ctx, name)
+		created = os.IsNotExist(statErr)
+	}
 
 	file, err := fs.FileSystem.OpenFile(ctx, name, flag, perm)
 	if err != nil {
 		slog.Error("webdav OpenFile failed", "name", name, "flag", flag, "perm", perm, "error", err)
 		return nil, err
+	}
+	if created {
+		if err := fs.inheritOwnership(parent, name); err != nil {
+			_ = file.Close()
+			return nil, err
+		}
 	}
 	return NewWebDAVFileWithIDMapper(file, fs.dir, name, fs.idMapper), err
 }
@@ -38,7 +50,18 @@ func (fs WebDAVFileSystem) Mkdir(ctx context.Context, name string, perm os.FileM
 	if err != nil {
 		return err
 	}
-	return fs.FileSystem.Mkdir(ctx, name, parent.Mode().Perm())
+	if err := fs.FileSystem.Mkdir(ctx, name, parent.Mode().Perm()); err != nil {
+		return err
+	}
+	return fs.inheritOwnership(parent, name)
+}
+
+func (fs WebDAVFileSystem) inheritOwnership(parent os.FileInfo, name string) error {
+	stat, ok := parent.Sys().(*syscall.Stat_t)
+	if !ok {
+		return nil
+	}
+	return os.Chown(filepath.Join(fs.dir, strings.TrimPrefix(path.Clean("/"+name), "/")), int(stat.Uid), int(stat.Gid))
 }
 
 func (fs WebDAVFileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {

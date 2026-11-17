@@ -48,6 +48,9 @@ func (api *LicenseClient) GetLicense() (*License, error) {
 	if err == nil {
 		return license, nil
 	}
+	if helper.IsChildAgent() {
+		return nil, err
+	}
 	if !apierrors.IsNotFound(err) {
 		return nil, err
 	}
@@ -87,6 +90,9 @@ func (api *LicenseClient) getUserLicense() (*License, error) {
 		return nil, err
 	}
 	for i := range list.Items {
+		if helper.IsChildAgent() && list.Items[i].GetName() != os.Getenv("K3K_NAME") {
+			continue
+		}
 		spec, ok, err := userLicenseSpec(&list.Items[i])
 		if err != nil {
 			return nil, err
@@ -212,48 +218,77 @@ func (api *LicenseClient) setLicenseClean(license *License, cleanCert bool) erro
 }
 
 func (c *LicenseClient) CreateLicenseSite(userName string, ignoreExits bool) (*License, error) {
+	if helper.IsChildAgent() && (userName == "" || userName != os.Getenv("K3K_NAME")) {
+		return nil, fmt.Errorf("child license owner mismatch: %q", userName)
+	}
 	if !ignoreExits {
 		license, err := c.GetLicense()
 		if err == nil {
-			return license, err
+			return license, nil
+		}
+		if !apierrors.IsNotFound(err) {
+			return nil, err
 		}
 	}
 
-	clusterUniquId, err := c.sdk.GetClusterId()
-	if err != nil {
-		return nil, err
-	}
-
-	config, err := c.w7config.Get(userName)
-	if err != nil {
-		slog.Error("获取配置失败")
-		return nil, err
-	}
-	token := config.ThirdpartyCDToken
-	api := NewConsoleCdClient(token)
-	data := map[string]string{
-		"offlineUrl": config.OfflineUrl,
-		"sn":         clusterUniquId,
-	}
+	var token string
+	var data map[string]string
 	if helper.IsChildAgent() {
 		ckmName := os.Getenv("CKM_NAME")
-		// 域名必须唯一 先随机
+		if ckmName == "" {
+			return nil, errors.New("CKM_NAME is empty")
+		}
+		obj, err := c.sdk.DynamicClient().Resource(userv1alpha1.GVR).Get(c.sdk.Ctx, userName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		openID, _, err := unstructured.NestedString(obj.Object, "spec", "cloudOpenid")
+		if err != nil {
+			return nil, err
+		}
+		if openID == "" {
+			return nil, errors.New("child license owner OpenID is empty")
+		}
+		cdToken, err := OpenIdToCdToken(openID)
+		if err != nil {
+			return nil, err
+		}
+		if cdToken == nil || cdToken.Token == "" {
+			return nil, errors.New("child license CD token is empty")
+		}
+		token = cdToken.Token
+		siteID := helper.StringToMD5(ckmName + ":" + userName)
 		data = map[string]string{
-			"offlineUrl": "http://w7panel-" + ckmName + ".w7panel.cc",
-			"sn":         helper.RandomString(10),
+			"offlineUrl": "http://w7panel-" + siteID + ".w7panel.cc",
+			"sn":         siteID,
+		}
+	} else {
+		clusterUniquId, err := c.sdk.GetClusterId()
+		if err != nil {
+			return nil, err
+		}
+		config, err := c.w7config.Get(userName)
+		if err != nil {
+			slog.Error("获取配置失败", "err", err)
+			return nil, err
+		}
+		token = config.ThirdpartyCDToken
+		data = map[string]string{
+			"offlineUrl": config.OfflineUrl,
+			"sn":         clusterUniquId,
 		}
 	}
+	api := NewConsoleCdClient(token)
 	license, err := api.CreateLicenseSite(data)
 	if err != nil {
 		return nil, err
 	}
-	license.FounderSaName = userName //创始人账号
-	SetCurrentLicense(license)
-	// console.License = license
+	license.FounderSaName = userName
 	err = c.SetLicense(license)
 	if err != nil {
 		return nil, err
 	}
+	SetCurrentLicense(license)
 	return license, nil
 
 }

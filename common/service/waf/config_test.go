@@ -1,6 +1,7 @@
 package waf
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -86,33 +87,22 @@ SecRule REQUEST_URI "@streq /blocked" "id:941001,phase:1,deny"` + "\n" + strings
 	}
 }
 
-func TestSystemRuleOverridesAndCategoryPrecedence(t *testing.T) {
-	global := Policy{SystemRules: map[string]bool{"942100": false, "941100": false}}
-	overrides := &Policy{
-		Categories:  map[string]bool{"xss": false},
-		SystemRules: map[string]bool{"942100": true, "941100": false, "920100": false},
+func TestLegacySystemRulesAreDropped(t *testing.T) {
+	var policy Policy
+	if err := json.Unmarshal([]byte(`{"categories":{"xss":false},"systemRules":{"920100":false}}`), &policy); err != nil {
+		t.Fatal(err)
 	}
-	config, err := Compile(global, overrides, nil)
+	config, err := Compile(policy, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rules := config["secRules"].([]string)
-	want := []string{"SecRuleRemoveById 941000-941999", "SecRuleRemoveById 920100"}
-	if len(rules) != len(want) {
-		t.Fatalf("unexpected rules: %v", rules)
+	if len(rules) != 1 || rules[0] != "SecRuleRemoveById 941000-941999" {
+		t.Fatalf("old single-rule setting still affects output: %v", rules)
 	}
-	for index := range want {
-		if rules[index] != want[index] {
-			t.Fatalf("unexpected rules: %v", rules)
-		}
-	}
-}
-
-func TestRejectUnknownSystemRuleID(t *testing.T) {
-	for _, id := range []string{"foo", "9200000", "910001", "920999", "0920100"} {
-		if err := Validate(Policy{SystemRules: map[string]bool{id: false}}, nil); err == nil {
-			t.Fatalf("invalid system rule ID %q accepted", id)
-		}
+	encoded, err := json.Marshal(policy)
+	if err != nil || strings.Contains(string(encoded), "systemRules") {
+		t.Fatalf("old single-rule setting persisted: %s, %v", encoded, err)
 	}
 }
 
@@ -124,18 +114,6 @@ func TestCompileVisualChainedRule(t *testing.T) {
 	injected := rule + "\nSecRuleEngine Off"
 	if _, err := Compile(Policy{CustomRules: []Rule{{ID: 1000003, Rule: injected}}}, nil, nil); err == nil {
 		t.Fatal("non-SecRule directive accepted")
-	}
-}
-
-func TestCRSIndividualExclusionParsesInCoraza(t *testing.T) {
-	config, err := Compile(Policy{SystemRules: map[string]bool{"942100": false}}, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	directives := `SecRuleEngine On
-SecRule REQUEST_URI "@streq /blocked" "id:942100,phase:1,deny"` + "\n" + strings.Join(config["secRules"].([]string), "\n")
-	if _, err := coraza.NewWAF(coraza.NewWAFConfig().WithDirectives(directives)); err != nil {
-		t.Fatalf("individual CRS exclusion is invalid: %v", err)
 	}
 }
 
