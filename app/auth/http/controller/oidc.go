@@ -2,8 +2,10 @@ package controller
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/w7panel/w7panel/common/helper"
@@ -26,6 +28,13 @@ type authorizeCodeResponse struct {
 }
 
 func (o Oidc) Handle(ctx *gin.Context) {
+	started := time.Now()
+	if ctx.Request.URL.Path == "/panel-api/v1/oidc/token" {
+		slog.Info("oidc token request started")
+		defer func() {
+			slog.Info("oidc token request finished", "elapsed", time.Since(started), "status", ctx.Writer.Status())
+		}()
+	}
 	server, err := oidcservice.GetServer()
 	if err != nil || server == nil || !server.Enabled() {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "oidc disabled"})

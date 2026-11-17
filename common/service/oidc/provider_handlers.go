@@ -111,6 +111,7 @@ func (s *Server) Health(context.Context) error {
 }
 
 func (s *Server) setUserinfo(userinfo *zitadeloidc.UserInfo, subject string, scopes []string) error {
+	started := time.Now()
 	for _, scope := range scopes {
 		switch scope {
 		case zitadeloidc.ScopeOpenID:
@@ -128,6 +129,7 @@ func (s *Server) setUserinfo(userinfo *zitadeloidc.UserInfo, subject string, sco
 		lookupUser = lookupK3kUser
 	}
 	k3kuser, err := lookupUser(context.Background(), userinfo.Subject)
+	slog.Info("oidc token user loaded", "elapsed", time.Since(started), "err", err)
 	if err != nil {
 		return err
 	}
@@ -141,6 +143,7 @@ func (s *Server) setUserinfo(userinfo *zitadeloidc.UserInfo, subject string, sco
 	userinfo.AppendClaims("cloud_nickname", k3kuser.GetNickName())
 	if openId != "" {
 		result, err := console.GetCachedCloudAccessToken(openId)
+		slog.Info("oidc token cloud access token loaded", "elapsed", time.Since(started), "err", err)
 		if err != nil {
 			slog.Warn("failed to get passport token")
 		} else {
