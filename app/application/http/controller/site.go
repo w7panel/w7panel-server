@@ -1,9 +1,13 @@
 package controller
 
 import (
+	"context"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	stdhttp "net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -30,6 +34,15 @@ const registriesFilePath = "/etc/rancher/k3s/registries.yaml"
 
 func (self Site) GetRegistries(http *gin.Context) {
 	if helper.IsK3kVirtual() || helper.IsK3kShared() {
+		if !helper.IsAgent() {
+			data, err := readRegistriesFromAgent(http.Request.Context())
+			if err != nil {
+				self.JsonResponseWithError(http, err, 500)
+				return
+			}
+			http.String(200, string(data))
+			return
+		}
 		data, err := os.ReadFile(registriesFilePath)
 		if errors.Is(err, os.ErrNotExist) {
 			http.String(200, "")
@@ -74,6 +87,14 @@ func (self Site) SaveRegistries(http *gin.Context) {
 	}
 
 	if helper.IsK3kVirtual() || helper.IsK3kShared() {
+		if !helper.IsAgent() {
+			if err := writeRegistriesToAgent(http.Request.Context(), []byte(*request.Data)); err != nil {
+				self.JsonResponseWithError(http, err, 500)
+				return
+			}
+			http.Status(stdhttp.StatusNoContent)
+			return
+		}
 		if err := helper.WriteFileAtomic(registriesFilePath, []byte(*request.Data)); err != nil {
 			self.JsonResponseWithError(http, err, 500)
 			return
@@ -106,6 +127,32 @@ func (self Site) SaveRegistries(http *gin.Context) {
 		return
 	}
 	http.Status(stdhttp.StatusNoContent)
+}
+
+func readRegistriesFromAgent(ctx context.Context) ([]byte, error) {
+	sdk, pod, err := serverAgentPod(ctx)
+	if err != nil {
+		return nil, err
+	}
+	data, stderr, err := sdk.RunExecOutput(ctx, pod.Namespace, pod.Name, pod.Spec.Containers[0].Name, []string{"sh", "-c", "test ! -f " + registriesFilePath + " || cat " + registriesFilePath})
+	if err != nil {
+		return nil, fmt.Errorf("read registries from agent pod %q: %w (%s)", pod.Name, err, strings.TrimSpace(string(stderr)))
+	}
+	return data, nil
+}
+
+func writeRegistriesToAgent(ctx context.Context, data []byte) error {
+	sdk, pod, err := serverAgentPod(ctx)
+	if err != nil {
+		return err
+	}
+	encoded := base64.StdEncoding.EncodeToString(data)
+	command := "printf '%s' '" + encoded + "' | base64 -d > " + registriesFilePath + ".tmp && mv " + registriesFilePath + ".tmp " + registriesFilePath
+	_, stderr, err := sdk.RunExecOutput(ctx, pod.Namespace, pod.Name, pod.Spec.Containers[0].Name, []string{"sh", "-c", command})
+	if err != nil {
+		return fmt.Errorf("write registries through agent pod %q: %w (%s)", pod.Name, err, strings.TrimSpace(string(stderr)))
+	}
+	return nil
 }
 
 func (self Site) Beian(http *gin.Context) {

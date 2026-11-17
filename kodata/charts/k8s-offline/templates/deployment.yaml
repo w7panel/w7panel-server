@@ -1,4 +1,3 @@
-{{- if not .Values.childPanel.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -44,6 +43,80 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}{{ if .Values.image.digest }}@{{ .Values.image.digest }}{{ end }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env: 
+          {{- if .Values.childPanel.enabled }}
+          - name: IS_CHILD
+            value: "true"
+          - name: K3K_NAME
+            value: {{ required "childPanel.k3kName is required" .Values.childPanel.k3kName | quote }}
+          - name: K3K_NAMESPACE
+            value: {{ required "childPanel.k3kNamespace is required" .Values.childPanel.k3kNamespace | quote }}
+          - name: K3K_MODE
+            value: "virtual"
+          - name: CLUSTER_MODE
+            value: "virtual"
+          - name: CKM_NAME
+            value: {{ required "childPanel.ckmName is required" .Values.childPanel.ckmName | quote }}
+          - name: STORAGE_CLASS_NAME
+            value: {{ .Values.childPanel.storageClassName | quote }}
+          - name: MAIN_PANEL_URL
+            value: {{ .Values.childPanel.mainPanelURL | quote }}
+          - name: W7PANEL_AUTH_MODE
+            value: {{ .Values.childPanel.authMode | quote }}
+          - name: OIDC_PANEL_LOGIN_ENABLED
+            value: {{ .Values.childPanel.oidcLoginEnabled | quote }}
+          - name: OIDC_PANEL_LOGIN_DISCOVERY_URL
+            value: {{ .Values.childPanel.oidcDiscoveryURL | quote }}
+          - name: OIDC_PANEL_LOGIN_CLIENT_ID
+            value: {{ .Values.childPanel.oidcClientID | quote }}
+          - name: OIDC_PANEL_LOGIN_SCOPES
+            value: {{ .Values.childPanel.oidcScopes | quote }}
+          - name: CKM_SYNC_ENDPOINT
+            value: {{ .Values.childPanel.syncEndpoint | quote }}
+          - name: CKM_SYNC_PORT
+            value: {{ .Values.childPanel.syncPort | quote }}
+          - name: CKM_SYNC_TOKEN
+            value: {{ .Values.childPanel.syncToken | quote }}
+          - name: CKM_SYNC_ENABLED
+            value: {{ .Values.childPanel.syncEnabled | quote }}
+          - name: SERVICE_ACCOUNT_NAME
+            value: {{ .Values.childPanel.k3kName | quote }}
+          - name: HELM_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: RELEASE_NAME_SUFFIX
+            value: {{ .Release.Name | quote }}
+          - name: DEPLOYMENT_NAME
+            value: {{ include "helm.fullname" . | quote }}
+          - name: APP_WATCH
+            value: "true"
+          - name: HIGRESS_WATCH
+            value: "true"
+          - name: K8S_WATCH
+            value: "true"
+          - name: SITE_ENABLED
+            value: "true"
+          - name: STATIC_DOWN_ENABLED
+            value: "true"
+          - name: BUILDIMGAGE_ENABLED
+            value: "true"
+          - name: MICROAPP_PATH
+            value: /data/microapp
+          - name: ARTIFACT_ALLOWED_HOSTS
+            value: {{ join "," .Values.artifact.allowedHosts | quote }}
+          - name: LOG_LEVEL
+            value: {{ .Values.log.level | quote }}
+          - name: TZ
+            value: {{ .Values.timezone | quote }}
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: WEBHOOK_ENABLED
+            value: "false"
+          - name: WEBHOOK_CERT_MANAGER_ENABLED
+            value: "false"
+          {{- else }}
           - name: ARTIFACT_ALLOWED_HOSTS
             value: {{ join "," .Values.artifact.allowedHosts | quote }}
           # - name: GOGC
@@ -66,11 +139,6 @@ spec:
             value: "panel"  
           - name: MCP_K8S_WRITE_ENABLED
             value: {{ .Values.mcp.writeEnabled | quote }}
-          - name: PANEL_AUTH_SIGNING_KEY
-            valueFrom:
-              secretKeyRef:
-                name: {{ include "helm.panelAuthSecretName" . }}
-                key: signing-key
           - name: GPUSTACK_WATCH
             value: {{ .Values.gpustack.watch | quote }}      
           - name: MOCK_UPGRADE
@@ -79,8 +147,6 @@ spec:
             value: {{ .Values.longhorn.watch | quote }}     
           - name: DEPLOYMENT_NAME
             value: {{ include "helm.fullname" . }}   
-          - name: HELM_VERSION
-            value: {{ .Values.image.tag | default .Chart.AppVersion }}
           - name: MICROAPP_PATH
             value: /data/microapp
           - name: SITE_ENABLED
@@ -99,8 +165,6 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
-          - name: SVC_NAME
-            value: {{ include "helm.fullname" . }}
           - name: SVC_LB_CLASS
             value: {{ .Values.servicelb.loadBalancerClass | quote }}  
           - name: WEBHOOK_ENABLED
@@ -113,27 +177,40 @@ spec:
             value: {{ .Values.static.downEnabled | quote }} 
           - name: LOG_LEVEL
             value: {{ .Values.log.level | quote }}   
-          - name: IMAGE_REPO
-            value: {{ .Values.image.repository | quote }}    
           - name: TZ
             value: {{ .Values.timezone | quote }} 
           - name: PRIVATEDNS_ENABLED
             value: {{ .Values.privatedns.enabled | quote }} 
+          {{- end }}
+          - name: HELM_VERSION
+            value: {{ .Values.image.tag | default .Chart.AppVersion | quote }}
+          - name: IMAGE_REPO
+            value: {{ .Values.image.repository | quote }}
+          - name: SVC_NAME
+            value: {{ include "helm.fullname" . | quote }}
+          - name: PANEL_AUTH_SIGNING_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "helm.panelAuthSecretName" . }}
+                key: signing-key
           args:
           - server:start
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+            {{- if not .Values.childPanel.enabled }}
             - name: webhook
               containerPort: 9443
               protocol: TCP
+            {{- end }}
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{- if not .Values.childPanel.enabled }}
           volumeMounts:
           {{- if .Values.storage.enabled }}
           - name: data
@@ -147,6 +224,8 @@ spec:
             mountPath: /tmp/k8s-webhook-server/serving-certs
             readOnly: true
           {{- end }}
+          {{- end }}
+      {{- if not .Values.childPanel.enabled }}
       volumes:
       - name: microapp-cache
         hostPath:
@@ -163,6 +242,7 @@ spec:
           secretName: {{ printf "%s-webhook-tls" (include "helm.fullname" .) | quote }}
           optional: false
       {{- end }}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -175,5 +255,3 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-
-{{- end }}

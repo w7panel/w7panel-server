@@ -1,4 +1,3 @@
-{{- if not .Values.childPanel.enabled }}
 {{- if .Values.daemonset.create -}}
 apiVersion: v1
 kind: Service
@@ -14,10 +13,15 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    {{- if .Values.childPanel.enabled }}
+    - port: 9443
+      targetPort: webhook
+      protocol: TCP
+      name: https
+    {{- end }}
   selector:
     app: {{ include "helm.fullname" . }}-agent
     {{- with .Values.daemonset.podLabels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-{{- end }}
 {{- end }}

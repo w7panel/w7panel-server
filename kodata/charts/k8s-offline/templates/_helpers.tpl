@@ -95,6 +95,89 @@ Create the name of the service account to use
 {{- printf "%s-panel-auth" (include "helm.fullname" .) | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+{{- define "helm.childAgentEnv" -}}
+- name: IS_CHILD
+  value: "true"
+- name: K3K_NAME
+  value: {{ .Values.childPanel.k3kName | quote }}
+- name: K3K_NAMESPACE
+  value: {{ .Values.childPanel.k3kNamespace | quote }}
+- name: K3K_MODE
+  value: "virtual"
+- name: CLUSTER_MODE
+  value: "virtual"
+- name: CKM_NAME
+  value: {{ .Values.childPanel.ckmName | quote }}
+- name: STORAGE_CLASS_NAME
+  value: {{ .Values.childPanel.storageClassName | quote }}
+- name: MAIN_PANEL_URL
+  value: {{ .Values.childPanel.mainPanelURL | quote }}
+- name: W7PANEL_AUTH_MODE
+  value: {{ .Values.childPanel.authMode | quote }}
+- name: OIDC_PANEL_LOGIN_ENABLED
+  value: {{ .Values.childPanel.oidcLoginEnabled | quote }}
+- name: OIDC_PANEL_LOGIN_DISCOVERY_URL
+  value: {{ .Values.childPanel.oidcDiscoveryURL | quote }}
+- name: OIDC_PANEL_LOGIN_CLIENT_ID
+  value: {{ .Values.childPanel.oidcClientID | quote }}
+- name: OIDC_PANEL_LOGIN_SCOPES
+  value: {{ .Values.childPanel.oidcScopes | quote }}
+- name: CKM_SYNC_ENDPOINT
+  value: {{ .Values.childPanel.syncEndpoint | quote }}
+- name: CKM_SYNC_PORT
+  value: {{ .Values.childPanel.syncPort | quote }}
+- name: CKM_SYNC_TOKEN
+  value: {{ .Values.childPanel.syncToken | quote }}
+- name: CKM_SYNC_ENABLED
+  value: {{ .Values.childPanel.syncEnabled | quote }}
+- name: UPGRADE_ENABLE
+  value: {{ .Values.childPanel.upgradeEnabled | quote }}
+- name: HELM_VERSION
+  value: {{ .Values.image.tag | default .Chart.AppVersion | quote }}
+- name: IMAGE_REPO
+  value: {{ .Values.image.repository | quote }}
+- name: SVC_NAME
+  value: {{ printf "%s-agent" (include "helm.fullname" .) | quote }}
+- name: SERVICE_ACCOUNT_NAME
+  value: {{ .Values.childPanel.k3kName | quote }}
+- name: PANEL_SERVICE_URL
+  value: {{ printf "http://%s.%s.svc:8000" (include "helm.fullname" .) .Release.Namespace | quote }}
+- name: K3S_RUNTIME_DIR
+  value: "/run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io"
+- name: NODE_IP
+  valueFrom:
+    fieldRef:
+      fieldPath: status.hostIP
+- name: POD_IP
+  valueFrom:
+    fieldRef:
+      fieldPath: status.podIP
+- name: NODE_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: spec.nodeName
+- name: TZ
+  value: {{ .Values.timezone | quote }}
+- name: WEBHOOK_ENABLED
+  value: "true"
+- name: WEBHOOK_CERT_MANAGER_ENABLED
+  value: "false"
+- name: APP_WATCH
+  value: "true"
+- name: HIGRESS_WATCH
+  value: "true"
+- name: K8S_WATCH
+  value: "true"
+- name: SITE_ENABLED
+  value: "true"
+- name: STATIC_DOWN_ENABLED
+  value: "true"
+- name: BUILDIMGAGE_ENABLED
+  value: "true"
+- name: K3S_REGISTRY_ENABLED
+  value: "true"
+{{- end }}
+
 {{- define "helm.vmkConfig" -}}
 global:
     scrape_interval: 30s

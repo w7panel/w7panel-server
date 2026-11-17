@@ -41,10 +41,7 @@ func ContainerAddr() string {
 	if helper.IsLocalMock() || helper.IsDebug() {
 		return debugcontainerdAddr
 	}
-	// CKM child panels run the same registry daemon but are identified with
-	// IS_CHILD rather than IS_AGENT. Both pods mount the k3s containerd socket
-	// at the same path.
-	if helper.IsAgent() || helper.IsChildAgent() {
+	if helper.IsAgent() {
 		return k3sContainerAddr
 	}
 

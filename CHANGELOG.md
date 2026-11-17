@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-17 子集群复用 Deployment 与 DaemonSet
+
+- 离线 Chart 的子集群模式直接复用现有 Deployment、DaemonSet、Service 和 RBAC 模板，不再接收 `childPanel.resources` 资源数组；固定 release 创建 `w7panel-offline` 面板和 `w7panel-offline-agent` 节点代理。Deployment 不再挂载节点目录或 containerd socket，本机 kubeconfig 与 `registries.yaml` 操作改经主节点 Agent 执行；DaemonSet 保留特权、K3s 配置、containerd socket、runtime 挂载、升级 init container 和 webhook 端口。此前只有 Agent DaemonSet 同时承担面板入口与节点操作，Agent 异常会导致整个面板不可用；现在面板与节点能力分别运行。Chart 版本升级为 `1.1.111`。验证：Helm lint、普通与子集群模式渲染、Go 定向测试。
+
 ## 2026-11-16 子集群面板 HelmChart 模式
 
 - 离线 Chart 增加子集群模式，仅渲染 CKM 提供的面板 DaemonSet 和配套资源，保留 `IS_CHILD=true`；普通安装仍渲染原 Deployment 和代理 DaemonSet。Chart 包版本与子面板镜像版本分开，迁移现有实例时保留运行版本，AppGroup 按实际镜像版本提示升级；现有手动升级入口经 CKM 同步接口更新 HelmChart 配置，避免普通 ZPK 升级丢失子集群配置。影响模块：离线 Chart、ZPK 安装逻辑、AppGroup 版本同步。验证：Helm lint、两种模式渲染及 Go 定向测试；安装逻辑整包测试被现有 `TestLoadPackage` 空指针中断。

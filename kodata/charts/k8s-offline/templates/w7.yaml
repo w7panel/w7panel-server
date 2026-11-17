@@ -1,4 +1,3 @@
-{{- if not .Values.childPanel.enabled }}
 # 写一个serviceaccount name admin
 apiVersion: v1
 kind: ServiceAccount
@@ -55,5 +54,3 @@ metadata:
   labels:
     {{- include "helm.labels" . | nindent 4 }}
 type: kubernetes.io/service-account-token  
-
-{{- end }}

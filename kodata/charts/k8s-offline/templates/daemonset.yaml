@@ -1,4 +1,3 @@
-{{- if not .Values.childPanel.enabled }}
 {{- if .Values.daemonset.create -}}
 apiVersion: apps/v1
 kind: DaemonSet
@@ -29,6 +28,20 @@ spec:
       hostIPC: true
       serviceAccountName: {{ .Release.Name }}
       volumes:
+      {{- if .Values.childPanel.enabled }}
+      - name: k3s-config
+        hostPath:
+          path: /etc/rancher/k3s
+          type: Directory
+      - name: cd-socket
+        hostPath:
+          path: /run/k3s/containerd/containerd.sock
+          type: Socket
+      - name: cd-runtime
+        hostPath:
+          path: /run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io
+          type: Directory
+      {{- else }}
       - name: host-root
         hostPath:
           path: /
@@ -47,12 +60,22 @@ spec:
         hostPath:
           path: {{ .Values.k3s.runtimedir }}
           type: Directory         
+      {{- end }}
       tolerations:
       - 
         operator: Exists
         effect: NoSchedule   
       - key: node.kubernetes.io/storage
         effect: NoSchedule       
+      {{- if .Values.childPanel.enabled }}
+      initContainers:
+        - name: w7panel-agent-init
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: Always
+          command: ["sh", "-c", "${KO_DATA_PATH}/shell/k3k-agent-upgrade.sh"]
+          env:
+            {{- include "helm.childAgentEnv" . | nindent 10 }}
+      {{- end }}
       containers:
         - name: k8s-offline-ds
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -61,8 +84,25 @@ spec:
           - containerPort: 8000
             protocol: TCP
             name: http
+          {{- if .Values.childPanel.enabled }}
+          - containerPort: 9443
+            protocol: TCP
+            name: webhook
+          {{- end }}
             # readOnly: true
           env: 
+          {{- if .Values.childPanel.enabled }}
+          {{- include "helm.childAgentEnv" . | nindent 10 }}
+          - name: IS_AGENT
+            value: "true"
+          - name: K3S_SHELL_ENABLED
+            value: "true"
+          - name: PANEL_AUTH_SIGNING_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "helm.panelAuthSecretName" . }}
+                key: signing-key
+          {{- else }}
           # - name: GOGC
           #   value: "10"
           - name: K3S_SHELL_ENABLED
@@ -96,6 +136,7 @@ spec:
                 fieldPath: spec.nodeName     
           - name: TZ
             value: {{ .Values.timezone | quote }} 
+          {{- end }}
           args:
             - server:start
           securityContext:
@@ -103,6 +144,15 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}  
           volumeMounts:
+            {{- if .Values.childPanel.enabled }}
+            - name: k3s-config
+              mountPath: /etc/rancher/k3s
+            - name: cd-socket
+              mountPath: /var/run/k3s/containerd/containerd.sock
+            - name: cd-runtime
+              mountPath: /run/k3s/containerd/io.containerd.runtime.v2.task/k8s.io
+              mountPropagation: HostToContainer
+            {{- else }}
             - name: cd-socket
               mountPath: /var/run/k3s/containerd
             # - name: cd-data
@@ -113,6 +163,5 @@ spec:
               mountPropagation: HostToContainer
             - name: host-root
               mountPath: /host  
-{{- end }}
-
+            {{- end }}
 {{- end }}
