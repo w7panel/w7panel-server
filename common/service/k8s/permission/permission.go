@@ -73,6 +73,7 @@ var founderMenu = []string{
 	"gateway/plugins/add",
 	"gateway/plugins/edit",
 	"gateway/plugins/delete",
+	"metrics",
 	"app/database",
 	"app/database/add",
 	"app/database/delete",

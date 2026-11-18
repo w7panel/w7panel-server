@@ -358,13 +358,14 @@ func TestApplyToServiceAccountBackfillsFounderDefaults(t *testing.T) {
 	}
 }
 
-func TestFounderFallbackIncludesGatewayPluginPermissions(t *testing.T) {
+func TestFounderFallbackIncludesGatewayPluginAndMetricsPermissions(t *testing.T) {
 	menu := MenuRules(founderFallback())
 	for _, want := range []string{
 		"gateway/plugins",
 		"gateway/plugins/add",
 		"gateway/plugins/edit",
 		"gateway/plugins/delete",
+		"metrics",
 	} {
 		found := false
 		for _, item := range menu {
