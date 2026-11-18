@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-18 子集群应用 LoadBalancer 使用 K3s ServiceLB
+
+- 普通 ZPK 生成应用 Chart 时，子集群的 LoadBalancer Service 不再写入 `io.cilium/node`，交由 K3s ServiceLB 分配地址；主集群保留原有 Cilium class，避免无 Cilium 的子集群 Service 长期 Pending。影响模块：ZPK Chart YAML 生成。验证：主集群与子集群定向 Go 测试。
+
 ## 2026-11-17 子集群按宿主模式拆分面板与节点代理
 
 - 子集群 Deployment 统一运行 AppGroup、BuildImage、Higress、Site、Kubernetes controller-runtime 和 webhook，DaemonSet 只保留节点终端、文件、containerd 与本地镜像仓库能力；避免同一控制器在两个 Pod 中并发调谐。镜像构建 Job 改用 Chart 实际创建的 `w7panel-offline` ServiceAccount，升级 Job 在新 webhook 就绪后清理旧 Agent webhook。Chart 版本升级为 `1.1.113`。验证：Helm lint、普通与子集群模式渲染、Go 定向测试。

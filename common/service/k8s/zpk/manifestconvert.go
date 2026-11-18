@@ -236,7 +236,6 @@ func ToService(manifest K8sResourceInterface) *corev1.Service {
 }
 
 func ToLoadBalancerService(manifest K8sResourceInterface) *corev1.Service {
-	lbClass := "io.cilium/node"
 	service := &corev1.Service{}
 	service.APIVersion = "v1"
 	service.Kind = "Service"
@@ -247,7 +246,10 @@ func ToLoadBalancerService(manifest K8sResourceInterface) *corev1.Service {
 	service.SetAnnotations(manifest.GetAnnotations())
 	service.Spec.Selector = manifest.GetMatchLabels()
 	service.Spec.Ports = manifest.GetServiceLbPort()
-	service.Spec.LoadBalancerClass = &lbClass
+	if !helper.IsChildAgent() {
+		lbClass := "io.cilium/node"
+		service.Spec.LoadBalancerClass = &lbClass
+	}
 	// service.Spec.
 	return service
 }
