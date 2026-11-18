@@ -34,10 +34,13 @@ func TestWAFConfigReadsExistingCRSSetting(t *testing.T) {
 
 func TestParseWAFLogsFiltersExactDomainAndStripsQuery(t *testing.T) {
 	data := []byte(`{"authority":"example.com","path":"/login?token=secret","response_code":403,"response_code_details":"waf","request_id":"12345678-1234-1234-1234-123456789012","start_time":"2026-11-12T00:00:00Z","x_forwarded_for":"192.0.2.1, 10.0.0.1"}` + "\n" +
+		`{"authority":"example.com","path":"/waf-e2e-20261118","response_code":"403","response_code_details":"via_wasm::higress-system.w7panel-pluginwaf::waf","request_id":"9f41bf39-f432-4dd7-acef-f0fc8ff095e4"}` + "\n" +
 		`{"authority":"other.example.com","path":"/","response_code_details":"waf","request_id":"other"}` + "\n" +
+		`{"authority":"example.com","path":"/other-plugin","response_code_details":"via_wasm::higress-system.other-plugin::waf","request_id":"other-plugin"}` + "\n" +
+		`{"authority":"example.com","path":"/other-reason","response_code_details":"via_wasm::higress-system.w7panel-pluginwaf::other","request_id":"other-reason"}` + "\n" +
 		`{"authority":"example.com","path":"/normal","response_code_details":"via_upstream","request_id":"normal"}` + "\n")
 	logs := parseWAFLogs(data, "example.com")
-	if len(logs) != 1 || logs[0].Path != "/login" || logs[0].ClientIP != "192.0.2.1" {
+	if len(logs) != 2 || logs[0].Path != "/login" || logs[0].ClientIP != "192.0.2.1" || logs[1].Key != "9f41bf39-f432-4dd7-acef-f0fc8ff095e4" {
 		t.Fatalf("unexpected WAF logs: %+v", logs)
 	}
 }

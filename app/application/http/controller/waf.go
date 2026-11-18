@@ -384,7 +384,7 @@ func parseWAFLogs(data []byte, domain string) []wafLog {
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 	for scanner.Scan() {
 		var row wafAccessLog
-		if json.Unmarshal(scanner.Bytes(), &row) != nil || row.ResponseCodeDetails != "waf" {
+		if json.Unmarshal(scanner.Bytes(), &row) != nil || (row.ResponseCodeDetails != "waf" && row.ResponseCodeDetails != "via_wasm::higress-system."+wafName+"::waf") {
 			continue
 		}
 		host := row.Authority

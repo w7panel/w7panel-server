@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-18 修复 WAF 防护日志为空
+
+- 兼容网关实际输出的 `via_wasm::higress-system.w7panel-pluginwaf::waf` 拦截标记，同时保留旧版 `waf` 标记；排除其他插件与域名的日志。影响模块：WAF 防护日志接口。验证：控制器定向 Go 测试。
+
 ## 2026-11-18 子集群应用 LoadBalancer 使用 K3s ServiceLB
 
 - 普通 ZPK 生成应用 Chart 时，子集群的 LoadBalancer Service 不再写入 `io.cilium/node`，交由 K3s ServiceLB 分配地址；主集群保留原有 Cilium class，避免无 Cilium 的子集群 Service 长期 Pending。影响模块：ZPK Chart YAML 生成。验证：主集群与子集群定向 Go 测试。
