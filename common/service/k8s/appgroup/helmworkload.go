@@ -220,7 +220,11 @@ func childPanelImageVersion(release *release.Release) string {
 	if !ok || panel["enabled"] != true {
 		return ""
 	}
-	version, _ := panel["imageTag"].(string)
+	if version, _ := panel["imageTag"].(string); version != "" {
+		return version
+	}
+	image, _ := release.Config["image"].(map[string]interface{})
+	version, _ := image["tag"].(string)
 	return version
 }
 

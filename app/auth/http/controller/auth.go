@@ -33,9 +33,7 @@ type Auth struct {
 	controller.Abstract
 }
 
-// UserInfo exposes the current cluster-local service-account metadata.  It
-// intentionally does not derive a remote cluster, CVM, or K3k namespace from
-// the bearer token.
+// UserInfo exposes the current cluster-local user metadata.
 func (self Auth) UserInfo(http *gin.Context) {
 	username := http.GetString("username")
 	if username == "" {
@@ -43,17 +41,18 @@ func (self Auth) UserInfo(http *gin.Context) {
 		return
 	}
 	sdk := k8s.NewK8sClient().Sdk
-	sa, err := sdk.ClientSet.CoreV1().ServiceAccounts(sdk.GetNamespace()).Get(http.Request.Context(), username, metav1.GetOptions{})
+	user, err := userservice.Get(http.Request.Context(), sdk, username)
 	if err != nil {
 		self.JsonResponseWithServerError(http, err)
 		return
 	}
+	sa := userservice.ToServiceAccount(user, sdk.GetNamespace())
 	result := map[string]string{"w7.cc/username": sa.Name}
 	for key, value := range sa.GetLabels() {
 		result[key] = value
 	}
 	for key, value := range sa.GetAnnotations() {
-		if key == "w7.cc/domain-white-list" {
+		if key == "password" || key == "w7.cc/domain-white-list" {
 			continue
 		}
 		result[key] = value

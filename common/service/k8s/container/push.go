@@ -1,7 +1,6 @@
 package container
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -12,13 +11,12 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/namespaces"
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/compression"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	"github.com/google/go-containerregistry/pkg/v1/stream"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/w7panel/w7panel/common/helper"
@@ -55,10 +53,10 @@ func ExportAndPushContainerImageByRootfs(containedClient *containerd.Client, con
 		}
 	}
 
-	rootfsBuffer := bytes.NewBuffer(nil)
-	if err := ExportContainerRootfs(containedClient, containerId, rootfsBuffer); err != nil {
-		return fmt.Errorf("export container rootfs failed: %w", err)
-	}
+	rootfsReader, rootfsWriter := io.Pipe()
+	go func() {
+		rootfsWriter.CloseWithError(ExportContainerRootfs(containedClient, containerId, rootfsWriter))
+	}()
 
 	slog.Info("push image to container registry", "registry", pushReq.RegisterDomain, "image", pushReq.ImageName)
 
@@ -71,13 +69,9 @@ func ExportAndPushContainerImageByRootfs(containedClient *containerd.Client, con
 		}
 	}
 
-	layer, err := tarball.LayerFromOpener(bufferOpener(rootfsBuffer.Bytes()),
-		tarball.WithCompression(compression.GZip),
-		tarball.WithCompressedCaching,
-		tarball.WithMediaType(types.OCILayer),
-	)
-	if err != nil {
-		return fmt.Errorf("load rootfs layer tar failed: %w", err)
+	layer := stream.NewLayer(rootfsReader, stream.WithMediaType(types.OCILayer))
+	if err := remote.WriteLayer(targetRef.Context(), layer, remoteOptions(pushReq)...); err != nil {
+		return fmt.Errorf("push rootfs layer failed: %w", err)
 	}
 
 	image, err := mutate.Append(empty.Image, mutate.Addendum{
@@ -168,26 +162,21 @@ func inheritRuntimeConfigFromOCI(dst *v1.ConfigFile, src *ocispec.Image) {
 
 func remotePushProgress(progress func(Progress) error) remote.Option {
 	updates := make(chan v1.Update, 128)
-	go func() {
-		for update := range updates {
-			info := fmt.Sprintf("push image status: complete: %d, total: %d, err: %s", update.Complete, update.Total, update.Error)
-
-			if progress != nil {
-				err := progress(Progress{
-					Content: info,
-				})
-				if err != nil {
-					return
-				}
-			}
-
-			if update.Total > 0 && update.Complete >= update.Total {
-				return
-			}
-		}
-	}()
+	go consumeRemotePushProgress(updates, progress)
 
 	return remote.WithProgress(updates)
+}
+
+func consumeRemotePushProgress(updates <-chan v1.Update, progress func(Progress) error) {
+	callbackFailed := false
+	for update := range updates {
+		info := fmt.Sprintf("push image status: complete: %d, total: %d, err: %s", update.Complete, update.Total, update.Error)
+		if progress != nil && !callbackFailed {
+			if err := progress(Progress{Content: info}); err != nil {
+				callbackFailed = true
+			}
+		}
+	}
 }
 
 func remoteOptions(req PushRequest) []remote.Option {
@@ -205,10 +194,4 @@ func remoteOptions(req PushRequest) []remote.Option {
 	}
 
 	return append(defaultOptions, remote.WithAuthFromKeychain(authn.DefaultKeychain))
-}
-
-func bufferOpener(content []byte) tarball.Opener {
-	return func() (io.ReadCloser, error) {
-		return io.NopCloser(bytes.NewReader(content)), nil
-	}
 }
