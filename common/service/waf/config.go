@@ -30,6 +30,7 @@ type Rule struct {
 
 type Policy struct {
 	UseCRS            *bool           `json:"useCRS,omitempty"`
+	RequestBodyAccess *bool           `json:"requestBodyAccess,omitempty"`
 	Categories        map[string]bool `json:"categories"`
 	CustomRules       []Rule          `json:"customRules"`
 	DisabledGlobalIDs []int           `json:"disabledGlobalIds,omitempty"`
@@ -138,6 +139,13 @@ func Compile(global Policy, overrides *Policy, legacy []string) (map[string]inte
 			}
 		}
 		secRules = append(secRules, rule)
+	}
+	requestBodyAccess := global.RequestBodyAccess != nil && *global.RequestBodyAccess
+	if overrides != nil && overrides.RequestBodyAccess != nil {
+		requestBodyAccess = *overrides.RequestBodyAccess
+	}
+	if requestBodyAccess {
+		secRules = append(secRules, "SecRequestBodyAccess On")
 	}
 	for _, id := range ids {
 		if value, ok := active[id]; ok && !value {

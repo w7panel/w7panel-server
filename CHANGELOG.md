@@ -956,3 +956,7 @@
 - 子面板 AppGroup 版本同步在旧的 `childPanel.imageTag` 不存在时读取统一 Chart 的 `image.tag`，使 AppGroup 自身状态与实际运行镜像一致。此前复用 `k8s-offline` Chart 后仍只读取已移除的专用字段，更新镜像后 AppGroup 会继续显示旧版本。影响模块：AppGroup Helm release 同步。验证：AppGroup 定向测试与 218 子面板版本收敛。
 - 启用子面板 WebDAV 与文件权限 UID/GID 映射分支测试，确保 Sysbox 子集群直接使用容器内 ID，不套用宿主 user namespace 映射。影响模块：WebDAV 与文件权限测试。验证：应用控制器定向测试。
 - 增加子面板 webhook 规则测试，确保统一 Chart 下子面板不会监听宿主专用的 Deployment、DaemonSet、StatefulSet、Service 和 ConfigMap。影响模块：webhook 测试。验证：webhook 定向测试。
+
+## 2026-11-18 WAF 自定义规则请求体检查
+
+- WAF 策略增加可继承的请求体检查开关；开启后在自定义 SecRule 前下发 `SecRequestBodyAccess On`，让 `REQUEST_BODY` 和 POST 表单规则生效，默认保持关闭。影响模块：WAF 配置编译与域名覆盖。验证：WAF 定向测试、前端测试与构建。

@@ -137,3 +137,39 @@ func TestChainedRuleRequiresBothConditions(t *testing.T) {
 		}
 	}
 }
+
+func TestRequestBodyAccessEnablesBodyRulesAndDomainOverride(t *testing.T) {
+	on, off := true, false
+	rule := `SecRule REQUEST_BODY "@contains c7e4" "id:1000007,phase:2,deny,status:403"`
+	global := Policy{RequestBodyAccess: &on, CustomRules: []Rule{{ID: 1000007, Rule: rule}}}
+	config, err := Compile(global, nil, []string{"SecRuleEngine On"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rules := config["secRules"].([]string)
+	if len(rules) != 3 || rules[1] != "SecRequestBodyAccess On" || rules[2] != rule {
+		t.Fatalf("request body directive must precede custom rules: %v", rules)
+	}
+	engine, err := coraza.NewWAF(coraza.NewWAFConfig().WithDirectives(strings.Join(rules, "\n")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx := engine.NewTransaction()
+	defer tx.Close()
+	tx.ProcessURI("/body", "POST", "HTTP/1.1")
+	tx.AddRequestHeader("Content-Type", "application/x-www-form-urlencoded")
+	tx.AddRequestHeader("Content-Length", "13")
+	if tx.ProcessRequestHeaders() != nil {
+		t.Fatal("body rule blocked before reading the body")
+	}
+	if _, _, err := tx.WriteRequestBody([]byte("wafprobe=c7e4")); err != nil {
+		t.Fatal(err)
+	}
+	if intervention, err := tx.ProcessRequestBody(); err != nil || intervention == nil || intervention.Status != 403 {
+		t.Fatalf("body rule did not block: intervention=%v, err=%v", intervention, err)
+	}
+	config, err = Compile(global, &Policy{RequestBodyAccess: &off}, nil)
+	if err != nil || strings.Contains(strings.Join(config["secRules"].([]string), "\n"), "SecRequestBodyAccess On") {
+		t.Fatalf("domain override did not disable custom body access: config=%v, err=%v", config, err)
+	}
+}
