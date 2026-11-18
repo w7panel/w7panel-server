@@ -341,13 +341,9 @@ func (p *ManifestPackage) ReplaceCommon(host string) {
 	params := p.Manifest.Platform.StartParams
 	for i, param := range params {
 		valuesTxt := param.ValuesText
-		if p.Manifest.IsHelm() {
-			valuesTxt = strings.ReplaceAll(valuesTxt, "%DOMAIN_URL%", host)
-			valuesTxt = strings.ReplaceAll(valuesTxt, "%DOMAIN_SSL_URL%", host)
-		} else {
-			valuesTxt = strings.ReplaceAll(valuesTxt, "%DOMAIN_URL%", "http://"+host)
-			valuesTxt = strings.ReplaceAll(valuesTxt, "%DOMAIN_SSL_URL%", "https://"+host)
-		}
+		// Artifact start parameters are Helm values, regardless of application type.
+		valuesTxt = strings.ReplaceAll(valuesTxt, "%DOMAIN_URL%", host)
+		valuesTxt = strings.ReplaceAll(valuesTxt, "%DOMAIN_SSL_URL%", host)
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%DOMAIN_HOST%", host)
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%RANDOM%", helper.RandomString(10))
 		valuesTxt = strings.ReplaceAll(valuesTxt, "%LARAVEL_APP_KEY%", helper.LaravelAppKey(32))
