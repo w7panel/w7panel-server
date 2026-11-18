@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -79,6 +80,7 @@ func (LoginOIDC) Start(ctx *gin.Context) {
 }
 
 func (LoginOIDC) Callback(ctx *gin.Context) {
+	started := time.Now()
 	if !helper.IsChildAgent() {
 		oidcLoginError(ctx, errors.New("OIDC 登录仅支持子集群"))
 		return
@@ -111,11 +113,13 @@ func (LoginOIDC) Callback(ctx *gin.Context) {
 		return
 	}
 	relyingParty, err := oidcLoginProvider(ctx, loginState.nonce)
+	slog.Info("oidc callback provider ready", "elapsed", time.Since(started), "err", err)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "error": err.Error()})
 		return
 	}
 	tokens, err := rp.CodeExchange[*zitadeloidc.IDTokenClaims](ctx.Request.Context(), params.Code, relyingParty, rp.WithCodeVerifier(loginState.verifier))
+	slog.Info("oidc callback code exchanged", "elapsed", time.Since(started), "err", err)
 	if err != nil || tokens.IDTokenClaims == nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "error": "OIDC 授权码或身份令牌校验失败"})
 		return
@@ -138,12 +142,14 @@ func (LoginOIDC) Callback(ctx *gin.Context) {
 	}
 	sdk := k8s.NewK8sClient().Sdk
 	user, err := userservice.Get(ctx.Request.Context(), sdk, username)
+	slog.Info("oidc callback user loaded", "elapsed", time.Since(started), "err", err)
 	if err != nil {
 		ctx.JSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden, "error": "OIDC 用户未在当前集群创建"})
 		return
 	}
 	ctx.Set("login_auth_request_id", loginState.authRequestID)
 	Auth{}.dologinUser(sdk, user, ctx, "oidc", "")
+	slog.Info("oidc callback response written", "elapsed", time.Since(started))
 }
 
 func oidcFounder(claims map[string]any) bool {

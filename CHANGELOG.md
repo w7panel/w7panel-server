@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2026-11-17 子集群按宿主模式拆分面板与节点代理
+
+- 子集群 Deployment 统一运行 AppGroup、BuildImage、Higress、Site、Kubernetes controller-runtime 和 webhook，DaemonSet 只保留节点终端、文件、containerd 与本地镜像仓库能力；避免同一控制器在两个 Pod 中并发调谐。镜像构建 Job 改用 Chart 实际创建的 `w7panel-offline` ServiceAccount，升级 Job 在新 webhook 就绪后清理旧 Agent webhook。Chart 版本升级为 `1.1.113`。验证：Helm lint、普通与子集群模式渲染、Go 定向测试。
+
+## 2026-11-17 子集群升级脚本改由 Job 执行
+
+- 子集群模式由离线 Chart 的升级 Job 单次执行 `k3k-agent-upgrade.sh`，DaemonSet 不再为每个节点通过 init container 重复执行集群级 CRD、Higress、cert-manager 和初始化操作；普通面板升级 Job 仍执行 `upgrade.sh`。Chart 版本升级为 `1.1.112`。验证：Helm lint、普通与子集群模式渲染。
+
+## 2026-11-17 子集群复用 Deployment 与 DaemonSet
+
+- 离线 Chart 的子集群模式直接复用现有 Deployment、DaemonSet、Service 和 RBAC 模板，不再接收 `childPanel.resources` 资源数组；固定 release 创建 `w7panel-offline` 面板和 `w7panel-offline-agent` 节点代理。Deployment 不再挂载节点目录或 containerd socket，本机 kubeconfig 与 `registries.yaml` 操作改经主节点 Agent 执行；DaemonSet 保留特权、K3s 配置、containerd socket、runtime 挂载、升级 init container 和 webhook 端口。此前只有 Agent DaemonSet 同时承担面板入口与节点操作，Agent 异常会导致整个面板不可用；现在面板与节点能力分别运行。Chart 版本升级为 `1.1.111`。验证：Helm lint、普通与子集群模式渲染、Go 定向测试。
+
+## 2026-11-16 子集群面板 HelmChart 模式
+
+- 离线 Chart 增加子集群模式，仅渲染 CKM 提供的面板 DaemonSet 和配套资源，保留 `IS_CHILD=true`；普通安装仍渲染原 Deployment 和代理 DaemonSet。Chart 包版本与子面板镜像版本分开，迁移现有实例时保留运行版本，AppGroup 按实际镜像版本提示升级；现有手动升级入口经 CKM 同步接口更新 HelmChart 配置，避免普通 ZPK 升级丢失子集群配置。影响模块：离线 Chart、ZPK 安装逻辑、AppGroup 版本同步。验证：Helm lint、两种模式渲染及 Go 定向测试；安装逻辑整包测试被现有 `TestLoadPackage` 空指针中断。
+
 ## 2026-11-16 修复一次性 Chart 地址重复下载
 
 - 无 CRD 变化时也保留预检摘要，避免升级阶段再次下载已续取的一次性 Chart 地址。影响模块：ZPK 升级、Helm Job。验证：定向测试通过。
@@ -920,3 +936,11 @@
 ## 2026-11-16 暂停 WAF 单条 CRS 规则配置
 
 - 移除单条 CRS 规则策略字段及编译入口；读取旧数据时忽略该字段，保存全局策略时同时清理域名覆盖中的旧字段。类别和自定义规则保持可用。影响模块：WAF 配置接口与编译。验证：WAF 服务及控制器测试。
+
+## 2026-11-17 OIDC 登录超时诊断
+
+- 在子面板 OIDC 回调和主面板身份令牌生成过程中记录阶段耗时，不记录授权码和令牌。影响模块：OIDC 登录。验证：构建诊断镜像并在 218 子面板复现。
+
+## 2026-11-17 子面板复用 9090 LoadBalancer 入口
+
+- `k8s-offline` Chart 在子面板模式下也创建既有的 LoadBalancer Service，将 9090 转发到面板 Deployment 的 8000 端口。此前子面板模式跳过该 Service，CKM 泛域名入口连接 K3s 节点时没有 9090 监听并返回 502；现在主面板与子面板复用同一套 LB 模板和端口约定。影响模块：离线 Chart 子面板网络入口。验证：Helm 主面板与子面板模式渲染。

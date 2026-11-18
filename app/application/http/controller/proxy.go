@@ -326,7 +326,7 @@ func (self Proxy) HelmIndex(ctx *gin.Context) {
 func (self Proxy) Kubeconfig(gin *gin.Context) {
 	var config []byte
 	var err error
-	if helper.IsChildAgent() {
+	if helper.IsAgent() {
 		config, err = helper.ReadK3sKubeconfig()
 	} else {
 		config, err = readKubeconfigFromAgent(gin.Request.Context())
@@ -340,10 +340,27 @@ func (self Proxy) Kubeconfig(gin *gin.Context) {
 }
 
 func readKubeconfigFromAgent(ctx context.Context) ([]byte, error) {
+	sdk, pod, err := serverAgentPod(ctx)
+	if err != nil {
+		return nil, err
+	}
+	readCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	config, stderr, err := sdk.RunExecOutput(readCtx, pod.Namespace, pod.Name, pod.Spec.Containers[0].Name, []string{"cat", helper.K3sKubeconfigPath()})
+	if err != nil {
+		return nil, fmt.Errorf("read kubeconfig from agent pod %q: %w (%s)", pod.Name, err, strings.TrimSpace(string(stderr)))
+	}
+	if len(config) == 0 {
+		return nil, fmt.Errorf("agent pod %q returned an empty kubeconfig", pod.Name)
+	}
+	return config, nil
+}
+
+func serverAgentPod(ctx context.Context) (*k8s.Sdk, *corev1.Pod, error) {
 	sdk := k8s.NewK8sClient().Sdk
 	nodes, err := sdk.ClientSet.CoreV1().Nodes().List(ctx, v1.ListOptions{})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var lastErr error
 	for _, node := range nodes.Items {
@@ -371,22 +388,12 @@ func readKubeconfigFromAgent(ctx context.Context) ([]byte, error) {
 			lastErr = fmt.Errorf("agent pod on server node %q is not running", node.Name)
 			continue
 		}
-		readCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-		config, stderr, err := sdk.RunExecOutput(readCtx, pod.Namespace, pod.Name, pod.Spec.Containers[0].Name, []string{"cat", helper.K3sKubeconfigPath()})
-		cancel()
-		if err == nil && len(config) > 0 {
-			return config, nil
-		}
-		if err != nil {
-			lastErr = fmt.Errorf("read kubeconfig from agent pod %q: %w (%s)", pod.Name, err, strings.TrimSpace(string(stderr)))
-		} else {
-			lastErr = fmt.Errorf("agent pod %q returned an empty kubeconfig", pod.Name)
-		}
+		return sdk, pod, nil
 	}
 	if lastErr != nil {
-		return nil, lastErr
+		return nil, nil, lastErr
 	}
-	return nil, fmt.Errorf("no server node with a readable agent pod was found")
+	return nil, nil, fmt.Errorf("no server node with a running agent pod was found")
 }
 
 func (self Proxy) parseName(name string) (string, string, string) {

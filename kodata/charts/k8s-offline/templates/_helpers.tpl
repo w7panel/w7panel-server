@@ -95,6 +95,43 @@ Create the name of the service account to use
 {{- printf "%s-panel-auth" (include "helm.fullname" .) | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+{{- define "helm.childAgentEnv" -}}
+- name: IS_CHILD
+  value: "true"
+- name: K3K_NAME
+  value: {{ .Values.childPanel.k3kName | quote }}
+- name: K3K_NAMESPACE
+  value: {{ .Values.childPanel.k3kNamespace | quote }}
+- name: K3K_MODE
+  value: "virtual"
+- name: CLUSTER_MODE
+  value: "virtual"
+- name: CKM_NAME
+  value: {{ .Values.childPanel.ckmName | quote }}
+- name: STORAGE_CLASS_NAME
+  value: {{ .Values.childPanel.storageClassName | quote }}
+- name: MAIN_PANEL_URL
+  value: {{ .Values.childPanel.mainPanelURL | quote }}
+- name: W7PANEL_AUTH_MODE
+  value: {{ .Values.childPanel.authMode | quote }}
+- name: OIDC_PANEL_LOGIN_ENABLED
+  value: {{ .Values.childPanel.oidcLoginEnabled | quote }}
+- name: OIDC_PANEL_LOGIN_DISCOVERY_URL
+  value: {{ .Values.childPanel.oidcDiscoveryURL | quote }}
+- name: OIDC_PANEL_LOGIN_CLIENT_ID
+  value: {{ .Values.childPanel.oidcClientID | quote }}
+- name: OIDC_PANEL_LOGIN_SCOPES
+  value: {{ .Values.childPanel.oidcScopes | quote }}
+- name: CKM_SYNC_ENDPOINT
+  value: {{ .Values.childPanel.syncEndpoint | quote }}
+- name: CKM_SYNC_PORT
+  value: {{ .Values.childPanel.syncPort | quote }}
+- name: CKM_SYNC_TOKEN
+  value: {{ .Values.childPanel.syncToken | quote }}
+- name: CKM_SYNC_ENABLED
+  value: {{ .Values.childPanel.syncEnabled | quote }}
+{{- end }}
+
 {{- define "helm.vmkConfig" -}}
 global:
     scrape_interval: 30s

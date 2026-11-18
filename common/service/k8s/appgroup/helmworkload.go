@@ -73,11 +73,17 @@ func (h *HelmWorkload) Sync() error {
 	}
 	//release 有的，但是appgroup 没有的，需要创建appgroup
 	for _, release := range releases {
-		_, ok := groups[release.Name]
+		group, ok := groups[release.Name]
 		if !ok {
 			err := h.handleWorkload(release)
 			if err != nil {
 				slog.Warn("handle helm workload error", "err", err)
+			}
+		} else if version := childPanelImageVersion(release); version != "" && group.Spec.Version != version && release.Info.Status == "deployed" {
+			updated := group.DeepCopy()
+			updated.Spec.Version = version
+			if _, err := h.groupApi.UpdateAppGroup(updated.Namespace, updated); err != nil {
+				slog.Warn("sync child panel version", "err", err)
 			}
 		}
 	}
@@ -159,6 +165,9 @@ func (h *HelmWorkload) releaseToAppGroup(release *release.Release) *v1alpha1Type
 	if ok4 {
 		version = zpkVersion
 	}
+	if childVersion := childPanelImageVersion(release); childVersion != "" {
+		version = childVersion
+	}
 	// if version == "" {
 	// 	version = release.Chart.Metadata.Version
 	// }
@@ -204,6 +213,15 @@ func (h *HelmWorkload) releaseToAppGroup(release *release.Release) *v1alpha1Type
 		group.Annotations[zpktypes.HELM_OFFICAL_APP] = val5
 	}
 	return group
+}
+
+func childPanelImageVersion(release *release.Release) string {
+	panel, ok := release.Config["childPanel"].(map[string]interface{})
+	if !ok || panel["enabled"] != true {
+		return ""
+	}
+	version, _ := panel["imageTag"].(string)
+	return version
 }
 
 // for _, r := range releases {

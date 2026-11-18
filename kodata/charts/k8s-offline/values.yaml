@@ -4,6 +4,23 @@
 
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
+childPanel:
+  enabled: false
+  k3kName: ""
+  k3kNamespace: ""
+  ckmName: ""
+  storageClassName: ""
+  mainPanelURL: ""
+  authMode: ""
+  oidcLoginEnabled: ""
+  oidcDiscoveryURL: ""
+  oidcClientID: ""
+  oidcScopes: ""
+  syncEndpoint: ""
+  syncPort: "8001"
+  syncToken: ""
+  syncEnabled: ""
+  upgradeEnabled: false
 apiServerUrl: ""
 tmpCdToken: ""
 
