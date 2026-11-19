@@ -39,6 +39,7 @@ spec:
   - gateway/plugins/edit
   - gateway/plugins/delete
   - gateway/dns
+  - metrics
   - app/database
   - app/database/add
   - app/database/delete
