@@ -14,6 +14,35 @@ func TestK3sFirstNodeWithTokenKeepsTlsSan(t *testing.T) {
 	}
 }
 
+func TestK3sModeReadsConfigYaml(t *testing.T) {
+	for _, config := range []string{"cluster-init: true\n", "cluster-init: 'true'\n"} {
+		k3s := NewK3sConfig(`["server"]`, `{}`, []byte(config))
+		if !k3s.IsClusterInit() || k3s.GetMode() != "2" {
+			t.Fatalf("cluster-init in %q was not recognized", config)
+		}
+	}
+	k3s := NewK3sConfig(`["server"]`, `{}`, []byte("cluster-init: false\n"))
+	if k3s.IsClusterInit() || k3s.GetMode() != "1" {
+		t.Fatal("SQLite config was recognized as embedded etcd")
+	}
+	if NewK3sConfig(`["server"]`, `{}`, []byte("cluster-init: [\n")).configErr == nil {
+		t.Fatal("invalid config.yaml must stop datastore changes")
+	}
+}
+
+func TestNodeRefreshPreservesDatastoreChange(t *testing.T) {
+	observed := map[string]string{"k3s.cluster-init": "false", "k3s.mode": "1"}
+	preserveK3sConfigIntent(observed, map[string]string{"k3s.cluster-init": "true"})
+	if observed["k3s.cluster-init"] != "true" || observed["k3s.mode"] != "1" {
+		t.Fatalf("node refresh changed pending datastore intent: %#v", observed)
+	}
+	observed = map[string]string{"k3s.cluster-init": "true", "k3s.mode": "2"}
+	preserveK3sConfigIntent(observed, map[string]string{"k3s.cluster-init": "false"})
+	if observed["k3s.cluster-init"] != "true" {
+		t.Fatal("node refresh hid cluster-init enabled in config.yaml")
+	}
+}
+
 func TestSetK3sTlsSan(t *testing.T) {
 	for _, tt := range []struct {
 		name  string

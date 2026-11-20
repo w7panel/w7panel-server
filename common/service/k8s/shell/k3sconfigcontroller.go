@@ -1,8 +1,10 @@
 package shell
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -252,7 +254,10 @@ func (s *k3sConfigController) initK3sConfig(node *v1.Node) error {
 		return nil
 	}
 	k8sClient := s.Sdk
-	k3sConfig := NewK3sConfigByNode(node)
+	k3sConfig, err := NewK3sConfigByNode(node)
+	if err != nil {
+		return err
+	}
 	//多个server 只有一个节点会执行初始化操作
 	if k3sConfig.IsOutDB() && k3sConfig.DbUrl() == "" {
 		return nil
@@ -273,14 +278,13 @@ func (s *k3sConfigController) initK3sConfig(node *v1.Node) error {
 		return err
 	}
 	if err == nil {
-		for _, key := range []string{"k3s.tls-san", "k3s.tls-san.disabled", "k3s.public-tls-san"} {
-			if value, ok := k8s.ConfigCRDData(existing)[key]; ok {
-				data[key] = value
-			}
-		}
+		preserveK3sConfigIntent(data, k8s.ConfigCRDData(existing))
 	}
 	labels := map[string]string{
 		"data-hash": "init",
+	}
+	if existing != nil && existing.GetLabels()["data-hash"] != "" {
+		labels["data-hash"] = existing.GetLabels()["data-hash"]
 	}
 	slog.Debug("k3s config", "data", data)
 	config := k8s.NewConfigCRD("K3sConfig", k8s.K3sConfigName, labels, data)
@@ -291,6 +295,17 @@ func (s *k3sConfigController) initK3sConfig(node *v1.Node) error {
 	}
 	return nil
 
+}
+
+func preserveK3sConfigIntent(observed, existing map[string]string) {
+	for _, key := range []string{"k3s.datastore-endpoint", "k3s.tls-san", "k3s.tls-san.disabled", "k3s.public-tls-san"} {
+		if value, ok := existing[key]; ok {
+			observed[key] = value
+		}
+	}
+	if existing["k3s.cluster-init"] == "true" {
+		observed["k3s.cluster-init"] = "true"
+	}
 }
 
 func (s *k3sConfigController) WatchK3sRegistry() cache.SharedIndexInformer {
@@ -333,7 +348,9 @@ func (s *k3sConfigController) WatchK3sConfigInformer() cache.SharedIndexInformer
 				return
 			}
 			slog.Debug("update k3s config")
-			s.handleK3sConfig(k8s.ConfigCRDData(config), nodes)
+			if err := s.handleK3sConfig(k8s.ConfigCRDData(config), nodes); err != nil {
+				slog.Error("apply k3s config failed", "err", err)
+			}
 		},
 	})
 	return informer
@@ -367,10 +384,16 @@ func (s *k3sConfigController) handleK3sConfig(data map[string]string, nodes *v1.
 
 	for _, node := range nodes.Items {
 		if isControlNode(&node) {
-			k3sConfig := NewK3sConfigByNode(&node)
+			k3sConfig, err := NewK3sConfigByNode(&node)
+			if err != nil {
+				return err
+			}
+			if data["k3s.cluster-init"] == "true" && data["k3s.datastore-endpoint"] != "" {
+				return fmt.Errorf("embedded etcd and external datastore cannot be enabled together")
+			}
 			change := false
 			if data["k3s.cluster-init"] == "true" && !k3sConfig.IsClusterInit() {
-				k3sConfig.k3sConfigYaml["cluster-init"] = "true"
+				k3sConfig.k3sConfigYaml["cluster-init"] = true
 				change = true
 			}
 			if data["k3s.datastore-endpoint"] != "" && !k3sConfig.IsOutDB() && !k3sConfig.IsClusterInit() {
@@ -468,12 +491,24 @@ func (s *k3sConfigController) restartNode(nodes *v1.Node) error {
 	time.AfterFunc(time.Second*15, func() {
 		slog.Debug("restart k3s")
 		oslock.Lock()
+		defer oslock.Unlock()
+		if helper.IsChildAgent() {
+			// The child K3s server runs in its node container, which has no systemd service.
+			output, err := exec.Command("nsenter", "-t", "1", "--mount", "--pid", "--root", "--", "/usr/local/bin/k3s.sh", "restart", "k3s").CombinedOutput()
+			if err != nil {
+				slog.Error("restart child k3s failed", "err", err, "output", string(output))
+				return
+			}
+			os.Exit(0)
+		}
 		shell := "systemctl restart k3s"
 		if !isControlNode(nodes) {
 			shell = "systemctl restart k3s-agent"
 		}
-		helper.RunNcenterBinsh(shell)
-		defer oslock.Unlock()
+		if _, err := helper.RunNcenterBinsh(shell); err != nil {
+			slog.Error("restart k3s failed", "err", err)
+			return
+		}
 		os.Exit(0)
 	})
 	return nil

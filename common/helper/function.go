@@ -195,8 +195,14 @@ func ReadRegistries() ([]byte, error) {
 }
 
 func ReadK3sConfig() ([]byte, error) {
-	filePath := "/host/etc/rancher/k3s/config.yaml"
-	return os.ReadFile(filePath)
+	return os.ReadFile(K3sConfigPath())
+}
+
+func K3sConfigPath() string {
+	if IsChildAgent() {
+		return "/etc/rancher/k3s/config.yaml"
+	}
+	return "/host/etc/rancher/k3s/config.yaml"
 }
 
 func ReadK3sKubeconfig() ([]byte, error) {
@@ -211,9 +217,7 @@ func K3sKubeconfigPath() string {
 }
 
 func WriteK3sConfig(config []byte) error {
-	filePath := "/host/etc/rancher/k3s/config.yaml"
-	// return os.WriteFile(filePath, config, 0644)
-	return WriteFileAtomic(filePath, config)
+	return WriteFileAtomic(K3sConfigPath(), config)
 }
 
 func NvidiaReadyFileExites() bool {

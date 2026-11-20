@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-20 子集群 SQLite 切换内嵌 etcd
+
+- 子集群 Agent 改用已挂载的 `/etc/rancher/k3s/config.yaml` 读写 K3s 配置，识别 YAML 布尔值 `cluster-init`，并在配置写入后通过 CKM 容器的 `k3s.sh` 重启；主集群继续使用原有路径和 systemd。此前子集群固定访问不存在的 `/host` 路径且只按启动参数判断模式，提交切换后无法正确生效。节点事件现在保留已提交的切换意图，避免重启期间被旧观测值覆盖。影响模块：K3s 配置控制器、子集群 Agent。验证：定向 Go 测试、差异检查；隔离 K3s 容器从 SQLite 切换到 etcd 后测试 ConfigMap 保留，再次重启仍可读取。未在真实 CKM 上联调。
+
 ## 2026-11-20 子集群 Agent 参数精简
 
 - 离线 Chart 升至 1.1.114，移除子集群工作负载中未使用的认证模式、集群模式、存储类和同步端口参数，OIDC 登录参数只传给升级 Job；子集群同步固定启用，面板升级提示由子集群 HelmChart 配置且默认关闭。影响模块：子面板 Deployment、Agent DaemonSet、Chart values。验证：Helm lint、普通与子集群模板渲染、环境变量核对及差异检查通过。

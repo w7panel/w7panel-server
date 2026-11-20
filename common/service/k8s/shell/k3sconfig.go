@@ -3,6 +3,7 @@ package shell
 import (
 	"encoding/json"
 	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/w7panel/w7panel/common/helper"
@@ -15,6 +16,7 @@ type k3sConfig struct {
 	k3sNodeEnv    map[string]string
 	k3sConfigYaml map[string]interface{}
 	k3sRawConfig  string
+	configErr     error
 }
 
 func NewK3sConfig(k3sNodeArgs string, k3sNodeEnv string, k3sConfigYaml []byte) *k3sConfig {
@@ -25,6 +27,7 @@ func NewK3sConfig(k3sNodeArgs string, k3sNodeEnv string, k3sConfigYaml []byte) *
 	if err != nil {
 		slog.Error("unmarshal k3s config error", "err", err)
 		instance.k3sConfigYaml = make(map[string]interface{})
+		instance.configErr = err
 	}
 	if (instance.k3sConfigYaml == nil) || len(instance.k3sConfigYaml) == 0 {
 		instance.k3sConfigYaml = make(map[string]interface{})
@@ -33,16 +36,15 @@ func NewK3sConfig(k3sNodeArgs string, k3sNodeEnv string, k3sConfigYaml []byte) *
 	return instance
 }
 
-func NewK3sConfigByNode(node *v1.Node) *k3sConfig {
+func NewK3sConfigByNode(node *v1.Node) (*k3sConfig, error) {
 	args := node.Annotations["k3s.io/node-args"]
 	nodeEnv := node.Annotations["k3s.io/node-env"]
 	config, err := helper.ReadK3sConfig()
-	if err != nil {
-		slog.Error("read k3s config error", "err", err)
-		config = []byte{}
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
 	}
 	k3sConfig := NewK3sConfig(args, nodeEnv, config)
-	return k3sConfig
+	return k3sConfig, k3sConfig.configErr
 }
 
 func (self *k3sConfig) IsClusterInit() bool {
@@ -52,7 +54,7 @@ func (self *k3sConfig) IsClusterInit() bool {
 			return true
 		}
 	}
-	return false
+	return self.IsClusterInitInYaml()
 }
 
 func (self *k3sConfig) IsNotFirstNode() bool {
@@ -115,8 +117,10 @@ func (self *k3sConfig) IsOutDbInYaml() bool {
 }
 
 func (self *k3sConfig) IsClusterInitInYaml() bool {
-	clusterInit, ok := self.k3sConfigYaml["cluster-init"]
-	if ok {
+	switch clusterInit := self.k3sConfigYaml["cluster-init"].(type) {
+	case bool:
+		return clusterInit
+	case string:
 		return clusterInit == "true"
 	}
 	return false
