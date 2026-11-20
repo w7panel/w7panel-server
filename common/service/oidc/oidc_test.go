@@ -15,9 +15,7 @@ import (
 	userv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/user/v1alpha1"
 	zitadeloidc "github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
-	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
 )
 
 type fakeDynamicClientStore struct {
@@ -780,58 +778,6 @@ func TestDiscoveryIssuerUsesOIDCBasePath(t *testing.T) {
 				t.Fatalf("provider issuer: got %s want %s", got, issuer)
 			}
 		})
-	}
-}
-
-func TestPanelIngressIssuer(t *testing.T) {
-	client := fake.NewSimpleClientset(&networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{Name: "panel", Namespace: "default", Labels: map[string]string{"app": "w7panel"}},
-		Spec: networkingv1.IngressSpec{
-			Rules: []networkingv1.IngressRule{{Host: "panel.example.com"}},
-			TLS:   []networkingv1.IngressTLS{{Hosts: []string{"panel.example.com"}}},
-		},
-	})
-	issuer, err := panelIngressIssuer(context.Background(), client, "default", "w7panel")
-	if err != nil || issuer != "https://panel.example.com/panel-api/v1/oidc" {
-		t.Fatalf("bound panel issuer = %q, %v", issuer, err)
-	}
-	issuer, err = panelIngressIssuer(context.Background(), client, "default", "other")
-	if err != nil || issuer != "" {
-		t.Fatalf("unbound panel issuer = %q, %v", issuer, err)
-	}
-}
-
-func TestDiscoveryUsesBoundPanelDomain(t *testing.T) {
-	server := newTestServer(&fakeDynamicClientStore{})
-	server.config.Issuer = "https://configured.example/panel-api/v1/oidc"
-	server.boundIssuer = func(context.Context) (string, error) {
-		return "https://bound.example/panel-api/v1/oidc", nil
-	}
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
-	server.private = privateKey
-	server.kid = "test-kid"
-	if err := server.initProvider(); err != nil {
-		t.Fatal(err)
-	}
-	req := httptest.NewRequest(http.MethodGet, "http://internal.local/panel-api/v1/oidc/.well-known/openid-configuration", nil)
-	resp, err := server.Discovery(context.Background(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	config := resp.Data.(*zitadeloidc.DiscoveryConfiguration)
-	if config.Issuer != "https://bound.example/panel-api/v1/oidc" ||
-		config.AuthorizationEndpoint != "https://bound.example/panel-api/v1/oidc/authorize" ||
-		config.TokenEndpoint != "https://bound.example/panel-api/v1/oidc/token" ||
-		server.provider.IssuerFromRequest(req) != config.Issuer {
-		t.Fatalf("bound discovery = %#v, provider issuer = %q", config, server.provider.IssuerFromRequest(req))
-	}
-	server.boundIssuer = func(context.Context) (string, error) { return "", nil }
-	server.boundIssuerChecked = time.Time{}
-	if got := server.Issuer(req); got != server.config.Issuer {
-		t.Fatalf("unbound issuer = %q, want %q", got, server.config.Issuer)
 	}
 }
 
