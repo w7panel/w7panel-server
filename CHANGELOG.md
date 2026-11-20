@@ -983,3 +983,7 @@
 ## 2026-11-19 备案域名移除旧插件回退
 
 - 备案域名检查只读取市场插件 `w7panel-pluginwhitedomain`，旧版 `w7-white-domain` 不再参与加载和事件处理。影响模块：Higress 备案域名。验证：Higress 包定向测试通过。
+
+## 2026-11-20 OIDC 使用已绑定面板域名
+
+- 主面板已绑定 Ingress 域名时，OIDC issuer 和发现文档端点统一使用该域名与 HTTP(S) 协议；未绑定时回退到显式 OIDC_ISSUER 或请求地址，避免不同入口返回不同 issuer。影响模块：OIDC、面板域名。验证：OIDC 定向测试。

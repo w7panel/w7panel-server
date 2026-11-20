@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/w7panel/w7panel/common/helper"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	oidclib "github.com/zitadel/oidc/v3/pkg/oidc"
@@ -119,6 +121,11 @@ type Server struct {
 	provider op.OpenIDProvider
 	legacy   op.ExtendedLegacyServer
 	handler  http.Handler
+
+	boundIssuer        func(context.Context) (string, error)
+	issuerMu           sync.Mutex
+	cachedBoundIssuer  string
+	boundIssuerChecked time.Time
 }
 
 type defaultAccessTokenRequest struct {
@@ -147,6 +154,12 @@ func GetServer() (*Server, error) {
 			return
 		}
 		defaultServer, loadErr = NewServer(cfg)
+		if loadErr == nil && !helper.IsChildAgent() {
+			defaultServer.boundIssuer = func(ctx context.Context) (string, error) {
+				return panelIngressIssuer(ctx, k8s.NewK8sClient().ClientSet,
+					facade.Config.GetString("app.helm_namespace"), facade.Config.GetString("app.deployment_name"))
+			}
+		}
 	})
 	return defaultServer, loadErr
 }
@@ -237,6 +250,12 @@ func (s *Server) initProvider() error {
 			return nil, err
 		}
 		return func(r *http.Request) string {
+			if issuer := s.panelIssuer(r.Context()); issuer != "" {
+				return issuer
+			}
+			if s.config.Issuer != "" {
+				return strings.TrimRight(s.config.Issuer, "/")
+			}
 			issuer := fromRequest(r)
 			// WithAllowInsecure forces Zitadel's dynamic issuer to HTTP even behind TLS.
 			if r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
@@ -244,9 +263,6 @@ func (s *Server) initProvider() error {
 			}
 			return issuer
 		}, nil
-	}
-	if s.config.Issuer != "" {
-		issuerBuilder = op.StaticIssuer(strings.TrimRight(s.config.Issuer, "/"))
 	}
 	provider, err := op.NewProvider(
 		opConfig,
@@ -287,10 +303,32 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Issuer(r *http.Request) string {
+	if issuer := s.panelIssuer(r.Context()); issuer != "" {
+		return issuer
+	}
 	if s.config.Issuer != "" {
 		return strings.TrimRight(s.config.Issuer, "/")
 	}
 	return s.provider.IssuerFromRequest(r)
+}
+
+func (s *Server) panelIssuer(ctx context.Context) string {
+	if s.boundIssuer == nil {
+		return ""
+	}
+	s.issuerMu.Lock()
+	defer s.issuerMu.Unlock()
+	if time.Since(s.boundIssuerChecked) < 5*time.Second {
+		return s.cachedBoundIssuer
+	}
+	lookupCtx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	issuer, err := s.boundIssuer(lookupCtx)
+	if err == nil {
+		s.cachedBoundIssuer = issuer
+	}
+	s.boundIssuerChecked = time.Now()
+	return s.cachedBoundIssuer
 }
 
 func (s *Server) ContextWithIssuer(ctx context.Context, r *http.Request) context.Context {
