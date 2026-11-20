@@ -10,18 +10,6 @@ import (
 	"github.com/corazawaf/coraza/v3"
 )
 
-// Categories are the user-facing OWASP CRS 3.3.2 groups. CRS setup and
-// blocking evaluation rules remain loaded even when a group is disabled.
-var Categories = map[string]string{
-	"method": "911000-911999", "scanner": "913000-913999",
-	"protocol": "920000-922999", "lfi": "930000-930999",
-	"rfi": "931000-931999", "rce": "932000-932999",
-	"php": "933000-933999", "generic": "934000-934999",
-	"xss": "941000-941999", "sqli": "942000-942999",
-	"session": "943000-943999", "java": "944000-944999",
-	"leak": "950000-955999",
-}
-
 type Rule struct {
 	ID     int    `json:"id"`
 	Rule   string `json:"rule"`
@@ -34,7 +22,8 @@ type Policy struct {
 	Categories        map[string]bool `json:"categories"`
 	CustomRules       []Rule          `json:"customRules"`
 	DisabledGlobalIDs []int           `json:"disabledGlobalIds,omitempty"`
-	LegacyRules       []string        `json:"legacyRules,omitempty"`
+	ParanoiaLevel     int             `json:"paranoiaLevel,omitempty"`
+	EngineMode        string          `json:"engineMode,omitempty"`
 }
 
 var ruleID = regexp.MustCompile(`(?i)\bid\s*:\s*(\d+)`)
@@ -45,31 +34,50 @@ func Validate(global Policy, overrides *Policy) error {
 			continue
 		}
 		for name := range policy.Categories {
-			if _, ok := Categories[name]; !ok {
-				return fmt.Errorf("unknown CRS category %q", name)
+			if !validRuleFiles[name] {
+				return fmt.Errorf("unknown CRS rule file %q", name)
 			}
 		}
 	}
-	seen := make(map[int]bool)
-	allRules := append(append([]Rule{}, global.CustomRules...), rulesOf(overrides)...)
-	if len(allRules) > 100 {
+	if global.EngineMode != "" && global.EngineMode != "On" && global.EngineMode != "Off" && global.EngineMode != "DetectionOnly" {
+		return errors.New("invalid engine mode")
+	}
+	if global.ParanoiaLevel != 0 && (global.ParanoiaLevel < 1 || global.ParanoiaLevel > 4) {
+		return errors.New("paranoia level must be 1-4")
+	}
+	if overrides != nil {
+		if len(overrides.CustomRules) > 0 || overrides.EngineMode != "" || overrides.ParanoiaLevel != 0 {
+			return errors.New("domain may only inherit or disable global rules")
+		}
+		known := make(map[int]bool)
+		for _, rule := range global.CustomRules {
+			known[rule.ID] = true
+		}
+		for _, id := range overrides.DisabledGlobalIDs {
+			if !known[id] {
+				return fmt.Errorf("unknown global custom rule ID %d", id)
+			}
+		}
+	}
+	if len(global.CustomRules) > 100 {
 		return errors.New("at most 100 custom rules are allowed")
 	}
-	for _, rule := range allRules {
-		text := strings.TrimSpace(rule.Rule)
-		if len(text) > 8192 || strings.Contains(text, "\r") {
+	seen := make(map[int]bool)
+	for _, rule := range global.CustomRules {
+		value := strings.TrimSpace(rule.Rule)
+		if len(value) == 0 || len(value) > 8192 || strings.Contains(value, "\r") {
 			return errors.New("custom rule must contain SecRule directives of at most 8192 bytes")
 		}
-		for _, line := range strings.Split(text, "\n") {
+		for _, line := range strings.Split(value, "\n") {
 			if !strings.HasPrefix(strings.TrimSpace(line), "SecRule ") {
 				return errors.New("custom rule may only contain SecRule directives")
 			}
 		}
-		matches := ruleID.FindAllStringSubmatch(text, -1)
+		matches := ruleID.FindAllStringSubmatch(value, -1)
 		if len(matches) != 1 || fmt.Sprint(rule.ID) != matches[0][1] || rule.ID < 1000000 || seen[rule.ID] {
 			return fmt.Errorf("invalid or duplicate custom rule ID %d", rule.ID)
 		}
-		if _, err := coraza.NewWAF(coraza.NewWAFConfig().WithDirectives("SecRuleEngine On\n" + text)); err != nil {
+		if _, err := coraza.NewWAF(coraza.NewWAFConfig().WithDirectives("SecRuleEngine On\n" + value)); err != nil {
 			return fmt.Errorf("invalid custom rule %d: %w", rule.ID, err)
 		}
 		seen[rule.ID] = true
@@ -77,16 +85,7 @@ func Validate(global Policy, overrides *Policy) error {
 	return nil
 }
 
-func rulesOf(policy *Policy) []Rule {
-	if policy == nil {
-		return nil
-	}
-	return policy.CustomRules
-}
-
-// Compile returns the existing Higress WAF wire format. The w7 fields are
-// stored alongside it so domain overrides survive future global changes.
-func Compile(global Policy, overrides *Policy, legacy []string) (map[string]interface{}, error) {
+func Compile(global Policy, overrides *Policy) (map[string]interface{}, error) {
 	if err := Validate(global, overrides); err != nil {
 		return nil, err
 	}
@@ -97,49 +96,30 @@ func Compile(global Policy, overrides *Policy, legacy []string) (map[string]inte
 	if overrides != nil && overrides.UseCRS != nil {
 		useCRS = *overrides.UseCRS
 	}
-	for _, old := range legacy {
-		match := ruleID.FindStringSubmatch(old)
-		if len(match) != 2 {
-			continue
-		}
-		for _, rule := range append(append([]Rule{}, global.CustomRules...), rulesOf(overrides)...) {
-			if fmt.Sprint(rule.ID) == match[1] {
-				return nil, fmt.Errorf("custom rule ID %d conflicts with a legacy rule", rule.ID)
-			}
-		}
-	}
-	active := make(map[string]bool, len(global.Categories))
-	for id, value := range global.Categories {
-		active[id] = value
+	active := make(map[string]bool, len(validRuleFiles))
+	for name := range validRuleFiles {
+		enabled, ok := global.Categories[name]
+		active[name] = !ok || enabled
 	}
 	if overrides != nil {
-		for id, value := range overrides.Categories {
-			active[id] = value
+		for name, enabled := range overrides.Categories {
+			active[name] = enabled
 		}
 	}
-	ids := make([]string, 0, len(Categories))
-	for id := range Categories {
-		ids = append(ids, id)
+	files := make([]string, 0, len(active))
+	for name, enabled := range active {
+		if enabled {
+			files = append(files, name)
+		}
 	}
-	sort.Strings(ids)
-	secRules := make([]string, 0, len(legacy)+len(Categories)+len(global.CustomRules)+len(rulesOf(overrides)))
+	sort.Strings(files)
 	disabled := make(map[int]bool)
 	if overrides != nil {
 		for _, id := range overrides.DisabledGlobalIDs {
 			disabled[id] = true
 		}
 	}
-	for _, rule := range legacy {
-		match := ruleID.FindStringSubmatch(rule)
-		if len(match) == 2 {
-			var id int
-			_, _ = fmt.Sscan(match[1], &id)
-			if disabled[id] {
-				continue
-			}
-		}
-		secRules = append(secRules, rule)
-	}
+	secRules := []string{}
 	requestBodyAccess := global.RequestBodyAccess != nil && *global.RequestBodyAccess
 	if overrides != nil && overrides.RequestBodyAccess != nil {
 		requestBodyAccess = *overrides.RequestBodyAccess
@@ -147,18 +127,18 @@ func Compile(global Policy, overrides *Policy, legacy []string) (map[string]inte
 	if requestBodyAccess {
 		secRules = append(secRules, "SecRequestBodyAccess On")
 	}
-	for _, id := range ids {
-		if value, ok := active[id]; ok && !value {
-			secRules = append(secRules, "SecRuleRemoveById "+Categories[id])
-		}
-	}
 	for _, rule := range global.CustomRules {
 		if !disabled[rule.ID] {
 			secRules = append(secRules, strings.TrimSpace(rule.Rule))
 		}
 	}
-	for _, rule := range rulesOf(overrides) {
-		secRules = append(secRules, strings.TrimSpace(rule.Rule))
+	mode := global.EngineMode
+	if mode == "" {
+		mode = "On"
 	}
-	return map[string]interface{}{"useCRS": useCRS, "secRules": secRules}, nil
+	level := global.ParanoiaLevel
+	if level == 0 {
+		level = 1
+	}
+	return map[string]interface{}{"useCRS": useCRS, "ruleFiles": files, "secRules": secRules, "engineMode": mode, "paranoiaLevel": level}, nil
 }

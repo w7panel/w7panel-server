@@ -26,7 +26,7 @@ func TestWAFPolicyRoundTripKeepsVisualRuleSource(t *testing.T) {
 
 func TestWAFConfigReadsExistingCRSSetting(t *testing.T) {
 	plugin := &unstructured.Unstructured{Object: map[string]interface{}{"spec": map[string]interface{}{"defaultConfig": map[string]interface{}{"useCRS": false}}}}
-	policy, _, _, err := wafConfig(plugin)
+	policy, _, err := wafConfig(plugin)
 	if err != nil || policy.UseCRS == nil || *policy.UseCRS {
 		t.Fatalf("existing CRS setting lost: policy=%+v, err=%v", policy, err)
 	}

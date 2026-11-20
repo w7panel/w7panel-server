@@ -1,0 +1,5734 @@
+{
+  "crsVersion": "v4.30.0",
+  "files": [
+    {
+      "name": "REQUEST-911-METHOD-ENFORCEMENT.conf",
+      "titleZh": "请求方法"
+    },
+    {
+      "name": "REQUEST-913-SCANNER-DETECTION.conf",
+      "titleZh": "扫描器识别"
+    },
+    {
+      "name": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "titleZh": "协议与请求格式"
+    },
+    {
+      "name": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "titleZh": "协议攻击"
+    },
+    {
+      "name": "REQUEST-922-MULTIPART-ATTACK.conf",
+      "titleZh": "Multipart 攻击"
+    },
+    {
+      "name": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "titleZh": "本地文件包含"
+    },
+    {
+      "name": "REQUEST-931-APPLICATION-ATTACK-RFI.conf",
+      "titleZh": "远程文件包含"
+    },
+    {
+      "name": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "titleZh": "远程命令执行"
+    },
+    {
+      "name": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "titleZh": "PHP 注入"
+    },
+    {
+      "name": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "titleZh": "通用应用攻击"
+    },
+    {
+      "name": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "titleZh": "跨站脚本"
+    },
+    {
+      "name": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "titleZh": "SQL 注入"
+    },
+    {
+      "name": "REQUEST-943-APPLICATION-ATTACK-SESSION-FIXATION.conf",
+      "titleZh": "会话固定"
+    },
+    {
+      "name": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "titleZh": "Java 攻击"
+    },
+    {
+      "name": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "titleZh": "响应数据泄露"
+    },
+    {
+      "name": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "titleZh": "SQL 信息泄露"
+    },
+    {
+      "name": "RESPONSE-952-DATA-LEAKAGES-JAVA.conf",
+      "titleZh": "Java 信息泄露"
+    },
+    {
+      "name": "RESPONSE-953-DATA-LEAKAGES-PHP.conf",
+      "titleZh": "PHP 信息泄露"
+    },
+    {
+      "name": "RESPONSE-954-DATA-LEAKAGES-IIS.conf",
+      "titleZh": "IIS 信息泄露"
+    },
+    {
+      "name": "RESPONSE-955-WEB-SHELLS.conf",
+      "titleZh": "Web Shell"
+    },
+    {
+      "name": "RESPONSE-956-DATA-LEAKAGES-RUBY.conf",
+      "titleZh": "Ruby 信息泄露"
+    }
+  ],
+  "rules": [
+    {
+      "id": 901001,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "CRS is deployed without configuration! Please copy the crs-setup.conf.example template to crs-setup.conf, and include the crs-setup.conf file in your webserver configuration before including the CRS rules. See the INSTALL file in the CRS directory for detailed instructions",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901001）"
+    },
+    {
+      "id": 901100,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901100）"
+    },
+    {
+      "id": 901110,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901110）"
+    },
+    {
+      "id": 901111,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901111）"
+    },
+    {
+      "id": 901115,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901115）"
+    },
+    {
+      "id": 901120,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901120）"
+    },
+    {
+      "id": 901125,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901125）"
+    },
+    {
+      "id": 901130,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901130）"
+    },
+    {
+      "id": 901140,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901140）"
+    },
+    {
+      "id": 901141,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901141）"
+    },
+    {
+      "id": 901142,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901142）"
+    },
+    {
+      "id": 901143,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901143）"
+    },
+    {
+      "id": 901160,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901160）"
+    },
+    {
+      "id": 901162,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901162）"
+    },
+    {
+      "id": 901168,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901168）"
+    },
+    {
+      "id": 901163,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901163）"
+    },
+    {
+      "id": 901164,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901164）"
+    },
+    {
+      "id": 901165,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901165）"
+    },
+    {
+      "id": 901171,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901171）"
+    },
+    {
+      "id": 901510,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901510）"
+    },
+    {
+      "id": 901167,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901167）"
+    },
+    {
+      "id": 901169,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901169）"
+    },
+    {
+      "id": 901170,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901170）"
+    },
+    {
+      "id": 901200,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901200）"
+    },
+    {
+      "id": 901320,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901320）"
+    },
+    {
+      "id": 901340,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "Enabling body inspection",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901340）"
+    },
+    {
+      "id": 901350,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "Enabling forced body inspection for ASCII content",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901350）"
+    },
+    {
+      "id": 901360,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "Enabling JSON body processor for AWS JSON content types",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901360）"
+    },
+    {
+      "id": 901370,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "Enabling JSON body processor for +json structured syntax suffix content types",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901370）"
+    },
+    {
+      "id": 901400,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901400）"
+    },
+    {
+      "id": 901410,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901410）"
+    },
+    {
+      "id": 901450,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "Sampling: Disable the rule engine based on sampling_percentage %{TX.sampling_percentage} and random number %{TX.sampling_rnd100}",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901450）"
+    },
+    {
+      "id": 901500,
+      "file": "REQUEST-901-INITIALIZATION.conf",
+      "category": 901,
+      "message": "Detection paranoia level configured is lower than the paranoia level itself. This is illegal. Blocking request. Aborting",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（901500）"
+    },
+    {
+      "id": 905100,
+      "file": "REQUEST-905-COMMON-EXCEPTIONS.conf",
+      "category": 905,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（905100）"
+    },
+    {
+      "id": 905110,
+      "file": "REQUEST-905-COMMON-EXCEPTIONS.conf",
+      "category": 905,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（905110）"
+    },
+    {
+      "id": 911011,
+      "file": "REQUEST-911-METHOD-ENFORCEMENT.conf",
+      "category": 911,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "请求方法：辅助规则（911011）"
+    },
+    {
+      "id": 911012,
+      "file": "REQUEST-911-METHOD-ENFORCEMENT.conf",
+      "category": 911,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "请求方法：辅助规则（911012）"
+    },
+    {
+      "id": 911100,
+      "file": "REQUEST-911-METHOD-ENFORCEMENT.conf",
+      "category": 911,
+      "message": "Method is not allowed by policy",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "HTTP 请求方法检测（911100）"
+    },
+    {
+      "id": 911013,
+      "file": "REQUEST-911-METHOD-ENFORCEMENT.conf",
+      "category": 911,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "请求方法：辅助规则（911013）"
+    },
+    {
+      "id": 911014,
+      "file": "REQUEST-911-METHOD-ENFORCEMENT.conf",
+      "category": 911,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "请求方法：辅助规则（911014）"
+    },
+    {
+      "id": 911015,
+      "file": "REQUEST-911-METHOD-ENFORCEMENT.conf",
+      "category": 911,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "请求方法：辅助规则（911015）"
+    },
+    {
+      "id": 911016,
+      "file": "REQUEST-911-METHOD-ENFORCEMENT.conf",
+      "category": 911,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "请求方法：辅助规则（911016）"
+    },
+    {
+      "id": 911017,
+      "file": "REQUEST-911-METHOD-ENFORCEMENT.conf",
+      "category": 911,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "请求方法：辅助规则（911017）"
+    },
+    {
+      "id": 911018,
+      "file": "REQUEST-911-METHOD-ENFORCEMENT.conf",
+      "category": 911,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "请求方法：辅助规则（911018）"
+    },
+    {
+      "id": 913011,
+      "file": "REQUEST-913-SCANNER-DETECTION.conf",
+      "category": 913,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "扫描器识别：辅助规则（913011）"
+    },
+    {
+      "id": 913012,
+      "file": "REQUEST-913-SCANNER-DETECTION.conf",
+      "category": 913,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "扫描器识别：辅助规则（913012）"
+    },
+    {
+      "id": 913100,
+      "file": "REQUEST-913-SCANNER-DETECTION.conf",
+      "category": 913,
+      "message": "Found User-Agent associated with security scanner",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "User-Agent 请求头检测（913100）"
+    },
+    {
+      "id": 913013,
+      "file": "REQUEST-913-SCANNER-DETECTION.conf",
+      "category": 913,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "扫描器识别：辅助规则（913013）"
+    },
+    {
+      "id": 913014,
+      "file": "REQUEST-913-SCANNER-DETECTION.conf",
+      "category": 913,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "扫描器识别：辅助规则（913014）"
+    },
+    {
+      "id": 913015,
+      "file": "REQUEST-913-SCANNER-DETECTION.conf",
+      "category": 913,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "扫描器识别：辅助规则（913015）"
+    },
+    {
+      "id": 913016,
+      "file": "REQUEST-913-SCANNER-DETECTION.conf",
+      "category": 913,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "扫描器识别：辅助规则（913016）"
+    },
+    {
+      "id": 913017,
+      "file": "REQUEST-913-SCANNER-DETECTION.conf",
+      "category": 913,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "扫描器识别：辅助规则（913017）"
+    },
+    {
+      "id": 913018,
+      "file": "REQUEST-913-SCANNER-DETECTION.conf",
+      "category": 913,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "扫描器识别：辅助规则（913018）"
+    },
+    {
+      "id": 920011,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议与请求格式：辅助规则（920011）"
+    },
+    {
+      "id": 920012,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议与请求格式：辅助规则（920012）"
+    },
+    {
+      "id": 920100,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Invalid HTTP Request Line",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "HTTP 请求行检测（920100）"
+    },
+    {
+      "id": 920120,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Attempted multipart/form-data bypass",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Multipart 请求格式检测（920120）"
+    },
+    {
+      "id": 920160,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Content-Length HTTP header is not numeric",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Content-Length 请求头检测（920160）"
+    },
+    {
+      "id": 920170,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "GET or HEAD Request with Body Content",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "协议与请求格式：异常检测（920170）"
+    },
+    {
+      "id": 920171,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "GET or HEAD Request with Transfer-Encoding",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Transfer-Encoding 请求头检测（920171）"
+    },
+    {
+      "id": 920180,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "POST without Content-Length and Transfer-Encoding headers",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Content-Length 请求头检测（920180）"
+    },
+    {
+      "id": 920181,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Content-Length and Transfer-Encoding headers present",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Content-Length 请求头检测（920181）"
+    },
+    {
+      "id": 920190,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Range: Invalid Last Byte Value",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Range 请求头异常检测（920190）"
+    },
+    {
+      "id": 920660,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Obsolete Request-Range header detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "协议与请求格式：异常检测（920660）"
+    },
+    {
+      "id": 920210,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Multiple/Conflicting Connection Header Data Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "协议与请求格式：异常检测（920210）"
+    },
+    {
+      "id": 920250,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "UTF8 Encoding Abuse Attack Attempt",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "字符编码异常检测（920250）"
+    },
+    {
+      "id": 920260,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Unicode Full/Half Width Abuse Attack Attempt",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "字符编码异常检测（920260）"
+    },
+    {
+      "id": 920270,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Invalid character in request (null character)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "非法字符检测（920270）"
+    },
+    {
+      "id": 920280,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Request Missing a Host Header",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Host 请求头检测（920280）"
+    },
+    {
+      "id": 920290,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Empty Host Header",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Host 请求头检测（920290）"
+    },
+    {
+      "id": 920310,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Request Has an Empty Accept Header",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Accept 请求头检测（920310）"
+    },
+    {
+      "id": 920311,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Request Has an Empty Accept Header",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Accept 请求头检测（920311）"
+    },
+    {
+      "id": 920330,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Empty User Agent Header",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "User-Agent 请求头检测（920330）"
+    },
+    {
+      "id": 920340,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Content-Type header missing from request with non-zero Content-Length",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Content-Length 请求头检测（920340）"
+    },
+    {
+      "id": 920350,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Host header is a numeric IP address",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Host 请求头检测（920350）"
+    },
+    {
+      "id": 920380,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Too many arguments in request",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "请求参数限制检测（920380）"
+    },
+    {
+      "id": 920360,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Argument name too long",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "请求参数限制检测（920360）"
+    },
+    {
+      "id": 920370,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Argument value too long",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "请求参数限制检测（920370）"
+    },
+    {
+      "id": 920390,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Total arguments size exceeded",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "请求参数限制检测（920390）"
+    },
+    {
+      "id": 920400,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Uploaded file size too large",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "协议与请求格式：异常检测（920400）"
+    },
+    {
+      "id": 920410,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Total uploaded files size too large",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "协议与请求格式：异常检测（920410）"
+    },
+    {
+      "id": 920470,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Illegal Content-Type header",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Content-Type 请求头检测（920470）"
+    },
+    {
+      "id": 920420,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Request content type is not allowed by policy",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "协议与请求格式：异常检测（920420）"
+    },
+    {
+      "id": 920480,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Request content type charset is not allowed by policy",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "协议与请求格式：异常检测（920480）"
+    },
+    {
+      "id": 920530,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Multiple charsets detected in content type header",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "协议与请求格式：异常检测（920530）"
+    },
+    {
+      "id": 920640,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Content-Type header missing from request with body",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Content-Type 请求头检测（920640）"
+    },
+    {
+      "id": 920430,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "HTTP protocol version is not allowed by policy",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "HTTP 协议版本检测（920430）"
+    },
+    {
+      "id": 920440,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "URL file extension is restricted by policy",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "协议与请求格式：异常检测（920440）"
+    },
+    {
+      "id": 920500,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Attempt to access a backup or working file",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "备份或工作文件访问检测（920500）"
+    },
+    {
+      "id": 920450,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "HTTP header is restricted by policy (%{MATCHED_VAR})",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "协议与请求格式：异常检测（920450）"
+    },
+    {
+      "id": 920520,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Accept-Encoding header exceeded sensible length",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Accept-Encoding 请求头检测（920520）"
+    },
+    {
+      "id": 920600,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Illegal Accept header: charset parameter",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Accept 请求头检测（920600）"
+    },
+    {
+      "id": 920539,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议与请求格式：辅助规则（920539）"
+    },
+    {
+      "id": 920540,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Possible Unicode character bypass detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "字符编码异常检测（920540）"
+    },
+    {
+      "id": 920610,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Raw (unencoded) fragment in request URI",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "协议与请求格式：异常检测（920610）"
+    },
+    {
+      "id": 920620,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Multiple Content-Type Request Headers",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Content-Type 请求头检测（920620）"
+    },
+    {
+      "id": 920013,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议与请求格式：辅助规则（920013）"
+    },
+    {
+      "id": 920014,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议与请求格式：辅助规则（920014）"
+    },
+    {
+      "id": 920200,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Range: Too many fields (6 or more)",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "Range 请求头异常检测（920200）"
+    },
+    {
+      "id": 920201,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Range: Too many fields for pdf request (63 or more)",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "Range 请求头异常检测（920201）"
+    },
+    {
+      "id": 920230,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Multiple URL Encoding Detected",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "字符编码异常检测（920230）"
+    },
+    {
+      "id": 920271,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Invalid character in request (non printable characters)",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "非法字符检测（920271）"
+    },
+    {
+      "id": 920320,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Missing User Agent Header",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "User-Agent 请求头检测（920320）"
+    },
+    {
+      "id": 920121,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Attempted multipart/form-data bypass",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "Multipart 请求格式检测（920121）"
+    },
+    {
+      "id": 920451,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "HTTP header is restricted by policy (%{MATCHED_VAR})",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "协议与请求格式：异常检测（920451）"
+    },
+    {
+      "id": 920240,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "URL Encoding Abuse Attack Attempt",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "字符编码异常检测（920240）"
+    },
+    {
+      "id": 920650,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "HTTP method override attempt via _method parameter",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "HTTP 请求方法检测（920650）"
+    },
+    {
+      "id": 920015,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议与请求格式：辅助规则（920015）"
+    },
+    {
+      "id": 920016,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议与请求格式：辅助规则（920016）"
+    },
+    {
+      "id": 920272,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Invalid character in request (outside of printable chars below ascii 127)",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "非法字符检测（920272）"
+    },
+    {
+      "id": 920300,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Request Missing an Accept Header",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "Accept 请求头检测（920300）"
+    },
+    {
+      "id": 920490,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Request header x-up-devcap-post-charset detected in combination with prefix \\",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "协议与请求格式：异常检测（920490）"
+    },
+    {
+      "id": 920510,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Invalid Cache-Control request header",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "协议与请求格式：异常检测（920510）"
+    },
+    {
+      "id": 920521,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Illegal Accept-Encoding header",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "Accept-Encoding 请求头检测（920521）"
+    },
+    {
+      "id": 920017,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议与请求格式：辅助规则（920017）"
+    },
+    {
+      "id": 920018,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议与请求格式：辅助规则（920018）"
+    },
+    {
+      "id": 920202,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Range: Too many fields for pdf request (6 or more)",
+      "paranoiaLevel": 4,
+      "internal": false,
+      "nameZh": "Range 请求头异常检测（920202）"
+    },
+    {
+      "id": 920273,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Invalid character in request (outside of very strict set)",
+      "paranoiaLevel": 4,
+      "internal": false,
+      "nameZh": "非法字符检测（920273）"
+    },
+    {
+      "id": 920274,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Invalid character in request headers (outside of very strict set)",
+      "paranoiaLevel": 4,
+      "internal": false,
+      "nameZh": "非法字符检测（920274）"
+    },
+    {
+      "id": 920275,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Invalid character in request headers (outside of very strict set)",
+      "paranoiaLevel": 4,
+      "internal": false,
+      "nameZh": "非法字符检测（920275）"
+    },
+    {
+      "id": 920460,
+      "file": "REQUEST-920-PROTOCOL-ENFORCEMENT.conf",
+      "category": 920,
+      "message": "Abnormal character escapes in request",
+      "paranoiaLevel": 4,
+      "internal": false,
+      "nameZh": "非法字符检测（920460）"
+    },
+    {
+      "id": 921011,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议攻击：辅助规则（921011）"
+    },
+    {
+      "id": 921012,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议攻击：辅助规则（921012）"
+    },
+    {
+      "id": 921110,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "HTTP Request Smuggling Attack",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "HTTP 请求走私检测（921110）"
+    },
+    {
+      "id": 921120,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "HTTP Response Splitting Attack",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "HTTP 响应拆分检测（921120）"
+    },
+    {
+      "id": 921130,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "HTTP Response Splitting Attack",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "HTTP 响应拆分检测（921130）"
+    },
+    {
+      "id": 921140,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "HTTP Header Injection Attack via headers",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "HTTP 请求头注入检测（921140）"
+    },
+    {
+      "id": 921150,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "HTTP Header Injection Attack via payload (CR/LF detected)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "HTTP 请求头注入检测（921150）"
+    },
+    {
+      "id": 921160,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "HTTP Header Injection Attack via payload (CR/LF and header-name detected)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "HTTP 请求头注入检测（921160）"
+    },
+    {
+      "id": 921190,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "HTTP Splitting (CR/LF in request filename detected)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "HTTP 响应拆分检测（921190）"
+    },
+    {
+      "id": 921200,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "LDAP Injection Attack",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "LDAP 注入检测（921200）"
+    },
+    {
+      "id": 921421,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "Content-Type header: Dangerous content type outside the mime type declaration",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Content-Type 请求头检测（921421）"
+    },
+    {
+      "id": 921240,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "mod_proxy attack attempt detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "攻击特征检测（921240）"
+    },
+    {
+      "id": 921250,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "Old Cookies V1 usage attempt detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "会话与 Cookie 安全检测（921250）"
+    },
+    {
+      "id": 921013,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议攻击：辅助规则（921013）"
+    },
+    {
+      "id": 921014,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议攻击：辅助规则（921014）"
+    },
+    {
+      "id": 921151,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "HTTP Header Injection Attack via payload (CR/LF detected)",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "HTTP 请求头注入检测（921151）"
+    },
+    {
+      "id": 921422,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "Content-Type header: Dangerous content type outside the mime type declaration",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "Content-Type 请求头检测（921422）"
+    },
+    {
+      "id": 921015,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议攻击：辅助规则（921015）"
+    },
+    {
+      "id": 921016,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议攻击：辅助规则（921016）"
+    },
+    {
+      "id": 921230,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "HTTP Range Header detected",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "协议攻击：异常检测（921230）"
+    },
+    {
+      "id": 921170,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议攻击：辅助规则（921170）"
+    },
+    {
+      "id": 921180,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "HTTP Parameter Pollution (%{MATCHED_VAR_NAME})",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "HTTP 参数污染检测（921180）"
+    },
+    {
+      "id": 921210,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "HTTP Parameter Pollution after detecting bogus char after parameter array",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "HTTP 参数污染检测（921210）"
+    },
+    {
+      "id": 921017,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议攻击：辅助规则（921017）"
+    },
+    {
+      "id": 921018,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "协议攻击：辅助规则（921018）"
+    },
+    {
+      "id": 921220,
+      "file": "REQUEST-921-PROTOCOL-ATTACK.conf",
+      "category": 921,
+      "message": "HTTP Parameter Pollution possible via array notation",
+      "paranoiaLevel": 4,
+      "internal": false,
+      "nameZh": "HTTP 参数污染检测（921220）"
+    },
+    {
+      "id": 922160,
+      "file": "REQUEST-922-MULTIPART-ATTACK.conf",
+      "category": 922,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Multipart 攻击：辅助规则（922160）"
+    },
+    {
+      "id": 922100,
+      "file": "REQUEST-922-MULTIPART-ATTACK.conf",
+      "category": 922,
+      "message": "Multipart content type global _charset_ definition is not allowed by policy",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Multipart 请求格式检测（922100）"
+    },
+    {
+      "id": 922140,
+      "file": "REQUEST-922-MULTIPART-ATTACK.conf",
+      "category": 922,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Multipart 攻击：辅助规则（922140）"
+    },
+    {
+      "id": 922150,
+      "file": "REQUEST-922-MULTIPART-ATTACK.conf",
+      "category": 922,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Multipart 攻击：辅助规则（922150）"
+    },
+    {
+      "id": 922110,
+      "file": "REQUEST-922-MULTIPART-ATTACK.conf",
+      "category": 922,
+      "message": "Illegal MIME Multipart Header content-type: charset parameter",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Multipart 请求格式检测（922110）"
+    },
+    {
+      "id": 922120,
+      "file": "REQUEST-922-MULTIPART-ATTACK.conf",
+      "category": 922,
+      "message": "Content-Transfer-Encoding was deprecated by rfc7578 in 2015 and should not be used",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Transfer-Encoding 请求头检测（922120）"
+    },
+    {
+      "id": 922130,
+      "file": "REQUEST-922-MULTIPART-ATTACK.conf",
+      "category": 922,
+      "message": "Multipart header contains characters outside of valid range",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Multipart 请求格式检测（922130）"
+    },
+    {
+      "id": 930011,
+      "file": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "category": 930,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "本地文件包含：辅助规则（930011）"
+    },
+    {
+      "id": 930012,
+      "file": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "category": 930,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "本地文件包含：辅助规则（930012）"
+    },
+    {
+      "id": 930100,
+      "file": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "category": 930,
+      "message": "Path Traversal Attack (/../) or (/.../)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "路径遍历检测（930100）"
+    },
+    {
+      "id": 930110,
+      "file": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "category": 930,
+      "message": "Path Traversal Attack (/../) or (/.../)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "路径遍历检测（930110）"
+    },
+    {
+      "id": 930120,
+      "file": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "category": 930,
+      "message": "OS File Access Attempt",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "文件访问检测（930120）"
+    },
+    {
+      "id": 930130,
+      "file": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "category": 930,
+      "message": "Restricted File Access Attempt",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "文件访问检测（930130）"
+    },
+    {
+      "id": 930140,
+      "file": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "category": 930,
+      "message": "Restricted File Access Attempt: AI Coding Assistant Artifact",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "文件访问检测（930140）"
+    },
+    {
+      "id": 930013,
+      "file": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "category": 930,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "本地文件包含：辅助规则（930013）"
+    },
+    {
+      "id": 930014,
+      "file": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "category": 930,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "本地文件包含：辅助规则（930014）"
+    },
+    {
+      "id": 930121,
+      "file": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "category": 930,
+      "message": "OS File Access Attempt in REQUEST_HEADERS",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "文件访问检测（930121）"
+    },
+    {
+      "id": 930015,
+      "file": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "category": 930,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "本地文件包含：辅助规则（930015）"
+    },
+    {
+      "id": 930016,
+      "file": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "category": 930,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "本地文件包含：辅助规则（930016）"
+    },
+    {
+      "id": 930017,
+      "file": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "category": 930,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "本地文件包含：辅助规则（930017）"
+    },
+    {
+      "id": 930018,
+      "file": "REQUEST-930-APPLICATION-ATTACK-LFI.conf",
+      "category": 930,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "本地文件包含：辅助规则（930018）"
+    },
+    {
+      "id": 931011,
+      "file": "REQUEST-931-APPLICATION-ATTACK-RFI.conf",
+      "category": 931,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程文件包含：辅助规则（931011）"
+    },
+    {
+      "id": 931012,
+      "file": "REQUEST-931-APPLICATION-ATTACK-RFI.conf",
+      "category": 931,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程文件包含：辅助规则（931012）"
+    },
+    {
+      "id": 931100,
+      "file": "REQUEST-931-APPLICATION-ATTACK-RFI.conf",
+      "category": 931,
+      "message": "Possible Remote File Inclusion (RFI) Attack: URL Parameter using IP Address",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程文件包含检测（931100）"
+    },
+    {
+      "id": 931110,
+      "file": "REQUEST-931-APPLICATION-ATTACK-RFI.conf",
+      "category": 931,
+      "message": "Possible Remote File Inclusion (RFI) Attack: Common RFI Vulnerable Parameter Name used w/URL Payload",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程文件包含检测（931110）"
+    },
+    {
+      "id": 931120,
+      "file": "REQUEST-931-APPLICATION-ATTACK-RFI.conf",
+      "category": 931,
+      "message": "Possible Remote File Inclusion (RFI) Attack: URL Payload Used w/Trailing Question Mark Character (?)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程文件包含检测（931120）"
+    },
+    {
+      "id": 931013,
+      "file": "REQUEST-931-APPLICATION-ATTACK-RFI.conf",
+      "category": 931,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程文件包含：辅助规则（931013）"
+    },
+    {
+      "id": 931014,
+      "file": "REQUEST-931-APPLICATION-ATTACK-RFI.conf",
+      "category": 931,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程文件包含：辅助规则（931014）"
+    },
+    {
+      "id": 931130,
+      "file": "REQUEST-931-APPLICATION-ATTACK-RFI.conf",
+      "category": 931,
+      "message": "Possible Remote File Inclusion (RFI) Attack: Off-Domain Reference/Link",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程文件包含检测（931130）"
+    },
+    {
+      "id": 931131,
+      "file": "REQUEST-931-APPLICATION-ATTACK-RFI.conf",
+      "category": 931,
+      "message": "Possible Remote File Inclusion (RFI) Attack",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程文件包含检测（931131）"
+    },
+    {
+      "id": 931015,
+      "file": "REQUEST-931-APPLICATION-ATTACK-RFI.conf",
+      "category": 931,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程文件包含：辅助规则（931015）"
+    },
+    {
+      "id": 931016,
+      "file": "REQUEST-931-APPLICATION-ATTACK-RFI.conf",
+      "category": 931,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程文件包含：辅助规则（931016）"
+    },
+    {
+      "id": 931017,
+      "file": "REQUEST-931-APPLICATION-ATTACK-RFI.conf",
+      "category": 931,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程文件包含：辅助规则（931017）"
+    },
+    {
+      "id": 931018,
+      "file": "REQUEST-931-APPLICATION-ATTACK-RFI.conf",
+      "category": 931,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程文件包含：辅助规则（931018）"
+    },
+    {
+      "id": 932011,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程命令执行：辅助规则（932011）"
+    },
+    {
+      "id": 932012,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程命令执行：辅助规则（932012）"
+    },
+    {
+      "id": 932230,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Command Injection (2-3 chars)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932230）"
+    },
+    {
+      "id": 932235,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Command Injection (command without evasion)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932235）"
+    },
+    {
+      "id": 932120,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Windows PowerShell Command Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932120）"
+    },
+    {
+      "id": 932125,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Windows Powershell Alias Command Injection",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932125）"
+    },
+    {
+      "id": 932130,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Shell Expression Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932130）"
+    },
+    {
+      "id": 932140,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Windows FOR/IF Command Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932140）"
+    },
+    {
+      "id": 932270,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Shell Expression Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932270）"
+    },
+    {
+      "id": 932280,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Brace Expansion Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932280）"
+    },
+    {
+      "id": 932250,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Direct Unix Command Execution",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932250）"
+    },
+    {
+      "id": 932260,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Direct Unix Command Execution",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932260）"
+    },
+    {
+      "id": 932340,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Direct Unix Command Execution (No Arguments)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932340）"
+    },
+    {
+      "id": 932330,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix shell history invocation",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932330）"
+    },
+    {
+      "id": 932160,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Shell Code Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932160）"
+    },
+    {
+      "id": 932170,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Shellshock (CVE-2014-6271)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932170）"
+    },
+    {
+      "id": 932171,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Shellshock (CVE-2014-6271)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932171）"
+    },
+    {
+      "id": 932175,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix shell alias invocation",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932175）"
+    },
+    {
+      "id": 932180,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Restricted File Upload Attempt",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "文件上传检测（932180）"
+    },
+    {
+      "id": 932370,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Windows Command Injection",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932370）"
+    },
+    {
+      "id": 932380,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Windows Command Injection",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932380）"
+    },
+    {
+      "id": 932013,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程命令执行：辅助规则（932013）"
+    },
+    {
+      "id": 932014,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程命令执行：辅助规则（932014）"
+    },
+    {
+      "id": 932371,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Windows Command Injection",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932371）"
+    },
+    {
+      "id": 932231,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Command Injection",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932231）"
+    },
+    {
+      "id": 932131,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Shell Expression Found",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932131）"
+    },
+    {
+      "id": 932200,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "RCE Bypass Technique",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932200）"
+    },
+    {
+      "id": 932205,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "RCE Bypass Technique",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932205）"
+    },
+    {
+      "id": 932206,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "RCE Bypass Technique",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932206）"
+    },
+    {
+      "id": 932207,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "RCE Bypass Technique",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932207）"
+    },
+    {
+      "id": 932220,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Command Injection with pipe",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932220）"
+    },
+    {
+      "id": 932240,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Command Injection evasion attempt detected",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932240）"
+    },
+    {
+      "id": 932281,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Brace Expansion Found",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932281）"
+    },
+    {
+      "id": 932210,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: SQLite System Command Execution",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（932210）"
+    },
+    {
+      "id": 932271,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Shell Expression Found",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932271）"
+    },
+    {
+      "id": 932300,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: SMTP Command Execution",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932300）"
+    },
+    {
+      "id": 932310,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: IMAP Command Execution",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932310）"
+    },
+    {
+      "id": 932320,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: POP3 Command Execution",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932320）"
+    },
+    {
+      "id": 932236,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Command Injection (command without evasion)",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932236）"
+    },
+    {
+      "id": 932239,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Command Injection found in user-agent or referer header",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932239）"
+    },
+    {
+      "id": 932161,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Shell Code Found in REQUEST_HEADERS",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932161）"
+    },
+    {
+      "id": 932390,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Shell Fork Bomb",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932390）"
+    },
+    {
+      "id": 932015,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程命令执行：辅助规则（932015）"
+    },
+    {
+      "id": 932016,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程命令执行：辅助规则（932016）"
+    },
+    {
+      "id": 932232,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Command Injection",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932232）"
+    },
+    {
+      "id": 932237,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Shell Code Found in REQUEST_HEADERS",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932237）"
+    },
+    {
+      "id": 932238,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix Shell Code Found in REQUEST_HEADERS",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932238）"
+    },
+    {
+      "id": 932290,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Quote evasion Found",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932290）"
+    },
+    {
+      "id": 932190,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Wildcard bypass technique attempt",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932190）"
+    },
+    {
+      "id": 932350,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Direct Unix Command Execution (No Arguments)",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932350）"
+    },
+    {
+      "id": 932301,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: SMTP Command Execution",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932301）"
+    },
+    {
+      "id": 932311,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: IMAP Command Execution",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932311）"
+    },
+    {
+      "id": 932321,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: POP3 Command Execution",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932321）"
+    },
+    {
+      "id": 932331,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "Remote Command Execution: Unix shell history invocation",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "远程命令执行检测（932331）"
+    },
+    {
+      "id": 932017,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程命令执行：辅助规则（932017）"
+    },
+    {
+      "id": 932018,
+      "file": "REQUEST-932-APPLICATION-ATTACK-RCE.conf",
+      "category": 932,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "远程命令执行：辅助规则（932018）"
+    },
+    {
+      "id": 933011,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 注入：辅助规则（933011）"
+    },
+    {
+      "id": 933012,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 注入：辅助规则（933012）"
+    },
+    {
+      "id": 933100,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: PHP Open Tag Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933100）"
+    },
+    {
+      "id": 933110,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: PHP Script File Upload Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "文件上传检测（933110）"
+    },
+    {
+      "id": 933120,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: Configuration Directive Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933120）"
+    },
+    {
+      "id": 933130,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: Variables Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933130）"
+    },
+    {
+      "id": 933135,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: Variable Access Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933135）"
+    },
+    {
+      "id": 933140,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: I/O Stream Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933140）"
+    },
+    {
+      "id": 933200,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: Wrapper scheme detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933200）"
+    },
+    {
+      "id": 933150,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: High-Risk PHP Function Name Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933150）"
+    },
+    {
+      "id": 933160,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: High-Risk PHP Function Call Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933160）"
+    },
+    {
+      "id": 933170,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: Serialized Object Injection",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933170）"
+    },
+    {
+      "id": 933180,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: Variable Function Call Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933180）"
+    },
+    {
+      "id": 933210,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: Variable Function Call Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933210）"
+    },
+    {
+      "id": 933220,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: PHP Session File Upload Attempt",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "文件上传检测（933220）"
+    },
+    {
+      "id": 933013,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 注入：辅助规则（933013）"
+    },
+    {
+      "id": 933014,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 注入：辅助规则（933014）"
+    },
+    {
+      "id": 933151,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: Medium-Risk PHP Function Name Found",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933151）"
+    },
+    {
+      "id": 933152,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: Medium-Risk PHP Function Name Found",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933152）"
+    },
+    {
+      "id": 933153,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: Medium-Risk PHP Function Name Found",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933153）"
+    },
+    {
+      "id": 933015,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 注入：辅助规则（933015）"
+    },
+    {
+      "id": 933016,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 注入：辅助规则（933016）"
+    },
+    {
+      "id": 933131,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: Variables Found",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933131）"
+    },
+    {
+      "id": 933161,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: Low-Value PHP Function Call Found",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933161）"
+    },
+    {
+      "id": 933111,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: PHP Script File Upload Found",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "文件上传检测（933111）"
+    },
+    {
+      "id": 933190,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: PHP Closing Tag Found",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933190）"
+    },
+    {
+      "id": 933211,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "PHP Injection Attack: Variable Function Call Found",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "PHP 注入检测（933211）"
+    },
+    {
+      "id": 933017,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 注入：辅助规则（933017）"
+    },
+    {
+      "id": 933018,
+      "file": "REQUEST-933-APPLICATION-ATTACK-PHP.conf",
+      "category": 933,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 注入：辅助规则（933018）"
+    },
+    {
+      "id": 934011,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "通用应用攻击：辅助规则（934011）"
+    },
+    {
+      "id": 934012,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "通用应用攻击：辅助规则（934012）"
+    },
+    {
+      "id": 934100,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "Node.js Injection Attack 1/2",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Node.js 注入检测（934100）"
+    },
+    {
+      "id": 934110,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "Possible Server Side Request Forgery (SSRF) Attack: Cloud provider metadata URL in Parameter",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "服务端请求伪造检测（934110）"
+    },
+    {
+      "id": 934190,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "Possible Server Side Request Forgery (SSRF) Attack: Scheme-less localhost or internal hostname detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "服务端请求伪造检测（934190）"
+    },
+    {
+      "id": 934130,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "JavaScript Prototype Pollution",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "JavaScript 原型污染（934130）"
+    },
+    {
+      "id": 934150,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "Ruby Injection Attack",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Ruby 注入检测（934150）"
+    },
+    {
+      "id": 934160,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "Node.js DoS attack",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Node.js 注入检测（934160）"
+    },
+    {
+      "id": 934170,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "PHP data scheme attack",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "攻击特征检测（934170）"
+    },
+    {
+      "id": 934200,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "Server-Side Template Injection (SSTI) Attack",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "服务端模板注入检测（934200）"
+    },
+    {
+      "id": 934013,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "通用应用攻击：辅助规则（934013）"
+    },
+    {
+      "id": 934014,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "通用应用攻击：辅助规则（934014）"
+    },
+    {
+      "id": 934101,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "Node.js Injection Attack 2/2",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "Node.js 注入检测（934101）"
+    },
+    {
+      "id": 934120,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "Possible Server Side Request Forgery (SSRF) Attack: URL Parameter using IP Address",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "服务端请求伪造检测（934120）"
+    },
+    {
+      "id": 934140,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "Perl Injection Attack",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "Perl 注入检测（934140）"
+    },
+    {
+      "id": 934180,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "SSTI Attack",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "服务端模板注入检测（934180）"
+    },
+    {
+      "id": 934220,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "ORM Lookup Operator Injection via Nested Traversal",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "注入攻击检测（934220）"
+    },
+    {
+      "id": 934015,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "通用应用攻击：辅助规则（934015）"
+    },
+    {
+      "id": 934016,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "通用应用攻击：辅助规则（934016）"
+    },
+    {
+      "id": 934210,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "ORM Lookup Operator Injection",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "注入攻击检测（934210）"
+    },
+    {
+      "id": 934017,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "通用应用攻击：辅助规则（934017）"
+    },
+    {
+      "id": 934018,
+      "file": "REQUEST-934-APPLICATION-ATTACK-GENERIC.conf",
+      "category": 934,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "通用应用攻击：辅助规则（934018）"
+    },
+    {
+      "id": 941011,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "跨站脚本：辅助规则（941011）"
+    },
+    {
+      "id": 941012,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "跨站脚本：辅助规则（941012）"
+    },
+    {
+      "id": 941010,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "跨站脚本：辅助规则（941010）"
+    },
+    {
+      "id": 941100,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "XSS Attack Detected via libinjection",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941100）"
+    },
+    {
+      "id": 941110,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "XSS Filter - Category 1: Script Tag Vector",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941110）"
+    },
+    {
+      "id": 941120,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "XSS Filter - Category 2: Event Handler Vector",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941120）"
+    },
+    {
+      "id": 941130,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "XSS Filter - Category 3: Attribute Vector",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941130）"
+    },
+    {
+      "id": 941140,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "XSS Filter - Category 4: Javascript URI Vector",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941140）"
+    },
+    {
+      "id": 941160,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "NoScript XSS InjectionChecker: HTML Injection",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941160）"
+    },
+    {
+      "id": 941170,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "NoScript XSS InjectionChecker: Attribute Injection",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941170）"
+    },
+    {
+      "id": 941180,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "Node-Validator Deny List Keywords",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本：异常检测（941180）"
+    },
+    {
+      "id": 941190,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "IE XSS Filters - Attack Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941190）"
+    },
+    {
+      "id": 941200,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "IE XSS Filters - Attack Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941200）"
+    },
+    {
+      "id": 941210,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "Javascript Word Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "JavaScript 注入检测（941210）"
+    },
+    {
+      "id": 941220,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "IE XSS Filters - Attack Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941220）"
+    },
+    {
+      "id": 941230,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "IE XSS Filters - Attack Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941230）"
+    },
+    {
+      "id": 941240,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "IE XSS Filters - Attack Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941240）"
+    },
+    {
+      "id": 941250,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "IE XSS Filters - Attack Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941250）"
+    },
+    {
+      "id": 941260,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "IE XSS Filters - Attack Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941260）"
+    },
+    {
+      "id": 941270,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "IE XSS Filters - Attack Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941270）"
+    },
+    {
+      "id": 941280,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "IE XSS Filters - Attack Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941280）"
+    },
+    {
+      "id": 941290,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "IE XSS Filters - Attack Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941290）"
+    },
+    {
+      "id": 941300,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "IE XSS Filters - Attack Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941300）"
+    },
+    {
+      "id": 941310,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "US-ASCII Malformed Encoding XSS Filter - Attack Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941310）"
+    },
+    {
+      "id": 941350,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "UTF-7 Encoding IE XSS - Attack Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941350）"
+    },
+    {
+      "id": 941360,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "JSFuck / Hieroglyphy obfuscation detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本：异常检测（941360）"
+    },
+    {
+      "id": 941370,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "JavaScript global variable found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "JavaScript 注入检测（941370）"
+    },
+    {
+      "id": 941390,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "Javascript method detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "JavaScript 注入检测（941390）"
+    },
+    {
+      "id": 941400,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "XSS JavaScript function without parentheses",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941400）"
+    },
+    {
+      "id": 941013,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "跨站脚本：辅助规则（941013）"
+    },
+    {
+      "id": 941014,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "跨站脚本：辅助规则（941014）"
+    },
+    {
+      "id": 941101,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "XSS Attack Detected via libinjection",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941101）"
+    },
+    {
+      "id": 941150,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "XSS Filter - Category 5: Disallowed HTML Attributes",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941150）"
+    },
+    {
+      "id": 941181,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "Node-Validator Deny List Keywords",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "跨站脚本：异常检测（941181）"
+    },
+    {
+      "id": 941320,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "Possible XSS Attack Detected - HTML Tag Handler",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941320）"
+    },
+    {
+      "id": 941330,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "IE XSS Filters - Attack Detected",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941330）"
+    },
+    {
+      "id": 941340,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "IE XSS Filters - Attack Detected",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "跨站脚本检测（941340）"
+    },
+    {
+      "id": 941380,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "AngularJS client side template injection detected",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "AngularJS 模板注入检测（941380）"
+    },
+    {
+      "id": 941015,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "跨站脚本：辅助规则（941015）"
+    },
+    {
+      "id": 941016,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "跨站脚本：辅助规则（941016）"
+    },
+    {
+      "id": 941017,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "跨站脚本：辅助规则（941017）"
+    },
+    {
+      "id": 941018,
+      "file": "REQUEST-941-APPLICATION-ATTACK-XSS.conf",
+      "category": 941,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "跨站脚本：辅助规则（941018）"
+    },
+    {
+      "id": 942011,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 注入：辅助规则（942011）"
+    },
+    {
+      "id": 942012,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 注入：辅助规则（942012）"
+    },
+    {
+      "id": 942100,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack Detected via libinjection",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942100）"
+    },
+    {
+      "id": 942140,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack: Common DB Names Detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942140）"
+    },
+    {
+      "id": 942151,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack: SQL function name detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942151）"
+    },
+    {
+      "id": 942160,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects blind sqli tests using sleep() or benchmark()",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942160）"
+    },
+    {
+      "id": 942170,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects SQL benchmark and sleep injection attempts including conditional queries",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "注入攻击检测（942170）"
+    },
+    {
+      "id": 942190,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects SQL code execution and information gathering attempts",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 注入：异常检测（942190）"
+    },
+    {
+      "id": 942220,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Looking for integer overflow attacks, these are taken from skipfish, except 2.2.2250738585072011e-308 is the \\",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "攻击特征检测（942220）"
+    },
+    {
+      "id": 942230,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects conditional SQL injection attempts",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942230）"
+    },
+    {
+      "id": 942240,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects MySQL charset switch and MSSQL DoS attempts",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 注入：异常检测（942240）"
+    },
+    {
+      "id": 942250,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects MATCH AGAINST, MERGE and EXECUTE IMMEDIATE injections",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "注入攻击检测（942250）"
+    },
+    {
+      "id": 942270,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Looking for basic sql injection. Common attack string for mysql, oracle and others",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942270）"
+    },
+    {
+      "id": 942280,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects Postgres pg_sleep injection, waitfor delay attacks and database shutdown attempts",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "注入攻击检测（942280）"
+    },
+    {
+      "id": 942290,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Finds basic MongoDB SQL injection attempts",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942290）"
+    },
+    {
+      "id": 942320,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects MySQL and PostgreSQL stored procedure/function injections",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 注入特征检测（942320）"
+    },
+    {
+      "id": 942350,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects MySQL UDF injection and other data/structure manipulation attempts",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "注入攻击检测（942350）"
+    },
+    {
+      "id": 942360,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects concatenated basic SQL injection and SQLLFI attempts",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942360）"
+    },
+    {
+      "id": 942500,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "MySQL in-line comment detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 注入特征检测（942500）"
+    },
+    {
+      "id": 942540,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Authentication bypass (split query)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 认证绕过（942540）"
+    },
+    {
+      "id": 942560,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "MySQL Scientific Notation payload detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 注入：异常检测（942560）"
+    },
+    {
+      "id": 942550,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "JSON-Based SQL Injection",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942550）"
+    },
+    {
+      "id": 942013,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 注入：辅助规则（942013）"
+    },
+    {
+      "id": 942014,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 注入：辅助规则（942014）"
+    },
+    {
+      "id": 942120,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack: SQL Operator Detected",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942120）"
+    },
+    {
+      "id": 942130,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack: SQL Boolean-based attack detected",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942130）"
+    },
+    {
+      "id": 942131,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack: SQL Boolean-based attack detected",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942131）"
+    },
+    {
+      "id": 942150,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack: SQL function name detected",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942150）"
+    },
+    {
+      "id": 942180,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects basic SQL authentication bypass attempts 1/3",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 认证绕过（942180）"
+    },
+    {
+      "id": 942200,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects MySQL comment-/space-obfuscated injections and backtick termination",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入特征检测（942200）"
+    },
+    {
+      "id": 942210,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects chained SQL injection attempts 1/2",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942210）"
+    },
+    {
+      "id": 942260,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects basic SQL authentication bypass attempts 2/3",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 认证绕过（942260）"
+    },
+    {
+      "id": 942300,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects MySQL comments, conditions and ch(a)r injections",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入特征检测（942300）"
+    },
+    {
+      "id": 942310,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects chained SQL injection attempts 2/2",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942310）"
+    },
+    {
+      "id": 942330,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects classic SQL injection probings 1/3",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942330）"
+    },
+    {
+      "id": 942340,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects basic SQL authentication bypass attempts 3/3",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 认证绕过（942340）"
+    },
+    {
+      "id": 942361,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects basic SQL injection based on keyword alter or union",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942361）"
+    },
+    {
+      "id": 942362,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects concatenated basic SQL injection and SQLLFI attempts",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942362）"
+    },
+    {
+      "id": 942370,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects classic SQL injection probings 2/3",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942370）"
+    },
+    {
+      "id": 942380,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942380）"
+    },
+    {
+      "id": 942390,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack using (X)OR",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942390）"
+    },
+    {
+      "id": 942400,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942400）"
+    },
+    {
+      "id": 942410,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942410）"
+    },
+    {
+      "id": 942470,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942470）"
+    },
+    {
+      "id": 942480,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942480）"
+    },
+    {
+      "id": 942430,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Restricted SQL Character Anomaly Detection (args): # of special characters exceeded (12)",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入特征检测（942430）"
+    },
+    {
+      "id": 942440,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Comment Sequence Detected",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入特征检测（942440）"
+    },
+    {
+      "id": 942450,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Bin or Hex Encoding Identified",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入特征检测（942450）"
+    },
+    {
+      "id": 942510,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQLi bypass attempt by ticks or backticks detected",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942510）"
+    },
+    {
+      "id": 942520,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects basic SQL authentication bypass attempts 4.0/4",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 认证绕过（942520）"
+    },
+    {
+      "id": 942521,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects basic SQL authentication bypass attempts 4.1/4",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 认证绕过（942521）"
+    },
+    {
+      "id": 942522,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects basic SQL authentication bypass attempts 4.1/4",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 认证绕过（942522）"
+    },
+    {
+      "id": 942101,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack Detected via libinjection",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942101）"
+    },
+    {
+      "id": 942152,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQL Injection Attack: SQL function name detected",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942152）"
+    },
+    {
+      "id": 942321,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects MySQL and PostgreSQL stored procedure/function injections",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "SQL 注入特征检测（942321）"
+    },
+    {
+      "id": 942015,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 注入：辅助规则（942015）"
+    },
+    {
+      "id": 942016,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 注入：辅助规则（942016）"
+    },
+    {
+      "id": 942251,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects HAVING injections",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "注入攻击检测（942251）"
+    },
+    {
+      "id": 942490,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Detects classic SQL injection probings 3/3",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942490）"
+    },
+    {
+      "id": 942420,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Restricted SQL Character Anomaly Detection (cookies): # of special characters exceeded (8)",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "SQL 注入特征检测（942420）"
+    },
+    {
+      "id": 942431,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Restricted SQL Character Anomaly Detection (args): # of special characters exceeded (6)",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "SQL 注入特征检测（942431）"
+    },
+    {
+      "id": 942460,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Meta-Character Anomaly Detection Alert - Repetitive Non-Word Characters",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "SQL 注入：异常检测（942460）"
+    },
+    {
+      "id": 942511,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQLi bypass attempt by ticks detected",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942511）"
+    },
+    {
+      "id": 942530,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "SQLi query termination detected",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "SQL 注入检测（942530）"
+    },
+    {
+      "id": 942017,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 注入：辅助规则（942017）"
+    },
+    {
+      "id": 942018,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 注入：辅助规则（942018）"
+    },
+    {
+      "id": 942421,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Restricted SQL Character Anomaly Detection (cookies): # of special characters exceeded (3)",
+      "paranoiaLevel": 4,
+      "internal": false,
+      "nameZh": "SQL 注入特征检测（942421）"
+    },
+    {
+      "id": 942432,
+      "file": "REQUEST-942-APPLICATION-ATTACK-SQLI.conf",
+      "category": 942,
+      "message": "Restricted SQL Character Anomaly Detection (args): # of special characters exceeded (2)",
+      "paranoiaLevel": 4,
+      "internal": false,
+      "nameZh": "SQL 注入特征检测（942432）"
+    },
+    {
+      "id": 943011,
+      "file": "REQUEST-943-APPLICATION-ATTACK-SESSION-FIXATION.conf",
+      "category": 943,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "会话固定：辅助规则（943011）"
+    },
+    {
+      "id": 943012,
+      "file": "REQUEST-943-APPLICATION-ATTACK-SESSION-FIXATION.conf",
+      "category": 943,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "会话固定：辅助规则（943012）"
+    },
+    {
+      "id": 943100,
+      "file": "REQUEST-943-APPLICATION-ATTACK-SESSION-FIXATION.conf",
+      "category": 943,
+      "message": "Possible Session Fixation Attack: Setting Cookie Values in HTML",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "会话与 Cookie 安全检测（943100）"
+    },
+    {
+      "id": 943110,
+      "file": "REQUEST-943-APPLICATION-ATTACK-SESSION-FIXATION.conf",
+      "category": 943,
+      "message": "Possible Session Fixation Attack: SessionID Parameter Name with Off-Domain Referer",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "会话与 Cookie 安全检测（943110）"
+    },
+    {
+      "id": 943120,
+      "file": "REQUEST-943-APPLICATION-ATTACK-SESSION-FIXATION.conf",
+      "category": 943,
+      "message": "Possible Session Fixation Attack: SessionID Parameter Name with No Referer",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "会话与 Cookie 安全检测（943120）"
+    },
+    {
+      "id": 943013,
+      "file": "REQUEST-943-APPLICATION-ATTACK-SESSION-FIXATION.conf",
+      "category": 943,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "会话固定：辅助规则（943013）"
+    },
+    {
+      "id": 943014,
+      "file": "REQUEST-943-APPLICATION-ATTACK-SESSION-FIXATION.conf",
+      "category": 943,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "会话固定：辅助规则（943014）"
+    },
+    {
+      "id": 943015,
+      "file": "REQUEST-943-APPLICATION-ATTACK-SESSION-FIXATION.conf",
+      "category": 943,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "会话固定：辅助规则（943015）"
+    },
+    {
+      "id": 943016,
+      "file": "REQUEST-943-APPLICATION-ATTACK-SESSION-FIXATION.conf",
+      "category": 943,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "会话固定：辅助规则（943016）"
+    },
+    {
+      "id": 943017,
+      "file": "REQUEST-943-APPLICATION-ATTACK-SESSION-FIXATION.conf",
+      "category": 943,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "会话固定：辅助规则（943017）"
+    },
+    {
+      "id": 943018,
+      "file": "REQUEST-943-APPLICATION-ATTACK-SESSION-FIXATION.conf",
+      "category": 943,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "会话固定：辅助规则（943018）"
+    },
+    {
+      "id": 944011,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 攻击：辅助规则（944011）"
+    },
+    {
+      "id": 944012,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 攻击：辅助规则（944012）"
+    },
+    {
+      "id": 944100,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "Remote Command Execution: Suspicious Java class detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（944100）"
+    },
+    {
+      "id": 944110,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "Remote Command Execution: Java process spawn (CVE-2017-9805)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（944110）"
+    },
+    {
+      "id": 944120,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "Remote Command Execution: Java serialization (CVE-2015-4852)",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（944120）"
+    },
+    {
+      "id": 944130,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "Suspicious Java class detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Java 危险类或方法检测（944130）"
+    },
+    {
+      "id": 944140,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "Java Injection Attack: Java Script File Upload Found",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "文件上传检测（944140）"
+    },
+    {
+      "id": 944150,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "Potential Remote Command Execution: Log4j / Log4shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "远程命令执行检测（944150）"
+    },
+    {
+      "id": 944013,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 攻击：辅助规则（944013）"
+    },
+    {
+      "id": 944014,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 攻击：辅助规则（944014）"
+    },
+    {
+      "id": 944151,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "Potential Remote Command Execution: Log4j / Log4shell",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（944151）"
+    },
+    {
+      "id": 944200,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "Magic bytes Detected, probable java serialization in use",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "Java 反序列化检测（944200）"
+    },
+    {
+      "id": 944210,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "Magic bytes Detected Base64 Encoded, probable java serialization in use",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "Java 反序列化检测（944210）"
+    },
+    {
+      "id": 944240,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "Remote Command Execution: Java serialization (CVE-2015-4852)",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（944240）"
+    },
+    {
+      "id": 944250,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "Remote Command Execution: Suspicious Java method detected",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（944250）"
+    },
+    {
+      "id": 944260,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "Remote Command Execution: Malicious class-loading payload",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "远程命令执行检测（944260）"
+    },
+    {
+      "id": 944015,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 攻击：辅助规则（944015）"
+    },
+    {
+      "id": 944016,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 攻击：辅助规则（944016）"
+    },
+    {
+      "id": 944300,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "Base64 encoded string matched suspicious keyword",
+      "paranoiaLevel": 3,
+      "internal": false,
+      "nameZh": "Java 攻击：异常检测（944300）"
+    },
+    {
+      "id": 944017,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 攻击：辅助规则（944017）"
+    },
+    {
+      "id": 944018,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 攻击：辅助规则（944018）"
+    },
+    {
+      "id": 944152,
+      "file": "REQUEST-944-APPLICATION-ATTACK-JAVA.conf",
+      "category": 944,
+      "message": "Potential Remote Command Execution: Log4j / Log4shell",
+      "paranoiaLevel": 4,
+      "internal": false,
+      "nameZh": "远程命令执行检测（944152）"
+    },
+    {
+      "id": 949052,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949052）"
+    },
+    {
+      "id": 949152,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949152）"
+    },
+    {
+      "id": 949053,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949053）"
+    },
+    {
+      "id": 949153,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949153）"
+    },
+    {
+      "id": 949054,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949054）"
+    },
+    {
+      "id": 949154,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949154）"
+    },
+    {
+      "id": 949055,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949055）"
+    },
+    {
+      "id": 949155,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949155）"
+    },
+    {
+      "id": 949059,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949059）"
+    },
+    {
+      "id": 949159,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949159）"
+    },
+    {
+      "id": 949060,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949060）"
+    },
+    {
+      "id": 949160,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949160）"
+    },
+    {
+      "id": 949061,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949061）"
+    },
+    {
+      "id": 949161,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949161）"
+    },
+    {
+      "id": 949062,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949062）"
+    },
+    {
+      "id": 949162,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949162）"
+    },
+    {
+      "id": 949063,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949063）"
+    },
+    {
+      "id": 949163,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949163）"
+    },
+    {
+      "id": 949111,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "Inbound Anomaly Score Exceeded in phase 1 (Total Score: %{TX.BLOCKING_INBOUND_ANOMALY_SCORE})",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949111）"
+    },
+    {
+      "id": 949110,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "Inbound Anomaly Score Exceeded (Total Score: %{TX.BLOCKING_INBOUND_ANOMALY_SCORE})",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949110）"
+    },
+    {
+      "id": 949011,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949011）"
+    },
+    {
+      "id": 949012,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949012）"
+    },
+    {
+      "id": 949013,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949013）"
+    },
+    {
+      "id": 949014,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949014）"
+    },
+    {
+      "id": 949015,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949015）"
+    },
+    {
+      "id": 949016,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949016）"
+    },
+    {
+      "id": 949017,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949017）"
+    },
+    {
+      "id": 949018,
+      "file": "REQUEST-949-BLOCKING-EVALUATION.conf",
+      "category": 949,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（949018）"
+    },
+    {
+      "id": 950020,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "响应数据泄露：辅助规则（950020）"
+    },
+    {
+      "id": 950021,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "响应数据泄露：辅助规则（950021）"
+    },
+    {
+      "id": 950022,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "响应数据泄露：辅助规则（950022）"
+    },
+    {
+      "id": 950011,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "响应数据泄露：辅助规则（950011）"
+    },
+    {
+      "id": 950012,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "响应数据泄露：辅助规则（950012）"
+    },
+    {
+      "id": 950130,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "Directory Listing",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "目录列表暴露检测（950130）"
+    },
+    {
+      "id": 950140,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "CGI source code leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（950140）"
+    },
+    {
+      "id": 950150,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "ASP.NET exception leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（950150）"
+    },
+    {
+      "id": 950013,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "响应数据泄露：辅助规则（950013）"
+    },
+    {
+      "id": 950014,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "响应数据泄露：辅助规则（950014）"
+    },
+    {
+      "id": 950100,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "The Application Returned a 500-Level Status Code",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "服务端错误状态检测（950100）"
+    },
+    {
+      "id": 950015,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "响应数据泄露：辅助规则（950015）"
+    },
+    {
+      "id": 950016,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "响应数据泄露：辅助规则（950016）"
+    },
+    {
+      "id": 950017,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "响应数据泄露：辅助规则（950017）"
+    },
+    {
+      "id": 950018,
+      "file": "RESPONSE-950-DATA-LEAKAGES.conf",
+      "category": 950,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "响应数据泄露：辅助规则（950018）"
+    },
+    {
+      "id": 951011,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 信息泄露：辅助规则（951011）"
+    },
+    {
+      "id": 951012,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 信息泄露：辅助规则（951012）"
+    },
+    {
+      "id": 951100,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 信息泄露：辅助规则（951100）"
+    },
+    {
+      "id": 951110,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "Microsoft Access SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951110）"
+    },
+    {
+      "id": 951120,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "Oracle SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951120）"
+    },
+    {
+      "id": 951130,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "DB2 SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951130）"
+    },
+    {
+      "id": 951140,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "EMC SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951140）"
+    },
+    {
+      "id": 951150,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "firebird SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951150）"
+    },
+    {
+      "id": 951160,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "Frontbase SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951160）"
+    },
+    {
+      "id": 951170,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "hsqldb SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951170）"
+    },
+    {
+      "id": 951180,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "informix SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951180）"
+    },
+    {
+      "id": 951190,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "ingres SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951190）"
+    },
+    {
+      "id": 951200,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "interbase SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951200）"
+    },
+    {
+      "id": 951210,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "maxDB SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951210）"
+    },
+    {
+      "id": 951220,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "mssql SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951220）"
+    },
+    {
+      "id": 951230,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "mysql SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951230）"
+    },
+    {
+      "id": 951240,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "postgres SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951240）"
+    },
+    {
+      "id": 951250,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "sqlite SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951250）"
+    },
+    {
+      "id": 951260,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "Sybase SQL Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（951260）"
+    },
+    {
+      "id": 951013,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 信息泄露：辅助规则（951013）"
+    },
+    {
+      "id": 951014,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 信息泄露：辅助规则（951014）"
+    },
+    {
+      "id": 951015,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 信息泄露：辅助规则（951015）"
+    },
+    {
+      "id": 951016,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 信息泄露：辅助规则（951016）"
+    },
+    {
+      "id": 951017,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 信息泄露：辅助规则（951017）"
+    },
+    {
+      "id": 951018,
+      "file": "RESPONSE-951-DATA-LEAKAGES-SQL.conf",
+      "category": 951,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "SQL 信息泄露：辅助规则（951018）"
+    },
+    {
+      "id": 952011,
+      "file": "RESPONSE-952-DATA-LEAKAGES-JAVA.conf",
+      "category": 952,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 信息泄露：辅助规则（952011）"
+    },
+    {
+      "id": 952012,
+      "file": "RESPONSE-952-DATA-LEAKAGES-JAVA.conf",
+      "category": 952,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 信息泄露：辅助规则（952012）"
+    },
+    {
+      "id": 952110,
+      "file": "RESPONSE-952-DATA-LEAKAGES-JAVA.conf",
+      "category": 952,
+      "message": "Java Errors",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Java 信息泄露：异常检测（952110）"
+    },
+    {
+      "id": 952013,
+      "file": "RESPONSE-952-DATA-LEAKAGES-JAVA.conf",
+      "category": 952,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 信息泄露：辅助规则（952013）"
+    },
+    {
+      "id": 952014,
+      "file": "RESPONSE-952-DATA-LEAKAGES-JAVA.conf",
+      "category": 952,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 信息泄露：辅助规则（952014）"
+    },
+    {
+      "id": 952015,
+      "file": "RESPONSE-952-DATA-LEAKAGES-JAVA.conf",
+      "category": 952,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 信息泄露：辅助规则（952015）"
+    },
+    {
+      "id": 952016,
+      "file": "RESPONSE-952-DATA-LEAKAGES-JAVA.conf",
+      "category": 952,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 信息泄露：辅助规则（952016）"
+    },
+    {
+      "id": 952017,
+      "file": "RESPONSE-952-DATA-LEAKAGES-JAVA.conf",
+      "category": 952,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 信息泄露：辅助规则（952017）"
+    },
+    {
+      "id": 952018,
+      "file": "RESPONSE-952-DATA-LEAKAGES-JAVA.conf",
+      "category": 952,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Java 信息泄露：辅助规则（952018）"
+    },
+    {
+      "id": 953011,
+      "file": "RESPONSE-953-DATA-LEAKAGES-PHP.conf",
+      "category": 953,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 信息泄露：辅助规则（953011）"
+    },
+    {
+      "id": 953012,
+      "file": "RESPONSE-953-DATA-LEAKAGES-PHP.conf",
+      "category": 953,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 信息泄露：辅助规则（953012）"
+    },
+    {
+      "id": 953100,
+      "file": "RESPONSE-953-DATA-LEAKAGES-PHP.conf",
+      "category": 953,
+      "message": "PHP Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（953100）"
+    },
+    {
+      "id": 953110,
+      "file": "RESPONSE-953-DATA-LEAKAGES-PHP.conf",
+      "category": 953,
+      "message": "PHP source code leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（953110）"
+    },
+    {
+      "id": 953120,
+      "file": "RESPONSE-953-DATA-LEAKAGES-PHP.conf",
+      "category": 953,
+      "message": "PHP source code leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（953120）"
+    },
+    {
+      "id": 953013,
+      "file": "RESPONSE-953-DATA-LEAKAGES-PHP.conf",
+      "category": 953,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 信息泄露：辅助规则（953013）"
+    },
+    {
+      "id": 953014,
+      "file": "RESPONSE-953-DATA-LEAKAGES-PHP.conf",
+      "category": 953,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 信息泄露：辅助规则（953014）"
+    },
+    {
+      "id": 953101,
+      "file": "RESPONSE-953-DATA-LEAKAGES-PHP.conf",
+      "category": 953,
+      "message": "PHP Information Leakage",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "信息泄露（953101）"
+    },
+    {
+      "id": 953015,
+      "file": "RESPONSE-953-DATA-LEAKAGES-PHP.conf",
+      "category": 953,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 信息泄露：辅助规则（953015）"
+    },
+    {
+      "id": 953016,
+      "file": "RESPONSE-953-DATA-LEAKAGES-PHP.conf",
+      "category": 953,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 信息泄露：辅助规则（953016）"
+    },
+    {
+      "id": 953017,
+      "file": "RESPONSE-953-DATA-LEAKAGES-PHP.conf",
+      "category": 953,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 信息泄露：辅助规则（953017）"
+    },
+    {
+      "id": 953018,
+      "file": "RESPONSE-953-DATA-LEAKAGES-PHP.conf",
+      "category": 953,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "PHP 信息泄露：辅助规则（953018）"
+    },
+    {
+      "id": 954011,
+      "file": "RESPONSE-954-DATA-LEAKAGES-IIS.conf",
+      "category": 954,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "IIS 信息泄露：辅助规则（954011）"
+    },
+    {
+      "id": 954012,
+      "file": "RESPONSE-954-DATA-LEAKAGES-IIS.conf",
+      "category": 954,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "IIS 信息泄露：辅助规则（954012）"
+    },
+    {
+      "id": 954100,
+      "file": "RESPONSE-954-DATA-LEAKAGES-IIS.conf",
+      "category": 954,
+      "message": "Disclosure of IIS install location",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "IIS 信息泄露：异常检测（954100）"
+    },
+    {
+      "id": 954110,
+      "file": "RESPONSE-954-DATA-LEAKAGES-IIS.conf",
+      "category": 954,
+      "message": "Application Availability Error",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "IIS 信息泄露：异常检测（954110）"
+    },
+    {
+      "id": 954120,
+      "file": "RESPONSE-954-DATA-LEAKAGES-IIS.conf",
+      "category": 954,
+      "message": "IIS Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（954120）"
+    },
+    {
+      "id": 954130,
+      "file": "RESPONSE-954-DATA-LEAKAGES-IIS.conf",
+      "category": 954,
+      "message": "IIS Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（954130）"
+    },
+    {
+      "id": 954013,
+      "file": "RESPONSE-954-DATA-LEAKAGES-IIS.conf",
+      "category": 954,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "IIS 信息泄露：辅助规则（954013）"
+    },
+    {
+      "id": 954014,
+      "file": "RESPONSE-954-DATA-LEAKAGES-IIS.conf",
+      "category": 954,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "IIS 信息泄露：辅助规则（954014）"
+    },
+    {
+      "id": 954101,
+      "file": "RESPONSE-954-DATA-LEAKAGES-IIS.conf",
+      "category": 954,
+      "message": "Disclosure of IIS install location",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "IIS 信息泄露：异常检测（954101）"
+    },
+    {
+      "id": 954015,
+      "file": "RESPONSE-954-DATA-LEAKAGES-IIS.conf",
+      "category": 954,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "IIS 信息泄露：辅助规则（954015）"
+    },
+    {
+      "id": 954016,
+      "file": "RESPONSE-954-DATA-LEAKAGES-IIS.conf",
+      "category": 954,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "IIS 信息泄露：辅助规则（954016）"
+    },
+    {
+      "id": 954017,
+      "file": "RESPONSE-954-DATA-LEAKAGES-IIS.conf",
+      "category": 954,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "IIS 信息泄露：辅助规则（954017）"
+    },
+    {
+      "id": 954018,
+      "file": "RESPONSE-954-DATA-LEAKAGES-IIS.conf",
+      "category": 954,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "IIS 信息泄露：辅助规则（954018）"
+    },
+    {
+      "id": 955011,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Web Shell：辅助规则（955011）"
+    },
+    {
+      "id": 955012,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Web Shell：辅助规则（955012）"
+    },
+    {
+      "id": 955100,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "PHP Web shell detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955100）"
+    },
+    {
+      "id": 955110,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "r57 web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955110）"
+    },
+    {
+      "id": 955120,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "WSO web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955120）"
+    },
+    {
+      "id": 955130,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "b4tm4n web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955130）"
+    },
+    {
+      "id": 955140,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "Mini Shell web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955140）"
+    },
+    {
+      "id": 955150,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "Ashiyane web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955150）"
+    },
+    {
+      "id": 955160,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "Symlink_Sa web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955160）"
+    },
+    {
+      "id": 955170,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "CasuS web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955170）"
+    },
+    {
+      "id": 955180,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "GRP WebShell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Web Shell：异常检测（955180）"
+    },
+    {
+      "id": 955190,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "NGHshell web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955190）"
+    },
+    {
+      "id": 955200,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "SimAttacker web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955200）"
+    },
+    {
+      "id": 955210,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "Unknown web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955210）"
+    },
+    {
+      "id": 955220,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "lama\\",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "Web Shell：异常检测（955220）"
+    },
+    {
+      "id": 955230,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "lostDC web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955230）"
+    },
+    {
+      "id": 955240,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "Unknown web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955240）"
+    },
+    {
+      "id": 955250,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "Unknown web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955250）"
+    },
+    {
+      "id": 955260,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "Ru24PostWebShell web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955260）"
+    },
+    {
+      "id": 955270,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "s72 Shell web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955270）"
+    },
+    {
+      "id": 955280,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "PhpSpy web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955280）"
+    },
+    {
+      "id": 955290,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "g00nshell web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955290）"
+    },
+    {
+      "id": 955300,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "PuNkHoLic shell web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955300）"
+    },
+    {
+      "id": 955310,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "azrail web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955310）"
+    },
+    {
+      "id": 955320,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "SmEvK_PaThAn Shell web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955320）"
+    },
+    {
+      "id": 955330,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "Shell I web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955330）"
+    },
+    {
+      "id": 955340,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "b374k m1n1 web shell",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955340）"
+    },
+    {
+      "id": 955400,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "ASP Web shell detected",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "WebShell 后门检测（955400）"
+    },
+    {
+      "id": 955013,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Web Shell：辅助规则（955013）"
+    },
+    {
+      "id": 955014,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Web Shell：辅助规则（955014）"
+    },
+    {
+      "id": 955350,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "webadmin.php file manager",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "Web Shell：异常检测（955350）"
+    },
+    {
+      "id": 955015,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Web Shell：辅助规则（955015）"
+    },
+    {
+      "id": 955016,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Web Shell：辅助规则（955016）"
+    },
+    {
+      "id": 955017,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Web Shell：辅助规则（955017）"
+    },
+    {
+      "id": 955018,
+      "file": "RESPONSE-955-WEB-SHELLS.conf",
+      "category": 955,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Web Shell：辅助规则（955018）"
+    },
+    {
+      "id": 956011,
+      "file": "RESPONSE-956-DATA-LEAKAGES-RUBY.conf",
+      "category": 956,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Ruby 信息泄露：辅助规则（956011）"
+    },
+    {
+      "id": 956012,
+      "file": "RESPONSE-956-DATA-LEAKAGES-RUBY.conf",
+      "category": 956,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Ruby 信息泄露：辅助规则（956012）"
+    },
+    {
+      "id": 956100,
+      "file": "RESPONSE-956-DATA-LEAKAGES-RUBY.conf",
+      "category": 956,
+      "message": "RUBY Information Leakage",
+      "paranoiaLevel": 1,
+      "internal": false,
+      "nameZh": "信息泄露（956100）"
+    },
+    {
+      "id": 956013,
+      "file": "RESPONSE-956-DATA-LEAKAGES-RUBY.conf",
+      "category": 956,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Ruby 信息泄露：辅助规则（956013）"
+    },
+    {
+      "id": 956014,
+      "file": "RESPONSE-956-DATA-LEAKAGES-RUBY.conf",
+      "category": 956,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Ruby 信息泄露：辅助规则（956014）"
+    },
+    {
+      "id": 956110,
+      "file": "RESPONSE-956-DATA-LEAKAGES-RUBY.conf",
+      "category": 956,
+      "message": "Ruby source code leakage",
+      "paranoiaLevel": 2,
+      "internal": false,
+      "nameZh": "信息泄露（956110）"
+    },
+    {
+      "id": 956015,
+      "file": "RESPONSE-956-DATA-LEAKAGES-RUBY.conf",
+      "category": 956,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Ruby 信息泄露：辅助规则（956015）"
+    },
+    {
+      "id": 956016,
+      "file": "RESPONSE-956-DATA-LEAKAGES-RUBY.conf",
+      "category": 956,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Ruby 信息泄露：辅助规则（956016）"
+    },
+    {
+      "id": 956017,
+      "file": "RESPONSE-956-DATA-LEAKAGES-RUBY.conf",
+      "category": 956,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Ruby 信息泄露：辅助规则（956017）"
+    },
+    {
+      "id": 956018,
+      "file": "RESPONSE-956-DATA-LEAKAGES-RUBY.conf",
+      "category": 956,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": false,
+      "nameZh": "Ruby 信息泄露：辅助规则（956018）"
+    },
+    {
+      "id": 959052,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959052）"
+    },
+    {
+      "id": 959152,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959152）"
+    },
+    {
+      "id": 959053,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959053）"
+    },
+    {
+      "id": 959153,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959153）"
+    },
+    {
+      "id": 959054,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959054）"
+    },
+    {
+      "id": 959154,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959154）"
+    },
+    {
+      "id": 959055,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959055）"
+    },
+    {
+      "id": 959155,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959155）"
+    },
+    {
+      "id": 959059,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959059）"
+    },
+    {
+      "id": 959159,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959159）"
+    },
+    {
+      "id": 959060,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959060）"
+    },
+    {
+      "id": 959160,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959160）"
+    },
+    {
+      "id": 959061,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959061）"
+    },
+    {
+      "id": 959161,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959161）"
+    },
+    {
+      "id": 959062,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959062）"
+    },
+    {
+      "id": 959162,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959162）"
+    },
+    {
+      "id": 959063,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959063）"
+    },
+    {
+      "id": 959163,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959163）"
+    },
+    {
+      "id": 959101,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "Outbound Anomaly Score Exceeded in phase 3 (Total Score: %{tx.blocking_outbound_anomaly_score})",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959101）"
+    },
+    {
+      "id": 959100,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "Outbound Anomaly Score Exceeded (Total Score: %{tx.blocking_outbound_anomaly_score})",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959100）"
+    },
+    {
+      "id": 959011,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959011）"
+    },
+    {
+      "id": 959012,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959012）"
+    },
+    {
+      "id": 959013,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959013）"
+    },
+    {
+      "id": 959014,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959014）"
+    },
+    {
+      "id": 959015,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959015）"
+    },
+    {
+      "id": 959016,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959016）"
+    },
+    {
+      "id": 959017,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959017）"
+    },
+    {
+      "id": 959018,
+      "file": "RESPONSE-959-BLOCKING-EVALUATION.conf",
+      "category": 959,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（959018）"
+    },
+    {
+      "id": 980099,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980099）"
+    },
+    {
+      "id": 980041,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980041）"
+    },
+    {
+      "id": 980042,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980042）"
+    },
+    {
+      "id": 980043,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980043）"
+    },
+    {
+      "id": 980044,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980044）"
+    },
+    {
+      "id": 980045,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980045）"
+    },
+    {
+      "id": 980046,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980046）"
+    },
+    {
+      "id": 980047,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980047）"
+    },
+    {
+      "id": 980048,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980048）"
+    },
+    {
+      "id": 980049,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980049）"
+    },
+    {
+      "id": 980050,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980050）"
+    },
+    {
+      "id": 980051,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980051）"
+    },
+    {
+      "id": 980170,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "Anomaly Scores: (Inbound Scores: blocking=%{tx.blocking_inbound_anomaly_score}, detection=%{tx.detection_inbound_anomaly_score}, per_pl=%{tx.inbound_anomaly_score_pl1}-%{tx.inbound_anomaly_score_pl2}-%{tx.inbound_anomaly_score_pl3}-%{tx.inbound_anomaly_score_pl4}, threshold=%{tx.inbound_anomaly_score_threshold}) - (Outbound Scores: blocking=%{tx.blocking_outbound_anomaly_score}, detection=%{tx.detection_outbound_anomaly_score}, per_pl=%{tx.outbound_anomaly_score_pl1}-%{tx.outbound_anomaly_score_pl2}-%{tx.outbound_anomaly_score_pl3}-%{tx.outbound_anomaly_score_pl4}, threshold=%{tx.outbound_anomaly_score_threshold}) - (SQLI=%{tx.sql_injection_score}, XSS=%{tx.xss_score}, RFI=%{tx.rfi_score}, LFI=%{tx.lfi_score}, RCE=%{tx.rce_score}, PHPI=%{tx.php_injection_score}, HTTP=%{tx.http_violation_score}, SESS=%{tx.session_fixation_score}, COMBINED_SCORE=%{tx.anomaly_score})",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980170）"
+    },
+    {
+      "id": 980011,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980011）"
+    },
+    {
+      "id": 980012,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980012）"
+    },
+    {
+      "id": 980013,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980013）"
+    },
+    {
+      "id": 980014,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980014）"
+    },
+    {
+      "id": 980015,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980015）"
+    },
+    {
+      "id": 980016,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980016）"
+    },
+    {
+      "id": 980017,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980017）"
+    },
+    {
+      "id": 980018,
+      "file": "RESPONSE-980-CORRELATION.conf",
+      "category": 980,
+      "message": "",
+      "paranoiaLevel": null,
+      "internal": true,
+      "nameZh": "CRS 内部控制规则（980018）"
+    }
+  ]
+}

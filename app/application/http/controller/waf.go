@@ -131,21 +131,17 @@ func findWAFRule(rules []interface{}, target string) int {
 	return -1
 }
 
-func wafConfig(plugin *unstructured.Unstructured) (waf.Policy, []string, map[string]interface{}, error) {
+func wafConfig(plugin *unstructured.Unstructured) (waf.Policy, map[string]interface{}, error) {
 	config, _, err := unstructured.NestedMap(plugin.Object, "spec", "defaultConfig")
 	if err != nil {
-		return waf.Policy{}, nil, nil, err
+		return waf.Policy{}, nil, err
 	}
 	global := policyFrom(config["w7Policy"])
 	if global.UseCRS == nil {
 		useCRS, _ := config["useCRS"].(bool)
 		global.UseCRS = &useCRS
 	}
-	legacy := stringSlice(config["w7LegacyRules"])
-	if config["w7Policy"] == nil {
-		legacy = stringSlice(config["secRules"])
-	}
-	return global, legacy, config, nil
+	return global, config, nil
 }
 
 func (self WAF) Config(ctx *gin.Context) {
@@ -162,7 +158,7 @@ func (self WAF) Config(ctx *gin.Context) {
 		ctx.JSON(http.StatusForbidden, gin.H{"msg": "无法读取 WAF 插件配置"})
 		return
 	}
-	global, legacy, _, err := wafConfig(plugin)
+	global, _, err := wafConfig(plugin)
 	if err != nil {
 		self.JsonResponseWithServerError(ctx, err)
 		return
@@ -185,8 +181,7 @@ func (self WAF) Config(ctx *gin.Context) {
 			}
 		}
 	}
-	global.LegacyRules = legacy
-	self.JsonResponseWithoutError(ctx, gin.H{"global": global, "overrides": overrides})
+	self.JsonResponseWithoutError(ctx, gin.H{"global": global, "overrides": overrides, "catalog": waf.SystemCatalog})
 }
 
 func (self WAF) SaveConfig(ctx *gin.Context) {
@@ -208,7 +203,7 @@ func (self WAF) SaveConfig(ctx *gin.Context) {
 		ctx.JSON(http.StatusForbidden, gin.H{"msg": "无法修改 WAF 插件配置"})
 		return
 	}
-	global, legacy, defaultConfig, err := wafConfig(plugin)
+	global, defaultConfig, err := wafConfig(plugin)
 	if err != nil {
 		self.JsonResponseWithServerError(ctx, err)
 		return
@@ -219,27 +214,12 @@ func (self WAF) SaveConfig(ctx *gin.Context) {
 		return
 	}
 	if request.Scope == "global" {
-		if request.Policy.LegacyRules != nil {
-			available := make(map[string]int)
-			for _, rule := range legacy {
-				available[rule]++
-			}
-			for _, rule := range request.Policy.LegacyRules {
-				available[rule]--
-				if available[rule] < 0 {
-					ctx.JSON(http.StatusBadRequest, gin.H{"msg": "不能新增旧版规则指令"})
-					return
-				}
-			}
-			legacy = request.Policy.LegacyRules
-		}
 		global = request.Policy
 		if global.UseCRS == nil {
 			useCRS := defaultConfig["useCRS"] == true
 			global.UseCRS = &useCRS
 		}
-		global.LegacyRules = nil
-		compiled, err := waf.Compile(global, nil, legacy)
+		compiled, err := waf.Compile(global, nil)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
 			return
@@ -248,7 +228,7 @@ func (self WAF) SaveConfig(ctx *gin.Context) {
 			defaultConfig[key] = value
 		}
 		defaultConfig["w7Policy"] = policyMap(global)
-		defaultConfig["w7LegacyRules"] = legacy
+		delete(defaultConfig, "w7LegacyRules")
 		for index, item := range rules {
 			rule, ok := item.(map[string]interface{})
 			if !ok {
@@ -259,7 +239,18 @@ func (self WAF) SaveConfig(ctx *gin.Context) {
 				continue
 			}
 			overrides := policyFrom(config["w7Overrides"])
-			compiled, err := waf.Compile(global, &overrides, legacy)
+			known := make(map[int]bool, len(global.CustomRules))
+			for _, custom := range global.CustomRules {
+				known[custom.ID] = true
+			}
+			kept := overrides.DisabledGlobalIDs[:0]
+			for _, id := range overrides.DisabledGlobalIDs {
+				if known[id] {
+					kept = append(kept, id)
+				}
+			}
+			overrides.DisabledGlobalIDs = kept
+			compiled, err := waf.Compile(global, &overrides)
 			if err != nil {
 				ctx.JSON(http.StatusBadRequest, gin.H{"msg": fmt.Sprintf("域名规则 %d: %v", index, err)})
 				return
@@ -274,7 +265,7 @@ func (self WAF) SaveConfig(ctx *gin.Context) {
 			return
 		}
 	} else {
-		compiled, err := waf.Compile(global, &request.Policy, legacy)
+		compiled, err := waf.Compile(global, &request.Policy)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{"msg": err.Error()})
 			return
