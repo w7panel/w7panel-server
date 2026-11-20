@@ -7,16 +7,14 @@ import (
 
 	"github.com/w7panel/w7panel/common/service/k8s"
 	"github.com/w7panel/w7panel/common/service/k8s/higress/client/pkg/apis/extensions/v1alpha1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 var bfck = false
 
 const (
-	whiteDomainPluginName       = "w7panel-pluginwhitedomain"
-	legacyWhiteDomainPluginName = "w7-white-domain"
-	higressSystemNamespace      = "higress-system"
+	whiteDomainPluginName  = "w7panel-pluginwhitedomain"
+	higressSystemNamespace = "higress-system"
 )
 
 // 是否需要备案检测
@@ -34,14 +32,7 @@ func LoadBkConfig() (*v1alpha1.WasmPlugin, error) {
 	result := &v1alpha1.WasmPlugin{}
 	err = k8sClient.Get(sdk.Ctx, types.NamespacedName{Name: whiteDomainPluginName, Namespace: higressSystemNamespace}, result)
 	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return nil, err
-		}
-		result = &v1alpha1.WasmPlugin{}
-		err = k8sClient.Get(sdk.Ctx, types.NamespacedName{Name: legacyWhiteDomainPluginName, Namespace: higressSystemNamespace}, result)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	WebhookWasmPlugin(result)
 	return result, nil
@@ -49,7 +40,7 @@ func LoadBkConfig() (*v1alpha1.WasmPlugin, error) {
 
 func isWhiteDomainPlugin(wasmPlugin *v1alpha1.WasmPlugin) bool {
 	return wasmPlugin != nil && wasmPlugin.Namespace == higressSystemNamespace &&
-		(wasmPlugin.Name == whiteDomainPluginName || wasmPlugin.Name == legacyWhiteDomainPluginName)
+		wasmPlugin.Name == whiteDomainPluginName
 }
 
 func CheckHost(host string) error {
