@@ -16,6 +16,7 @@ type k3sConfig struct {
 	k3sNodeEnv    map[string]string
 	k3sConfigYaml map[string]interface{}
 	k3sRawConfig  string
+	etcdDataDir   string
 	configErr     error
 }
 
@@ -44,6 +45,9 @@ func NewK3sConfigByNode(node *v1.Node) (*k3sConfig, error) {
 		return nil, err
 	}
 	k3sConfig := NewK3sConfig(args, nodeEnv, config)
+	if helper.IsChildAgent() {
+		k3sConfig.etcdDataDir = "/proc/1/root/var/lib/rancher/k3s/server/db/etcd"
+	}
 	return k3sConfig, k3sConfig.configErr
 }
 
@@ -54,7 +58,14 @@ func (self *k3sConfig) IsClusterInit() bool {
 			return true
 		}
 	}
-	return self.IsClusterInitInYaml()
+	if self.IsClusterInitInYaml() {
+		return true
+	}
+	if self.etcdDataDir != "" {
+		info, err := os.Stat(self.etcdDataDir)
+		return err == nil && info.IsDir()
+	}
+	return false
 }
 
 func (self *k3sConfig) IsNotFirstNode() bool {

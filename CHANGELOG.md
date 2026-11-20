@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-20 修复旧 CKM 的数据存储模式识别
+
+- 子集群 Agent 识别 K3s 节点容器中已有的 etcd 数据目录；旧 CKM 在启动模板移除 `--cluster-init` 且 `config.yaml` 未声明该参数时，原先会将运行中的 etcd 误报为 SQLite。现在仍按实际 etcd 数据报告模式，并保留原有启动参数与配置判断。影响模块：K3s 配置控制器；验证：定向 Go 测试覆盖仅有 etcd 数据目录的旧实例。
+
 ## 2026-11-20 子集群 SQLite 切换内嵌 etcd
 
 - 子集群 Agent 改用已挂载的 `/etc/rancher/k3s/config.yaml` 读写 K3s 配置，识别 YAML 布尔值 `cluster-init`，并在配置写入后通过 CKM 容器的 `k3s.sh` 重启；主集群继续使用原有路径和 systemd。此前子集群固定访问不存在的 `/host` 路径且只按启动参数判断模式，提交切换后无法正确生效。节点事件现在保留已提交的切换意图，避免重启期间被旧观测值覆盖。影响模块：K3s 配置控制器、子集群 Agent。验证：定向 Go 测试、差异检查；隔离 K3s 容器从 SQLite 切换到 etcd 后测试 ConfigMap 保留，再次重启仍可读取。未在真实 CKM 上联调。
