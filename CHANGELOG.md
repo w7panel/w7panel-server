@@ -1016,3 +1016,6 @@
 
 - 移除面板直接读取网关 Pod 日志的 WAF 路由及权限例外，防护日志由 metrics-traffic 查询 VictoriaLogs。影响模块：WAF 控制器、路由、权限。验证：WAF 控制器及权限定向测试。
 - 权限包全量测试仍受既有 `gateway/traffic` 菜单断言失败影响；本次 WAF 路由权限定向测试通过。
+## 2026-11-23 WAF 配置直写插件资源
+
+- WAF MicroApp 通过宿主 Kubernetes 代理直接读写 WasmPlugin，删除面板中的 WAF 专用路由、编译逻辑及权限例外。影响模块：网关插件配置与面板 API。验证：WAF 前端测试与构建通过；面板定向 Go 测试受本地临时空间不足阻断。

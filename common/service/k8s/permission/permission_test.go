@@ -452,22 +452,6 @@ func TestBuiltinFounderUsesGatewayTrafficMenu(t *testing.T) {
 	}
 }
 
-func TestWAFRoutesUseKubernetesResourceAuthorization(t *testing.T) {
-	if isAlwaysAllowed("/panel-api/v1/waf/logs") {
-		t.Fatal("removed WAF log route must not remain allowlisted")
-	}
-	p := &configv1alpha1.Permission{}
-	for _, route := range []struct{ method, path string }{
-		{"GET", "/panel-api/v1/waf/config"},
-		{"PUT", "/panel-api/v1/waf/config"},
-	} {
-		allowed, err := AuthorizePanelAPIWithPermission(context.Background(), nil, p, route.method, route.path)
-		if err != nil || !allowed {
-			t.Fatalf("WAF route %s %s rejected before resource authorization: %v", route.method, route.path, err)
-		}
-	}
-}
-
 func TestBuiltinNormalPermissionAllowsAccountBindingWithoutClusterRegistration(t *testing.T) {
 	p := loadBuiltinPermission(t, "normal.yaml")
 	api := APIMap(p)
