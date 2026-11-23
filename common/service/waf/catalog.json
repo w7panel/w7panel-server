@@ -427,7 +427,7 @@
       "message": "Method is not allowed by policy",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "HTTP 请求方法检测（911100）"
+      "nameZh": "禁用的 HTTP 请求方法"
     },
     {
       "id": 911013,
@@ -508,7 +508,7 @@
       "message": "Found User-Agent associated with security scanner",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "User-Agent 请求头检测（913100）"
+      "nameZh": "安全扫描器 User-Agent"
     },
     {
       "id": 913013,
@@ -589,7 +589,7 @@
       "message": "Invalid HTTP Request Line",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "HTTP 请求行检测（920100）"
+      "nameZh": "无效的 HTTP 请求行"
     },
     {
       "id": 920120,
@@ -598,7 +598,7 @@
       "message": "Attempted multipart/form-data bypass",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Multipart 请求格式检测（920120）"
+      "nameZh": "multipart/form-data 格式绕过"
     },
     {
       "id": 920160,
@@ -607,7 +607,7 @@
       "message": "Content-Length HTTP header is not numeric",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Content-Length 请求头检测（920160）"
+      "nameZh": "Content-Length 不是数字"
     },
     {
       "id": 920170,
@@ -616,7 +616,7 @@
       "message": "GET or HEAD Request with Body Content",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "协议与请求格式：异常检测（920170）"
+      "nameZh": "GET/HEAD 请求携带请求体"
     },
     {
       "id": 920171,
@@ -625,7 +625,7 @@
       "message": "GET or HEAD Request with Transfer-Encoding",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Transfer-Encoding 请求头检测（920171）"
+      "nameZh": "GET/HEAD 请求携带 Transfer-Encoding"
     },
     {
       "id": 920180,
@@ -634,7 +634,7 @@
       "message": "POST without Content-Length and Transfer-Encoding headers",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Content-Length 请求头检测（920180）"
+      "nameZh": "POST 缺少 Content-Length 和 Transfer-Encoding"
     },
     {
       "id": 920181,
@@ -643,7 +643,7 @@
       "message": "Content-Length and Transfer-Encoding headers present",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Content-Length 请求头检测（920181）"
+      "nameZh": "同时存在 Content-Length 和 Transfer-Encoding"
     },
     {
       "id": 920190,
@@ -652,7 +652,7 @@
       "message": "Range: Invalid Last Byte Value",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Range 请求头异常检测（920190）"
+      "nameZh": "Range 结束字节无效"
     },
     {
       "id": 920660,
@@ -661,7 +661,7 @@
       "message": "Obsolete Request-Range header detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "协议与请求格式：异常检测（920660）"
+      "nameZh": "使用已废弃的 Request-Range 请求头"
     },
     {
       "id": 920210,
@@ -670,7 +670,7 @@
       "message": "Multiple/Conflicting Connection Header Data Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "协议与请求格式：异常检测（920210）"
+      "nameZh": "Connection 请求头重复或冲突"
     },
     {
       "id": 920250,
@@ -679,7 +679,7 @@
       "message": "UTF8 Encoding Abuse Attack Attempt",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "字符编码异常检测（920250）"
+      "nameZh": "UTF-8 编码滥用"
     },
     {
       "id": 920260,
@@ -688,7 +688,7 @@
       "message": "Unicode Full/Half Width Abuse Attack Attempt",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "字符编码异常检测（920260）"
+      "nameZh": "Unicode 全角/半角编码滥用"
     },
     {
       "id": 920270,
@@ -697,7 +697,7 @@
       "message": "Invalid character in request (null character)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "非法字符检测（920270）"
+      "nameZh": "请求包含空字符"
     },
     {
       "id": 920280,
@@ -706,7 +706,7 @@
       "message": "Request Missing a Host Header",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Host 请求头检测（920280）"
+      "nameZh": "缺少 Host 请求头"
     },
     {
       "id": 920290,
@@ -715,7 +715,7 @@
       "message": "Empty Host Header",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Host 请求头检测（920290）"
+      "nameZh": "Host 请求头为空"
     },
     {
       "id": 920310,
@@ -724,7 +724,7 @@
       "message": "Request Has an Empty Accept Header",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Accept 请求头检测（920310）"
+      "nameZh": "Accept 请求头为空"
     },
     {
       "id": 920311,
@@ -733,7 +733,7 @@
       "message": "Request Has an Empty Accept Header",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Accept 请求头检测（920311）"
+      "nameZh": "Accept 请求头为空"
     },
     {
       "id": 920330,
@@ -742,7 +742,7 @@
       "message": "Empty User Agent Header",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "User-Agent 请求头检测（920330）"
+      "nameZh": "User-Agent 请求头为空"
     },
     {
       "id": 920340,
@@ -751,7 +751,7 @@
       "message": "Content-Type header missing from request with non-zero Content-Length",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Content-Length 请求头检测（920340）"
+      "nameZh": "有请求体长度但缺少 Content-Type"
     },
     {
       "id": 920350,
@@ -760,7 +760,7 @@
       "message": "Host header is a numeric IP address",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Host 请求头检测（920350）"
+      "nameZh": "Host 请求头使用数字 IP"
     },
     {
       "id": 920380,
@@ -769,7 +769,7 @@
       "message": "Too many arguments in request",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "请求参数限制检测（920380）"
+      "nameZh": "请求参数数量过多"
     },
     {
       "id": 920360,
@@ -778,7 +778,7 @@
       "message": "Argument name too long",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "请求参数限制检测（920360）"
+      "nameZh": "参数名过长"
     },
     {
       "id": 920370,
@@ -787,7 +787,7 @@
       "message": "Argument value too long",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "请求参数限制检测（920370）"
+      "nameZh": "参数值过长"
     },
     {
       "id": 920390,
@@ -796,7 +796,7 @@
       "message": "Total arguments size exceeded",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "请求参数限制检测（920390）"
+      "nameZh": "参数总大小超限"
     },
     {
       "id": 920400,
@@ -805,7 +805,7 @@
       "message": "Uploaded file size too large",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "协议与请求格式：异常检测（920400）"
+      "nameZh": "单个上传文件过大"
     },
     {
       "id": 920410,
@@ -814,7 +814,7 @@
       "message": "Total uploaded files size too large",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "协议与请求格式：异常检测（920410）"
+      "nameZh": "上传文件总大小超限"
     },
     {
       "id": 920470,
@@ -823,7 +823,7 @@
       "message": "Illegal Content-Type header",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Content-Type 请求头检测（920470）"
+      "nameZh": "非法 Content-Type 请求头"
     },
     {
       "id": 920420,
@@ -832,7 +832,7 @@
       "message": "Request content type is not allowed by policy",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "协议与请求格式：异常检测（920420）"
+      "nameZh": "请求内容类型不在允许范围"
     },
     {
       "id": 920480,
@@ -841,7 +841,7 @@
       "message": "Request content type charset is not allowed by policy",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "协议与请求格式：异常检测（920480）"
+      "nameZh": "内容类型字符集不在允许范围"
     },
     {
       "id": 920530,
@@ -850,7 +850,7 @@
       "message": "Multiple charsets detected in content type header",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "协议与请求格式：异常检测（920530）"
+      "nameZh": "Content-Type 声明多个字符集"
     },
     {
       "id": 920640,
@@ -859,7 +859,7 @@
       "message": "Content-Type header missing from request with body",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Content-Type 请求头检测（920640）"
+      "nameZh": "携带请求体但缺少 Content-Type"
     },
     {
       "id": 920430,
@@ -868,7 +868,7 @@
       "message": "HTTP protocol version is not allowed by policy",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "HTTP 协议版本检测（920430）"
+      "nameZh": "HTTP 协议版本不在允许范围"
     },
     {
       "id": 920440,
@@ -877,7 +877,7 @@
       "message": "URL file extension is restricted by policy",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "协议与请求格式：异常检测（920440）"
+      "nameZh": "URL 文件扩展名受限"
     },
     {
       "id": 920500,
@@ -886,7 +886,7 @@
       "message": "Attempt to access a backup or working file",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "备份或工作文件访问检测（920500）"
+      "nameZh": "访问备份文件或工作文件"
     },
     {
       "id": 920450,
@@ -895,7 +895,7 @@
       "message": "HTTP header is restricted by policy (%{MATCHED_VAR})",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "协议与请求格式：异常检测（920450）"
+      "nameZh": "使用受限 HTTP 请求头"
     },
     {
       "id": 920520,
@@ -904,7 +904,7 @@
       "message": "Accept-Encoding header exceeded sensible length",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Accept-Encoding 请求头检测（920520）"
+      "nameZh": "Accept-Encoding 请求头过长"
     },
     {
       "id": 920600,
@@ -913,7 +913,7 @@
       "message": "Illegal Accept header: charset parameter",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Accept 请求头检测（920600）"
+      "nameZh": "Accept 请求头含非法 charset 参数"
     },
     {
       "id": 920539,
@@ -931,7 +931,7 @@
       "message": "Possible Unicode character bypass detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "字符编码异常检测（920540）"
+      "nameZh": "Unicode 字符绕过"
     },
     {
       "id": 920610,
@@ -940,7 +940,7 @@
       "message": "Raw (unencoded) fragment in request URI",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "协议与请求格式：异常检测（920610）"
+      "nameZh": "请求 URI 含未编码的片段符"
     },
     {
       "id": 920620,
@@ -949,7 +949,7 @@
       "message": "Multiple Content-Type Request Headers",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Content-Type 请求头检测（920620）"
+      "nameZh": "存在多个 Content-Type 请求头"
     },
     {
       "id": 920013,
@@ -976,7 +976,7 @@
       "message": "Range: Too many fields (6 or more)",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "Range 请求头异常检测（920200）"
+      "nameZh": "Range 范围段过多（至少 6 段）"
     },
     {
       "id": 920201,
@@ -985,7 +985,7 @@
       "message": "Range: Too many fields for pdf request (63 or more)",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "Range 请求头异常检测（920201）"
+      "nameZh": "PDF 请求的 Range 范围段过多（至少 63 段）"
     },
     {
       "id": 920230,
@@ -994,7 +994,7 @@
       "message": "Multiple URL Encoding Detected",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "字符编码异常检测（920230）"
+      "nameZh": "重复 URL 编码"
     },
     {
       "id": 920271,
@@ -1003,7 +1003,7 @@
       "message": "Invalid character in request (non printable characters)",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "非法字符检测（920271）"
+      "nameZh": "请求包含不可打印字符"
     },
     {
       "id": 920320,
@@ -1012,7 +1012,7 @@
       "message": "Missing User Agent Header",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "User-Agent 请求头检测（920320）"
+      "nameZh": "缺少 User-Agent 请求头"
     },
     {
       "id": 920121,
@@ -1021,7 +1021,7 @@
       "message": "Attempted multipart/form-data bypass",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "Multipart 请求格式检测（920121）"
+      "nameZh": "multipart/form-data 格式绕过"
     },
     {
       "id": 920451,
@@ -1030,7 +1030,7 @@
       "message": "HTTP header is restricted by policy (%{MATCHED_VAR})",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "协议与请求格式：异常检测（920451）"
+      "nameZh": "使用受限 HTTP 请求头"
     },
     {
       "id": 920240,
@@ -1039,7 +1039,7 @@
       "message": "URL Encoding Abuse Attack Attempt",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "字符编码异常检测（920240）"
+      "nameZh": "URL 编码滥用"
     },
     {
       "id": 920650,
@@ -1048,7 +1048,7 @@
       "message": "HTTP method override attempt via _method parameter",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "HTTP 请求方法检测（920650）"
+      "nameZh": "通过 _method 参数覆盖 HTTP 方法"
     },
     {
       "id": 920015,
@@ -1075,7 +1075,7 @@
       "message": "Invalid character in request (outside of printable chars below ascii 127)",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "非法字符检测（920272）"
+      "nameZh": "请求包含 ASCII 127 以下的非打印字符"
     },
     {
       "id": 920300,
@@ -1084,7 +1084,7 @@
       "message": "Request Missing an Accept Header",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "Accept 请求头检测（920300）"
+      "nameZh": "缺少 Accept 请求头"
     },
     {
       "id": 920490,
@@ -1093,7 +1093,7 @@
       "message": "Request header x-up-devcap-post-charset detected in combination with prefix \\",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "协议与请求格式：异常检测（920490）"
+      "nameZh": "x-up-devcap-post-charset 请求头异常组合"
     },
     {
       "id": 920510,
@@ -1102,7 +1102,7 @@
       "message": "Invalid Cache-Control request header",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "协议与请求格式：异常检测（920510）"
+      "nameZh": "无效的 Cache-Control 请求头"
     },
     {
       "id": 920521,
@@ -1111,7 +1111,7 @@
       "message": "Illegal Accept-Encoding header",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "Accept-Encoding 请求头检测（920521）"
+      "nameZh": "非法 Accept-Encoding 请求头"
     },
     {
       "id": 920017,
@@ -1138,7 +1138,7 @@
       "message": "Range: Too many fields for pdf request (6 or more)",
       "paranoiaLevel": 4,
       "internal": false,
-      "nameZh": "Range 请求头异常检测（920202）"
+      "nameZh": "PDF 请求的 Range 范围段过多（至少 6 段）"
     },
     {
       "id": 920273,
@@ -1147,7 +1147,7 @@
       "message": "Invalid character in request (outside of very strict set)",
       "paranoiaLevel": 4,
       "internal": false,
-      "nameZh": "非法字符检测（920273）"
+      "nameZh": "请求包含严格字符集外的字符"
     },
     {
       "id": 920274,
@@ -1156,7 +1156,7 @@
       "message": "Invalid character in request headers (outside of very strict set)",
       "paranoiaLevel": 4,
       "internal": false,
-      "nameZh": "非法字符检测（920274）"
+      "nameZh": "请求头包含严格字符集外的字符"
     },
     {
       "id": 920275,
@@ -1165,7 +1165,7 @@
       "message": "Invalid character in request headers (outside of very strict set)",
       "paranoiaLevel": 4,
       "internal": false,
-      "nameZh": "非法字符检测（920275）"
+      "nameZh": "请求头包含严格字符集外的字符"
     },
     {
       "id": 920460,
@@ -1174,7 +1174,7 @@
       "message": "Abnormal character escapes in request",
       "paranoiaLevel": 4,
       "internal": false,
-      "nameZh": "非法字符检测（920460）"
+      "nameZh": "请求中存在异常字符转义"
     },
     {
       "id": 921011,
@@ -1201,7 +1201,7 @@
       "message": "HTTP Request Smuggling Attack",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "HTTP 请求走私检测（921110）"
+      "nameZh": "HTTP 请求走私"
     },
     {
       "id": 921120,
@@ -1210,7 +1210,7 @@
       "message": "HTTP Response Splitting Attack",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "HTTP 响应拆分检测（921120）"
+      "nameZh": "HTTP 响应拆分"
     },
     {
       "id": 921130,
@@ -1219,7 +1219,7 @@
       "message": "HTTP Response Splitting Attack",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "HTTP 响应拆分检测（921130）"
+      "nameZh": "HTTP 响应拆分"
     },
     {
       "id": 921140,
@@ -1228,7 +1228,7 @@
       "message": "HTTP Header Injection Attack via headers",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "HTTP 请求头注入检测（921140）"
+      "nameZh": "通过请求头注入 HTTP 头"
     },
     {
       "id": 921150,
@@ -1237,7 +1237,7 @@
       "message": "HTTP Header Injection Attack via payload (CR/LF detected)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "HTTP 请求头注入检测（921150）"
+      "nameZh": "请求载荷中的 CR/LF 头注入"
     },
     {
       "id": 921160,
@@ -1246,7 +1246,7 @@
       "message": "HTTP Header Injection Attack via payload (CR/LF and header-name detected)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "HTTP 请求头注入检测（921160）"
+      "nameZh": "请求载荷中的 CR/LF 与头名称注入"
     },
     {
       "id": 921190,
@@ -1255,7 +1255,7 @@
       "message": "HTTP Splitting (CR/LF in request filename detected)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "HTTP 响应拆分检测（921190）"
+      "nameZh": "文件名中的 CR/LF 引发 HTTP 拆分"
     },
     {
       "id": 921200,
@@ -1264,7 +1264,7 @@
       "message": "LDAP Injection Attack",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "LDAP 注入检测（921200）"
+      "nameZh": "LDAP 注入"
     },
     {
       "id": 921421,
@@ -1273,7 +1273,7 @@
       "message": "Content-Type header: Dangerous content type outside the mime type declaration",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Content-Type 请求头检测（921421）"
+      "nameZh": "MIME 声明外的危险 Content-Type"
     },
     {
       "id": 921240,
@@ -1282,7 +1282,7 @@
       "message": "mod_proxy attack attempt detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "攻击特征检测（921240）"
+      "nameZh": "mod_proxy 攻击尝试"
     },
     {
       "id": 921250,
@@ -1291,7 +1291,7 @@
       "message": "Old Cookies V1 usage attempt detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "会话与 Cookie 安全检测（921250）"
+      "nameZh": "旧版 Cookie V1 格式滥用"
     },
     {
       "id": 921013,
@@ -1318,7 +1318,7 @@
       "message": "HTTP Header Injection Attack via payload (CR/LF detected)",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "HTTP 请求头注入检测（921151）"
+      "nameZh": "请求载荷中的 CR/LF 头注入"
     },
     {
       "id": 921422,
@@ -1327,7 +1327,7 @@
       "message": "Content-Type header: Dangerous content type outside the mime type declaration",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "Content-Type 请求头检测（921422）"
+      "nameZh": "MIME 声明外的危险 Content-Type"
     },
     {
       "id": 921015,
@@ -1354,7 +1354,7 @@
       "message": "HTTP Range Header detected",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "协议攻击：异常检测（921230）"
+      "nameZh": "HTTP Range 请求头攻击"
     },
     {
       "id": 921170,
@@ -1372,7 +1372,7 @@
       "message": "HTTP Parameter Pollution (%{MATCHED_VAR_NAME})",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "HTTP 参数污染检测（921180）"
+      "nameZh": "HTTP 参数污染"
     },
     {
       "id": 921210,
@@ -1381,7 +1381,7 @@
       "message": "HTTP Parameter Pollution after detecting bogus char after parameter array",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "HTTP 参数污染检测（921210）"
+      "nameZh": "参数数组后的异常字符造成参数污染"
     },
     {
       "id": 921017,
@@ -1408,7 +1408,7 @@
       "message": "HTTP Parameter Pollution possible via array notation",
       "paranoiaLevel": 4,
       "internal": false,
-      "nameZh": "HTTP 参数污染检测（921220）"
+      "nameZh": "数组记法造成 HTTP 参数污染"
     },
     {
       "id": 922160,
@@ -1426,7 +1426,7 @@
       "message": "Multipart content type global _charset_ definition is not allowed by policy",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Multipart 请求格式检测（922100）"
+      "nameZh": "multipart 全局 _charset_ 声明不允许"
     },
     {
       "id": 922140,
@@ -1453,7 +1453,7 @@
       "message": "Illegal MIME Multipart Header content-type: charset parameter",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Multipart 请求格式检测（922110）"
+      "nameZh": "multipart 头含非法 charset 参数"
     },
     {
       "id": 922120,
@@ -1462,7 +1462,7 @@
       "message": "Content-Transfer-Encoding was deprecated by rfc7578 in 2015 and should not be used",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Transfer-Encoding 请求头检测（922120）"
+      "nameZh": "使用已废弃的 Content-Transfer-Encoding"
     },
     {
       "id": 922130,
@@ -1471,7 +1471,7 @@
       "message": "Multipart header contains characters outside of valid range",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Multipart 请求格式检测（922130）"
+      "nameZh": "multipart 请求头包含非法字符"
     },
     {
       "id": 930011,
@@ -1498,7 +1498,7 @@
       "message": "Path Traversal Attack (/../) or (/.../)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "路径遍历检测（930100）"
+      "nameZh": "路径穿越（/../ 或 /.../）"
     },
     {
       "id": 930110,
@@ -1507,7 +1507,7 @@
       "message": "Path Traversal Attack (/../) or (/.../)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "路径遍历检测（930110）"
+      "nameZh": "路径穿越（/../ 或 /.../）"
     },
     {
       "id": 930120,
@@ -1516,7 +1516,7 @@
       "message": "OS File Access Attempt",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "文件访问检测（930120）"
+      "nameZh": "访问操作系统文件"
     },
     {
       "id": 930130,
@@ -1525,7 +1525,7 @@
       "message": "Restricted File Access Attempt",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "文件访问检测（930130）"
+      "nameZh": "访问受限文件"
     },
     {
       "id": 930140,
@@ -1534,7 +1534,7 @@
       "message": "Restricted File Access Attempt: AI Coding Assistant Artifact",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "文件访问检测（930140）"
+      "nameZh": "访问 AI 编码助手产物文件"
     },
     {
       "id": 930013,
@@ -1561,7 +1561,7 @@
       "message": "OS File Access Attempt in REQUEST_HEADERS",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "文件访问检测（930121）"
+      "nameZh": "在请求头中访问操作系统文件"
     },
     {
       "id": 930015,
@@ -1624,7 +1624,7 @@
       "message": "Possible Remote File Inclusion (RFI) Attack: URL Parameter using IP Address",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程文件包含检测（931100）"
+      "nameZh": "使用 IP 地址的 URL 参数尝试远程文件包含"
     },
     {
       "id": 931110,
@@ -1633,7 +1633,7 @@
       "message": "Possible Remote File Inclusion (RFI) Attack: Common RFI Vulnerable Parameter Name used w/URL Payload",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程文件包含检测（931110）"
+      "nameZh": "常见 RFI 参数名携带 URL 载荷"
     },
     {
       "id": 931120,
@@ -1642,7 +1642,7 @@
       "message": "Possible Remote File Inclusion (RFI) Attack: URL Payload Used w/Trailing Question Mark Character (?)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程文件包含检测（931120）"
+      "nameZh": "URL 载荷末尾带问号的远程文件包含"
     },
     {
       "id": 931013,
@@ -1669,7 +1669,7 @@
       "message": "Possible Remote File Inclusion (RFI) Attack: Off-Domain Reference/Link",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程文件包含检测（931130）"
+      "nameZh": "指向站外地址的远程文件包含"
     },
     {
       "id": 931131,
@@ -1678,7 +1678,7 @@
       "message": "Possible Remote File Inclusion (RFI) Attack",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程文件包含检测（931131）"
+      "nameZh": "远程文件包含"
     },
     {
       "id": 931015,
@@ -1741,7 +1741,7 @@
       "message": "Remote Command Execution: Unix Command Injection (2-3 chars)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932230）"
+      "nameZh": "短 Unix 命令注入（2–3 字符）"
     },
     {
       "id": 932235,
@@ -1750,7 +1750,7 @@
       "message": "Remote Command Execution: Unix Command Injection (command without evasion)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932235）"
+      "nameZh": "未混淆的 Unix 命令注入"
     },
     {
       "id": 932120,
@@ -1759,7 +1759,7 @@
       "message": "Remote Command Execution: Windows PowerShell Command Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932120）"
+      "nameZh": "Windows PowerShell 命令注入"
     },
     {
       "id": 932125,
@@ -1768,7 +1768,7 @@
       "message": "Remote Command Execution: Windows Powershell Alias Command Injection",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932125）"
+      "nameZh": "PowerShell 别名命令注入"
     },
     {
       "id": 932130,
@@ -1777,7 +1777,7 @@
       "message": "Remote Command Execution: Unix Shell Expression Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932130）"
+      "nameZh": "Unix Shell 表达式注入"
     },
     {
       "id": 932140,
@@ -1786,7 +1786,7 @@
       "message": "Remote Command Execution: Windows FOR/IF Command Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932140）"
+      "nameZh": "Windows FOR/IF 命令注入"
     },
     {
       "id": 932270,
@@ -1795,7 +1795,7 @@
       "message": "Remote Command Execution: Unix Shell Expression Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932270）"
+      "nameZh": "Unix Shell 表达式注入"
     },
     {
       "id": 932280,
@@ -1804,7 +1804,7 @@
       "message": "Remote Command Execution: Brace Expansion Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932280）"
+      "nameZh": "Shell 花括号展开注入"
     },
     {
       "id": 932250,
@@ -1813,7 +1813,7 @@
       "message": "Remote Command Execution: Direct Unix Command Execution",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932250）"
+      "nameZh": "直接执行 Unix 命令"
     },
     {
       "id": 932260,
@@ -1822,7 +1822,7 @@
       "message": "Remote Command Execution: Direct Unix Command Execution",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932260）"
+      "nameZh": "直接执行 Unix 命令"
     },
     {
       "id": 932340,
@@ -1831,7 +1831,7 @@
       "message": "Remote Command Execution: Direct Unix Command Execution (No Arguments)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932340）"
+      "nameZh": "无参数的 Unix 命令执行"
     },
     {
       "id": 932330,
@@ -1840,7 +1840,7 @@
       "message": "Remote Command Execution: Unix shell history invocation",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932330）"
+      "nameZh": "Unix Shell 历史命令调用"
     },
     {
       "id": 932160,
@@ -1849,7 +1849,7 @@
       "message": "Remote Command Execution: Unix Shell Code Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932160）"
+      "nameZh": "Unix Shell 代码注入"
     },
     {
       "id": 932170,
@@ -1858,7 +1858,7 @@
       "message": "Remote Command Execution: Shellshock (CVE-2014-6271)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932170）"
+      "nameZh": "Shellshock 命令注入（CVE-2014-6271）"
     },
     {
       "id": 932171,
@@ -1867,7 +1867,7 @@
       "message": "Remote Command Execution: Shellshock (CVE-2014-6271)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932171）"
+      "nameZh": "Shellshock 命令注入（CVE-2014-6271）"
     },
     {
       "id": 932175,
@@ -1876,7 +1876,7 @@
       "message": "Remote Command Execution: Unix shell alias invocation",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932175）"
+      "nameZh": "Unix Shell 别名调用"
     },
     {
       "id": 932180,
@@ -1885,7 +1885,7 @@
       "message": "Restricted File Upload Attempt",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "文件上传检测（932180）"
+      "nameZh": "上传受限文件"
     },
     {
       "id": 932370,
@@ -1894,7 +1894,7 @@
       "message": "Remote Command Execution: Windows Command Injection",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932370）"
+      "nameZh": "Windows 命令注入"
     },
     {
       "id": 932380,
@@ -1903,7 +1903,7 @@
       "message": "Remote Command Execution: Windows Command Injection",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（932380）"
+      "nameZh": "Windows 命令注入"
     },
     {
       "id": 932013,
@@ -1930,7 +1930,7 @@
       "message": "Remote Command Execution: Windows Command Injection",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932371）"
+      "nameZh": "Windows 命令注入"
     },
     {
       "id": 932231,
@@ -1939,7 +1939,7 @@
       "message": "Remote Command Execution: Unix Command Injection",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932231）"
+      "nameZh": "Unix 命令注入"
     },
     {
       "id": 932131,
@@ -1948,7 +1948,7 @@
       "message": "Remote Command Execution: Unix Shell Expression Found",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932131）"
+      "nameZh": "Unix Shell 表达式注入"
     },
     {
       "id": 932200,
@@ -1957,7 +1957,7 @@
       "message": "RCE Bypass Technique",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932200）"
+      "nameZh": "远程命令执行绕过手法"
     },
     {
       "id": 932205,
@@ -1966,7 +1966,7 @@
       "message": "RCE Bypass Technique",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932205）"
+      "nameZh": "远程命令执行绕过手法"
     },
     {
       "id": 932206,
@@ -1975,7 +1975,7 @@
       "message": "RCE Bypass Technique",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932206）"
+      "nameZh": "远程命令执行绕过手法"
     },
     {
       "id": 932207,
@@ -1984,7 +1984,7 @@
       "message": "RCE Bypass Technique",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932207）"
+      "nameZh": "远程命令执行绕过手法"
     },
     {
       "id": 932220,
@@ -1993,7 +1993,7 @@
       "message": "Remote Command Execution: Unix Command Injection with pipe",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932220）"
+      "nameZh": "通过管道的 Unix 命令注入"
     },
     {
       "id": 932240,
@@ -2002,7 +2002,7 @@
       "message": "Remote Command Execution: Unix Command Injection evasion attempt detected",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932240）"
+      "nameZh": "Unix 命令注入规避检测"
     },
     {
       "id": 932281,
@@ -2011,7 +2011,7 @@
       "message": "Remote Command Execution: Brace Expansion Found",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932281）"
+      "nameZh": "Shell 花括号展开注入"
     },
     {
       "id": 932210,
@@ -2020,7 +2020,7 @@
       "message": "Remote Command Execution: SQLite System Command Execution",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（932210）"
+      "nameZh": "SQLite 系统命令执行"
     },
     {
       "id": 932271,
@@ -2029,7 +2029,7 @@
       "message": "Remote Command Execution: Unix Shell Expression Found",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932271）"
+      "nameZh": "Unix Shell 表达式注入"
     },
     {
       "id": 932300,
@@ -2038,7 +2038,7 @@
       "message": "Remote Command Execution: SMTP Command Execution",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932300）"
+      "nameZh": "SMTP 命令执行"
     },
     {
       "id": 932310,
@@ -2047,7 +2047,7 @@
       "message": "Remote Command Execution: IMAP Command Execution",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932310）"
+      "nameZh": "IMAP 命令执行"
     },
     {
       "id": 932320,
@@ -2056,7 +2056,7 @@
       "message": "Remote Command Execution: POP3 Command Execution",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932320）"
+      "nameZh": "POP3 命令执行"
     },
     {
       "id": 932236,
@@ -2065,7 +2065,7 @@
       "message": "Remote Command Execution: Unix Command Injection (command without evasion)",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932236）"
+      "nameZh": "未混淆的 Unix 命令注入"
     },
     {
       "id": 932239,
@@ -2074,7 +2074,7 @@
       "message": "Remote Command Execution: Unix Command Injection found in user-agent or referer header",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932239）"
+      "nameZh": "User-Agent 或 Referer 中的 Unix 命令注入"
     },
     {
       "id": 932161,
@@ -2083,7 +2083,7 @@
       "message": "Remote Command Execution: Unix Shell Code Found in REQUEST_HEADERS",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932161）"
+      "nameZh": "请求头中的 Unix Shell 代码"
     },
     {
       "id": 932390,
@@ -2092,7 +2092,7 @@
       "message": "Remote Command Execution: Shell Fork Bomb",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（932390）"
+      "nameZh": "Shell 分叉炸弹拒绝服务"
     },
     {
       "id": 932015,
@@ -2119,7 +2119,7 @@
       "message": "Remote Command Execution: Unix Command Injection",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "远程命令执行检测（932232）"
+      "nameZh": "Unix 命令注入"
     },
     {
       "id": 932237,
@@ -2128,7 +2128,7 @@
       "message": "Remote Command Execution: Unix Shell Code Found in REQUEST_HEADERS",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "远程命令执行检测（932237）"
+      "nameZh": "请求头中的 Unix Shell 代码"
     },
     {
       "id": 932238,
@@ -2137,7 +2137,7 @@
       "message": "Remote Command Execution: Unix Shell Code Found in REQUEST_HEADERS",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "远程命令执行检测（932238）"
+      "nameZh": "请求头中的 Unix Shell 代码"
     },
     {
       "id": 932290,
@@ -2146,7 +2146,7 @@
       "message": "Remote Command Execution: Quote evasion Found",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "远程命令执行检测（932290）"
+      "nameZh": "引号规避检测"
     },
     {
       "id": 932190,
@@ -2155,7 +2155,7 @@
       "message": "Remote Command Execution: Wildcard bypass technique attempt",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "远程命令执行检测（932190）"
+      "nameZh": "Shell 通配符绕过"
     },
     {
       "id": 932350,
@@ -2164,7 +2164,7 @@
       "message": "Remote Command Execution: Direct Unix Command Execution (No Arguments)",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "远程命令执行检测（932350）"
+      "nameZh": "无参数的 Unix 命令执行"
     },
     {
       "id": 932301,
@@ -2173,7 +2173,7 @@
       "message": "Remote Command Execution: SMTP Command Execution",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "远程命令执行检测（932301）"
+      "nameZh": "SMTP 命令执行"
     },
     {
       "id": 932311,
@@ -2182,7 +2182,7 @@
       "message": "Remote Command Execution: IMAP Command Execution",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "远程命令执行检测（932311）"
+      "nameZh": "IMAP 命令执行"
     },
     {
       "id": 932321,
@@ -2191,7 +2191,7 @@
       "message": "Remote Command Execution: POP3 Command Execution",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "远程命令执行检测（932321）"
+      "nameZh": "POP3 命令执行"
     },
     {
       "id": 932331,
@@ -2200,7 +2200,7 @@
       "message": "Remote Command Execution: Unix shell history invocation",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "远程命令执行检测（932331）"
+      "nameZh": "Unix Shell 历史命令调用"
     },
     {
       "id": 932017,
@@ -2245,7 +2245,7 @@
       "message": "PHP Injection Attack: PHP Open Tag Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "PHP 注入检测（933100）"
+      "nameZh": "PHP 起始标签检测"
     },
     {
       "id": 933110,
@@ -2254,7 +2254,7 @@
       "message": "PHP Injection Attack: PHP Script File Upload Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "文件上传检测（933110）"
+      "nameZh": "上传 PHP 脚本文件"
     },
     {
       "id": 933120,
@@ -2263,7 +2263,7 @@
       "message": "PHP Injection Attack: Configuration Directive Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "PHP 注入检测（933120）"
+      "nameZh": "PHP 配置指令检测"
     },
     {
       "id": 933130,
@@ -2272,7 +2272,7 @@
       "message": "PHP Injection Attack: Variables Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "PHP 注入检测（933130）"
+      "nameZh": "PHP 变量声明检测"
     },
     {
       "id": 933135,
@@ -2281,7 +2281,7 @@
       "message": "PHP Injection Attack: Variable Access Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "PHP 注入检测（933135）"
+      "nameZh": "PHP 变量访问检测"
     },
     {
       "id": 933140,
@@ -2290,7 +2290,7 @@
       "message": "PHP Injection Attack: I/O Stream Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "PHP 注入检测（933140）"
+      "nameZh": "PHP 输入输出流检测"
     },
     {
       "id": 933200,
@@ -2299,7 +2299,7 @@
       "message": "PHP Injection Attack: Wrapper scheme detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "PHP 注入检测（933200）"
+      "nameZh": "PHP wrapper 协议检测"
     },
     {
       "id": 933150,
@@ -2308,7 +2308,7 @@
       "message": "PHP Injection Attack: High-Risk PHP Function Name Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "PHP 注入检测（933150）"
+      "nameZh": "高风险 PHP 函数名称"
     },
     {
       "id": 933160,
@@ -2317,7 +2317,7 @@
       "message": "PHP Injection Attack: High-Risk PHP Function Call Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "PHP 注入检测（933160）"
+      "nameZh": "高风险 PHP 函数调用"
     },
     {
       "id": 933170,
@@ -2326,7 +2326,7 @@
       "message": "PHP Injection Attack: Serialized Object Injection",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "PHP 注入检测（933170）"
+      "nameZh": "PHP 序列化对象注入"
     },
     {
       "id": 933180,
@@ -2335,7 +2335,7 @@
       "message": "PHP Injection Attack: Variable Function Call Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "PHP 注入检测（933180）"
+      "nameZh": "PHP 可变函数调用"
     },
     {
       "id": 933210,
@@ -2344,7 +2344,7 @@
       "message": "PHP Injection Attack: Variable Function Call Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "PHP 注入检测（933210）"
+      "nameZh": "PHP 可变函数调用"
     },
     {
       "id": 933220,
@@ -2353,7 +2353,7 @@
       "message": "PHP Injection Attack: PHP Session File Upload Attempt",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "文件上传检测（933220）"
+      "nameZh": "PHP 会话文件上传"
     },
     {
       "id": 933013,
@@ -2380,7 +2380,7 @@
       "message": "PHP Injection Attack: Medium-Risk PHP Function Name Found",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "PHP 注入检测（933151）"
+      "nameZh": "中风险 PHP 函数名称"
     },
     {
       "id": 933152,
@@ -2389,7 +2389,7 @@
       "message": "PHP Injection Attack: Medium-Risk PHP Function Name Found",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "PHP 注入检测（933152）"
+      "nameZh": "中风险 PHP 函数名称"
     },
     {
       "id": 933153,
@@ -2398,7 +2398,7 @@
       "message": "PHP Injection Attack: Medium-Risk PHP Function Name Found",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "PHP 注入检测（933153）"
+      "nameZh": "中风险 PHP 函数名称"
     },
     {
       "id": 933015,
@@ -2425,7 +2425,7 @@
       "message": "PHP Injection Attack: Variables Found",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "PHP 注入检测（933131）"
+      "nameZh": "PHP 变量声明检测"
     },
     {
       "id": 933161,
@@ -2434,7 +2434,7 @@
       "message": "PHP Injection Attack: Low-Value PHP Function Call Found",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "PHP 注入检测（933161）"
+      "nameZh": "低风险 PHP 函数调用"
     },
     {
       "id": 933111,
@@ -2443,7 +2443,7 @@
       "message": "PHP Injection Attack: PHP Script File Upload Found",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "文件上传检测（933111）"
+      "nameZh": "上传 PHP 脚本文件"
     },
     {
       "id": 933190,
@@ -2452,7 +2452,7 @@
       "message": "PHP Injection Attack: PHP Closing Tag Found",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "PHP 注入检测（933190）"
+      "nameZh": "PHP 结束标签检测"
     },
     {
       "id": 933211,
@@ -2461,7 +2461,7 @@
       "message": "PHP Injection Attack: Variable Function Call Found",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "PHP 注入检测（933211）"
+      "nameZh": "PHP 可变函数调用"
     },
     {
       "id": 933017,
@@ -2506,7 +2506,7 @@
       "message": "Node.js Injection Attack 1/2",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Node.js 注入检测（934100）"
+      "nameZh": "Node.js 注入（规则 1/2）"
     },
     {
       "id": 934110,
@@ -2515,7 +2515,7 @@
       "message": "Possible Server Side Request Forgery (SSRF) Attack: Cloud provider metadata URL in Parameter",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "服务端请求伪造检测（934110）"
+      "nameZh": "访问云服务元数据地址的 SSRF"
     },
     {
       "id": 934190,
@@ -2524,7 +2524,7 @@
       "message": "Possible Server Side Request Forgery (SSRF) Attack: Scheme-less localhost or internal hostname detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "服务端请求伪造检测（934190）"
+      "nameZh": "无协议的本机或内网主机名 SSRF"
     },
     {
       "id": 934130,
@@ -2533,7 +2533,7 @@
       "message": "JavaScript Prototype Pollution",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "JavaScript 原型污染（934130）"
+      "nameZh": "JavaScript 原型污染"
     },
     {
       "id": 934150,
@@ -2542,7 +2542,7 @@
       "message": "Ruby Injection Attack",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Ruby 注入检测（934150）"
+      "nameZh": "Ruby 代码注入"
     },
     {
       "id": 934160,
@@ -2551,7 +2551,7 @@
       "message": "Node.js DoS attack",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Node.js 注入检测（934160）"
+      "nameZh": "Node.js 拒绝服务攻击"
     },
     {
       "id": 934170,
@@ -2560,7 +2560,7 @@
       "message": "PHP data scheme attack",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "攻击特征检测（934170）"
+      "nameZh": "PHP data 协议载荷"
     },
     {
       "id": 934200,
@@ -2569,7 +2569,7 @@
       "message": "Server-Side Template Injection (SSTI) Attack",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "服务端模板注入检测（934200）"
+      "nameZh": "服务端模板注入"
     },
     {
       "id": 934013,
@@ -2596,7 +2596,7 @@
       "message": "Node.js Injection Attack 2/2",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "Node.js 注入检测（934101）"
+      "nameZh": "Node.js 注入（规则 2/2）"
     },
     {
       "id": 934120,
@@ -2605,7 +2605,7 @@
       "message": "Possible Server Side Request Forgery (SSRF) Attack: URL Parameter using IP Address",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "服务端请求伪造检测（934120）"
+      "nameZh": "使用 IP 地址的 URL 参数 SSRF"
     },
     {
       "id": 934140,
@@ -2614,7 +2614,7 @@
       "message": "Perl Injection Attack",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "Perl 注入检测（934140）"
+      "nameZh": "Perl 代码注入"
     },
     {
       "id": 934180,
@@ -2623,7 +2623,7 @@
       "message": "SSTI Attack",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "服务端模板注入检测（934180）"
+      "nameZh": "服务端模板注入"
     },
     {
       "id": 934220,
@@ -2632,7 +2632,7 @@
       "message": "ORM Lookup Operator Injection via Nested Traversal",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "注入攻击检测（934220）"
+      "nameZh": "嵌套属性遍历的 ORM 查询操作符注入"
     },
     {
       "id": 934015,
@@ -2659,7 +2659,7 @@
       "message": "ORM Lookup Operator Injection",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "注入攻击检测（934210）"
+      "nameZh": "ORM 查询操作符注入"
     },
     {
       "id": 934017,
@@ -2713,7 +2713,7 @@
       "message": "XSS Attack Detected via libinjection",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941100）"
+      "nameZh": "libinjection 识别的 XSS"
     },
     {
       "id": 941110,
@@ -2722,7 +2722,7 @@
       "message": "XSS Filter - Category 1: Script Tag Vector",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941110）"
+      "nameZh": "script 标签型 XSS"
     },
     {
       "id": 941120,
@@ -2731,7 +2731,7 @@
       "message": "XSS Filter - Category 2: Event Handler Vector",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941120）"
+      "nameZh": "事件处理器型 XSS"
     },
     {
       "id": 941130,
@@ -2740,7 +2740,7 @@
       "message": "XSS Filter - Category 3: Attribute Vector",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941130）"
+      "nameZh": "HTML 属性型 XSS"
     },
     {
       "id": 941140,
@@ -2749,7 +2749,7 @@
       "message": "XSS Filter - Category 4: Javascript URI Vector",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941140）"
+      "nameZh": "JavaScript URI 型 XSS"
     },
     {
       "id": 941160,
@@ -2758,7 +2758,7 @@
       "message": "NoScript XSS InjectionChecker: HTML Injection",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941160）"
+      "nameZh": "NoScript HTML 注入"
     },
     {
       "id": 941170,
@@ -2767,7 +2767,7 @@
       "message": "NoScript XSS InjectionChecker: Attribute Injection",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941170）"
+      "nameZh": "NoScript HTML 属性注入"
     },
     {
       "id": 941180,
@@ -2776,7 +2776,7 @@
       "message": "Node-Validator Deny List Keywords",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本：异常检测（941180）"
+      "nameZh": "Node Validator 拒绝列表关键字"
     },
     {
       "id": 941190,
@@ -2785,7 +2785,7 @@
       "message": "IE XSS Filters - Attack Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941190）"
+      "nameZh": "IE XSS 过滤器识别的攻击"
     },
     {
       "id": 941200,
@@ -2794,7 +2794,7 @@
       "message": "IE XSS Filters - Attack Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941200）"
+      "nameZh": "IE XSS 过滤器识别的攻击"
     },
     {
       "id": 941210,
@@ -2803,7 +2803,7 @@
       "message": "Javascript Word Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "JavaScript 注入检测（941210）"
+      "nameZh": "可疑 JavaScript 关键字"
     },
     {
       "id": 941220,
@@ -2812,7 +2812,7 @@
       "message": "IE XSS Filters - Attack Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941220）"
+      "nameZh": "IE XSS 过滤器识别的攻击"
     },
     {
       "id": 941230,
@@ -2821,7 +2821,7 @@
       "message": "IE XSS Filters - Attack Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941230）"
+      "nameZh": "IE XSS 过滤器识别的攻击"
     },
     {
       "id": 941240,
@@ -2830,7 +2830,7 @@
       "message": "IE XSS Filters - Attack Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941240）"
+      "nameZh": "IE XSS 过滤器识别的攻击"
     },
     {
       "id": 941250,
@@ -2839,7 +2839,7 @@
       "message": "IE XSS Filters - Attack Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941250）"
+      "nameZh": "IE XSS 过滤器识别的攻击"
     },
     {
       "id": 941260,
@@ -2848,7 +2848,7 @@
       "message": "IE XSS Filters - Attack Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941260）"
+      "nameZh": "IE XSS 过滤器识别的攻击"
     },
     {
       "id": 941270,
@@ -2857,7 +2857,7 @@
       "message": "IE XSS Filters - Attack Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941270）"
+      "nameZh": "IE XSS 过滤器识别的攻击"
     },
     {
       "id": 941280,
@@ -2866,7 +2866,7 @@
       "message": "IE XSS Filters - Attack Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941280）"
+      "nameZh": "IE XSS 过滤器识别的攻击"
     },
     {
       "id": 941290,
@@ -2875,7 +2875,7 @@
       "message": "IE XSS Filters - Attack Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941290）"
+      "nameZh": "IE XSS 过滤器识别的攻击"
     },
     {
       "id": 941300,
@@ -2884,7 +2884,7 @@
       "message": "IE XSS Filters - Attack Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941300）"
+      "nameZh": "IE XSS 过滤器识别的攻击"
     },
     {
       "id": 941310,
@@ -2893,7 +2893,7 @@
       "message": "US-ASCII Malformed Encoding XSS Filter - Attack Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941310）"
+      "nameZh": "US-ASCII 异常编码 XSS"
     },
     {
       "id": 941350,
@@ -2902,7 +2902,7 @@
       "message": "UTF-7 Encoding IE XSS - Attack Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941350）"
+      "nameZh": "UTF-7 编码的 IE XSS"
     },
     {
       "id": 941360,
@@ -2911,7 +2911,7 @@
       "message": "JSFuck / Hieroglyphy obfuscation detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本：异常检测（941360）"
+      "nameZh": "JSFuck / Hieroglyphy 混淆"
     },
     {
       "id": 941370,
@@ -2920,7 +2920,7 @@
       "message": "JavaScript global variable found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "JavaScript 注入检测（941370）"
+      "nameZh": "JavaScript 全局变量注入"
     },
     {
       "id": 941390,
@@ -2929,7 +2929,7 @@
       "message": "Javascript method detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "JavaScript 注入检测（941390）"
+      "nameZh": "JavaScript 方法注入"
     },
     {
       "id": 941400,
@@ -2938,7 +2938,7 @@
       "message": "XSS JavaScript function without parentheses",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "跨站脚本检测（941400）"
+      "nameZh": "无括号的 JavaScript 函数调用 XSS"
     },
     {
       "id": 941013,
@@ -2965,7 +2965,7 @@
       "message": "XSS Attack Detected via libinjection",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "跨站脚本检测（941101）"
+      "nameZh": "libinjection 识别的 XSS"
     },
     {
       "id": 941150,
@@ -2974,7 +2974,7 @@
       "message": "XSS Filter - Category 5: Disallowed HTML Attributes",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "跨站脚本检测（941150）"
+      "nameZh": "非法 HTML 属性型 XSS"
     },
     {
       "id": 941181,
@@ -2983,7 +2983,7 @@
       "message": "Node-Validator Deny List Keywords",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "跨站脚本：异常检测（941181）"
+      "nameZh": "Node Validator 拒绝列表关键字"
     },
     {
       "id": 941320,
@@ -2992,7 +2992,7 @@
       "message": "Possible XSS Attack Detected - HTML Tag Handler",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "跨站脚本检测（941320）"
+      "nameZh": "HTML 标签事件处理器型 XSS"
     },
     {
       "id": 941330,
@@ -3001,7 +3001,7 @@
       "message": "IE XSS Filters - Attack Detected",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "跨站脚本检测（941330）"
+      "nameZh": "IE XSS 过滤器识别的攻击"
     },
     {
       "id": 941340,
@@ -3010,7 +3010,7 @@
       "message": "IE XSS Filters - Attack Detected",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "跨站脚本检测（941340）"
+      "nameZh": "IE XSS 过滤器识别的攻击"
     },
     {
       "id": 941380,
@@ -3019,7 +3019,7 @@
       "message": "AngularJS client side template injection detected",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "AngularJS 模板注入检测（941380）"
+      "nameZh": "AngularJS 客户端模板注入"
     },
     {
       "id": 941015,
@@ -3082,7 +3082,7 @@
       "message": "SQL Injection Attack Detected via libinjection",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 注入检测（942100）"
+      "nameZh": "libinjection 识别的 SQL 注入"
     },
     {
       "id": 942140,
@@ -3091,7 +3091,7 @@
       "message": "SQL Injection Attack: Common DB Names Detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 注入检测（942140）"
+      "nameZh": "常见数据库名称注入"
     },
     {
       "id": 942151,
@@ -3100,7 +3100,7 @@
       "message": "SQL Injection Attack: SQL function name detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 注入检测（942151）"
+      "nameZh": "SQL 函数名称注入"
     },
     {
       "id": 942160,
@@ -3109,7 +3109,7 @@
       "message": "Detects blind sqli tests using sleep() or benchmark()",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 注入检测（942160）"
+      "nameZh": "使用 sleep()/benchmark() 的盲注"
     },
     {
       "id": 942170,
@@ -3118,7 +3118,7 @@
       "message": "Detects SQL benchmark and sleep injection attempts including conditional queries",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "注入攻击检测（942170）"
+      "nameZh": "条件查询中的延时函数盲注"
     },
     {
       "id": 942190,
@@ -3127,7 +3127,7 @@
       "message": "Detects SQL code execution and information gathering attempts",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 注入：异常检测（942190）"
+      "nameZh": "SQL 代码执行或信息探测"
     },
     {
       "id": 942220,
@@ -3136,7 +3136,7 @@
       "message": "Looking for integer overflow attacks, these are taken from skipfish, except 2.2.2250738585072011e-308 is the \\",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "攻击特征检测（942220）"
+      "nameZh": "整数溢出攻击载荷"
     },
     {
       "id": 942230,
@@ -3145,7 +3145,7 @@
       "message": "Detects conditional SQL injection attempts",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 注入检测（942230）"
+      "nameZh": "条件式 SQL 注入"
     },
     {
       "id": 942240,
@@ -3154,7 +3154,7 @@
       "message": "Detects MySQL charset switch and MSSQL DoS attempts",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 注入：异常检测（942240）"
+      "nameZh": "MySQL 字符集切换或 MSSQL 拒绝服务"
     },
     {
       "id": 942250,
@@ -3163,7 +3163,7 @@
       "message": "Detects MATCH AGAINST, MERGE and EXECUTE IMMEDIATE injections",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "注入攻击检测（942250）"
+      "nameZh": "MATCH AGAINST / MERGE / EXECUTE IMMEDIATE 注入"
     },
     {
       "id": 942270,
@@ -3172,7 +3172,7 @@
       "message": "Looking for basic sql injection. Common attack string for mysql, oracle and others",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 注入检测（942270）"
+      "nameZh": "常见 SQL 语句注入"
     },
     {
       "id": 942280,
@@ -3181,7 +3181,7 @@
       "message": "Detects Postgres pg_sleep injection, waitfor delay attacks and database shutdown attempts",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "注入攻击检测（942280）"
+      "nameZh": "PostgreSQL pg_sleep / WAITFOR 延时或关库"
     },
     {
       "id": 942290,
@@ -3190,7 +3190,7 @@
       "message": "Finds basic MongoDB SQL injection attempts",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 注入检测（942290）"
+      "nameZh": "MongoDB 查询注入"
     },
     {
       "id": 942320,
@@ -3199,7 +3199,7 @@
       "message": "Detects MySQL and PostgreSQL stored procedure/function injections",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 注入特征检测（942320）"
+      "nameZh": "MySQL/PostgreSQL 存储过程或函数注入"
     },
     {
       "id": 942350,
@@ -3208,7 +3208,7 @@
       "message": "Detects MySQL UDF injection and other data/structure manipulation attempts",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "注入攻击检测（942350）"
+      "nameZh": "MySQL UDF 与数据结构操作注入"
     },
     {
       "id": 942360,
@@ -3217,7 +3217,7 @@
       "message": "Detects concatenated basic SQL injection and SQLLFI attempts",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 注入检测（942360）"
+      "nameZh": "拼接式 SQL 注入或 SQL 本地文件包含"
     },
     {
       "id": 942500,
@@ -3226,7 +3226,7 @@
       "message": "MySQL in-line comment detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 注入特征检测（942500）"
+      "nameZh": "MySQL 行内注释注入"
     },
     {
       "id": 942540,
@@ -3235,7 +3235,7 @@
       "message": "SQL Authentication bypass (split query)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 认证绕过（942540）"
+      "nameZh": "拆分查询的 SQL 认证绕过"
     },
     {
       "id": 942560,
@@ -3244,7 +3244,7 @@
       "message": "MySQL Scientific Notation payload detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 注入：异常检测（942560）"
+      "nameZh": "MySQL 科学计数法载荷"
     },
     {
       "id": 942550,
@@ -3253,7 +3253,7 @@
       "message": "JSON-Based SQL Injection",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "SQL 注入检测（942550）"
+      "nameZh": "基于 JSON 的 SQL 注入"
     },
     {
       "id": 942013,
@@ -3280,7 +3280,7 @@
       "message": "SQL Injection Attack: SQL Operator Detected",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942120）"
+      "nameZh": "SQL 操作符注入"
     },
     {
       "id": 942130,
@@ -3289,7 +3289,7 @@
       "message": "SQL Injection Attack: SQL Boolean-based attack detected",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942130）"
+      "nameZh": "布尔条件 SQL 注入"
     },
     {
       "id": 942131,
@@ -3298,7 +3298,7 @@
       "message": "SQL Injection Attack: SQL Boolean-based attack detected",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942131）"
+      "nameZh": "布尔条件 SQL 注入"
     },
     {
       "id": 942150,
@@ -3307,7 +3307,7 @@
       "message": "SQL Injection Attack: SQL function name detected",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942150）"
+      "nameZh": "SQL 函数名称注入"
     },
     {
       "id": 942180,
@@ -3316,7 +3316,7 @@
       "message": "Detects basic SQL authentication bypass attempts 1/3",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 认证绕过（942180）"
+      "nameZh": "SQL 认证绕过（1/3）"
     },
     {
       "id": 942200,
@@ -3325,7 +3325,7 @@
       "message": "Detects MySQL comment-/space-obfuscated injections and backtick termination",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入特征检测（942200）"
+      "nameZh": "MySQL 注释/空格混淆及反引号终止"
     },
     {
       "id": 942210,
@@ -3334,7 +3334,7 @@
       "message": "Detects chained SQL injection attempts 1/2",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942210）"
+      "nameZh": "链式 SQL 注入（1/2）"
     },
     {
       "id": 942260,
@@ -3343,7 +3343,7 @@
       "message": "Detects basic SQL authentication bypass attempts 2/3",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 认证绕过（942260）"
+      "nameZh": "SQL 认证绕过（2/3）"
     },
     {
       "id": 942300,
@@ -3352,7 +3352,7 @@
       "message": "Detects MySQL comments, conditions and ch(a)r injections",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入特征检测（942300）"
+      "nameZh": "MySQL 注释、条件和 char 函数注入"
     },
     {
       "id": 942310,
@@ -3361,7 +3361,7 @@
       "message": "Detects chained SQL injection attempts 2/2",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942310）"
+      "nameZh": "链式 SQL 注入（2/2）"
     },
     {
       "id": 942330,
@@ -3370,7 +3370,7 @@
       "message": "Detects classic SQL injection probings 1/3",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942330）"
+      "nameZh": "典型 SQL 注入探测（1/3）"
     },
     {
       "id": 942340,
@@ -3379,7 +3379,7 @@
       "message": "Detects basic SQL authentication bypass attempts 3/3",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 认证绕过（942340）"
+      "nameZh": "SQL 认证绕过（3/3）"
     },
     {
       "id": 942361,
@@ -3388,7 +3388,7 @@
       "message": "Detects basic SQL injection based on keyword alter or union",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942361）"
+      "nameZh": "ALTER/UNION 关键字 SQL 注入"
     },
     {
       "id": 942362,
@@ -3397,7 +3397,7 @@
       "message": "Detects concatenated basic SQL injection and SQLLFI attempts",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942362）"
+      "nameZh": "拼接式 SQL 注入或 SQL 本地文件包含"
     },
     {
       "id": 942370,
@@ -3406,7 +3406,7 @@
       "message": "Detects classic SQL injection probings 2/3",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942370）"
+      "nameZh": "典型 SQL 注入探测（2/3）"
     },
     {
       "id": 942380,
@@ -3415,7 +3415,7 @@
       "message": "SQL Injection Attack",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942380）"
+      "nameZh": "SQL 注入"
     },
     {
       "id": 942390,
@@ -3424,7 +3424,7 @@
       "message": "SQL Injection Attack using (X)OR",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942390）"
+      "nameZh": "XOR/OR 条件 SQL 注入"
     },
     {
       "id": 942400,
@@ -3433,7 +3433,7 @@
       "message": "SQL Injection Attack",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942400）"
+      "nameZh": "SQL 注入"
     },
     {
       "id": 942410,
@@ -3442,7 +3442,7 @@
       "message": "SQL Injection Attack",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942410）"
+      "nameZh": "SQL 注入"
     },
     {
       "id": 942470,
@@ -3451,7 +3451,7 @@
       "message": "SQL Injection Attack",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942470）"
+      "nameZh": "SQL 注入"
     },
     {
       "id": 942480,
@@ -3460,7 +3460,7 @@
       "message": "SQL Injection Attack",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942480）"
+      "nameZh": "SQL 注入"
     },
     {
       "id": 942430,
@@ -3469,7 +3469,7 @@
       "message": "Restricted SQL Character Anomaly Detection (args): # of special characters exceeded (12)",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入特征检测（942430）"
+      "nameZh": "请求参数 SQL 特殊字符超过 12 个"
     },
     {
       "id": 942440,
@@ -3478,7 +3478,7 @@
       "message": "SQL Comment Sequence Detected",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入特征检测（942440）"
+      "nameZh": "SQL 注释序列"
     },
     {
       "id": 942450,
@@ -3487,7 +3487,7 @@
       "message": "SQL Bin or Hex Encoding Identified",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入特征检测（942450）"
+      "nameZh": "SQL 二进制或十六进制编码"
     },
     {
       "id": 942510,
@@ -3496,7 +3496,7 @@
       "message": "SQLi bypass attempt by ticks or backticks detected",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942510）"
+      "nameZh": "引号或反引号绕过 SQL 注入检测"
     },
     {
       "id": 942520,
@@ -3505,7 +3505,7 @@
       "message": "Detects basic SQL authentication bypass attempts 4.0/4",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 认证绕过（942520）"
+      "nameZh": "SQL 认证绕过（4.0/4）"
     },
     {
       "id": 942521,
@@ -3514,7 +3514,7 @@
       "message": "Detects basic SQL authentication bypass attempts 4.1/4",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 认证绕过（942521）"
+      "nameZh": "SQL 认证绕过（4.1/4）"
     },
     {
       "id": 942522,
@@ -3523,7 +3523,7 @@
       "message": "Detects basic SQL authentication bypass attempts 4.1/4",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 认证绕过（942522）"
+      "nameZh": "SQL 认证绕过（4.1/4）"
     },
     {
       "id": 942101,
@@ -3532,7 +3532,7 @@
       "message": "SQL Injection Attack Detected via libinjection",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942101）"
+      "nameZh": "libinjection 识别的 SQL 注入"
     },
     {
       "id": 942152,
@@ -3541,7 +3541,7 @@
       "message": "SQL Injection Attack: SQL function name detected",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入检测（942152）"
+      "nameZh": "SQL 函数名称注入"
     },
     {
       "id": 942321,
@@ -3550,7 +3550,7 @@
       "message": "Detects MySQL and PostgreSQL stored procedure/function injections",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "SQL 注入特征检测（942321）"
+      "nameZh": "MySQL/PostgreSQL 存储过程或函数注入"
     },
     {
       "id": 942015,
@@ -3577,7 +3577,7 @@
       "message": "Detects HAVING injections",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "注入攻击检测（942251）"
+      "nameZh": "HAVING 子句注入"
     },
     {
       "id": 942490,
@@ -3586,7 +3586,7 @@
       "message": "Detects classic SQL injection probings 3/3",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "SQL 注入检测（942490）"
+      "nameZh": "典型 SQL 注入探测（3/3）"
     },
     {
       "id": 942420,
@@ -3595,7 +3595,7 @@
       "message": "Restricted SQL Character Anomaly Detection (cookies): # of special characters exceeded (8)",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "SQL 注入特征检测（942420）"
+      "nameZh": "Cookie SQL 特殊字符超过 8 个"
     },
     {
       "id": 942431,
@@ -3604,7 +3604,7 @@
       "message": "Restricted SQL Character Anomaly Detection (args): # of special characters exceeded (6)",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "SQL 注入特征检测（942431）"
+      "nameZh": "请求参数 SQL 特殊字符超过 6 个"
     },
     {
       "id": 942460,
@@ -3613,7 +3613,7 @@
       "message": "Meta-Character Anomaly Detection Alert - Repetitive Non-Word Characters",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "SQL 注入：异常检测（942460）"
+      "nameZh": "重复非字母数字元字符异常"
     },
     {
       "id": 942511,
@@ -3622,7 +3622,7 @@
       "message": "SQLi bypass attempt by ticks detected",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "SQL 注入检测（942511）"
+      "nameZh": "引号绕过 SQL 注入检测"
     },
     {
       "id": 942530,
@@ -3631,7 +3631,7 @@
       "message": "SQLi query termination detected",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "SQL 注入检测（942530）"
+      "nameZh": "SQL 查询终止符注入"
     },
     {
       "id": 942017,
@@ -3658,7 +3658,7 @@
       "message": "Restricted SQL Character Anomaly Detection (cookies): # of special characters exceeded (3)",
       "paranoiaLevel": 4,
       "internal": false,
-      "nameZh": "SQL 注入特征检测（942421）"
+      "nameZh": "Cookie SQL 特殊字符超过 3 个"
     },
     {
       "id": 942432,
@@ -3667,7 +3667,7 @@
       "message": "Restricted SQL Character Anomaly Detection (args): # of special characters exceeded (2)",
       "paranoiaLevel": 4,
       "internal": false,
-      "nameZh": "SQL 注入特征检测（942432）"
+      "nameZh": "请求参数 SQL 特殊字符超过 2 个"
     },
     {
       "id": 943011,
@@ -3694,7 +3694,7 @@
       "message": "Possible Session Fixation Attack: Setting Cookie Values in HTML",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "会话与 Cookie 安全检测（943100）"
+      "nameZh": "HTML 中设置 Cookie 值的会话固定"
     },
     {
       "id": 943110,
@@ -3703,7 +3703,7 @@
       "message": "Possible Session Fixation Attack: SessionID Parameter Name with Off-Domain Referer",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "会话与 Cookie 安全检测（943110）"
+      "nameZh": "SessionID 参数与站外 Referer 组合"
     },
     {
       "id": 943120,
@@ -3712,7 +3712,7 @@
       "message": "Possible Session Fixation Attack: SessionID Parameter Name with No Referer",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "会话与 Cookie 安全检测（943120）"
+      "nameZh": "SessionID 参数缺少 Referer"
     },
     {
       "id": 943013,
@@ -3793,7 +3793,7 @@
       "message": "Remote Command Execution: Suspicious Java class detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（944100）"
+      "nameZh": "可疑 Java 类触发远程命令执行"
     },
     {
       "id": 944110,
@@ -3802,7 +3802,7 @@
       "message": "Remote Command Execution: Java process spawn (CVE-2017-9805)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（944110）"
+      "nameZh": "Java 进程创建（CVE-2017-9805）"
     },
     {
       "id": 944120,
@@ -3811,7 +3811,7 @@
       "message": "Remote Command Execution: Java serialization (CVE-2015-4852)",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（944120）"
+      "nameZh": "Java 反序列化命令执行（CVE-2015-4852）"
     },
     {
       "id": 944130,
@@ -3820,7 +3820,7 @@
       "message": "Suspicious Java class detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Java 危险类或方法检测（944130）"
+      "nameZh": "可疑 Java 类"
     },
     {
       "id": 944140,
@@ -3829,7 +3829,7 @@
       "message": "Java Injection Attack: Java Script File Upload Found",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "文件上传检测（944140）"
+      "nameZh": "上传 Java 脚本文件"
     },
     {
       "id": 944150,
@@ -3838,7 +3838,7 @@
       "message": "Potential Remote Command Execution: Log4j / Log4shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "远程命令执行检测（944150）"
+      "nameZh": "Log4Shell 命令执行载荷"
     },
     {
       "id": 944013,
@@ -3865,7 +3865,7 @@
       "message": "Potential Remote Command Execution: Log4j / Log4shell",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（944151）"
+      "nameZh": "Log4Shell 命令执行载荷"
     },
     {
       "id": 944200,
@@ -3874,7 +3874,7 @@
       "message": "Magic bytes Detected, probable java serialization in use",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "Java 反序列化检测（944200）"
+      "nameZh": "Java 序列化魔数"
     },
     {
       "id": 944210,
@@ -3883,7 +3883,7 @@
       "message": "Magic bytes Detected Base64 Encoded, probable java serialization in use",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "Java 反序列化检测（944210）"
+      "nameZh": "Base64 编码的 Java 序列化魔数"
     },
     {
       "id": 944240,
@@ -3892,7 +3892,7 @@
       "message": "Remote Command Execution: Java serialization (CVE-2015-4852)",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（944240）"
+      "nameZh": "Java 反序列化命令执行（CVE-2015-4852）"
     },
     {
       "id": 944250,
@@ -3901,7 +3901,7 @@
       "message": "Remote Command Execution: Suspicious Java method detected",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（944250）"
+      "nameZh": "可疑 Java 方法触发命令执行"
     },
     {
       "id": 944260,
@@ -3910,7 +3910,7 @@
       "message": "Remote Command Execution: Malicious class-loading payload",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "远程命令执行检测（944260）"
+      "nameZh": "恶意 Java 类加载载荷"
     },
     {
       "id": 944015,
@@ -3937,7 +3937,7 @@
       "message": "Base64 encoded string matched suspicious keyword",
       "paranoiaLevel": 3,
       "internal": false,
-      "nameZh": "Java 攻击：异常检测（944300）"
+      "nameZh": "Base64 编码的可疑关键字"
     },
     {
       "id": 944017,
@@ -3964,7 +3964,7 @@
       "message": "Potential Remote Command Execution: Log4j / Log4shell",
       "paranoiaLevel": 4,
       "internal": false,
-      "nameZh": "远程命令执行检测（944152）"
+      "nameZh": "Log4Shell 命令执行载荷"
     },
     {
       "id": 949052,
@@ -4270,7 +4270,7 @@
       "message": "Directory Listing",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "目录列表暴露检测（950130）"
+      "nameZh": "目录列表暴露"
     },
     {
       "id": 950140,
@@ -4279,7 +4279,7 @@
       "message": "CGI source code leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（950140）"
+      "nameZh": "CGI 源码泄露"
     },
     {
       "id": 950150,
@@ -4288,7 +4288,7 @@
       "message": "ASP.NET exception leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（950150）"
+      "nameZh": "ASP.NET 异常信息泄露"
     },
     {
       "id": 950013,
@@ -4315,7 +4315,7 @@
       "message": "The Application Returned a 500-Level Status Code",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "服务端错误状态检测（950100）"
+      "nameZh": "应用返回 HTTP 5xx 状态"
     },
     {
       "id": 950015,
@@ -4387,7 +4387,7 @@
       "message": "Microsoft Access SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951110）"
+      "nameZh": "Microsoft Access SQL 错误信息泄露"
     },
     {
       "id": 951120,
@@ -4396,7 +4396,7 @@
       "message": "Oracle SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951120）"
+      "nameZh": "Oracle SQL 错误信息泄露"
     },
     {
       "id": 951130,
@@ -4405,7 +4405,7 @@
       "message": "DB2 SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951130）"
+      "nameZh": "DB2 SQL 错误信息泄露"
     },
     {
       "id": 951140,
@@ -4414,7 +4414,7 @@
       "message": "EMC SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951140）"
+      "nameZh": "EMC SQL 错误信息泄露"
     },
     {
       "id": 951150,
@@ -4423,7 +4423,7 @@
       "message": "firebird SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951150）"
+      "nameZh": "Firebird SQL 错误信息泄露"
     },
     {
       "id": 951160,
@@ -4432,7 +4432,7 @@
       "message": "Frontbase SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951160）"
+      "nameZh": "FrontBase SQL 错误信息泄露"
     },
     {
       "id": 951170,
@@ -4441,7 +4441,7 @@
       "message": "hsqldb SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951170）"
+      "nameZh": "HSQLDB SQL 错误信息泄露"
     },
     {
       "id": 951180,
@@ -4450,7 +4450,7 @@
       "message": "informix SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951180）"
+      "nameZh": "Informix SQL 错误信息泄露"
     },
     {
       "id": 951190,
@@ -4459,7 +4459,7 @@
       "message": "ingres SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951190）"
+      "nameZh": "Ingres SQL 错误信息泄露"
     },
     {
       "id": 951200,
@@ -4468,7 +4468,7 @@
       "message": "interbase SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951200）"
+      "nameZh": "InterBase SQL 错误信息泄露"
     },
     {
       "id": 951210,
@@ -4477,7 +4477,7 @@
       "message": "maxDB SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951210）"
+      "nameZh": "MaxDB SQL 错误信息泄露"
     },
     {
       "id": 951220,
@@ -4486,7 +4486,7 @@
       "message": "mssql SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951220）"
+      "nameZh": "MSSQL SQL 错误信息泄露"
     },
     {
       "id": 951230,
@@ -4495,7 +4495,7 @@
       "message": "mysql SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951230）"
+      "nameZh": "MySQL SQL 错误信息泄露"
     },
     {
       "id": 951240,
@@ -4504,7 +4504,7 @@
       "message": "postgres SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951240）"
+      "nameZh": "PostgreSQL SQL 错误信息泄露"
     },
     {
       "id": 951250,
@@ -4513,7 +4513,7 @@
       "message": "sqlite SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951250）"
+      "nameZh": "SQLite SQL 错误信息泄露"
     },
     {
       "id": 951260,
@@ -4522,7 +4522,7 @@
       "message": "Sybase SQL Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（951260）"
+      "nameZh": "Sybase SQL 错误信息泄露"
     },
     {
       "id": 951013,
@@ -4603,7 +4603,7 @@
       "message": "Java Errors",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Java 信息泄露：异常检测（952110）"
+      "nameZh": "Java 错误信息泄露"
     },
     {
       "id": 952013,
@@ -4684,7 +4684,7 @@
       "message": "PHP Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（953100）"
+      "nameZh": "PHP 信息泄露"
     },
     {
       "id": 953110,
@@ -4693,7 +4693,7 @@
       "message": "PHP source code leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（953110）"
+      "nameZh": "PHP 源码泄露"
     },
     {
       "id": 953120,
@@ -4702,7 +4702,7 @@
       "message": "PHP source code leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（953120）"
+      "nameZh": "PHP 源码泄露"
     },
     {
       "id": 953013,
@@ -4729,7 +4729,7 @@
       "message": "PHP Information Leakage",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "信息泄露（953101）"
+      "nameZh": "PHP 信息泄露"
     },
     {
       "id": 953015,
@@ -4792,7 +4792,7 @@
       "message": "Disclosure of IIS install location",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "IIS 信息泄露：异常检测（954100）"
+      "nameZh": "IIS 安装路径泄露"
     },
     {
       "id": 954110,
@@ -4801,7 +4801,7 @@
       "message": "Application Availability Error",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "IIS 信息泄露：异常检测（954110）"
+      "nameZh": "IIS 应用可用性错误"
     },
     {
       "id": 954120,
@@ -4810,7 +4810,7 @@
       "message": "IIS Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（954120）"
+      "nameZh": "IIS 信息泄露"
     },
     {
       "id": 954130,
@@ -4819,7 +4819,7 @@
       "message": "IIS Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（954130）"
+      "nameZh": "IIS 信息泄露"
     },
     {
       "id": 954013,
@@ -4846,7 +4846,7 @@
       "message": "Disclosure of IIS install location",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "IIS 信息泄露：异常检测（954101）"
+      "nameZh": "IIS 安装路径泄露"
     },
     {
       "id": 954015,
@@ -4909,7 +4909,7 @@
       "message": "PHP Web shell detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955100）"
+      "nameZh": "PHP WebShell 后门"
     },
     {
       "id": 955110,
@@ -4918,7 +4918,7 @@
       "message": "r57 web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955110）"
+      "nameZh": "r57 WebShell 后门"
     },
     {
       "id": 955120,
@@ -4927,7 +4927,7 @@
       "message": "WSO web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955120）"
+      "nameZh": "WSO WebShell 后门"
     },
     {
       "id": 955130,
@@ -4936,7 +4936,7 @@
       "message": "b4tm4n web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955130）"
+      "nameZh": "b4tm4n WebShell 后门"
     },
     {
       "id": 955140,
@@ -4945,7 +4945,7 @@
       "message": "Mini Shell web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955140）"
+      "nameZh": "Mini Shell WebShell 后门"
     },
     {
       "id": 955150,
@@ -4954,7 +4954,7 @@
       "message": "Ashiyane web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955150）"
+      "nameZh": "Ashiyane WebShell 后门"
     },
     {
       "id": 955160,
@@ -4963,7 +4963,7 @@
       "message": "Symlink_Sa web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955160）"
+      "nameZh": "Symlink_Sa WebShell 后门"
     },
     {
       "id": 955170,
@@ -4972,7 +4972,7 @@
       "message": "CasuS web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955170）"
+      "nameZh": "CasuS WebShell 后门"
     },
     {
       "id": 955180,
@@ -4981,7 +4981,7 @@
       "message": "GRP WebShell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Web Shell：异常检测（955180）"
+      "nameZh": "GRP WebShell 后门"
     },
     {
       "id": 955190,
@@ -4990,7 +4990,7 @@
       "message": "NGHshell web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955190）"
+      "nameZh": "NGHshell WebShell 后门"
     },
     {
       "id": 955200,
@@ -4999,7 +4999,7 @@
       "message": "SimAttacker web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955200）"
+      "nameZh": "SimAttacker WebShell 后门"
     },
     {
       "id": 955210,
@@ -5008,7 +5008,7 @@
       "message": "Unknown web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955210）"
+      "nameZh": "未知 WebShell 后门"
     },
     {
       "id": 955220,
@@ -5017,7 +5017,7 @@
       "message": "lama\\",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "Web Shell：异常检测（955220）"
+      "nameZh": "lama WebShell 后门"
     },
     {
       "id": 955230,
@@ -5026,7 +5026,7 @@
       "message": "lostDC web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955230）"
+      "nameZh": "lostDC WebShell 后门"
     },
     {
       "id": 955240,
@@ -5035,7 +5035,7 @@
       "message": "Unknown web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955240）"
+      "nameZh": "未知 WebShell 后门"
     },
     {
       "id": 955250,
@@ -5044,7 +5044,7 @@
       "message": "Unknown web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955250）"
+      "nameZh": "未知 WebShell 后门"
     },
     {
       "id": 955260,
@@ -5053,7 +5053,7 @@
       "message": "Ru24PostWebShell web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955260）"
+      "nameZh": "Ru24PostWebShell 后门"
     },
     {
       "id": 955270,
@@ -5062,7 +5062,7 @@
       "message": "s72 Shell web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955270）"
+      "nameZh": "s72 Shell WebShell 后门"
     },
     {
       "id": 955280,
@@ -5071,7 +5071,7 @@
       "message": "PhpSpy web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955280）"
+      "nameZh": "PhpSpy WebShell 后门"
     },
     {
       "id": 955290,
@@ -5080,7 +5080,7 @@
       "message": "g00nshell web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955290）"
+      "nameZh": "g00nshell WebShell 后门"
     },
     {
       "id": 955300,
@@ -5089,7 +5089,7 @@
       "message": "PuNkHoLic shell web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955300）"
+      "nameZh": "PuNkHoLic Shell WebShell 后门"
     },
     {
       "id": 955310,
@@ -5098,7 +5098,7 @@
       "message": "azrail web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955310）"
+      "nameZh": "azrail WebShell 后门"
     },
     {
       "id": 955320,
@@ -5107,7 +5107,7 @@
       "message": "SmEvK_PaThAn Shell web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955320）"
+      "nameZh": "SmEvK_PaThAn WebShell 后门"
     },
     {
       "id": 955330,
@@ -5116,7 +5116,7 @@
       "message": "Shell I web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955330）"
+      "nameZh": "Shell I WebShell 后门"
     },
     {
       "id": 955340,
@@ -5125,7 +5125,7 @@
       "message": "b374k m1n1 web shell",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955340）"
+      "nameZh": "b374k m1n1 WebShell 后门"
     },
     {
       "id": 955400,
@@ -5134,7 +5134,7 @@
       "message": "ASP Web shell detected",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "WebShell 后门检测（955400）"
+      "nameZh": "ASP WebShell 后门"
     },
     {
       "id": 955013,
@@ -5161,7 +5161,7 @@
       "message": "webadmin.php file manager",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "Web Shell：异常检测（955350）"
+      "nameZh": "webadmin.php 文件管理器后门"
     },
     {
       "id": 955015,
@@ -5224,7 +5224,7 @@
       "message": "RUBY Information Leakage",
       "paranoiaLevel": 1,
       "internal": false,
-      "nameZh": "信息泄露（956100）"
+      "nameZh": "Ruby 信息泄露"
     },
     {
       "id": 956013,
@@ -5251,7 +5251,7 @@
       "message": "Ruby source code leakage",
       "paranoiaLevel": 2,
       "internal": false,
-      "nameZh": "信息泄露（956110）"
+      "nameZh": "Ruby 源码泄露"
     },
     {
       "id": 956015,

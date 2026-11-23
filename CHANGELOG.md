@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-23 WAF 系统规则逐条开关
+
+- 全局与域名策略支持按 CRS 检测 ID 覆盖开关，校验 ID 归属，只对已加载 conf 的关闭规则生成 `SecRuleRemoveById`。同步规则清单的中文名称。影响模块：WAF 服务端配置与目录；验证：WAF 定向 Go 测试。
+
 ## 2026-11-20 修复旧 CKM 的数据存储模式识别
 
 - 子集群 Agent 识别 K3s 节点容器中已有的 etcd 数据目录；旧 CKM 在启动模板移除 `--cluster-init` 且 `config.yaml` 未声明该参数时，原先会将运行中的 etcd 误报为 SQLite。现在仍按实际 etcd 数据报告模式，并保留原有启动参数与配置判断。影响模块：K3s 配置控制器；验证：定向 Go 测试覆盖仅有 etcd 数据目录的旧实例。

@@ -63,3 +63,41 @@ func TestValidateRejectsInvalidPolicy(t *testing.T) {
 }
 
 func boolPtr(v bool) *bool { return &v }
+
+func TestSystemRuleStates(t *testing.T) {
+	name := validDetectionIDs[933100]
+	global := Policy{RuleStates: map[int]bool{933100: false, 942100: false}, Categories: map[string]bool{name: false}}
+	config, err := Compile(global, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(config["secRules"].([]string), "\n")
+	if strings.Contains(joined, "933100") || !strings.Contains(joined, "SecRuleRemoveById 942100") {
+		t.Fatal(joined)
+	}
+	domain, err := Compile(global, &Policy{Categories: map[string]bool{name: true}, RuleStates: map[int]bool{942100: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined = strings.Join(domain["secRules"].([]string), "\n")
+	if !strings.Contains(joined, "SecRuleRemoveById 933100") || strings.Contains(joined, "942100") {
+		t.Fatal(joined)
+	}
+	for _, id := range []int{0, 901001, 933011, 999999} {
+		if _, err := Compile(Policy{RuleStates: map[int]bool{id: false}}, nil); err == nil {
+			t.Fatalf("accepted ID %d", id)
+		}
+	}
+}
+
+func TestCatalogPreservesRuleDetails(t *testing.T) {
+	for _, rule := range SystemCatalog.Rules {
+		if rule.ID == 933100 {
+			if rule.NameZh != "PHP 起始标签检测" || rule.ParanoiaLevel == nil || *rule.ParanoiaLevel != 1 {
+				t.Fatal(rule)
+			}
+			return
+		}
+	}
+	t.Fatal("rule 933100 missing")
+}

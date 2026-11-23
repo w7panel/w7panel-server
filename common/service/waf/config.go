@@ -20,6 +20,7 @@ type Policy struct {
 	UseCRS            *bool           `json:"useCRS,omitempty"`
 	RequestBodyAccess *bool           `json:"requestBodyAccess,omitempty"`
 	Categories        map[string]bool `json:"categories"`
+	RuleStates        map[int]bool    `json:"ruleStates,omitempty"`
 	CustomRules       []Rule          `json:"customRules"`
 	DisabledGlobalIDs []int           `json:"disabledGlobalIds,omitempty"`
 	ParanoiaLevel     int             `json:"paranoiaLevel,omitempty"`
@@ -36,6 +37,11 @@ func Validate(global Policy, overrides *Policy) error {
 		for name := range policy.Categories {
 			if !validRuleFiles[name] {
 				return fmt.Errorf("unknown CRS rule file %q", name)
+			}
+		}
+		for id := range policy.RuleStates {
+			if _, ok := validDetectionIDs[id]; !ok {
+				return fmt.Errorf("unknown CRS detection rule ID %d", id)
 			}
 		}
 	}
@@ -113,6 +119,15 @@ func Compile(global Policy, overrides *Policy) (map[string]interface{}, error) {
 		}
 	}
 	sort.Strings(files)
+	ruleStates := make(map[int]bool, len(global.RuleStates))
+	for id, enabled := range global.RuleStates {
+		ruleStates[id] = enabled
+	}
+	if overrides != nil {
+		for id, enabled := range overrides.RuleStates {
+			ruleStates[id] = enabled
+		}
+	}
 	disabled := make(map[int]bool)
 	if overrides != nil {
 		for _, id := range overrides.DisabledGlobalIDs {
@@ -126,6 +141,18 @@ func Compile(global Policy, overrides *Policy) (map[string]interface{}, error) {
 	}
 	if requestBodyAccess {
 		secRules = append(secRules, "SecRequestBodyAccess On")
+	}
+	if useCRS {
+		var disabledIDs []int
+		for id, enabled := range ruleStates {
+			if !enabled && active[validDetectionIDs[id]] {
+				disabledIDs = append(disabledIDs, id)
+			}
+		}
+		sort.Ints(disabledIDs)
+		for _, id := range disabledIDs {
+			secRules = append(secRules, fmt.Sprintf("SecRuleRemoveById %d", id))
+		}
 	}
 	for _, rule := range global.CustomRules {
 		if !disabled[rule.ID] {
