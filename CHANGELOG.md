@@ -1023,3 +1023,7 @@
 ## 2026-11-24 OIDC 按访问入口返回服务端地址
 
 - OIDC issuer、token、userinfo、JWKS 随访问域名返回；浏览器授权地址优先使用绑定的面板域名，未绑定时跟随请求入口。OAuth 元数据使用相同规则。影响模块：OIDC 服务与元数据。验证：OIDC 定向测试。
+
+## 2026-11-25 升级脚本调整 CRD 应用与证书组件安装
+
+- CRD 使用 server-side apply 时接管冲突字段；cert-manager CSI Driver 和 lego webhook 安装不再等待 Helm 就绪。影响模块：升级脚本。验证：Shell 语法检查通过。
