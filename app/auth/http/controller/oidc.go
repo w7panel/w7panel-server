@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -72,12 +71,12 @@ func (o Oidc) OAuthAuthorizationServerMetadata(ctx *gin.Context) {
 		return
 	}
 	issuer := server.Issuer(ctx.Request)
-	base := strings.TrimSuffix(server.MCPResource(ctx.Request), "/panel-api/v1/mcp")
 	ctx.JSON(http.StatusOK, gin.H{
 		"issuer":                                issuer,
-		"authorization_endpoint":                base + "/panel-api/v1/oidc/authorize",
-		"token_endpoint":                        base + "/panel-api/v1/oidc/token",
-		"jwks_uri":                              base + "/panel-api/v1/oidc/jwks",
+		"authorization_endpoint":                server.AuthorizationEndpoint(ctx.Request),
+		"token_endpoint":                        server.EndpointURL(ctx.Request, "token"),
+		"jwks_uri":                              server.EndpointURL(ctx.Request, "jwks"),
+		"userinfo_endpoint":                     server.EndpointURL(ctx.Request, "userinfo"),
 		"response_types_supported":              []string{"code"},
 		"grant_types_supported":                 []string{"authorization_code", "refresh_token"},
 		"token_endpoint_auth_methods_supported": server.TokenEndpointAuthMethods(),

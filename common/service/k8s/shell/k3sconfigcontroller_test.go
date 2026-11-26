@@ -1,6 +1,10 @@
 package shell
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestK3sFirstNodeWithTokenKeepsTlsSan(t *testing.T) {
 	first := NewK3sConfig(`["server","--token","secret","--tls-san","10.43.196.114","--cluster-init"]`, `{"K3S_TOKEN":"secret"}`, nil)
@@ -11,6 +15,49 @@ func TestK3sFirstNodeWithTokenKeepsTlsSan(t *testing.T) {
 		if !NewK3sConfig(args, `{}`, nil).IsNotFirstNode() {
 			t.Fatalf("joining server not detected: %s", args)
 		}
+	}
+}
+
+func TestK3sModeReadsConfigYaml(t *testing.T) {
+	for _, config := range []string{"cluster-init: true\n", "cluster-init: 'true'\n"} {
+		k3s := NewK3sConfig(`["server"]`, `{}`, []byte(config))
+		if !k3s.IsClusterInit() || k3s.GetMode() != "2" {
+			t.Fatalf("cluster-init in %q was not recognized", config)
+		}
+	}
+	k3s := NewK3sConfig(`["server"]`, `{}`, []byte("cluster-init: false\n"))
+	if k3s.IsClusterInit() || k3s.GetMode() != "1" {
+		t.Fatal("SQLite config was recognized as embedded etcd")
+	}
+	if NewK3sConfig(`["server"]`, `{}`, []byte("cluster-init: [\n")).configErr == nil {
+		t.Fatal("invalid config.yaml must stop datastore changes")
+	}
+}
+
+func TestK3sModeDetectsExistingEtcdData(t *testing.T) {
+	k3s := NewK3sConfig(`["server"]`, `{}`, []byte("cluster-init: false\n"))
+	k3s.etcdDataDir = filepath.Join(t.TempDir(), "server", "db", "etcd")
+	if k3s.GetMode() != "1" {
+		t.Fatal("CKM without etcd data should report SQLite")
+	}
+	if err := os.MkdirAll(k3s.etcdDataDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if !k3s.IsClusterInit() || k3s.GetMode() != "2" {
+		t.Fatal("existing etcd data was reported as SQLite")
+	}
+}
+
+func TestNodeRefreshPreservesDatastoreChange(t *testing.T) {
+	observed := map[string]string{"k3s.cluster-init": "false", "k3s.mode": "1"}
+	preserveK3sConfigIntent(observed, map[string]string{"k3s.cluster-init": "true"})
+	if observed["k3s.cluster-init"] != "true" || observed["k3s.mode"] != "1" {
+		t.Fatalf("node refresh changed pending datastore intent: %#v", observed)
+	}
+	observed = map[string]string{"k3s.cluster-init": "true", "k3s.mode": "2"}
+	preserveK3sConfigIntent(observed, map[string]string{"k3s.cluster-init": "false"})
+	if observed["k3s.cluster-init"] != "true" {
+		t.Fatal("node refresh hid cluster-init enabled in config.yaml")
 	}
 }
 

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/w7panel/w7panel/common/service/k8s"
 	k3ktypes "github.com/w7panel/w7panel/common/service/k8s/user/k3k/types"
 	"github.com/we7coreteam/w7-rangine-go/v2/pkg/support/facade"
 	oidclib "github.com/zitadel/oidc/v3/pkg/oidc"
@@ -119,6 +120,11 @@ type Server struct {
 	provider op.OpenIDProvider
 	legacy   op.ExtendedLegacyServer
 	handler  http.Handler
+
+	boundAuthorizationIssuer  func(context.Context) (string, error)
+	authorizationMu           sync.Mutex
+	cachedAuthorizationIssuer string
+	authorizationChecked      time.Time
 }
 
 type defaultAccessTokenRequest struct {
@@ -147,6 +153,12 @@ func GetServer() (*Server, error) {
 			return
 		}
 		defaultServer, loadErr = NewServer(cfg)
+		if loadErr == nil {
+			defaultServer.boundAuthorizationIssuer = func(ctx context.Context) (string, error) {
+				return panelIngressIssuer(ctx, k8s.NewK8sClient().ClientSet,
+					facade.Config.GetString("app.helm_namespace"), facade.Config.GetString("app.deployment_name"))
+			}
+		}
 	})
 	return defaultServer, loadErr
 }
@@ -245,9 +257,6 @@ func (s *Server) initProvider() error {
 			return issuer
 		}, nil
 	}
-	if s.config.Issuer != "" {
-		issuerBuilder = op.StaticIssuer(strings.TrimRight(s.config.Issuer, "/"))
-	}
 	provider, err := op.NewProvider(
 		opConfig,
 		s,
@@ -287,7 +296,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Issuer(r *http.Request) string {
-	if s.config.Issuer != "" {
+	if s.provider == nil {
 		return strings.TrimRight(s.config.Issuer, "/")
 	}
 	return s.provider.IssuerFromRequest(r)
@@ -311,6 +320,30 @@ func (s *Server) discoveryIssuer(r *http.Request) string {
 	parsedIssuer.RawQuery = ""
 	parsedIssuer.Fragment = ""
 	return strings.TrimRight(parsedIssuer.String(), "/")
+}
+
+func (s *Server) EndpointURL(r *http.Request, endpoint string) string {
+	return s.discoveryIssuer(r) + oidcPath(endpoint)
+}
+
+func (s *Server) AuthorizationEndpoint(r *http.Request) string {
+	if s.boundAuthorizationIssuer != nil {
+		s.authorizationMu.Lock()
+		defer s.authorizationMu.Unlock()
+		if time.Since(s.authorizationChecked) >= 5*time.Second {
+			ctx, cancel := context.WithTimeout(r.Context(), time.Second)
+			issuer, err := s.boundAuthorizationIssuer(ctx)
+			cancel()
+			if err == nil {
+				s.cachedAuthorizationIssuer = issuer
+			}
+			s.authorizationChecked = time.Now()
+		}
+		if s.cachedAuthorizationIssuer != "" {
+			return s.cachedAuthorizationIssuer + "/authorize"
+		}
+	}
+	return s.EndpointURL(r, "authorize")
 }
 
 func (s *Server) JWKS() map[string]any {
@@ -353,10 +386,10 @@ func (s *Server) Discovery(ctx context.Context, r *http.Request) (*op.Response, 
 	}
 	// ctxt := op.ContextWithIssuer(ctx, s.Issuer(r)) 预设issuer 会导致 其他token 等路径出错 因此改为手动赋值
 	config.Issuer = s.Issuer(r)
-	config.JwksURI = s.discoveryIssuer(r) + oidcPath("jwks")
-	config.AuthorizationEndpoint = s.discoveryIssuer(r) + oidcPath("authorize")
-	config.TokenEndpoint = s.discoveryIssuer(r) + oidcPath("token")
-	config.UserinfoEndpoint = s.discoveryIssuer(r) + oidcPath("userinfo")
+	config.JwksURI = s.EndpointURL(r, "jwks")
+	config.AuthorizationEndpoint = s.AuthorizationEndpoint(r)
+	config.TokenEndpoint = s.EndpointURL(r, "token")
+	config.UserinfoEndpoint = s.EndpointURL(r, "userinfo")
 	// config.RevocationEndpoint = s.discoveryIssuer(r) + oidcPath("revoke")
 	// config.IntrospectionEndpoint = s.discoveryIssuer(r) + oidcPath("introspect")
 	// config.EndSessionEndpoint = s.discoveryIssuer(r) + oidcPath("end_session")

@@ -15,7 +15,9 @@ import (
 	userv1alpha1 "github.com/w7panel/w7panel/k8s/pkg/apis/user/v1alpha1"
 	zitadeloidc "github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 type fakeDynamicClientStore struct {
@@ -774,10 +776,69 @@ func TestDiscoveryIssuerUsesOIDCBasePath(t *testing.T) {
 			if got := config.AuthorizationEndpoint; got != issuer+"/authorize" {
 				t.Fatalf("unexpected authorization endpoint: got %s want %s", got, issuer+"/authorize")
 			}
+			for name, got := range map[string]string{
+				"token":    config.TokenEndpoint,
+				"userinfo": config.UserinfoEndpoint,
+				"jwks":     config.JwksURI,
+			} {
+				if got != issuer+"/"+name {
+					t.Fatalf("%s endpoint = %q, want %q", name, got, issuer+"/"+name)
+				}
+			}
 			if got := server.provider.IssuerFromRequest(req); got != issuer {
 				t.Fatalf("provider issuer: got %s want %s", got, issuer)
 			}
 		})
+	}
+}
+
+func TestDiscoveryBoundAuthorizationDomainKeepsRequestIssuer(t *testing.T) {
+	server := newTestServer(&fakeDynamicClientStore{})
+	server.config.Issuer = "https://configured.example/panel-api/v1/oidc"
+	server.boundAuthorizationIssuer = func(context.Context) (string, error) {
+		return "https://bound.example/panel-api/v1/oidc", nil
+	}
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server.private = privateKey
+	server.kid = "test-kid"
+	if err := server.initProvider(); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "http://internal.local/panel-api/v1/oidc/.well-known/openid-configuration", nil)
+	resp, err := server.Discovery(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := resp.Data.(*zitadeloidc.DiscoveryConfiguration)
+	requestIssuer := "http://internal.local/panel-api/v1/oidc"
+	if config.Issuer != requestIssuer || server.provider.IssuerFromRequest(req) != requestIssuer ||
+		config.AuthorizationEndpoint != "https://bound.example/panel-api/v1/oidc/authorize" ||
+		config.TokenEndpoint != requestIssuer+"/token" ||
+		config.UserinfoEndpoint != requestIssuer+"/userinfo" ||
+		config.JwksURI != requestIssuer+"/jwks" {
+		t.Fatalf("unexpected discovery: %#v", config)
+	}
+	server.boundAuthorizationIssuer = func(context.Context) (string, error) { return "", nil }
+	server.authorizationChecked = time.Time{}
+	if got := server.AuthorizationEndpoint(req); got != requestIssuer+"/authorize" {
+		t.Fatalf("unbound authorization endpoint = %q", got)
+	}
+}
+
+func TestPanelIngressIssuer(t *testing.T) {
+	client := fake.NewSimpleClientset(&networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{Name: "panel", Namespace: "default", Labels: map[string]string{"app": "w7panel"}},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{{Host: "panel.example.com"}},
+			TLS:   []networkingv1.IngressTLS{{Hosts: []string{"panel.example.com"}}},
+		},
+	})
+	issuer, err := panelIngressIssuer(context.Background(), client, "default", "w7panel")
+	if err != nil || issuer != "https://panel.example.com/panel-api/v1/oidc" {
+		t.Fatalf("bound authorization issuer = %q, %v", issuer, err)
 	}
 }
 

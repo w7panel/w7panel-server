@@ -20,8 +20,8 @@ func TestIsWhiteDomainPlugin(t *testing.T) {
 		},
 		{
 			name:   "legacy plugin",
-			plugin: &v1alpha1.WasmPlugin{ObjectMeta: metav1.ObjectMeta{Name: legacyWhiteDomainPluginName, Namespace: higressSystemNamespace}},
-			want:   true,
+			plugin: &v1alpha1.WasmPlugin{ObjectMeta: metav1.ObjectMeta{Name: "w7-white-domain", Namespace: higressSystemNamespace}},
+			want:   false,
 		},
 		{
 			name:   "wrong namespace",

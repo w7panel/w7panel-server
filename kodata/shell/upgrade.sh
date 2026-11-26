@@ -42,7 +42,7 @@ fi
 set -x
 
 echo "导入crd"
-kubectl apply -f $KO_DATA_PATH/crds --server-side
+kubectl apply -f $KO_DATA_PATH/crds --server-side --force-conflicts
 sh $KO_DATA_PATH/shell/migrate-crd-groups.sh
 
 echo "导入webhook公共CA"
@@ -51,10 +51,9 @@ if kubectl get namespace cert-manager >/dev/null 2>&1 && kubectl get crd certifi
   kubectl apply -f $KO_DATA_PATH/yaml/w7panel-root-ca.yaml
   helm upgrade cert-manager-csi-driver $KO_DATA_PATH/charts/cert-manager-csi-driver-v0.16.0.tgz \
     --namespace cert-manager \
-    --install \
-    --wait
+    --install
   helm upgrade cert-manager-lego-webhook $KO_DATA_PATH/charts/cert-manager-lego-webhook-1.6.2.tgz \
-    --namespace cert-manager --install --wait --timeout 5m \
+    --namespace cert-manager --install \
     --set certManager.namespace=cert-manager \
     --set certManager.serviceAccountName=cert-manager
 else

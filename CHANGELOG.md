@@ -1,5 +1,41 @@
 # CHANGELOG
 
+## 2026-11-23 MicroApp 前端直传测试技能
+
+- 新增项目级技能，记录测试集群中将 MicroApp 前端复制到面板 Pod 缓存、切换 frontendUrl、验证与回退的流程。影响模块：开发文档；验证：技能格式检查与步骤核对。
+
+## 2026-11-23 WAF 系统规则逐条开关
+
+- 全局与域名策略支持按 CRS 检测 ID 覆盖开关，校验 ID 归属，只对已加载 conf 的关闭规则生成 `SecRuleRemoveById`。同步规则清单的中文名称。影响模块：WAF 服务端配置与目录；验证：WAF 定向 Go 测试。
+
+## 2026-11-20 修复旧 CKM 的数据存储模式识别
+
+- 子集群 Agent 识别 K3s 节点容器中已有的 etcd 数据目录；旧 CKM 在启动模板移除 `--cluster-init` 且 `config.yaml` 未声明该参数时，原先会将运行中的 etcd 误报为 SQLite。现在仍按实际 etcd 数据报告模式，并保留原有启动参数与配置判断。影响模块：K3s 配置控制器；验证：定向 Go 测试覆盖仅有 etcd 数据目录的旧实例。
+
+## 2026-11-20 子集群 SQLite 切换内嵌 etcd
+
+- 子集群 Agent 改用已挂载的 `/etc/rancher/k3s/config.yaml` 读写 K3s 配置，识别 YAML 布尔值 `cluster-init`，并在配置写入后通过 CKM 容器的 `k3s.sh` 重启；主集群继续使用原有路径和 systemd。此前子集群固定访问不存在的 `/host` 路径且只按启动参数判断模式，提交切换后无法正确生效。节点事件现在保留已提交的切换意图，避免重启期间被旧观测值覆盖。影响模块：K3s 配置控制器、子集群 Agent。验证：定向 Go 测试、差异检查；隔离 K3s 容器从 SQLite 切换到 etcd 后测试 ConfigMap 保留，再次重启仍可读取。未在真实 CKM 上联调。
+
+## 2026-11-20 子集群 Agent 参数精简
+
+- 离线 Chart 升至 1.1.114，移除子集群工作负载中未使用的认证模式、集群模式、存储类和同步端口参数，OIDC 登录参数只传给升级 Job；子集群同步固定启用，面板升级提示由子集群 HelmChart 配置且默认关闭。影响模块：子面板 Deployment、Agent DaemonSet、Chart values。验证：Helm lint、普通与子集群模板渲染、环境变量核对及差异检查通过。
+
+## 2026-11-19 移除旧 CDN 代理插件初始化
+
+- 218 集群没有 `w7-cdn-proxy` WasmPlugin，仓库也没有初始化所需的 YAML；移除 Higress Manager 启动时的旧初始化钩子、函数及失效测试，不影响其他网关插件。影响模块：Higress 控制器。验证：Higress 包定向 `make test` 通过，差异检查通过。
+
+## 2026-11-19 监控管理菜单权限
+
+- 创始人内置权限 YAML 加入 `metrics`，使面板升级时保留监控管理入口。影响模块：内置权限。验证：权限 YAML 检查与差异检查通过；218 现有权限仅追加该菜单，未覆盖其他菜单。
+
+## 2026-11-18 修复 WAF 防护日志为空
+
+- 兼容网关实际输出的 `via_wasm::higress-system.w7panel-pluginwaf::waf` 拦截标记，同时保留旧版 `waf` 标记；排除其他插件与域名的日志。影响模块：WAF 防护日志接口。验证：控制器定向 Go 测试。
+
+## 2026-11-18 子集群应用 LoadBalancer 使用 K3s ServiceLB
+
+- 普通 ZPK 生成应用 Chart 时，子集群的 LoadBalancer Service 不再写入 `io.cilium/node`，交由 K3s ServiceLB 分配地址；主集群保留原有 Cilium class，避免无 Cilium 的子集群 Service 长期 Pending。影响模块：ZPK Chart YAML 生成。验证：主集群与子集群定向 Go 测试。
+
 ## 2026-11-17 子集群按宿主模式拆分面板与节点代理
 
 - 子集群 Deployment 统一运行 AppGroup、BuildImage、Higress、Site、Kubernetes controller-runtime 和 webhook，DaemonSet 只保留节点终端、文件、containerd 与本地镜像仓库能力；避免同一控制器在两个 Pod 中并发调谐。镜像构建 Job 改用 Chart 实际创建的 `w7panel-offline` ServiceAccount，升级 Job 在新 webhook 就绪后清理旧 Agent webhook。Chart 版本升级为 `1.1.113`。验证：Helm lint、普通与子集群模式渲染、Go 定向测试。
@@ -952,3 +988,42 @@
 - 子面板 AppGroup 版本同步在旧的 `childPanel.imageTag` 不存在时读取统一 Chart 的 `image.tag`，使 AppGroup 自身状态与实际运行镜像一致。此前复用 `k8s-offline` Chart 后仍只读取已移除的专用字段，更新镜像后 AppGroup 会继续显示旧版本。影响模块：AppGroup Helm release 同步。验证：AppGroup 定向测试与 218 子面板版本收敛。
 - 启用子面板 WebDAV 与文件权限 UID/GID 映射分支测试，确保 Sysbox 子集群直接使用容器内 ID，不套用宿主 user namespace 映射。影响模块：WebDAV 与文件权限测试。验证：应用控制器定向测试。
 - 增加子面板 webhook 规则测试，确保统一 Chart 下子面板不会监听宿主专用的 Deployment、DaemonSet、StatefulSet、Service 和 ConfigMap。影响模块：webhook 测试。验证：webhook 定向测试。
+
+## 2026-11-18 WAF 自定义规则请求体检查
+
+- WAF 策略增加可继承的请求体检查开关；开启后在自定义 SecRule 前下发 `SecRequestBodyAccess On`，让 `REQUEST_BODY` 和 POST 表单规则生效，默认保持关闭。影响模块：WAF 配置编译与域名覆盖。验证：WAF 定向测试、前端测试与构建。
+## 2026-11-18 监控管理权限
+
+- 为创始人默认菜单加入监控管理权限。影响模块：权限与服务账号默认菜单。验证：权限定向测试通过；权限包全量测试仍有既存的 `gateway/traffic` 菜单断言失败。
+
+## 2026-11-19 备案域名移除旧插件回退
+
+- 备案域名检查只读取市场插件 `w7panel-pluginwhitedomain`，旧版 `w7-white-domain` 不再参与加载和事件处理。影响模块：Higress 备案域名。验证：Higress 包定向测试通过。
+
+## 2026-11-20 OIDC 使用已绑定面板域名
+
+- 主面板已绑定 Ingress 域名时，OIDC issuer 和发现文档端点统一使用该域名与 HTTP(S) 协议；未绑定时回退到显式 OIDC_ISSUER 或请求地址，避免不同入口返回不同 issuer。影响模块：OIDC、面板域名。验证：OIDC 定向测试。
+
+## 2026-11-20 回退 OIDC 绑定域名优先逻辑
+
+- 因 OIDC client 验证异常，回退绑定面板域名后强制返回该域名的逻辑，恢复原有 issuer 选择方式。影响模块：OIDC。验证：OIDC 定向测试及 218 测试环境回滚检查。
+
+## 2026-11-20 自维护 WAF 规则配置
+
+- WAF 策略改为按 CRS v4.30.0 的实际 conf 文件选择规则，增加 PL1–PL4 与规则引擎模式，并通过配置接口提供同版本规则清单。自定义规则仅在全局维护，域名仅可禁用继承规则；旧版规则指令不会参与新配置编译。影响模块：WAF 配置编译与控制器。验证：WAF 服务和控制器定向测试。
+
+## 2026-11-20 WAF 日志改由监控插件查询
+
+- 移除面板直接读取网关 Pod 日志的 WAF 路由及权限例外，防护日志由 metrics-traffic 查询 VictoriaLogs。影响模块：WAF 控制器、路由、权限。验证：WAF 控制器及权限定向测试。
+- 权限包全量测试仍受既有 `gateway/traffic` 菜单断言失败影响；本次 WAF 路由权限定向测试通过。
+## 2026-11-23 WAF 配置直写插件资源
+
+- WAF MicroApp 通过宿主 Kubernetes 代理直接读写 WasmPlugin，删除面板中的 WAF 专用路由、编译逻辑及权限例外。影响模块：网关插件配置与面板 API。验证：WAF 前端测试与构建通过；面板定向 Go 测试受本地临时空间不足阻断。
+
+## 2026-11-24 OIDC 按访问入口返回服务端地址
+
+- OIDC issuer、token、userinfo、JWKS 随访问域名返回；浏览器授权地址优先使用绑定的面板域名，未绑定时跟随请求入口。OAuth 元数据使用相同规则。影响模块：OIDC 服务与元数据。验证：OIDC 定向测试。
+
+## 2026-11-25 升级脚本调整 CRD 应用与证书组件安装
+
+- CRD 使用 server-side apply 时接管冲突字段；cert-manager CSI Driver 和 lego webhook 安装不再等待 Helm 就绪。影响模块：升级脚本。验证：Shell 语法检查通过。

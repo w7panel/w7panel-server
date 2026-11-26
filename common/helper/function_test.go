@@ -44,6 +44,17 @@ func TestRandomByteCrypto(t *testing.T) {
 	// }
 }
 
+func TestK3sConfigPath(t *testing.T) {
+	t.Setenv("IS_CHILD", "true")
+	if got := K3sConfigPath(); got != "/etc/rancher/k3s/config.yaml" {
+		t.Fatalf("child config path = %q", got)
+	}
+	t.Setenv("IS_CHILD", "false")
+	if got := K3sConfigPath(); got != "/host/etc/rancher/k3s/config.yaml" {
+		t.Fatalf("root config path = %q", got)
+	}
+}
+
 func TestLaravelAppKey(t *testing.T) {
 	appKey := LaravelAppKey(32)
 	if !strings.HasPrefix(appKey, "base64:") {

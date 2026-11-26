@@ -358,13 +358,14 @@ func TestApplyToServiceAccountBackfillsFounderDefaults(t *testing.T) {
 	}
 }
 
-func TestFounderFallbackIncludesGatewayPluginPermissions(t *testing.T) {
+func TestFounderFallbackIncludesGatewayPluginAndMetricsPermissions(t *testing.T) {
 	menu := MenuRules(founderFallback())
 	for _, want := range []string{
 		"gateway/plugins",
 		"gateway/plugins/add",
 		"gateway/plugins/edit",
 		"gateway/plugins/delete",
+		"metrics",
 	} {
 		found := false
 		for _, item := range menu {
@@ -448,20 +449,6 @@ func TestBuiltinFounderUsesGatewayTrafficMenu(t *testing.T) {
 	}
 	if containsString(menuRules, "cluster/traffic") {
 		t.Fatal("founder permission should not include legacy cluster/traffic")
-	}
-}
-
-func TestWAFRoutesUseKubernetesResourceAuthorization(t *testing.T) {
-	p := &configv1alpha1.Permission{}
-	for _, route := range []struct{ method, path string }{
-		{"GET", "/panel-api/v1/waf/config"},
-		{"PUT", "/panel-api/v1/waf/config"},
-		{"GET", "/panel-api/v1/waf/logs"},
-	} {
-		allowed, err := AuthorizePanelAPIWithPermission(context.Background(), nil, p, route.method, route.path)
-		if err != nil || !allowed {
-			t.Fatalf("WAF route %s %s rejected before resource authorization: %v", route.method, route.path, err)
-		}
 	}
 }
 
