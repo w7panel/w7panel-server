@@ -306,6 +306,28 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 	}
 	manifest.GenVolumesName(make(map[string]string))
 	if self.IsConsole {
+		// Console config2 can serve legacy manifests directly, without the
+		// format conversion performed by the ZPK service. Explicit current
+		// parameters (including an empty array) remain authoritative.
+		if manifest.Platform.StartParams == nil {
+			manifest.Platform.StartParams = manifest.Platform.Container.StartParams
+		}
+		if manifest.Platform.Containers == nil {
+			ports := make([]corev1.ContainerPort, 0, len(manifest.Platform.Container.Ports))
+			for _, port := range manifest.Platform.Container.Ports {
+				protocol := corev1.Protocol(port.Protocol)
+				if protocol == "" {
+					protocol = corev1.ProtocolTCP
+				}
+				ports = append(ports, corev1.ContainerPort{Name: port.Name, ContainerPort: int32(port.Port), Protocol: protocol})
+			}
+			if len(ports) == 0 && manifest.Platform.Container.ContainerPort > 0 {
+				ports = append(ports, corev1.ContainerPort{ContainerPort: int32(manifest.Platform.Container.ContainerPort), Protocol: corev1.ProtocolTCP})
+			}
+			if len(ports) > 0 {
+				manifest.Platform.Containers = []types.ManifestContainer{{Container: corev1.Container{Ports: ports}}}
+			}
+		}
 		manifest.AppendDomainStartParams()
 	}
 	zpkURL := zpkInfo.Data.InfoURL
@@ -374,12 +396,20 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 	if isParent {
 		p.RequireInstall = true
 	}
-	if isParent && p.HelmUrl == "" { //旧版才加载子应用
+	if isParent && p.HelmUrl == "" && (!self.IsConsole || len(p.InstallFormulas) == 0) { //旧版才加载子应用
 		_ = self.LoadDependsByPackage(ctx, p)
 	}
-	p.Children = make(map[string]*types.ManifestPackage)
+	// Console responses without formulas still use the loaded legacy dependencies.
+	if p.Children == nil || len(p.InstallFormulas) > 0 || !self.IsConsole {
+		p.Children = make(map[string]*types.ManifestPackage)
+	}
 	// LoadDependsByPackage 接口权限问题 改为使用InstallFormulas 全部返回 所以需要mock 子应用manifest
 	for _, formula := range p.InstallFormulas {
+		// An omitted field in a Console summary does not delete the manifest's
+		// parameters. An explicit empty array still clears them.
+		if self.IsConsole && formula.Name == p.Manifest.Application.Identifie && formula.StartParams == nil {
+			formula.StartParams = p.Manifest.Platform.StartParams
+		}
 		requirePvc, startParams := normalizeInstallFormulaStartParams(formula)
 		if formula.Name == p.Manifest.Application.Identifie {
 			p.Manifest.Application.Identifie = formula.Name
@@ -452,7 +482,11 @@ func (self repo) LoadDependsByPackage(ctx context.Context, p *types.ManifestPack
 		}
 		// 下载依赖
 		uri := depend.GetLoadUrl(p)
-		child, err := self.loadPackageByHttp(ctx, uri, self.token, false)
+		requestURI := uri
+		if self.IsConsole && getSourceUri(uri) == "deploy" {
+			requestURI = self.baseConsoleUrl + "config2?url=" + url.QueryEscape(uri)
+		}
+		child, err := self.loadPackageByHttp(ctx, requestURI, self.token, false)
 		if err != nil {
 			slog.Warn("LoadDependsByPackage", "err", err)
 			continue
