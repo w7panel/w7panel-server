@@ -40,10 +40,7 @@ func ListByRole(role string) (*microapp.MicroAppList, error) {
 	if err != nil {
 		return nil, err
 	}
-	rootList.Items = lo.Filter(rootList.Items, func(item microapp.MicroApp, index int) bool {
-		_, hasRole := item.Spec.ConfigV2.Props.RoleConfig[role]
-		return panelRoleBindingCount(item) > 1 && hasRole && !isPluginMicroApp(item)
-	})
+	rootList.Items = filterTopMicroApps(rootList.Items, role)
 
 	rootList.Items = lo.Map(rootList.Items, func(item microapp.MicroApp, index int) microapp.MicroApp {
 		filterMicroapp(&item, role)
@@ -72,6 +69,22 @@ func panelRoleBindingCount(item microapp.MicroApp) int {
 	return lo.CountBy(item.Spec.Bindings, func(binding microapp.Bindings) bool {
 		return binding.Support == "thirdparty_cd" && permissionservice.IsPanelRole(binding.Name)
 	})
+}
+
+func filterTopMicroApps(items []microapp.MicroApp, role string) []microapp.MicroApp {
+	return lo.Filter(items, func(item microapp.MicroApp, _ int) bool {
+		_, hasRole := item.Spec.ConfigV2.Props.RoleConfig[role]
+		return isPrimaryMicroApp(item) && panelRoleBindingCount(item) > 1 && hasRole && !isPluginMicroApp(item)
+	})
+}
+
+// Group ownership identifies the root application, independently of menu roles
+// or display order. Menu discovery must not query AppGroup resources.
+func isPrimaryMicroApp(item microapp.MicroApp) bool {
+	if group := strings.TrimSpace(item.Labels[resourceGroupLabel]); group != "" {
+		return item.Name == group || (item.IsFromRoot() && item.Name == group+"-root")
+	}
+	return false
 }
 
 func isPluginMicroApp(item microapp.MicroApp) bool {
