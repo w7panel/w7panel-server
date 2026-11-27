@@ -19,6 +19,7 @@ import (
 )
 
 type repo struct {
+	registryAuth   string
 	repoUrl        string `json:"repo_url"`
 	token          string `json:"token"`
 	panelToken     string `json:"panel_token"`
@@ -269,6 +270,23 @@ func (self *repo) loadPackageByHttp(ctx context.Context, uri string, token strin
 		return nil, err
 	}
 
+	if resp.StatusCode() == http.StatusUnauthorized && resp.Header().Get("WWW-Authenticate") != "" {
+		// Credentials belong only to the original source; never pass them to remote dependencies.
+		source, sourceErr := url.Parse(self.repoUrl)
+		target, targetErr := url.Parse(requestURI)
+		auth := ""
+		if sourceErr == nil && targetErr == nil && source.Scheme == target.Scheme && strings.EqualFold(source.Host, target.Host) {
+			auth = self.registryAuth
+		}
+		bearer, err := registryBearer(ctx, requestURI, resp.Header().Get("WWW-Authenticate"), auth)
+		if err != nil {
+			return nil, err
+		}
+		resp, err = req.SetAuthToken(bearer).Get(requestURI)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if resp.StatusCode() != http.StatusOK {
 		if conflictErr := parseArtifactInstallConflictError(resp.Body()); conflictErr != nil {
 			return nil, conflictErr

@@ -86,6 +86,12 @@ func writeArtifactInstallConflictResponse(http *gin.Context, err error) bool {
 }
 
 func (self Zpk) relayRepoError(ctx *gin.Context, err error) bool {
+	var registryErr *logic.RegistryAuthenticationError
+	if errors.As(err, &registryErr) {
+		ctx.Header("Cache-Control", "no-store")
+		ctx.JSON(nethttp.StatusForbidden, gin.H{"code": "ZPK_REGISTRY_AUTH_REQUIRED", "error": registryErr.Error(), "data": registryErr})
+		return true
+	}
 	payload, ok := repoRestrictionPayload(err)
 	if !ok {
 		return false
@@ -149,6 +155,8 @@ func (self Zpk) GetConfig(http *gin.Context) {
 	}
 
 	repo := logic.NewRepo(repoUrl, params.ThirdpartyCDToken, "")
+	repo.SetRegistryAuth(http.GetHeader("X-Registry-Authorization"))
+	http.Header("Cache-Control", "no-store")
 	// repo.SetCheckUpgrade(true)
 	repo.SetPanelToken(token)
 	repo.SetAppIdentify(params.ReleaseName)

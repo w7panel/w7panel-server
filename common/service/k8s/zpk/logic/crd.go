@@ -88,6 +88,7 @@ func CheckUpgradeCRDs(ctx context.Context, sdk *k8s.Sdk, panelToken string, para
 		return UpgradeCRDResult{}, err
 	}
 	repo := NewRepo(params.RepoUrl, params.ThirdpartyCDToken, "")
+	repo.SetRegistryAuth(params.RegistryAuth)
 	repo.SetDomain(installRequestDomain(params))
 	repo.SetPanelToken(panelToken)
 	repo.SetAppIdentify(params.ReleaseName)

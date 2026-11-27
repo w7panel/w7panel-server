@@ -37,6 +37,7 @@ func appGroupDependencyReferences(bindings []DependencyBinding) []appgroup.Depen
 }
 
 type InstallRequest struct {
+	RegistryAuth       string                `json:"registryAuth,omitempty"`
 	Namespace          string                `json:"namespace" binding:"required"`
 	RepoUrl            string                `json:"repoUrl" binding:"required"`
 	ReleaseName        string                `json:"releaseName" binding:"required"`
@@ -94,6 +95,7 @@ func ExecuteInstall(params InstallRequest, execution InstallExecution) (InstallR
 	isUpgrade := err == nil && appgroupObj != nil
 
 	repo := NewRepo(repoUrl, params.ThirdpartyCDToken, "")
+	repo.SetRegistryAuth(params.RegistryAuth)
 	repo.SetDomain(installRequestDomain(params))
 	repo.SetAppIdentify(params.ReleaseName)
 	repo.SetReinstall(params.Reinstall)
