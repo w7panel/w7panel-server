@@ -42,7 +42,11 @@ fi
 set -x
 
 echo "导入crd"
-kubectl apply -f $KO_DATA_PATH/crds --server-side --force-conflicts
+# Higress CRD 由其 Chart 管理；只强制更新面板自有 CRD，避免覆盖其他 release 的字段。
+for crd in "$KO_DATA_PATH"/crds/w7panel.w7.com_*.yaml "$KO_DATA_PATH"/crds/microapp.w7.cc_*.yaml; do
+  [ -f "$crd" ] || continue
+  kubectl apply -f "$crd" --server-side --force-conflicts
+done
 sh $KO_DATA_PATH/shell/migrate-crd-groups.sh
 
 echo "导入webhook公共CA"
@@ -149,7 +153,11 @@ echo "higress config"
 # kubectl apply -f "$KO_DATA_PATH/yaml/higress-gateway.yaml"
 # higress 可能未启动成功 导致crd未创建 job设置重试3次
 kubectl apply -f $KO_DATA_PATH/yaml/higress-compressor.yaml --server-side
-kubectl apply -f $KO_DATA_PATH/yaml/higress/v1.5.0/experimental-install.yaml --server-side
+if kubectl -n kube-system get helmchart gateway-api-crd >/dev/null 2>&1; then
+  echo "Gateway API CRD 由 HelmChart 管理，跳过重复导入"
+else
+  kubectl apply -f $KO_DATA_PATH/yaml/higress/v1.5.0/experimental-install.yaml --server-side
+fi
 # kubectl apply -f $KO_DATA_PATH/yaml/higress/v1.5.0/standard-install.yaml --server-side
 kubectl apply -f $KO_DATA_PATH/yaml/higress/gateway.yaml --server-side || echo "已存在higress gateway"
 

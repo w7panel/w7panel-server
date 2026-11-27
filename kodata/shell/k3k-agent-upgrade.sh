@@ -1,7 +1,11 @@
 #!/bin/bash
 
 # "microapp升级过需要更新crd"
-kubectl apply -f $KO_DATA_PATH/crds --server-side
+# Higress CRD 由其 Chart 管理；只强制更新面板自有 CRD。
+for crd in "$KO_DATA_PATH"/crds/w7panel.w7.com_*.yaml "$KO_DATA_PATH"/crds/microapp.w7.cc_*.yaml; do
+  [ -f "$crd" ] || continue
+  kubectl apply -f "$crd" --server-side --force-conflicts
+done
 sh $KO_DATA_PATH/shell/migrate-crd-groups.sh
 
 # CKM supplies these values only for child panel agents. Keep this separate

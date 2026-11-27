@@ -57,6 +57,7 @@ w7panel/
 - Linux-only 能力应放在 `//go:build linux` 文件中，并提供必要的非 Linux stub 或降级实现，保证本项目在非 Linux 开发环境下可编译。
 - 开发、调试、构建、代码生成和一次性维护脚本统一放在 `dev-tools/` 下，不要散落在业务目录或项目根目录。
 - `kodata/` 只存放运行时需要随程序分发的静态资源、Chart、CRD、脚本和模板，禁止放置本地构建产物、临时文件、缓存文件或开发工具输出。
+- 普通面板升级 Job 的 `kodata/shell/upgrade.sh` 与子集群升级脚本 `kodata/shell/k3k-agent-upgrade.sh` 对面板自有 CRD 使用 server-side apply `--force-conflicts`；Higress CRD 由其 Chart 管理，不由该步骤覆盖；存在 gateway-api-crd HelmChart 时也跳过实验版 Gateway API 清单的重复导入。发布修复时须重新构建面板镜像并更新安装器引用，单改源码不会改变已发布的升级 Job。
 
 ## 快速开始
 
