@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-11-25 K3s 1.37 安装器升级 Job 的 CRD 冲突
+
+- 普通面板与子集群升级脚本只对面板自有 CRD 使用 server-side apply `--force-conflicts`，跳过由 Higress Chart 管理的旧 CRD，避免 `helm` 持有 `.spec.versions` 时升级 Job 直接失败。K3s `v1.37.2+k3s1` 实测面板自有 21 个 CRD 应用成功；独立验证 Job 越过 CRD 阶段，但因 `cert-manager-lego-webhook` 镜像拉取超时最终 `Failed 0/1`，未验证 Complete。安装器当前引用的镜像 `1.1.106` 尚未包含此修复。
+
+- Docker 安装 K3s v1.37.2 实测发现后续 Gateway API 实验清单与 gateway-api-crd HelmChart 冲突；升级脚本检测到该 HelmChart 时跳过重复导入。重新构建本地镜像并从新工作目录安装后，安装器退出 0、升级 Job Complete 1/1、面板 HTTP 200；cert-manager lego webhook 镜像仍在拉取，尚未验证其 Ready。
+
 ## 2026-11-23 MicroApp 前端直传测试技能
 
 - 新增项目级技能，记录测试集群中将 MicroApp 前端复制到面板 Pod 缓存、切换 frontendUrl、验证与回退的流程。影响模块：开发文档；验证：技能格式检查与步骤核对。
