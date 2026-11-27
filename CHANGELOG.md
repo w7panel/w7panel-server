@@ -1037,3 +1037,7 @@
 ## 2026-11-27 合并进程命名空间路径处理
 
 - 解决 `procpath/nsenter.go` 双方新增冲突，保留容器路径清理和子进程根目录解析，并保持命名空间文件读写功能。影响模块：进程命名空间文件操作。验证：`make test TEST_PACKAGES=./common/service/procpath/...`。
+
+## 2026-11-27 删除未接入的子进程 WebDAV 实现
+
+- 删除未被路由调用的子进程 WebDAV 处理器及仅供该处理器使用的命名空间辅助函数。影响模块：文件 WebDAV、进程路径服务。验证：`make test TEST_PACKAGES="./app/application/http/controller/... ./common/service/procpath/..."` 通过。
