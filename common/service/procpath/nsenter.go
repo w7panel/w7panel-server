@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -13,6 +14,33 @@ import (
 
 func ShellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+}
+
+func CleanContainerPath(raw string) (string, error) {
+	if strings.ContainsRune(raw, 0) {
+		return "", fmt.Errorf("invalid container path")
+	}
+	for _, part := range strings.Split(raw, "/") {
+		if part == ".." {
+			return "", fmt.Errorf("container path cannot contain ..")
+		}
+	}
+	return path.Clean("/" + raw), nil
+}
+
+func InnerFilePath(subPid, containerPath string) (string, error) {
+	clean, err := CleanContainerPath(containerPath)
+	if err != nil {
+		return "", err
+	}
+	if subPid == "" || subPid == "0" {
+		return clean, nil
+	}
+	pid, err := strconv.Atoi(subPid)
+	if err != nil || pid <= 0 {
+		return "", fmt.Errorf("invalid subpid %q", subPid)
+	}
+	return filepath.Join("/proc", subPid, "root", strings.TrimPrefix(clean, "/")), nil
 }
 
 func RunInPidNamespace(pid string, script string) ([]byte, error) {

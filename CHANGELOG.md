@@ -1033,3 +1033,7 @@
 ## 2026-11-25 升级脚本调整 CRD 应用与证书组件安装
 
 - CRD 使用 server-side apply 时接管冲突字段；cert-manager CSI Driver 和 lego webhook 安装不再等待 Helm 就绪。影响模块：升级脚本。验证：Shell 语法检查通过。
+
+## 2026-11-27 合并进程命名空间路径处理
+
+- 解决 `procpath/nsenter.go` 双方新增冲突，保留容器路径清理和子进程根目录解析，并保持命名空间文件读写功能。影响模块：进程命名空间文件操作。验证：`make test TEST_PACKAGES=./common/service/procpath/...`。
